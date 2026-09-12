@@ -1,0 +1,6 @@
+# vscode
+.vscode/
+
+# go
+*.exe
+*.dll
