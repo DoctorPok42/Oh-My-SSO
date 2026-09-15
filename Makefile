@@ -117,6 +117,7 @@ test:
 ## test-integration: Integration tests (testcontainers-go — requires Docker)
 test-integration:
 	@echo "Running integration tests..."
+	go test -tags=integration ./internal/storage/entstore/...
 	go test ./... -run Integration -race -count=1 -timeout 5m
 
 ## test-all: Unit + integration tests

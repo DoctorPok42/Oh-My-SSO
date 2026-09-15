@@ -5,6 +5,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sso.internal/sso/internal/storage/entstore"
+	"sso.internal/sso/ent"
+	"context"
 )
 
 func main() {
@@ -20,4 +23,6 @@ func main() {
 
 	log.Printf("Starting server on port %s...", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+
+	client.Use(entstore.AuditLogHook(client))
 }
