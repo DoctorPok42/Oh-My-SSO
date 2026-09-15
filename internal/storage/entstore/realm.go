@@ -82,10 +82,3 @@ func toDomainRealm(e *ent.Realm) *domain.Realm {
 		UpdatedAt:     e.UpdatedAt,
 	}
 }
-
-func nonEmpty(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
