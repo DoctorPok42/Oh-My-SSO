@@ -36,9 +36,9 @@ func (User) Fields() []ent.Field {
 		field.String("email").NotEmpty(),
 		field.Time("created_at").Default(func() time.Time { return time.Now() }).Immutable(),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
-		field.Time("deleted_at").Optional(),
+		field.Time("deleted_at").Optional().Nillable(),
 		field.String("status").GoType(UserStatus("")).Default(string(UserActive)),
-		field.Time("last_login_at").Optional(),
+		field.Time("last_login_at").Optional().Nillable(),
 		field.JSON("profile", map[string]interface{}{}).Optional(),
 	}
 }
