@@ -120,6 +120,10 @@ test-integration:
 	go test -tags=integration ./internal/storage/entstore/...
 	go test ./... -run Integration -race -count=1 -timeout 5m
 
+## test-ovhkms: Integration tests for the OVH KMS key manager (requires Docker + OVH credentials)
+test-ovhkms:
+	go test ./internal/keymanager/ovhkms/... -run Integration -v
+
 ## test-all: Unit + integration tests
 test-all: test test-integration
 
@@ -175,8 +179,13 @@ docker-logs:
 psql:
 	$(COMPOSE) exec postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
 
+## vault-enable-transit: Enable Transit engine on the dev Vault
+vault-enable-transit:
+	@$(COMPOSE) exec -e VAULT_ADDR=http://127.0.0.1:8200 -e VAULT_TOKEN=dev-root-token \
+		vault vault secrets enable transit 2>/dev/null || true
+
 ## dev: Full development environment ready for coding (docker-up + migrate-apply)
-dev: docker-up migrate-apply
+dev: docker-up migrate-apply vault-enable-transit
 	@echo "Environment ready. Run 'make run' to start idp."
 
 # ------------------------------------------------------------------------------
