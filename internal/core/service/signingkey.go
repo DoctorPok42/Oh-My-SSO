@@ -21,7 +21,7 @@ func GenerateSigningKey(
 	ctx context.Context,
 	km keymanager.KeyManager,
 	repo repository.SigningKeyRepository,
-	kmsBackend string, // "vault", "local_dev", "ovhcloud_kms"
+	kmsBackend string, // "vault", "local_dev", "ovhkms"
 	params GenerateSigningKeyParams,
 ) (*domain.SigningKey, error) {
 	kmType, err := toKeyManagerType(params.KeyType)

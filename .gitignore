@@ -4,3 +4,10 @@
 # go
 *.exe
 *.dll
+
+# certificates
+certs/
+*.pem
+
+# env
+.env

@@ -120,6 +120,10 @@ test-integration:
 	go test -tags=integration ./internal/storage/entstore/...
 	go test ./... -run Integration -race -count=1 -timeout 5m
 
+## test-ovhkms: Integration tests for the OVH KMS key manager (requires Docker + OVH credentials)
+test-ovhkms:
+	go test ./internal/keymanager/ovhkms/... -run Integration -v
+
 ## test-all: Unit + integration tests
 test-all: test test-integration
 
