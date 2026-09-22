@@ -24,6 +24,10 @@ POSTGRES_HOST     ?= localhost
 POSTGRES_PORT     ?= 5432
 DATABASE_URL      ?= postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
 
+VALKEY_HOST ?= localhost
+VALKEY_PORT ?= 6379
+VALKEY_ADDR ?= $(VALKEY_HOST):$(VALKEY_PORT)
+
 ENT_SCHEMA_DIR    ?= ./ent/schema
 MIGRATIONS_DIR    ?= file://ent/migrate/migrations
 ATLAS_DEV_URL     ?= docker://postgres/16/dev?search_path=public
@@ -112,17 +116,14 @@ run-admin:
 ## test: Unit tests only (fast, no external dependencies)
 test:
 	@echo "Running unit tests..."
-	go test ./... -short -race -count=1
+	go test -p 1 ./... -short -race -count=1
 
 ## test-integration: Integration tests (testcontainers-go — requires Docker)
 test-integration:
 	@echo "Running integration tests..."
 	go test -tags=integration ./internal/storage/entstore/...
 	go test ./... -run Integration -race -count=1 -timeout 5m
-
-## test-ovhkms: Integration tests for the OVH KMS key manager (requires Docker + OVH credentials)
-test-ovhkms:
-	go test ./internal/keymanager/ovhkms/... -run Integration -v
+	go test ./internal/keymanager/... -run Integration -race -count=1 -timeout 5m
 
 ## test-all: Unit + integration tests
 test-all: test test-integration

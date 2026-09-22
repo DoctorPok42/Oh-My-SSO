@@ -2,6 +2,8 @@ package entstore
 
 import (
 	"context"
+	"slices"
+	"strings"
 
 	"sso.internal/sso/ent"
 	"sso.internal/sso/ent/realm"
@@ -9,6 +11,23 @@ import (
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
+
+var reservedRealmNames = []string{
+	"health",
+	"metrics",
+	"master",
+	"admin",
+	"api",
+	"static",
+	"assets",
+	"well-known",
+}
+
+func isReservedRealmName(name string) bool {
+	return slices.ContainsFunc(reservedRealmNames, func(reserved string) bool {
+		return strings.EqualFold(reserved, name)
+	})
+}
 
 type entRealmRepository struct {
 	client *ent.Client
@@ -19,6 +38,10 @@ func NewRealmRepository(client *ent.Client) repository.RealmRepository {
 }
 
 func (r *entRealmRepository) Create(ctx context.Context, p repository.CreateRealmParams) (*domain.Realm, error) {
+	if isReservedRealmName(p.Name) {
+		return nil, repository.ErrReservedRealmName
+	}
+
 	e, err := r.client.Realm.
 		Create().
 		SetName(p.Name).
@@ -33,6 +56,9 @@ func (r *entRealmRepository) Create(ctx context.Context, p repository.CreateReal
 func (r *entRealmRepository) GetByID(ctx context.Context, id string) (*domain.Realm, error) {
 	e, err := r.client.Realm.Get(ctx, id)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, repository.ErrNotFound
+		}
 		return nil, err
 	}
 	return toDomainRealm(e), nil
@@ -44,12 +70,19 @@ func (r *entRealmRepository) GetByName(ctx context.Context, name string) (*domai
 		Where(realm.NameEQ(name)).
 		Only(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, repository.ErrNotFound
+		}
 		return nil, err
 	}
 	return toDomainRealm(e), nil
 }
 
 func (r *entRealmRepository) Update(ctx context.Context, id string, p repository.UpdateRealmParams) (*domain.Realm, error) {
+	if p.Name != nil && isReservedRealmName(*p.Name) {
+		return nil, repository.ErrReservedRealmName
+	}
+
 	builder := r.client.Realm.UpdateOneID(id)
 
 	if p.Name != nil {

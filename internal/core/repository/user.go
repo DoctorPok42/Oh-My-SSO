@@ -20,10 +20,12 @@ type CreateUserParams struct {
 	Username     string
 	Email        string
 	PasswordHash string
+	Status			 domain.UserStatus
 }
 
 type UpdateUserParams struct {
 	Username     *string
 	Email        *string
 	PasswordHash *string
+	Status			 *domain.UserStatus
 }
