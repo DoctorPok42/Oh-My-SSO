@@ -7,6 +7,7 @@ import (
 	"sso.internal/sso/ent/user"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
+	entschema "sso.internal/sso/ent/schema"
 )
 
 type entUserRepository struct {
@@ -18,13 +19,18 @@ func NewUserRepository(client *ent.Client) repository.UserRepository {
 }
 
 func (r *entUserRepository) Create(ctx context.Context, p repository.CreateUserParams) (*domain.User, error) {
-	e, err := r.client.User.
+	builder := r.client.User.
 		Create().
 		SetRealmID(p.RealmID).
 		SetUsername(p.Username).
 		SetEmail(p.Email).
-		SetPasswordHash(p.PasswordHash).
-		Save(ctx)
+		SetPasswordHash(p.PasswordHash)
+
+	if p.Status != "" {
+		builder = builder.SetStatus(entschema.UserStatus(p.Status))
+	}
+
+	e, err := builder.Save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -34,6 +40,9 @@ func (r *entUserRepository) Create(ctx context.Context, p repository.CreateUserP
 func (r *entUserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
 	e, err := r.client.User.Get(ctx, id)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, repository.ErrNotFound
+		}
 		return nil, err
 	}
 	return toDomainUser(e), nil
@@ -45,6 +54,9 @@ func (r *entUserRepository) GetByRealmAndEmail(ctx context.Context, realmID, ema
 		Where(user.RealmID(realmID), user.EmailEQ(email)).
 		Only(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, repository.ErrNotFound
+		}
 		return nil, err
 	}
 	return toDomainUser(e), nil
@@ -56,6 +68,9 @@ func (r *entUserRepository) GetByRealmAndUsername(ctx context.Context, realmID, 
 		Where(user.RealmID(realmID), user.UsernameEQ(username)).
 		Only(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, repository.ErrNotFound
+		}
 		return nil, err
 	}
 	return toDomainUser(e), nil
@@ -72,6 +87,9 @@ func (r *entUserRepository) Update(ctx context.Context, id string, p repository.
 	}
 	if p.PasswordHash != nil {
 		builder = builder.SetPasswordHash(*p.PasswordHash)
+	}
+	if p.Status != nil {
+		builder = builder.SetStatus(entschema.UserStatus(*p.Status))
 	}
 
 	e, err := builder.Save(ctx)
