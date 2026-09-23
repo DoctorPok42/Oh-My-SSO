@@ -31,6 +31,7 @@ func (r *entSessionRepository) Create(ctx context.Context, p repository.CreateSe
 		SetMfaVerified(p.MFAVerified).
 		SetNillableMfaMethodType(nonEmpty(p.MFAMethodType)).
 		SetAuthMethod(p.AuthMethod).
+		SetTokenHash(p.TokenHash).
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -101,5 +102,6 @@ func toDomainSession(e *ent.Session) *domain.Session {
 		AuthMethod:        e.AuthMethod,
 		Status:            domain.SessionStatus(e.Status),
 		RevokedReason:     domain.SessionRevokedReason(e.RevokedReason),
+		TokenHash:         e.TokenHash,
 	}
 }

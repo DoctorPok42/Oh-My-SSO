@@ -22312,6 +22312,7 @@ type SessionMutation struct {
 	auth_method        *string
 	status             *schema.SessionStatus
 	revoked_reason     *string
+	token_hash         *string
 	clearedFields      map[string]struct{}
 	realm              *string
 	clearedrealm       bool
@@ -22962,6 +22963,42 @@ func (m *SessionMutation) ResetRevokedReason() {
 	delete(m.clearedFields, session.FieldRevokedReason)
 }
 
+// SetTokenHash sets the "token_hash" field.
+func (m *SessionMutation) SetTokenHash(s string) {
+	m.token_hash = &s
+}
+
+// TokenHash returns the value of the "token_hash" field in the mutation.
+func (m *SessionMutation) TokenHash() (r string, exists bool) {
+	v := m.token_hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTokenHash returns the old "token_hash" field's value of the Session entity.
+// If the Session object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SessionMutation) OldTokenHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTokenHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTokenHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTokenHash: %w", err)
+	}
+	return oldValue.TokenHash, nil
+}
+
+// ResetTokenHash resets all changes to the "token_hash" field.
+func (m *SessionMutation) ResetTokenHash() {
+	m.token_hash = nil
+}
+
 // ClearRealm clears the "realm" edge to the Realm entity.
 func (m *SessionMutation) ClearRealm() {
 	m.clearedrealm = true
@@ -23117,7 +23154,7 @@ func (m *SessionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SessionMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 14)
 	if m.realm != nil {
 		fields = append(fields, session.FieldRealmID)
 	}
@@ -23157,6 +23194,9 @@ func (m *SessionMutation) Fields() []string {
 	if m.revoked_reason != nil {
 		fields = append(fields, session.FieldRevokedReason)
 	}
+	if m.token_hash != nil {
+		fields = append(fields, session.FieldTokenHash)
+	}
 	return fields
 }
 
@@ -23191,6 +23231,8 @@ func (m *SessionMutation) Field(name string) (ent.Value, bool) {
 		return m.Status()
 	case session.FieldRevokedReason:
 		return m.RevokedReason()
+	case session.FieldTokenHash:
+		return m.TokenHash()
 	}
 	return nil, false
 }
@@ -23226,6 +23268,8 @@ func (m *SessionMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldStatus(ctx)
 	case session.FieldRevokedReason:
 		return m.OldRevokedReason(ctx)
+	case session.FieldTokenHash:
+		return m.OldTokenHash(ctx)
 	}
 	return nil, fmt.Errorf("unknown Session field %s", name)
 }
@@ -23325,6 +23369,13 @@ func (m *SessionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRevokedReason(v)
+		return nil
+	case session.FieldTokenHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTokenHash(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Session field %s", name)
@@ -23446,6 +23497,9 @@ func (m *SessionMutation) ResetField(name string) error {
 		return nil
 	case session.FieldRevokedReason:
 		m.ResetRevokedReason()
+		return nil
+	case session.FieldTokenHash:
+		m.ResetTokenHash()
 		return nil
 	}
 	return fmt.Errorf("unknown Session field %s", name)

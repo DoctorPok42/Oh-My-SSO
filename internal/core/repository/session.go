@@ -26,4 +26,5 @@ type CreateSessionParams struct {
 	MFAVerified       bool
 	MFAMethodType     string
 	AuthMethod        string
+	TokenHash         string
 }

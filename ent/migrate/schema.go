@@ -752,6 +752,7 @@ var (
 		{Name: "auth_method", Type: field.TypeString, Default: "password"},
 		{Name: "status", Type: field.TypeString, Default: "active"},
 		{Name: "revoked_reason", Type: field.TypeString, Nullable: true},
+		{Name: "token_hash", Type: field.TypeString, Unique: true},
 		{Name: "realm_id", Type: field.TypeString},
 		{Name: "user_id", Type: field.TypeString},
 	}
@@ -763,13 +764,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "sessions_realms_sessions",
-				Columns:    []*schema.Column{SessionsColumns[12]},
+				Columns:    []*schema.Column{SessionsColumns[13]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
 			{
 				Symbol:     "sessions_users_sessions",
-				Columns:    []*schema.Column{SessionsColumns[13]},
+				Columns:    []*schema.Column{SessionsColumns[14]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -778,7 +779,7 @@ var (
 			{
 				Name:    "session_user_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{SessionsColumns[13], SessionsColumns[10]},
+				Columns: []*schema.Column{SessionsColumns[14], SessionsColumns[10]},
 			},
 		},
 	}

@@ -718,6 +718,10 @@ func init() {
 	sessionDescStatus := sessionFields[12].Descriptor()
 	// session.DefaultStatus holds the default value on creation for the status field.
 	session.DefaultStatus = schema.SessionStatus(sessionDescStatus.Default.(string))
+	// sessionDescTokenHash is the schema descriptor for token_hash field.
+	sessionDescTokenHash := sessionFields[14].Descriptor()
+	// session.TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
+	session.TokenHashValidator = sessionDescTokenHash.Validators[0].(func(string) error)
 	// sessionDescID is the schema descriptor for id field.
 	sessionDescID := sessionFields[0].Descriptor()
 	// session.DefaultID holds the default value on creation for the id field.

@@ -61,6 +61,7 @@ func (Session) Fields() []ent.Field {
 		field.String("auth_method").Default(string(SessionAuthPassword)),
 		field.String("status").GoType(SessionStatus("")).Default(string(SessionActive)),
 		field.String("revoked_reason").Optional(),
+		field.String("token_hash").NotEmpty().Unique().Immutable().Sensitive(),
 	}
 }
 

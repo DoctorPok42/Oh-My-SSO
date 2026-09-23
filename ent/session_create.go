@@ -182,6 +182,12 @@ func (_c *SessionCreate) SetNillableRevokedReason(v *string) *SessionCreate {
 	return _c
 }
 
+// SetTokenHash sets the "token_hash" field.
+func (_c *SessionCreate) SetTokenHash(v string) *SessionCreate {
+	_c.mutation.SetTokenHash(v)
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *SessionCreate) SetID(v string) *SessionCreate {
 	_c.mutation.SetID(v)
@@ -324,6 +330,14 @@ func (_c *SessionCreate) check() error {
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Session.status"`)}
 	}
+	if _, ok := _c.mutation.TokenHash(); !ok {
+		return &ValidationError{Name: "token_hash", err: errors.New(`ent: missing required field "Session.token_hash"`)}
+	}
+	if v, ok := _c.mutation.TokenHash(); ok {
+		if err := session.TokenHashValidator(v); err != nil {
+			return &ValidationError{Name: "token_hash", err: fmt.Errorf(`ent: validator failed for field "Session.token_hash": %w`, err)}
+		}
+	}
 	if v, ok := _c.mutation.ID(); ok {
 		if err := session.IDValidator(v); err != nil {
 			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "Session.id": %w`, err)}
@@ -413,6 +427,10 @@ func (_c *SessionCreate) createSpec() (*Session, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RevokedReason(); ok {
 		_spec.SetField(session.FieldRevokedReason, field.TypeString, value)
 		_node.RevokedReason = value
+	}
+	if value, ok := _c.mutation.TokenHash(); ok {
+		_spec.SetField(session.FieldTokenHash, field.TypeString, value)
+		_node.TokenHash = value
 	}
 	if nodes := _c.mutation.RealmIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

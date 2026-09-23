@@ -46,6 +46,8 @@ type Session struct {
 	Status schema.SessionStatus `json:"status,omitempty"`
 	// RevokedReason holds the value of the "revoked_reason" field.
 	RevokedReason string `json:"revoked_reason,omitempty"`
+	// TokenHash holds the value of the "token_hash" field.
+	TokenHash string `json:"-"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the SessionQuery when eager-loading is set.
 	Edges        SessionEdges `json:"edges"`
@@ -103,7 +105,7 @@ func (*Session) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case session.FieldMfaVerified:
 			values[i] = new(sql.NullBool)
-		case session.FieldID, session.FieldRealmID, session.FieldUserID, session.FieldIPAddress, session.FieldUserAgent, session.FieldDeviceFingerprint, session.FieldMfaMethodType, session.FieldAuthMethod, session.FieldStatus, session.FieldRevokedReason:
+		case session.FieldID, session.FieldRealmID, session.FieldUserID, session.FieldIPAddress, session.FieldUserAgent, session.FieldDeviceFingerprint, session.FieldMfaMethodType, session.FieldAuthMethod, session.FieldStatus, session.FieldRevokedReason, session.FieldTokenHash:
 			values[i] = new(sql.NullString)
 		case session.FieldCreatedAt, session.FieldExpiresAt, session.FieldLastActivityAt:
 			values[i] = new(sql.NullTime)
@@ -206,6 +208,12 @@ func (_m *Session) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.RevokedReason = value.String
 			}
+		case session.FieldTokenHash:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field token_hash", values[i])
+			} else if value.Valid {
+				_m.TokenHash = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -295,6 +303,8 @@ func (_m *Session) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("revoked_reason=")
 	builder.WriteString(_m.RevokedReason)
+	builder.WriteString(", ")
+	builder.WriteString("token_hash=<sensitive>")
 	builder.WriteByte(')')
 	return builder.String()
 }
