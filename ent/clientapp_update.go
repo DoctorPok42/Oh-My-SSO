@@ -567,6 +567,60 @@ func (_u *ClientAppUpdate) ClearMetadataURL() *ClientAppUpdate {
 	return _u
 }
 
+// SetSessionIdleMinutes sets the "session_idle_minutes" field.
+func (_u *ClientAppUpdate) SetSessionIdleMinutes(v int) *ClientAppUpdate {
+	_u.mutation.ResetSessionIdleMinutes()
+	_u.mutation.SetSessionIdleMinutes(v)
+	return _u
+}
+
+// SetNillableSessionIdleMinutes sets the "session_idle_minutes" field if the given value is not nil.
+func (_u *ClientAppUpdate) SetNillableSessionIdleMinutes(v *int) *ClientAppUpdate {
+	if v != nil {
+		_u.SetSessionIdleMinutes(*v)
+	}
+	return _u
+}
+
+// AddSessionIdleMinutes adds value to the "session_idle_minutes" field.
+func (_u *ClientAppUpdate) AddSessionIdleMinutes(v int) *ClientAppUpdate {
+	_u.mutation.AddSessionIdleMinutes(v)
+	return _u
+}
+
+// ClearSessionIdleMinutes clears the value of the "session_idle_minutes" field.
+func (_u *ClientAppUpdate) ClearSessionIdleMinutes() *ClientAppUpdate {
+	_u.mutation.ClearSessionIdleMinutes()
+	return _u
+}
+
+// SetSessionMaxMinutes sets the "session_max_minutes" field.
+func (_u *ClientAppUpdate) SetSessionMaxMinutes(v int) *ClientAppUpdate {
+	_u.mutation.ResetSessionMaxMinutes()
+	_u.mutation.SetSessionMaxMinutes(v)
+	return _u
+}
+
+// SetNillableSessionMaxMinutes sets the "session_max_minutes" field if the given value is not nil.
+func (_u *ClientAppUpdate) SetNillableSessionMaxMinutes(v *int) *ClientAppUpdate {
+	if v != nil {
+		_u.SetSessionMaxMinutes(*v)
+	}
+	return _u
+}
+
+// AddSessionMaxMinutes adds value to the "session_max_minutes" field.
+func (_u *ClientAppUpdate) AddSessionMaxMinutes(v int) *ClientAppUpdate {
+	_u.mutation.AddSessionMaxMinutes(v)
+	return _u
+}
+
+// ClearSessionMaxMinutes clears the value of the "session_max_minutes" field.
+func (_u *ClientAppUpdate) ClearSessionMaxMinutes() *ClientAppUpdate {
+	_u.mutation.ClearSessionMaxMinutes()
+	return _u
+}
+
 // AddRoleIDs adds the "roles" edge to the Role entity by IDs.
 func (_u *ClientAppUpdate) AddRoleIDs(ids ...string) *ClientAppUpdate {
 	_u.mutation.AddRoleIDs(ids...)
@@ -903,6 +957,16 @@ func (_u *ClientAppUpdate) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "ClientApp.name": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SessionIdleMinutes(); ok {
+		if err := clientapp.SessionIdleMinutesValidator(v); err != nil {
+			return &ValidationError{Name: "session_idle_minutes", err: fmt.Errorf(`ent: validator failed for field "ClientApp.session_idle_minutes": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SessionMaxMinutes(); ok {
+		if err := clientapp.SessionMaxMinutesValidator(v); err != nil {
+			return &ValidationError{Name: "session_max_minutes", err: fmt.Errorf(`ent: validator failed for field "ClientApp.session_max_minutes": %w`, err)}
+		}
+	}
 	if _u.mutation.RealmCleared() && len(_u.mutation.RealmIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ClientApp.realm"`)
 	}
@@ -1101,6 +1165,24 @@ func (_u *ClientAppUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.MetadataURLCleared() {
 		_spec.ClearField(clientapp.FieldMetadataURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.SessionIdleMinutes(); ok {
+		_spec.SetField(clientapp.FieldSessionIdleMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSessionIdleMinutes(); ok {
+		_spec.AddField(clientapp.FieldSessionIdleMinutes, field.TypeInt, value)
+	}
+	if _u.mutation.SessionIdleMinutesCleared() {
+		_spec.ClearField(clientapp.FieldSessionIdleMinutes, field.TypeInt)
+	}
+	if value, ok := _u.mutation.SessionMaxMinutes(); ok {
+		_spec.SetField(clientapp.FieldSessionMaxMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSessionMaxMinutes(); ok {
+		_spec.AddField(clientapp.FieldSessionMaxMinutes, field.TypeInt, value)
+	}
+	if _u.mutation.SessionMaxMinutesCleared() {
+		_spec.ClearField(clientapp.FieldSessionMaxMinutes, field.TypeInt)
 	}
 	if _u.mutation.RolesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -2074,6 +2156,60 @@ func (_u *ClientAppUpdateOne) ClearMetadataURL() *ClientAppUpdateOne {
 	return _u
 }
 
+// SetSessionIdleMinutes sets the "session_idle_minutes" field.
+func (_u *ClientAppUpdateOne) SetSessionIdleMinutes(v int) *ClientAppUpdateOne {
+	_u.mutation.ResetSessionIdleMinutes()
+	_u.mutation.SetSessionIdleMinutes(v)
+	return _u
+}
+
+// SetNillableSessionIdleMinutes sets the "session_idle_minutes" field if the given value is not nil.
+func (_u *ClientAppUpdateOne) SetNillableSessionIdleMinutes(v *int) *ClientAppUpdateOne {
+	if v != nil {
+		_u.SetSessionIdleMinutes(*v)
+	}
+	return _u
+}
+
+// AddSessionIdleMinutes adds value to the "session_idle_minutes" field.
+func (_u *ClientAppUpdateOne) AddSessionIdleMinutes(v int) *ClientAppUpdateOne {
+	_u.mutation.AddSessionIdleMinutes(v)
+	return _u
+}
+
+// ClearSessionIdleMinutes clears the value of the "session_idle_minutes" field.
+func (_u *ClientAppUpdateOne) ClearSessionIdleMinutes() *ClientAppUpdateOne {
+	_u.mutation.ClearSessionIdleMinutes()
+	return _u
+}
+
+// SetSessionMaxMinutes sets the "session_max_minutes" field.
+func (_u *ClientAppUpdateOne) SetSessionMaxMinutes(v int) *ClientAppUpdateOne {
+	_u.mutation.ResetSessionMaxMinutes()
+	_u.mutation.SetSessionMaxMinutes(v)
+	return _u
+}
+
+// SetNillableSessionMaxMinutes sets the "session_max_minutes" field if the given value is not nil.
+func (_u *ClientAppUpdateOne) SetNillableSessionMaxMinutes(v *int) *ClientAppUpdateOne {
+	if v != nil {
+		_u.SetSessionMaxMinutes(*v)
+	}
+	return _u
+}
+
+// AddSessionMaxMinutes adds value to the "session_max_minutes" field.
+func (_u *ClientAppUpdateOne) AddSessionMaxMinutes(v int) *ClientAppUpdateOne {
+	_u.mutation.AddSessionMaxMinutes(v)
+	return _u
+}
+
+// ClearSessionMaxMinutes clears the value of the "session_max_minutes" field.
+func (_u *ClientAppUpdateOne) ClearSessionMaxMinutes() *ClientAppUpdateOne {
+	_u.mutation.ClearSessionMaxMinutes()
+	return _u
+}
+
 // AddRoleIDs adds the "roles" edge to the Role entity by IDs.
 func (_u *ClientAppUpdateOne) AddRoleIDs(ids ...string) *ClientAppUpdateOne {
 	_u.mutation.AddRoleIDs(ids...)
@@ -2423,6 +2559,16 @@ func (_u *ClientAppUpdateOne) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "ClientApp.name": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SessionIdleMinutes(); ok {
+		if err := clientapp.SessionIdleMinutesValidator(v); err != nil {
+			return &ValidationError{Name: "session_idle_minutes", err: fmt.Errorf(`ent: validator failed for field "ClientApp.session_idle_minutes": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SessionMaxMinutes(); ok {
+		if err := clientapp.SessionMaxMinutesValidator(v); err != nil {
+			return &ValidationError{Name: "session_max_minutes", err: fmt.Errorf(`ent: validator failed for field "ClientApp.session_max_minutes": %w`, err)}
+		}
+	}
 	if _u.mutation.RealmCleared() && len(_u.mutation.RealmIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ClientApp.realm"`)
 	}
@@ -2638,6 +2784,24 @@ func (_u *ClientAppUpdateOne) sqlSave(ctx context.Context) (_node *ClientApp, er
 	}
 	if _u.mutation.MetadataURLCleared() {
 		_spec.ClearField(clientapp.FieldMetadataURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.SessionIdleMinutes(); ok {
+		_spec.SetField(clientapp.FieldSessionIdleMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSessionIdleMinutes(); ok {
+		_spec.AddField(clientapp.FieldSessionIdleMinutes, field.TypeInt, value)
+	}
+	if _u.mutation.SessionIdleMinutesCleared() {
+		_spec.ClearField(clientapp.FieldSessionIdleMinutes, field.TypeInt)
+	}
+	if value, ok := _u.mutation.SessionMaxMinutes(); ok {
+		_spec.SetField(clientapp.FieldSessionMaxMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSessionMaxMinutes(); ok {
+		_spec.AddField(clientapp.FieldSessionMaxMinutes, field.TypeInt, value)
+	}
+	if _u.mutation.SessionMaxMinutesCleared() {
+		_spec.ClearField(clientapp.FieldSessionMaxMinutes, field.TypeInt)
 	}
 	if _u.mutation.RolesCleared() {
 		edge := &sqlgraph.EdgeSpec{

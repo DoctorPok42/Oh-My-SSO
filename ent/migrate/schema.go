@@ -89,6 +89,8 @@ var (
 		{Name: "attribute_mappings", Type: field.TypeJSON, Nullable: true},
 		{Name: "require_consent", Type: field.TypeBool, Default: false},
 		{Name: "metadata_url", Type: field.TypeString, Nullable: true},
+		{Name: "session_idle_minutes", Type: field.TypeInt, Nullable: true},
+		{Name: "session_max_minutes", Type: field.TypeInt, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString},
 	}
 	// ClientAppsTable holds the schema information for the "client_apps" table.
@@ -99,7 +101,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "client_apps_realms_client_apps",
-				Columns:    []*schema.Column{ClientAppsColumns[33]},
+				Columns:    []*schema.Column{ClientAppsColumns[35]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -108,12 +110,12 @@ var (
 			{
 				Name:    "clientapp_realm_id_client_id",
 				Unique:  true,
-				Columns: []*schema.Column{ClientAppsColumns[33], ClientAppsColumns[9]},
+				Columns: []*schema.Column{ClientAppsColumns[35], ClientAppsColumns[9]},
 			},
 			{
 				Name:    "clientapp_realm_id_entity_id",
 				Unique:  true,
-				Columns: []*schema.Column{ClientAppsColumns[33], ClientAppsColumns[22]},
+				Columns: []*schema.Column{ClientAppsColumns[35], ClientAppsColumns[22]},
 			},
 		},
 	}
@@ -447,8 +449,8 @@ var (
 		{Name: "managed_by", Type: field.TypeString, Default: "ui"},
 		{Name: "min_password_length", Type: field.TypeInt, Default: 12},
 		{Name: "password_expiry_days", Type: field.TypeInt, Default: 90},
-		{Name: "session_idle_minutes", Type: field.TypeInt, Default: 30},
-		{Name: "session_max_hours", Type: field.TypeInt, Default: 12},
+		{Name: "session_idle_minutes", Type: field.TypeInt, Default: 10},
+		{Name: "session_max_hours", Type: field.TypeInt, Default: 8},
 		{Name: "lockout_threshold", Type: field.TypeInt, Default: 5},
 		{Name: "lockout_duration_minutes", Type: field.TypeInt, Default: 15},
 		{Name: "ip_allowlist", Type: field.TypeJSON, Nullable: true},
@@ -752,6 +754,7 @@ var (
 		{Name: "auth_method", Type: field.TypeString, Default: "password"},
 		{Name: "status", Type: field.TypeString, Default: "active"},
 		{Name: "revoked_reason", Type: field.TypeString, Nullable: true},
+		{Name: "token_hash", Type: field.TypeString, Unique: true},
 		{Name: "realm_id", Type: field.TypeString},
 		{Name: "user_id", Type: field.TypeString},
 	}
@@ -763,13 +766,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "sessions_realms_sessions",
-				Columns:    []*schema.Column{SessionsColumns[12]},
+				Columns:    []*schema.Column{SessionsColumns[13]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
 			{
 				Symbol:     "sessions_users_sessions",
-				Columns:    []*schema.Column{SessionsColumns[13]},
+				Columns:    []*schema.Column{SessionsColumns[14]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -778,7 +781,7 @@ var (
 			{
 				Name:    "session_user_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{SessionsColumns[13], SessionsColumns[10]},
+				Columns: []*schema.Column{SessionsColumns[14], SessionsColumns[10]},
 			},
 		},
 	}

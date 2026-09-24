@@ -41,6 +41,8 @@ const (
 	FieldStatus = "status"
 	// FieldRevokedReason holds the string denoting the revoked_reason field in the database.
 	FieldRevokedReason = "revoked_reason"
+	// FieldTokenHash holds the string denoting the token_hash field in the database.
+	FieldTokenHash = "token_hash"
 	// EdgeRealm holds the string denoting the realm edge name in mutations.
 	EdgeRealm = "realm"
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
@@ -88,6 +90,7 @@ var Columns = []string{
 	FieldAuthMethod,
 	FieldStatus,
 	FieldRevokedReason,
+	FieldTokenHash,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -115,6 +118,8 @@ var (
 	DefaultAuthMethod string
 	// DefaultStatus holds the default value on creation for the "status" field.
 	DefaultStatus schema.SessionStatus
+	// TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
+	TokenHashValidator func(string) error
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() string
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
@@ -192,6 +197,11 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 // ByRevokedReason orders the results by the revoked_reason field.
 func ByRevokedReason(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRevokedReason, opts...).ToFunc()
+}
+
+// ByTokenHash orders the results by the token_hash field.
+func ByTokenHash(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTokenHash, opts...).ToFunc()
 }
 
 // ByRealmField orders the results by realm field.

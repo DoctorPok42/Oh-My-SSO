@@ -81,6 +81,10 @@ const (
 	FieldRequireConsent = "require_consent"
 	// FieldMetadataURL holds the string denoting the metadata_url field in the database.
 	FieldMetadataURL = "metadata_url"
+	// FieldSessionIdleMinutes holds the string denoting the session_idle_minutes field in the database.
+	FieldSessionIdleMinutes = "session_idle_minutes"
+	// FieldSessionMaxMinutes holds the string denoting the session_max_minutes field in the database.
+	FieldSessionMaxMinutes = "session_max_minutes"
 	// EdgeRealm holds the string denoting the realm edge name in mutations.
 	EdgeRealm = "realm"
 	// EdgeRoles holds the string denoting the roles edge name in mutations.
@@ -196,6 +200,8 @@ var Columns = []string{
 	FieldAttributeMappings,
 	FieldRequireConsent,
 	FieldMetadataURL,
+	FieldSessionIdleMinutes,
+	FieldSessionMaxMinutes,
 }
 
 var (
@@ -251,6 +257,10 @@ var (
 	DefaultWantResponseSigned bool
 	// DefaultRequireConsent holds the default value on creation for the "require_consent" field.
 	DefaultRequireConsent bool
+	// SessionIdleMinutesValidator is a validator for the "session_idle_minutes" field. It is called by the builders before save.
+	SessionIdleMinutesValidator func(int) error
+	// SessionMaxMinutesValidator is a validator for the "session_max_minutes" field. It is called by the builders before save.
+	SessionMaxMinutesValidator func(int) error
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() string
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
@@ -398,6 +408,16 @@ func ByRequireConsent(opts ...sql.OrderTermOption) OrderOption {
 // ByMetadataURL orders the results by the metadata_url field.
 func ByMetadataURL(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMetadataURL, opts...).ToFunc()
+}
+
+// BySessionIdleMinutes orders the results by the session_idle_minutes field.
+func BySessionIdleMinutes(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSessionIdleMinutes, opts...).ToFunc()
+}
+
+// BySessionMaxMinutes orders the results by the session_max_minutes field.
+func BySessionMaxMinutes(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSessionMaxMinutes, opts...).ToFunc()
 }
 
 // ByRealmField orders the results by realm field.

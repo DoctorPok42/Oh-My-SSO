@@ -33,7 +33,8 @@ type Session struct {
 	DeviceFingerprint string
 	MFAVerified       bool
 	MFAMethodType     string
-	AuthMethod    string
-	Status        SessionStatus
-	RevokedReason SessionRevokedReason
+	AuthMethod        string
+	Status            SessionStatus
+	RevokedReason     SessionRevokedReason
+	TokenHash         string
 }

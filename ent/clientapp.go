@@ -86,6 +86,10 @@ type ClientApp struct {
 	RequireConsent bool `json:"require_consent,omitempty"`
 	// MetadataURL holds the value of the "metadata_url" field.
 	MetadataURL string `json:"metadata_url,omitempty"`
+	// SessionIdleMinutes holds the value of the "session_idle_minutes" field.
+	SessionIdleMinutes *int `json:"session_idle_minutes,omitempty"`
+	// SessionMaxMinutes holds the value of the "session_max_minutes" field.
+	SessionMaxMinutes *int `json:"session_max_minutes,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ClientAppQuery when eager-loading is set.
 	Edges        ClientAppEdges `json:"edges"`
@@ -209,7 +213,7 @@ func (*ClientApp) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case clientapp.FieldRequirePkce, clientapp.FieldWantAssertionSigned, clientapp.FieldWantResponseSigned, clientapp.FieldRequireConsent:
 			values[i] = new(sql.NullBool)
-		case clientapp.FieldAccessTokenTTL, clientapp.FieldRefreshTokenTTL, clientapp.FieldIDTokenTTL:
+		case clientapp.FieldAccessTokenTTL, clientapp.FieldRefreshTokenTTL, clientapp.FieldIDTokenTTL, clientapp.FieldSessionIdleMinutes, clientapp.FieldSessionMaxMinutes:
 			values[i] = new(sql.NullInt64)
 		case clientapp.FieldID, clientapp.FieldRealmID, clientapp.FieldManagedBy, clientapp.FieldName, clientapp.FieldProtocol, clientapp.FieldStatus, clientapp.FieldOwnerAdminID, clientapp.FieldClientID, clientapp.FieldClientSecretHash, clientapp.FieldClientType, clientapp.FieldTokenEndpointAuthMethod, clientapp.FieldIDTokenSignedAlg, clientapp.FieldEntityID, clientapp.FieldAcsURL, clientapp.FieldSloURL, clientapp.FieldNameIDFormat, clientapp.FieldDefaultRelayState, clientapp.FieldMetadataURL:
 			values[i] = new(sql.NullString)
@@ -446,6 +450,20 @@ func (_m *ClientApp) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.MetadataURL = value.String
 			}
+		case clientapp.FieldSessionIdleMinutes:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field session_idle_minutes", values[i])
+			} else if value.Valid {
+				_m.SessionIdleMinutes = new(int)
+				*_m.SessionIdleMinutes = int(value.Int64)
+			}
+		case clientapp.FieldSessionMaxMinutes:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field session_max_minutes", values[i])
+			} else if value.Valid {
+				_m.SessionMaxMinutes = new(int)
+				*_m.SessionMaxMinutes = int(value.Int64)
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -625,6 +643,16 @@ func (_m *ClientApp) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("metadata_url=")
 	builder.WriteString(_m.MetadataURL)
+	builder.WriteString(", ")
+	if v := _m.SessionIdleMinutes; v != nil {
+		builder.WriteString("session_idle_minutes=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.SessionMaxMinutes; v != nil {
+		builder.WriteString("session_max_minutes=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

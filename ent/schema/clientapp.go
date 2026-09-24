@@ -90,6 +90,10 @@ func (ClientApp) Fields() []ent.Field {
 		field.JSON("attribute_mappings", map[string]interface{}{}).Optional(),
 		field.Bool("require_consent").Default(false),
 		field.String("metadata_url").Optional(),
+
+		// --- Session overrides ---
+		field.Int("session_idle_minutes").Optional().Nillable().Positive(),
+		field.Int("session_max_minutes").Optional().Nillable().Positive(),
 	}
 }
 

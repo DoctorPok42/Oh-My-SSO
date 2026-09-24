@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -16,6 +18,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/valkey-io/valkey-go"
 
 	"sso.internal/sso/ent"
 	valkeycache "sso.internal/sso/internal/cache/valkey"
@@ -27,9 +30,35 @@ import (
 )
 
 type testEnv struct {
-	ts     *httptest.Server
-	realms repository.RealmRepository
-	users  repository.UserRepository
+	ts       *httptest.Server
+	realms   repository.RealmRepository
+	users    repository.UserRepository
+	sessions *service.SessionService
+	valkey   valkey.Client
+	clock    *fakeClock
+}
+
+type fakeClock struct {
+	mu     sync.Mutex
+	offset time.Duration
+}
+
+func (c *fakeClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return time.Now().Add(c.offset)
+}
+
+func (c *fakeClock) Advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.offset += d
+}
+
+func (c *fakeClock) Reset() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.offset = 0
 }
 
 func setupTestEnv(t *testing.T) *testEnv {
@@ -79,11 +108,26 @@ func setupTestEnv(t *testing.T) *testEnv {
 	users := entstore.NewUserRepository(client)
 	authService := service.NewAuthService(users, entstore.NewLoginAttemptRepository(client))
 
-	srv := httpserver.New(authService, realms, valkeycache.NewRateLimiter(valkeyClient))
+	clock := &fakeClock{}
+	sessionService := service.NewSessionService(
+		entstore.NewSessionRepository(client),
+		entstore.NewInstanceSettingsRepository(client),
+		valkeycache.NewSessionCache(valkeyClient),
+		service.WithClock(clock.Now),
+	)
+
+	srv := httpserver.New(authService, sessionService, realms, valkeycache.NewRateLimiter(valkeyClient))
 	ts := httptest.NewServer(srv.Router())
 	t.Cleanup(ts.Close)
 
-	return &testEnv{ts: ts, realms: realms, users: users}
+	return &testEnv{
+		ts:       ts,
+		realms:   realms,
+		users:    users,
+		sessions: sessionService,
+		valkey:   valkeyClient,
+		clock:    clock,
+	}
 }
 
 func (e *testEnv) createRealm(t *testing.T, name string) *domain.Realm {
