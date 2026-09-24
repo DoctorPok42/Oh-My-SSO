@@ -205,6 +205,16 @@ func MetadataURL(v string) predicate.ClientApp {
 	return predicate.ClientApp(sql.FieldEQ(FieldMetadataURL, v))
 }
 
+// SessionIdleMinutes applies equality check predicate on the "session_idle_minutes" field. It's identical to SessionIdleMinutesEQ.
+func SessionIdleMinutes(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEQ(FieldSessionIdleMinutes, v))
+}
+
+// SessionMaxMinutes applies equality check predicate on the "session_max_minutes" field. It's identical to SessionMaxMinutesEQ.
+func SessionMaxMinutes(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEQ(FieldSessionMaxMinutes, v))
+}
+
 // RealmIDEQ applies the EQ predicate on the "realm_id" field.
 func RealmIDEQ(v string) predicate.ClientApp {
 	return predicate.ClientApp(sql.FieldEQ(FieldRealmID, v))
@@ -1854,6 +1864,106 @@ func MetadataURLEqualFold(v string) predicate.ClientApp {
 // MetadataURLContainsFold applies the ContainsFold predicate on the "metadata_url" field.
 func MetadataURLContainsFold(v string) predicate.ClientApp {
 	return predicate.ClientApp(sql.FieldContainsFold(FieldMetadataURL, v))
+}
+
+// SessionIdleMinutesEQ applies the EQ predicate on the "session_idle_minutes" field.
+func SessionIdleMinutesEQ(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEQ(FieldSessionIdleMinutes, v))
+}
+
+// SessionIdleMinutesNEQ applies the NEQ predicate on the "session_idle_minutes" field.
+func SessionIdleMinutesNEQ(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNEQ(FieldSessionIdleMinutes, v))
+}
+
+// SessionIdleMinutesIn applies the In predicate on the "session_idle_minutes" field.
+func SessionIdleMinutesIn(vs ...int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldIn(FieldSessionIdleMinutes, vs...))
+}
+
+// SessionIdleMinutesNotIn applies the NotIn predicate on the "session_idle_minutes" field.
+func SessionIdleMinutesNotIn(vs ...int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNotIn(FieldSessionIdleMinutes, vs...))
+}
+
+// SessionIdleMinutesGT applies the GT predicate on the "session_idle_minutes" field.
+func SessionIdleMinutesGT(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldGT(FieldSessionIdleMinutes, v))
+}
+
+// SessionIdleMinutesGTE applies the GTE predicate on the "session_idle_minutes" field.
+func SessionIdleMinutesGTE(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldGTE(FieldSessionIdleMinutes, v))
+}
+
+// SessionIdleMinutesLT applies the LT predicate on the "session_idle_minutes" field.
+func SessionIdleMinutesLT(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldLT(FieldSessionIdleMinutes, v))
+}
+
+// SessionIdleMinutesLTE applies the LTE predicate on the "session_idle_minutes" field.
+func SessionIdleMinutesLTE(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldLTE(FieldSessionIdleMinutes, v))
+}
+
+// SessionIdleMinutesIsNil applies the IsNil predicate on the "session_idle_minutes" field.
+func SessionIdleMinutesIsNil() predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldIsNull(FieldSessionIdleMinutes))
+}
+
+// SessionIdleMinutesNotNil applies the NotNil predicate on the "session_idle_minutes" field.
+func SessionIdleMinutesNotNil() predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNotNull(FieldSessionIdleMinutes))
+}
+
+// SessionMaxMinutesEQ applies the EQ predicate on the "session_max_minutes" field.
+func SessionMaxMinutesEQ(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEQ(FieldSessionMaxMinutes, v))
+}
+
+// SessionMaxMinutesNEQ applies the NEQ predicate on the "session_max_minutes" field.
+func SessionMaxMinutesNEQ(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNEQ(FieldSessionMaxMinutes, v))
+}
+
+// SessionMaxMinutesIn applies the In predicate on the "session_max_minutes" field.
+func SessionMaxMinutesIn(vs ...int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldIn(FieldSessionMaxMinutes, vs...))
+}
+
+// SessionMaxMinutesNotIn applies the NotIn predicate on the "session_max_minutes" field.
+func SessionMaxMinutesNotIn(vs ...int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNotIn(FieldSessionMaxMinutes, vs...))
+}
+
+// SessionMaxMinutesGT applies the GT predicate on the "session_max_minutes" field.
+func SessionMaxMinutesGT(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldGT(FieldSessionMaxMinutes, v))
+}
+
+// SessionMaxMinutesGTE applies the GTE predicate on the "session_max_minutes" field.
+func SessionMaxMinutesGTE(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldGTE(FieldSessionMaxMinutes, v))
+}
+
+// SessionMaxMinutesLT applies the LT predicate on the "session_max_minutes" field.
+func SessionMaxMinutesLT(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldLT(FieldSessionMaxMinutes, v))
+}
+
+// SessionMaxMinutesLTE applies the LTE predicate on the "session_max_minutes" field.
+func SessionMaxMinutesLTE(v int) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldLTE(FieldSessionMaxMinutes, v))
+}
+
+// SessionMaxMinutesIsNil applies the IsNil predicate on the "session_max_minutes" field.
+func SessionMaxMinutesIsNil() predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldIsNull(FieldSessionMaxMinutes))
+}
+
+// SessionMaxMinutesNotNil applies the NotNil predicate on the "session_max_minutes" field.
+func SessionMaxMinutesNotNil() predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNotNull(FieldSessionMaxMinutes))
 }
 
 // HasRealm applies the HasEdge predicate on the "realm" edge.

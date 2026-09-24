@@ -87,8 +87,15 @@ func main() {
 		log.Fatalf("valkey: %v", err)
 	}
 
+	sessionService := service.NewSessionService(
+		entstore.NewSessionRepository(client),
+		entstore.NewInstanceSettingsRepository(client),
+		valkeycache.NewSessionCache(valkeyClient),
+	)
+
 	srv := httpserver.New(
 		authService,
+		sessionService,
 		entstore.NewRealmRepository(client),
 		valkeycache.NewRateLimiter(valkeyClient),
 	)

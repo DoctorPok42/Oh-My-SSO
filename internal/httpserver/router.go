@@ -12,17 +12,24 @@ import (
 )
 
 type Server struct {
-	router *chi.Mux
-	auth   *service.AuthService
-	realms repository.RealmRepository
+	router      *chi.Mux
+	auth        *service.AuthService
+	sessions    *service.SessionService
+	realms      repository.RealmRepository
 	rateLimiter ratelimit.Limiter
 }
 
-func New(auth *service.AuthService, realms repository.RealmRepository, rateLimiter ratelimit.Limiter) *Server {
+func New(
+	auth *service.AuthService,
+	sessions *service.SessionService,
+	realms repository.RealmRepository,
+	rateLimiter ratelimit.Limiter,
+) *Server {
 	s := &Server{
-		router: chi.NewRouter(),
-		auth:   auth,
-		realms: realms,
+		router:      chi.NewRouter(),
+		auth:        auth,
+		sessions:    sessions,
+		realms:      realms,
 		rateLimiter: rateLimiter,
 	}
 

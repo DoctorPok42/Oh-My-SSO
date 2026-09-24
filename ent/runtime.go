@@ -126,6 +126,14 @@ func init() {
 	clientappDescRequireConsent := clientappFields[32].Descriptor()
 	// clientapp.DefaultRequireConsent holds the default value on creation for the require_consent field.
 	clientapp.DefaultRequireConsent = clientappDescRequireConsent.Default.(bool)
+	// clientappDescSessionIdleMinutes is the schema descriptor for session_idle_minutes field.
+	clientappDescSessionIdleMinutes := clientappFields[34].Descriptor()
+	// clientapp.SessionIdleMinutesValidator is a validator for the "session_idle_minutes" field. It is called by the builders before save.
+	clientapp.SessionIdleMinutesValidator = clientappDescSessionIdleMinutes.Validators[0].(func(int) error)
+	// clientappDescSessionMaxMinutes is the schema descriptor for session_max_minutes field.
+	clientappDescSessionMaxMinutes := clientappFields[35].Descriptor()
+	// clientapp.SessionMaxMinutesValidator is a validator for the "session_max_minutes" field. It is called by the builders before save.
+	clientapp.SessionMaxMinutesValidator = clientappDescSessionMaxMinutes.Validators[0].(func(int) error)
 	// clientappDescID is the schema descriptor for id field.
 	clientappDescID := clientappFields[0].Descriptor()
 	// clientapp.DefaultID holds the default value on creation for the id field.

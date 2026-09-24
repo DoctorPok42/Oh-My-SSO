@@ -34,9 +34,23 @@ type errorResponse struct {
 	Error string `json:"error"`
 }
 
+type sessionResponse struct {
+	SessionID   string    `json:"session_id"`
+	UserID      string    `json:"user_id"`
+	AuthMethod  string    `json:"auth_method"`
+	MFAVerified bool      `json:"mfa_verified"`
+	ExpiresAt   time.Time `json:"expires_at"`
+}
+
 func (s *Server) mountAuth(r chi.Router) {
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/login", s.handleLogin)
+		r.Post("/logout", s.handleLogout)
+
+		r.Group(func(r chi.Router) {
+			r.Use(s.requireSession)
+			r.Get("/session", s.handleGetSession)
+		})
 	})
 }
 
@@ -87,7 +101,42 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rawToken, sess, err := s.sessions.Create(r.Context(), service.CreateSessionInput{
+		RealmID:    realm.ID,
+		UserID:     user.ID,
+		IPAddress:  ip,
+		UserAgent:  r.UserAgent(),
+		AuthMethod: "password",
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error")
+		return
+	}
+
+	setSessionCookie(w, realm.Name, rawToken, sess.ExpiresAt)
 	writeJSON(w, http.StatusOK, loginResponse{UserID: user.ID})
+}
+
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	realm := realmFromContext(r)
+
+	if err := s.sessions.Logout(r.Context(), sessionTokenFromRequest(r)); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error")
+		return
+	}
+	clearSessionCookie(w, realm.Name)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromContext(r)
+	writeJSON(w, http.StatusOK, sessionResponse{
+		SessionID:   sess.ID,
+		UserID:      sess.UserID,
+		AuthMethod:  sess.AuthMethod,
+		MFAVerified: sess.MFAVerified,
+		ExpiresAt:   sess.ExpiresAt,
+	})
 }
 
 func clientIP(r *http.Request) string {

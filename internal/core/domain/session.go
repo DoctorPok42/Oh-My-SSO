@@ -34,7 +34,7 @@ type Session struct {
 	MFAVerified       bool
 	MFAMethodType     string
 	AuthMethod        string
-	Status        		SessionStatus
-	RevokedReason 		SessionRevokedReason
-	TokenHash     		string
+	Status            SessionStatus
+	RevokedReason     SessionRevokedReason
+	TokenHash         string
 }

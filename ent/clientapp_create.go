@@ -420,6 +420,34 @@ func (_c *ClientAppCreate) SetNillableMetadataURL(v *string) *ClientAppCreate {
 	return _c
 }
 
+// SetSessionIdleMinutes sets the "session_idle_minutes" field.
+func (_c *ClientAppCreate) SetSessionIdleMinutes(v int) *ClientAppCreate {
+	_c.mutation.SetSessionIdleMinutes(v)
+	return _c
+}
+
+// SetNillableSessionIdleMinutes sets the "session_idle_minutes" field if the given value is not nil.
+func (_c *ClientAppCreate) SetNillableSessionIdleMinutes(v *int) *ClientAppCreate {
+	if v != nil {
+		_c.SetSessionIdleMinutes(*v)
+	}
+	return _c
+}
+
+// SetSessionMaxMinutes sets the "session_max_minutes" field.
+func (_c *ClientAppCreate) SetSessionMaxMinutes(v int) *ClientAppCreate {
+	_c.mutation.SetSessionMaxMinutes(v)
+	return _c
+}
+
+// SetNillableSessionMaxMinutes sets the "session_max_minutes" field if the given value is not nil.
+func (_c *ClientAppCreate) SetNillableSessionMaxMinutes(v *int) *ClientAppCreate {
+	if v != nil {
+		_c.SetSessionMaxMinutes(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *ClientAppCreate) SetID(v string) *ClientAppCreate {
 	_c.mutation.SetID(v)
@@ -703,6 +731,16 @@ func (_c *ClientAppCreate) check() error {
 	if _, ok := _c.mutation.RequireConsent(); !ok {
 		return &ValidationError{Name: "require_consent", err: errors.New(`ent: missing required field "ClientApp.require_consent"`)}
 	}
+	if v, ok := _c.mutation.SessionIdleMinutes(); ok {
+		if err := clientapp.SessionIdleMinutesValidator(v); err != nil {
+			return &ValidationError{Name: "session_idle_minutes", err: fmt.Errorf(`ent: validator failed for field "ClientApp.session_idle_minutes": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.SessionMaxMinutes(); ok {
+		if err := clientapp.SessionMaxMinutesValidator(v); err != nil {
+			return &ValidationError{Name: "session_max_minutes", err: fmt.Errorf(`ent: validator failed for field "ClientApp.session_max_minutes": %w`, err)}
+		}
+	}
 	if v, ok := _c.mutation.ID(); ok {
 		if err := clientapp.IDValidator(v); err != nil {
 			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "ClientApp.id": %w`, err)}
@@ -873,6 +911,14 @@ func (_c *ClientAppCreate) createSpec() (*ClientApp, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.MetadataURL(); ok {
 		_spec.SetField(clientapp.FieldMetadataURL, field.TypeString, value)
 		_node.MetadataURL = value
+	}
+	if value, ok := _c.mutation.SessionIdleMinutes(); ok {
+		_spec.SetField(clientapp.FieldSessionIdleMinutes, field.TypeInt, value)
+		_node.SessionIdleMinutes = &value
+	}
+	if value, ok := _c.mutation.SessionMaxMinutes(); ok {
+		_spec.SetField(clientapp.FieldSessionMaxMinutes, field.TypeInt, value)
+		_node.SessionMaxMinutes = &value
 	}
 	if nodes := _c.mutation.RealmIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

@@ -35,7 +35,7 @@ func (r *entInstanceSettingsRepository) GetByRealmID(ctx context.Context, realmI
 		Where(instancesettings.RealmID(realmID)).
 		Only(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainInstanceSettings(e), nil
 }

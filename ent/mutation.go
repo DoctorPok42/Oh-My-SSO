@@ -1167,6 +1167,10 @@ type ClientAppMutation struct {
 	attribute_mappings              *map[string]interface{}
 	require_consent                 *bool
 	metadata_url                    *string
+	session_idle_minutes            *int
+	addsession_idle_minutes         *int
+	session_max_minutes             *int
+	addsession_max_minutes          *int
 	clearedFields                   map[string]struct{}
 	realm                           *string
 	clearedrealm                    bool
@@ -2878,6 +2882,146 @@ func (m *ClientAppMutation) ResetMetadataURL() {
 	delete(m.clearedFields, clientapp.FieldMetadataURL)
 }
 
+// SetSessionIdleMinutes sets the "session_idle_minutes" field.
+func (m *ClientAppMutation) SetSessionIdleMinutes(i int) {
+	m.session_idle_minutes = &i
+	m.addsession_idle_minutes = nil
+}
+
+// SessionIdleMinutes returns the value of the "session_idle_minutes" field in the mutation.
+func (m *ClientAppMutation) SessionIdleMinutes() (r int, exists bool) {
+	v := m.session_idle_minutes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSessionIdleMinutes returns the old "session_idle_minutes" field's value of the ClientApp entity.
+// If the ClientApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ClientAppMutation) OldSessionIdleMinutes(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSessionIdleMinutes is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSessionIdleMinutes requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSessionIdleMinutes: %w", err)
+	}
+	return oldValue.SessionIdleMinutes, nil
+}
+
+// AddSessionIdleMinutes adds i to the "session_idle_minutes" field.
+func (m *ClientAppMutation) AddSessionIdleMinutes(i int) {
+	if m.addsession_idle_minutes != nil {
+		*m.addsession_idle_minutes += i
+	} else {
+		m.addsession_idle_minutes = &i
+	}
+}
+
+// AddedSessionIdleMinutes returns the value that was added to the "session_idle_minutes" field in this mutation.
+func (m *ClientAppMutation) AddedSessionIdleMinutes() (r int, exists bool) {
+	v := m.addsession_idle_minutes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearSessionIdleMinutes clears the value of the "session_idle_minutes" field.
+func (m *ClientAppMutation) ClearSessionIdleMinutes() {
+	m.session_idle_minutes = nil
+	m.addsession_idle_minutes = nil
+	m.clearedFields[clientapp.FieldSessionIdleMinutes] = struct{}{}
+}
+
+// SessionIdleMinutesCleared returns if the "session_idle_minutes" field was cleared in this mutation.
+func (m *ClientAppMutation) SessionIdleMinutesCleared() bool {
+	_, ok := m.clearedFields[clientapp.FieldSessionIdleMinutes]
+	return ok
+}
+
+// ResetSessionIdleMinutes resets all changes to the "session_idle_minutes" field.
+func (m *ClientAppMutation) ResetSessionIdleMinutes() {
+	m.session_idle_minutes = nil
+	m.addsession_idle_minutes = nil
+	delete(m.clearedFields, clientapp.FieldSessionIdleMinutes)
+}
+
+// SetSessionMaxMinutes sets the "session_max_minutes" field.
+func (m *ClientAppMutation) SetSessionMaxMinutes(i int) {
+	m.session_max_minutes = &i
+	m.addsession_max_minutes = nil
+}
+
+// SessionMaxMinutes returns the value of the "session_max_minutes" field in the mutation.
+func (m *ClientAppMutation) SessionMaxMinutes() (r int, exists bool) {
+	v := m.session_max_minutes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSessionMaxMinutes returns the old "session_max_minutes" field's value of the ClientApp entity.
+// If the ClientApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ClientAppMutation) OldSessionMaxMinutes(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSessionMaxMinutes is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSessionMaxMinutes requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSessionMaxMinutes: %w", err)
+	}
+	return oldValue.SessionMaxMinutes, nil
+}
+
+// AddSessionMaxMinutes adds i to the "session_max_minutes" field.
+func (m *ClientAppMutation) AddSessionMaxMinutes(i int) {
+	if m.addsession_max_minutes != nil {
+		*m.addsession_max_minutes += i
+	} else {
+		m.addsession_max_minutes = &i
+	}
+}
+
+// AddedSessionMaxMinutes returns the value that was added to the "session_max_minutes" field in this mutation.
+func (m *ClientAppMutation) AddedSessionMaxMinutes() (r int, exists bool) {
+	v := m.addsession_max_minutes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearSessionMaxMinutes clears the value of the "session_max_minutes" field.
+func (m *ClientAppMutation) ClearSessionMaxMinutes() {
+	m.session_max_minutes = nil
+	m.addsession_max_minutes = nil
+	m.clearedFields[clientapp.FieldSessionMaxMinutes] = struct{}{}
+}
+
+// SessionMaxMinutesCleared returns if the "session_max_minutes" field was cleared in this mutation.
+func (m *ClientAppMutation) SessionMaxMinutesCleared() bool {
+	_, ok := m.clearedFields[clientapp.FieldSessionMaxMinutes]
+	return ok
+}
+
+// ResetSessionMaxMinutes resets all changes to the "session_max_minutes" field.
+func (m *ClientAppMutation) ResetSessionMaxMinutes() {
+	m.session_max_minutes = nil
+	m.addsession_max_minutes = nil
+	delete(m.clearedFields, clientapp.FieldSessionMaxMinutes)
+}
+
 // ClearRealm clears the "realm" edge to the Realm entity.
 func (m *ClientAppMutation) ClearRealm() {
 	m.clearedrealm = true
@@ -3371,7 +3515,7 @@ func (m *ClientAppMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ClientAppMutation) Fields() []string {
-	fields := make([]string, 0, 33)
+	fields := make([]string, 0, 35)
 	if m.realm != nil {
 		fields = append(fields, clientapp.FieldRealmID)
 	}
@@ -3471,6 +3615,12 @@ func (m *ClientAppMutation) Fields() []string {
 	if m.metadata_url != nil {
 		fields = append(fields, clientapp.FieldMetadataURL)
 	}
+	if m.session_idle_minutes != nil {
+		fields = append(fields, clientapp.FieldSessionIdleMinutes)
+	}
+	if m.session_max_minutes != nil {
+		fields = append(fields, clientapp.FieldSessionMaxMinutes)
+	}
 	return fields
 }
 
@@ -3545,6 +3695,10 @@ func (m *ClientAppMutation) Field(name string) (ent.Value, bool) {
 		return m.RequireConsent()
 	case clientapp.FieldMetadataURL:
 		return m.MetadataURL()
+	case clientapp.FieldSessionIdleMinutes:
+		return m.SessionIdleMinutes()
+	case clientapp.FieldSessionMaxMinutes:
+		return m.SessionMaxMinutes()
 	}
 	return nil, false
 }
@@ -3620,6 +3774,10 @@ func (m *ClientAppMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldRequireConsent(ctx)
 	case clientapp.FieldMetadataURL:
 		return m.OldMetadataURL(ctx)
+	case clientapp.FieldSessionIdleMinutes:
+		return m.OldSessionIdleMinutes(ctx)
+	case clientapp.FieldSessionMaxMinutes:
+		return m.OldSessionMaxMinutes(ctx)
 	}
 	return nil, fmt.Errorf("unknown ClientApp field %s", name)
 }
@@ -3860,6 +4018,20 @@ func (m *ClientAppMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetMetadataURL(v)
 		return nil
+	case clientapp.FieldSessionIdleMinutes:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSessionIdleMinutes(v)
+		return nil
+	case clientapp.FieldSessionMaxMinutes:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSessionMaxMinutes(v)
+		return nil
 	}
 	return fmt.Errorf("unknown ClientApp field %s", name)
 }
@@ -3877,6 +4049,12 @@ func (m *ClientAppMutation) AddedFields() []string {
 	if m.addid_token_ttl != nil {
 		fields = append(fields, clientapp.FieldIDTokenTTL)
 	}
+	if m.addsession_idle_minutes != nil {
+		fields = append(fields, clientapp.FieldSessionIdleMinutes)
+	}
+	if m.addsession_max_minutes != nil {
+		fields = append(fields, clientapp.FieldSessionMaxMinutes)
+	}
 	return fields
 }
 
@@ -3891,6 +4069,10 @@ func (m *ClientAppMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedRefreshTokenTTL()
 	case clientapp.FieldIDTokenTTL:
 		return m.AddedIDTokenTTL()
+	case clientapp.FieldSessionIdleMinutes:
+		return m.AddedSessionIdleMinutes()
+	case clientapp.FieldSessionMaxMinutes:
+		return m.AddedSessionMaxMinutes()
 	}
 	return nil, false
 }
@@ -3920,6 +4102,20 @@ func (m *ClientAppMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddIDTokenTTL(v)
+		return nil
+	case clientapp.FieldSessionIdleMinutes:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSessionIdleMinutes(v)
+		return nil
+	case clientapp.FieldSessionMaxMinutes:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSessionMaxMinutes(v)
 		return nil
 	}
 	return fmt.Errorf("unknown ClientApp numeric field %s", name)
@@ -3985,6 +4181,12 @@ func (m *ClientAppMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(clientapp.FieldMetadataURL) {
 		fields = append(fields, clientapp.FieldMetadataURL)
+	}
+	if m.FieldCleared(clientapp.FieldSessionIdleMinutes) {
+		fields = append(fields, clientapp.FieldSessionIdleMinutes)
+	}
+	if m.FieldCleared(clientapp.FieldSessionMaxMinutes) {
+		fields = append(fields, clientapp.FieldSessionMaxMinutes)
 	}
 	return fields
 }
@@ -4056,6 +4258,12 @@ func (m *ClientAppMutation) ClearField(name string) error {
 		return nil
 	case clientapp.FieldMetadataURL:
 		m.ClearMetadataURL()
+		return nil
+	case clientapp.FieldSessionIdleMinutes:
+		m.ClearSessionIdleMinutes()
+		return nil
+	case clientapp.FieldSessionMaxMinutes:
+		m.ClearSessionMaxMinutes()
 		return nil
 	}
 	return fmt.Errorf("unknown ClientApp nullable field %s", name)
@@ -4163,6 +4371,12 @@ func (m *ClientAppMutation) ResetField(name string) error {
 		return nil
 	case clientapp.FieldMetadataURL:
 		m.ResetMetadataURL()
+		return nil
+	case clientapp.FieldSessionIdleMinutes:
+		m.ResetSessionIdleMinutes()
+		return nil
+	case clientapp.FieldSessionMaxMinutes:
+		m.ResetSessionMaxMinutes()
 		return nil
 	}
 	return fmt.Errorf("unknown ClientApp field %s", name)
