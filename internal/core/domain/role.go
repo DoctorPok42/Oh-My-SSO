@@ -16,6 +16,8 @@ const (
 	RoleManagedByConfig RoleManagedBy = "config"
 )
 
+const RoleSecurityNotice = "Direct role assignment is harder to audit at scale: prefer assigning users through a group."
+
 type Role struct {
 	ID          string
 	RealmID     string

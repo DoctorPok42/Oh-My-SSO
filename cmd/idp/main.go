@@ -93,10 +93,17 @@ func main() {
 		valkeycache.NewSessionCache(valkeyClient),
 	)
 
+	rbacService := service.NewRBACService(
+		entstore.NewAccessRepository(client),
+		entstore.NewAuditLogRepository(client),
+	)
+
 	srv := httpserver.New(
 		authService,
 		sessionService,
+		rbacService,
 		entstore.NewRealmRepository(client),
+		entstore.NewClientRepository(client),
 		valkeycache.NewRateLimiter(valkeyClient),
 	)
 

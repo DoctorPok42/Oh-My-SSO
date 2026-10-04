@@ -47,7 +47,7 @@ func (r *entClientAppRepository) GetByRealmAndClientID(ctx context.Context, real
 		Where(clientapp.RealmID(realmID), clientapp.ClientID(clientID)).
 		Only(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainClientApp(e), nil
 }

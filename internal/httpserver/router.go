@@ -15,21 +15,27 @@ type Server struct {
 	router      *chi.Mux
 	auth        *service.AuthService
 	sessions    *service.SessionService
+	authz       Authorizer
 	realms      repository.RealmRepository
+	clients     repository.ClientRepository
 	rateLimiter ratelimit.Limiter
 }
 
 func New(
 	auth *service.AuthService,
 	sessions *service.SessionService,
+	authz Authorizer,
 	realms repository.RealmRepository,
+	clients repository.ClientRepository,
 	rateLimiter ratelimit.Limiter,
 ) *Server {
 	s := &Server{
 		router:      chi.NewRouter(),
 		auth:        auth,
 		sessions:    sessions,
+		authz:       authz,
 		realms:      realms,
+		clients:     clients,
 		rateLimiter: rateLimiter,
 	}
 
