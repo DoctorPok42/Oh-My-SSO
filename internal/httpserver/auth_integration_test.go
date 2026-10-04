@@ -116,7 +116,19 @@ func setupTestEnv(t *testing.T) *testEnv {
 		service.WithClock(clock.Now),
 	)
 
-	srv := httpserver.New(authService, sessionService, realms, valkeycache.NewRateLimiter(valkeyClient))
+	rbacService := service.NewRBACService(
+		entstore.NewAccessRepository(client),
+		entstore.NewAuditLogRepository(client),
+	)
+
+	srv := httpserver.New(
+		authService,
+		sessionService,
+		rbacService,
+		realms,
+		entstore.NewClientRepository(client),
+		valkeycache.NewRateLimiter(valkeyClient),
+	)
 	ts := httptest.NewServer(srv.Router())
 	t.Cleanup(ts.Close)
 
