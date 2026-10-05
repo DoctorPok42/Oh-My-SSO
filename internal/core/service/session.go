@@ -11,12 +11,13 @@ import (
 	"sync"
 	"time"
 
+	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/sessioncache"
 )
 
-var ErrSessionInvalid = errors.New("service: session invalid")
+var ErrSessionInvalid = core.ErrSessionInvalid // alias: same variable as core
 var ErrReauthRequired = errors.New("service: reauthentication required for this app")
 var ErrClientSessionLimitTooLong = errors.New("service: app session limit exceeds realm limit")
 
@@ -187,6 +188,34 @@ func (s *SessionService) validate(ctx context.Context, realmID, rawToken string,
 
 	if !fromCache {
 		s.fillCache(ctx, sess)
+	}
+	return sess, nil
+}
+
+// GetActive loads a session by its id, for back-channel calls (no cookie,
+// e.g. the OIDC /token endpoint). Same validity rules as Validate, but it
+// does not refresh last_activity_at: a server-to-server call is not a proof
+// that the user is still active.
+func (s *SessionService) GetActive(ctx context.Context, sessionID string) (*domain.Session, error) {
+	if sessionID == "" {
+		return nil, ErrSessionInvalid
+	}
+	sess, err := s.sessions.GetByID(ctx, sessionID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, ErrSessionInvalid
+		}
+		return nil, fmt.Errorf("get active session: %w", err)
+	}
+	if sess.Status != domain.SessionActive {
+		return nil, ErrSessionInvalid
+	}
+
+	now := s.now()
+	policy := s.policy(ctx, sess.RealmID)
+	if !now.Before(sess.ExpiresAt) || !now.Before(sess.LastActivityAt.Add(policy.idleTimeout)) {
+		s.expire(ctx, sess)
+		return nil, ErrSessionInvalid
 	}
 	return sess, nil
 }

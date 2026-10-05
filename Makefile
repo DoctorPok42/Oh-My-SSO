@@ -148,12 +148,20 @@ fmt:
 	gofmt -l -w .
 	go vet ./...
 
+## check-core-deps: Verify internal/core stays free of HTTP, Ent and chi (Step 7 guard)
+check-core-deps:
+	@deps=$$(go list -deps ./internal/core/...); \
+	if echo "$$deps" | grep -E '^(net/http|entgo\.io|github\.com/go-chi|sso\.internal/sso/ent)'; then \
+		echo "ERROR: internal/core must not depend on the packages listed above"; exit 1; \
+	fi; \
+	echo "OK: internal/core does not depend on HTTP, Ent or chi"
+
 ## vuln: Scan dependencies for known vulnerabilities
 vuln:
 	govulncheck ./...
 
-## check: fmt + lint + vuln + test — run before every commit/PR
-check: fmt lint vuln test
+## check: fmt + lint + check-core-deps + vuln + test — run before every commit/PR
+check: fmt lint check-core-deps vuln test
 
 # ------------------------------------------------------------------------------
 # Development environment (Docker Compose: postgres + valkey + vault)
@@ -213,7 +221,7 @@ clean:
 	migrate-diff migrate-apply migrate-status migrate-lint \
 	build run run-admin \
 	test test-integration test-all coverage \
-	lint fmt vuln check \
+	lint fmt vuln check check-core-deps \
 	docker-up docker-down docker-reset docker-logs psql dev \
 	admin-dev admin-build \
 	clean

@@ -93,7 +93,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrInvalidCredentials), errors.Is(err, service.ErrAccountNotActive):
+		case errors.Is(err, service.ErrInvalidCredentials),
+			errors.Is(err, service.ErrAccountNotActive),
+			errors.Is(err, service.ErrTimeoutActive):
 			writeError(w, http.StatusUnauthorized, "invalid_credentials")
 		default:
 			writeError(w, http.StatusInternalServerError, "internal_error")
