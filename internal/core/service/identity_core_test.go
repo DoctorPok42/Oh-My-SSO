@@ -198,6 +198,17 @@ func (f *fakeTokenRepo) GetByJTI(_ context.Context, jti string) (*domain.Token, 
 	return nil, repository.ErrNotFound
 }
 
+func (f *fakeTokenRepo) ListBySession(_ context.Context, sessionID string) ([]*domain.Token, error) {
+	var out []*domain.Token
+	for _, t := range f.byJTI {
+		if t.SessionID == sessionID {
+			cp := *t
+			out = append(out, &cp)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeTokenRepo) Revoke(_ context.Context, id string) error {
 	for _, t := range f.byJTI {
 		if t.ID == id {
@@ -206,6 +217,23 @@ func (f *fakeTokenRepo) Revoke(_ context.Context, id string) error {
 		}
 	}
 	return repository.ErrNotFound
+}
+
+// fakeRealmRepo mimics the atomic "set if empty" of the real repository and
+// counts calls, to check the salt is cached.
+type fakeRealmRepo struct {
+	repository.RealmRepository
+	salts map[string]string
+	calls int
+}
+
+func (f *fakeRealmRepo) EnsurePairwiseSubjectSalt(_ context.Context, realmID, candidate string) (string, error) {
+	f.calls++
+	if existing, ok := f.salts[realmID]; ok {
+		return existing, nil
+	}
+	f.salts[realmID] = candidate
+	return candidate, nil
 }
 
 type fakeSigningKeyRepo struct {
@@ -235,11 +263,19 @@ func (f *fakeTimeouts) HasActiveTimeout(context.Context, string, string) (bool, 
 const (
 	alicePassword = "correct horse battery staple"
 	aliceID       = "user-alice"
+	bobID         = "user-bob"
 	clientOIDC    = "client-oidc"
 	clientSAML    = "client-saml"
 	clientLongTTL = "client-long-ttl"
 	clientNoAud   = "client-no-audience"
 	clientOther   = "client-other"
+
+	clientPairA      = "client-pairwise-a"
+	clientPairB      = "client-pairwise-b"
+	clientShop1      = "client-shop-1" // pairwise, sector "shop"
+	clientShop2      = "client-shop-2" // pairwise, sector "shop"
+	clientBadSubject = "client-bad-subject-type"
+	shopSector       = "https://shop.example.com"
 )
 
 // Argon2id is deliberately slow (~300 ms): hash once for the whole package.
@@ -261,15 +297,17 @@ func alicePasswordHash(t *testing.T) string {
 }
 
 type coreFixture struct {
-	core     *service.IdentityCoreService
-	now      time.Time
-	attempts *fakeLoginAttemptRepo
-	sessions *fakeSessionRepo
-	audit    *fakeAuditRepo
-	tokens   *fakeTokenRepo
-	keys     *fakeSigningKeyRepo
-	km       *localdev.KeyManager
-	timeouts *fakeTimeouts
+	core       *service.IdentityCoreService
+	sessionSvc *service.SessionService
+	now        time.Time
+	attempts   *fakeLoginAttemptRepo
+	sessions   *fakeSessionRepo
+	realms     *fakeRealmRepo
+	audit      *fakeAuditRepo
+	tokens     *fakeTokenRepo
+	keys       *fakeSigningKeyRepo
+	km         *localdev.KeyManager
+	timeouts   *fakeTimeouts
 }
 
 // advance moves the shared fake clock forward.
@@ -285,6 +323,7 @@ func newCoreFixture(t *testing.T) *coreFixture {
 			ID: aliceID, RealmID: realmA, Username: "alice", Email: "alice@example.com",
 			PasswordHash: alicePasswordHash(t), Status: domain.UserActive,
 		},
+		bobID: {ID: bobID, RealmID: realmA, Username: "bob", Status: domain.UserActive},
 	}}
 
 	// RBAC data (helpers from rbac_test.go): alice holds "role-app", which
@@ -292,33 +331,54 @@ func newCoreFixture(t *testing.T) *coreFixture {
 	profile, email := scope("s-profile", "profile"), scope("s-email", "email")
 	allowed := []string{"role-app"}
 	scopeIDs := []string{"s-profile", "s-email"}
+	appRole := role("role-app", nil, []*domain.ClientScope{profile, email})
 	access := &fakeAccessRepo{
 		users: map[string]*domain.UserAccess{
-			aliceID: activeUser(aliceID, []domain.AccessSource{
-				role("role-app", nil, []*domain.ClientScope{profile, email}),
-			}, nil),
+			aliceID: activeUser(aliceID, []domain.AccessSource{appRole}, nil),
+			bobID:   activeUser(bobID, []domain.AccessSource{appRole}, nil),
 		},
 		clients: map[string]*domain.ClientAccessPolicy{
-			clientOIDC:    activeClient(clientOIDC, allowed, nil, scopeIDs),
-			clientSAML:    activeClient(clientSAML, allowed, nil, scopeIDs),
-			clientLongTTL: activeClient(clientLongTTL, allowed, nil, scopeIDs),
-			clientNoAud:   activeClient(clientNoAud, allowed, nil, scopeIDs),
-			clientOther:   activeClient(clientOther, []string{"role-someone-else"}, nil, nil),
+			clientOther: activeClient(clientOther, []string{"role-someone-else"}, nil, nil),
 		},
+	}
+	for _, ref := range []string{clientOIDC, clientSAML, clientLongTTL, clientNoAud,
+		clientPairA, clientPairB, clientShop1, clientShop2, clientBadSubject} {
+		access.clients[ref] = activeClient(ref, allowed, nil, scopeIDs)
+	}
+
+	oidc := func(id, clientID string, mod func(*domain.ClientApp)) *domain.ClientApp {
+		c := &domain.ClientApp{ID: id, RealmID: realmA, Protocol: domain.ClientAppProtocolOIDC,
+			Status: domain.ClientAppActive, ClientID: clientID, IDTokenTTL: 3600,
+			SubjectType: domain.ClientAppSubjectPublic}
+		if mod != nil {
+			mod(c)
+		}
+		return c
+	}
+	pairwise := func(sector string) func(*domain.ClientApp) {
+		return func(c *domain.ClientApp) {
+			c.SubjectType, c.SectorIdentifier = domain.ClientAppSubjectPairwise, sector
+		}
 	}
 
 	clients := &fakeClientAppRepo{byID: map[string]*domain.ClientApp{
-		clientOIDC: {ID: clientOIDC, RealmID: realmA, Protocol: domain.ClientAppProtocolOIDC,
-			Status: domain.ClientAppActive, ClientID: "app-public-id", IDTokenTTL: 3600},
+		clientOIDC: oidc(clientOIDC, "app-public-id", nil),
 		clientSAML: {ID: clientSAML, RealmID: realmA, Protocol: domain.ClientAppProtocolSAML2,
 			Status: domain.ClientAppActive, EntityID: "https://sp.example.com/metadata", IDTokenTTL: 3600},
-		clientLongTTL: {ID: clientLongTTL, RealmID: realmA, Protocol: domain.ClientAppProtocolOIDC,
-			Status: domain.ClientAppActive, ClientID: "long-ttl-app", IDTokenTTL: 24 * 3600},
-		clientNoAud: {ID: clientNoAud, RealmID: realmA, Protocol: domain.ClientAppProtocolOIDC,
-			Status: domain.ClientAppActive}, // no ClientID: misconfigured
+		clientLongTTL: oidc(clientLongTTL, "long-ttl-app", func(c *domain.ClientApp) { c.IDTokenTTL = 24 * 3600 }),
+		clientNoAud:   oidc(clientNoAud, "", nil), // no ClientID: misconfigured
+
+		clientPairA: oidc(clientPairA, "pair-a", pairwise("")),
+		clientPairB: oidc(clientPairB, "pair-b", pairwise("")),
+		clientShop1: oidc(clientShop1, "shop-1", pairwise(shopSector)),
+		clientShop2: oidc(clientShop2, "shop-2", pairwise(shopSector)),
+		clientBadSubject: oidc(clientBadSubject, "bad", func(c *domain.ClientApp) {
+			c.SubjectType = "something-else"
+		}),
 	}}
 
 	f.attempts = &fakeLoginAttemptRepo{}
+	f.realms = &fakeRealmRepo{salts: map[string]string{}}
 	f.sessions = &fakeSessionRepo{now: clock, byID: map[string]*domain.Session{}}
 	f.tokens = &fakeTokenRepo{byJTI: map[string]*domain.Token{}}
 	f.keys = &fakeSigningKeyRepo{}
@@ -328,12 +388,14 @@ func newCoreFixture(t *testing.T) *coreFixture {
 	rbac, audit := newRBAC(access)
 	f.audit = audit
 
+	f.sessionSvc = service.NewSessionService(f.sessions, fakeSettingsRepo{}, f.tokens, fakeSessionCache{}, service.WithClock(clock))
 	f.core = service.NewIdentityCore(service.IdentityCoreDeps{
 		Auth:        service.NewAuthService(users, f.attempts, service.WithTimeoutChecker(f.timeouts)),
-		Sessions:    service.NewSessionService(f.sessions, fakeSettingsRepo{}, fakeSessionCache{}, service.WithClock(clock)),
+		Sessions:    f.sessionSvc,
 		RBAC:        rbac,
 		Users:       users,
 		Clients:     clients,
+		Realms:      f.realms,
 		Tokens:      f.tokens,
 		SigningKeys: f.keys,
 		KeyManager:  f.km,
@@ -344,11 +406,23 @@ func newCoreFixture(t *testing.T) *coreFixture {
 
 func (f *coreFixture) aliceSession(t *testing.T) *core.IssuedSession {
 	t.Helper()
-	issued, err := f.core.CreateSession(context.Background(), aliceID, core.AuthContext{
-		RealmID: realmA, IPAddress: "203.0.113.7", UserAgent: "test", AuthMethod: "password",
+	return f.sessionFor(t, aliceID)
+}
+
+func (f *coreFixture) sessionFor(t *testing.T, userID string) *core.IssuedSession {
+	t.Helper()
+	issued, err := f.core.CreateSession(context.Background(), userID, core.AuthContext{
+		RealmID: realmA, IPAddress: "203.0.113.7", UserAgent: "test", AuthMethod: domain.AuthMethodPassword,
 	})
 	require.NoError(t, err)
 	return issued
+}
+
+func (f *coreFixture) subject(t *testing.T, sessionID, clientRef string) string {
+	t.Helper()
+	a, err := f.core.IssueIdentityAssertion(context.Background(), sessionID, clientRef, nil)
+	require.NoError(t, err)
+	return a.Subject
 }
 
 func (f *coreFixture) addKey(t *testing.T, kt domain.SigningKeyType, purpose domain.SigningKeyPurpose,
@@ -482,10 +556,11 @@ func TestIdentityCore_IssueIdentityAssertion(t *testing.T) {
 		require.Equal(t, f.now, a.IssuedAt)
 		require.Equal(t, f.now.Add(time.Hour), a.ExpiresAt) // id_token_ttl = 3600 s
 		require.Equal(t, sess.CreatedAt, a.AuthTime)
-		require.Equal(t, "password", a.AuthMethod)
+		require.Equal(t, []string{"pwd"}, a.AuthMethods)
 		require.Equal(t, sess.ID, a.SessionID)
-		require.Equal(t, "alice@example.com", a.Claims["email"])
-		require.Equal(t, "alice", a.Claims["username"])
+		require.Equal(t, aliceID, a.UserID)
+		require.Equal(t, "alice@example.com", a.UserAttributes["email"])
+		require.Equal(t, "alice", a.UserAttributes["username"])
 		require.ElementsMatch(t, []string{"email", "profile"}, scopeNames(a.Scopes))
 	})
 
@@ -640,5 +715,110 @@ func TestIdentityCore_Signer(t *testing.T) {
 		pub, ok := parsePublicKey(t, want.PublicKey).(*ecdsa.PublicKey)
 		require.True(t, ok)
 		require.True(t, ecdsa.VerifyASN1(pub, digest[:], sig))
+	})
+}
+
+func TestIdentityCore_AuthMethods(t *testing.T) {
+	ctx := context.Background()
+	f := newCoreFixture(t)
+
+	issued, err := f.core.CreateSession(ctx, aliceID, core.AuthContext{
+		RealmID: realmA, AuthMethod: domain.AuthMethodPassword,
+		MFAVerified: true, MFAMethodType: string(domain.MfaMethodTOTP),
+	})
+	require.NoError(t, err)
+
+	a, err := f.core.IssueIdentityAssertion(ctx, issued.Session.ID, clientOIDC, nil)
+	require.NoError(t, err)
+	require.Equal(t, []string{"pwd", "otp", "mfa"}, a.AuthMethods)
+}
+
+func TestIdentityCore_PairwiseSubject(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("public client receives the user id", func(t *testing.T) {
+		f := newCoreFixture(t)
+		require.Equal(t, aliceID, f.subject(t, f.aliceSession(t).Session.ID, clientOIDC))
+	})
+
+	t.Run("pairwise subject is stable, opaque and differs per client", func(t *testing.T) {
+		f := newCoreFixture(t)
+		sid := f.aliceSession(t).Session.ID
+
+		a1 := f.subject(t, sid, clientPairA)
+		a2 := f.subject(t, f.aliceSession(t).Session.ID, clientPairA) // new session
+		b := f.subject(t, sid, clientPairB)
+
+		require.Equal(t, a1, a2, "same user + same client = same subject, across sessions")
+		require.NotEqual(t, a1, b, "two clients cannot correlate the user")
+		require.NotEqual(t, aliceID, a1, "the internal id must not leak")
+		require.Len(t, a1, 43) // base64url(SHA-256), no padding
+	})
+
+	t.Run("clients sharing a sector identifier get the same subject", func(t *testing.T) {
+		f := newCoreFixture(t)
+		sid := f.aliceSession(t).Session.ID
+		require.Equal(t, f.subject(t, sid, clientShop1), f.subject(t, sid, clientShop2))
+	})
+
+	t.Run("two users never share a pairwise subject", func(t *testing.T) {
+		f := newCoreFixture(t)
+		alice := f.subject(t, f.aliceSession(t).Session.ID, clientPairA)
+		bob := f.subject(t, f.sessionFor(t, bobID).Session.ID, clientPairA)
+		require.NotEqual(t, alice, bob)
+	})
+
+	t.Run("realm salt is created once, then cached", func(t *testing.T) {
+		f := newCoreFixture(t)
+		sid := f.aliceSession(t).Session.ID
+		_ = f.subject(t, sid, clientPairA)
+		_ = f.subject(t, sid, clientPairB)
+		_ = f.subject(t, sid, clientShop1)
+		require.Equal(t, 1, f.realms.calls)
+		require.NotEmpty(t, f.realms.salts[realmA])
+	})
+
+	t.Run("unknown subject type fails closed", func(t *testing.T) {
+		f := newCoreFixture(t)
+		_, err := f.core.IssueIdentityAssertion(ctx, f.aliceSession(t).Session.ID, clientBadSubject, nil)
+		require.ErrorIs(t, err, core.ErrClientMisconfigured)
+	})
+}
+
+func TestIdentityCore_RevokeSessionCascadesToTokens(t *testing.T) {
+	ctx := context.Background()
+
+	addTokens := func(f *coreFixture, sessionID string) {
+		f.tokens.byJTI["jti-a"] = &domain.Token{ID: "tok-a", JTI: "jti-a", SessionID: sessionID}
+		f.tokens.byJTI["jti-b"] = &domain.Token{ID: "tok-b", JTI: "jti-b", SessionID: sessionID}
+		f.tokens.byJTI["jti-other"] = &domain.Token{ID: "tok-other", JTI: "jti-other", SessionID: "another-session"}
+	}
+	revoked := func(t *testing.T, f *coreFixture, jti string) bool {
+		t.Helper()
+		r, err := f.core.IsTokenRevoked(ctx, jti)
+		require.NoError(t, err)
+		return r
+	}
+
+	t.Run("admin revocation", func(t *testing.T) {
+		f := newCoreFixture(t)
+		sess := f.aliceSession(t).Session
+		addTokens(f, sess.ID)
+
+		require.NoError(t, f.core.RevokeSession(ctx, sess.ID, domain.SessionRevokedAdminRevoked))
+		require.True(t, revoked(t, f, "jti-a"))
+		require.True(t, revoked(t, f, "jti-b"))
+		require.False(t, revoked(t, f, "jti-other"), "tokens of other sessions are untouched")
+	})
+
+	t.Run("user logout", func(t *testing.T) {
+		f := newCoreFixture(t)
+		issued := f.aliceSession(t)
+		addTokens(f, issued.Session.ID)
+
+		require.NoError(t, f.sessionSvc.Logout(ctx, issued.RawToken))
+		require.True(t, revoked(t, f, "jti-a"))
+		require.True(t, revoked(t, f, "jti-b"))
+		require.False(t, revoked(t, f, "jti-other"))
 	})
 }

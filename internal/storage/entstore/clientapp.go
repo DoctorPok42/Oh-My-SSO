@@ -36,7 +36,7 @@ func (r *entClientAppRepository) Create(ctx context.Context, p repository.Create
 func (r *entClientAppRepository) GetByID(ctx context.Context, id string) (*domain.ClientApp, error) {
 	e, err := r.client.ClientApp.Get(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainClientApp(e), nil
 }
@@ -58,7 +58,7 @@ func (r *entClientAppRepository) GetByRealmAndEntityID(ctx context.Context, real
 		Where(clientapp.RealmID(realmID), clientapp.EntityID(entityID)).
 		Only(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainClientApp(e), nil
 }
@@ -136,6 +136,12 @@ func (r *entClientAppRepository) Update(ctx context.Context, id string, p reposi
 	builder = builder.SetNillableRequireConsent(p.RequireConsent)
 	builder = builder.SetNillableMetadataURL(p.MetadataURL)
 
+	// --- Subject identifier ---
+	if p.SubjectType != nil {
+		builder = builder.SetSubjectType(entschema.ClientAppSubjectType(*p.SubjectType))
+	}
+	builder = builder.SetNillableSectorIdentifier(p.SectorIdentifier)
+
 	e, err := builder.Save(ctx)
 	if err != nil {
 		return nil, err
@@ -187,5 +193,8 @@ func toDomainClientApp(e *ent.ClientApp) *domain.ClientApp {
 		AttributeMappings: e.AttributeMappings,
 		RequireConsent:    e.RequireConsent,
 		MetadataURL:       e.MetadataURL,
+
+		SubjectType:      domain.ClientAppSubjectType(e.SubjectType),
+		SectorIdentifier: e.SectorIdentifier,
 	}
 }

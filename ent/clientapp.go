@@ -86,6 +86,10 @@ type ClientApp struct {
 	RequireConsent bool `json:"require_consent,omitempty"`
 	// MetadataURL holds the value of the "metadata_url" field.
 	MetadataURL string `json:"metadata_url,omitempty"`
+	// SubjectType holds the value of the "subject_type" field.
+	SubjectType schema.ClientAppSubjectType `json:"subject_type,omitempty"`
+	// SectorIdentifier holds the value of the "sector_identifier" field.
+	SectorIdentifier string `json:"sector_identifier,omitempty"`
 	// SessionIdleMinutes holds the value of the "session_idle_minutes" field.
 	SessionIdleMinutes *int `json:"session_idle_minutes,omitempty"`
 	// SessionMaxMinutes holds the value of the "session_max_minutes" field.
@@ -215,7 +219,7 @@ func (*ClientApp) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case clientapp.FieldAccessTokenTTL, clientapp.FieldRefreshTokenTTL, clientapp.FieldIDTokenTTL, clientapp.FieldSessionIdleMinutes, clientapp.FieldSessionMaxMinutes:
 			values[i] = new(sql.NullInt64)
-		case clientapp.FieldID, clientapp.FieldRealmID, clientapp.FieldManagedBy, clientapp.FieldName, clientapp.FieldProtocol, clientapp.FieldStatus, clientapp.FieldOwnerAdminID, clientapp.FieldClientID, clientapp.FieldClientSecretHash, clientapp.FieldClientType, clientapp.FieldTokenEndpointAuthMethod, clientapp.FieldIDTokenSignedAlg, clientapp.FieldEntityID, clientapp.FieldAcsURL, clientapp.FieldSloURL, clientapp.FieldNameIDFormat, clientapp.FieldDefaultRelayState, clientapp.FieldMetadataURL:
+		case clientapp.FieldID, clientapp.FieldRealmID, clientapp.FieldManagedBy, clientapp.FieldName, clientapp.FieldProtocol, clientapp.FieldStatus, clientapp.FieldOwnerAdminID, clientapp.FieldClientID, clientapp.FieldClientSecretHash, clientapp.FieldClientType, clientapp.FieldTokenEndpointAuthMethod, clientapp.FieldIDTokenSignedAlg, clientapp.FieldEntityID, clientapp.FieldAcsURL, clientapp.FieldSloURL, clientapp.FieldNameIDFormat, clientapp.FieldDefaultRelayState, clientapp.FieldMetadataURL, clientapp.FieldSubjectType, clientapp.FieldSectorIdentifier:
 			values[i] = new(sql.NullString)
 		case clientapp.FieldCreatedAt, clientapp.FieldUpdatedAt, clientapp.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
@@ -450,6 +454,18 @@ func (_m *ClientApp) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.MetadataURL = value.String
 			}
+		case clientapp.FieldSubjectType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field subject_type", values[i])
+			} else if value.Valid {
+				_m.SubjectType = schema.ClientAppSubjectType(value.String)
+			}
+		case clientapp.FieldSectorIdentifier:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sector_identifier", values[i])
+			} else if value.Valid {
+				_m.SectorIdentifier = value.String
+			}
 		case clientapp.FieldSessionIdleMinutes:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field session_idle_minutes", values[i])
@@ -643,6 +659,12 @@ func (_m *ClientApp) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("metadata_url=")
 	builder.WriteString(_m.MetadataURL)
+	builder.WriteString(", ")
+	builder.WriteString("subject_type=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SubjectType))
+	builder.WriteString(", ")
+	builder.WriteString("sector_identifier=")
+	builder.WriteString(_m.SectorIdentifier)
 	builder.WriteString(", ")
 	if v := _m.SessionIdleMinutes; v != nil {
 		builder.WriteString("session_idle_minutes=")

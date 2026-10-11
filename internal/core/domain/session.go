@@ -21,6 +21,16 @@ const (
 	SessionRevokedMFAReset       SessionRevokedReason = "mfa_reset"
 )
 
+// Authentication Method Reference values (RFC 8176 §2), stored as-is in
+// Session.AuthMethod so the OIDC "amr" claim needs no translation.
+const (
+	AuthMethodPassword    = "pwd" // password
+	AuthMethodOTP         = "otp" // one-time password (TOTP, backup codes)
+	AuthMethodHardwareKey = "hwk" // proof of possession of a hardware-protected key
+	AuthMethodSoftwareKey = "swk" // proof of possession of a software-protected key
+	AuthMethodMFA         = "mfa" // more than one factor was used
+)
+
 type Session struct {
 	ID                string
 	RealmID           string

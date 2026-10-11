@@ -1167,6 +1167,8 @@ type ClientAppMutation struct {
 	attribute_mappings              *map[string]interface{}
 	require_consent                 *bool
 	metadata_url                    *string
+	subject_type                    *schema.ClientAppSubjectType
+	sector_identifier               *string
 	session_idle_minutes            *int
 	addsession_idle_minutes         *int
 	session_max_minutes             *int
@@ -2882,6 +2884,91 @@ func (m *ClientAppMutation) ResetMetadataURL() {
 	delete(m.clearedFields, clientapp.FieldMetadataURL)
 }
 
+// SetSubjectType sets the "subject_type" field.
+func (m *ClientAppMutation) SetSubjectType(sast schema.ClientAppSubjectType) {
+	m.subject_type = &sast
+}
+
+// SubjectType returns the value of the "subject_type" field in the mutation.
+func (m *ClientAppMutation) SubjectType() (r schema.ClientAppSubjectType, exists bool) {
+	v := m.subject_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSubjectType returns the old "subject_type" field's value of the ClientApp entity.
+// If the ClientApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ClientAppMutation) OldSubjectType(ctx context.Context) (v schema.ClientAppSubjectType, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSubjectType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSubjectType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSubjectType: %w", err)
+	}
+	return oldValue.SubjectType, nil
+}
+
+// ResetSubjectType resets all changes to the "subject_type" field.
+func (m *ClientAppMutation) ResetSubjectType() {
+	m.subject_type = nil
+}
+
+// SetSectorIdentifier sets the "sector_identifier" field.
+func (m *ClientAppMutation) SetSectorIdentifier(s string) {
+	m.sector_identifier = &s
+}
+
+// SectorIdentifier returns the value of the "sector_identifier" field in the mutation.
+func (m *ClientAppMutation) SectorIdentifier() (r string, exists bool) {
+	v := m.sector_identifier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSectorIdentifier returns the old "sector_identifier" field's value of the ClientApp entity.
+// If the ClientApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ClientAppMutation) OldSectorIdentifier(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSectorIdentifier is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSectorIdentifier requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSectorIdentifier: %w", err)
+	}
+	return oldValue.SectorIdentifier, nil
+}
+
+// ClearSectorIdentifier clears the value of the "sector_identifier" field.
+func (m *ClientAppMutation) ClearSectorIdentifier() {
+	m.sector_identifier = nil
+	m.clearedFields[clientapp.FieldSectorIdentifier] = struct{}{}
+}
+
+// SectorIdentifierCleared returns if the "sector_identifier" field was cleared in this mutation.
+func (m *ClientAppMutation) SectorIdentifierCleared() bool {
+	_, ok := m.clearedFields[clientapp.FieldSectorIdentifier]
+	return ok
+}
+
+// ResetSectorIdentifier resets all changes to the "sector_identifier" field.
+func (m *ClientAppMutation) ResetSectorIdentifier() {
+	m.sector_identifier = nil
+	delete(m.clearedFields, clientapp.FieldSectorIdentifier)
+}
+
 // SetSessionIdleMinutes sets the "session_idle_minutes" field.
 func (m *ClientAppMutation) SetSessionIdleMinutes(i int) {
 	m.session_idle_minutes = &i
@@ -3515,7 +3602,7 @@ func (m *ClientAppMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ClientAppMutation) Fields() []string {
-	fields := make([]string, 0, 35)
+	fields := make([]string, 0, 37)
 	if m.realm != nil {
 		fields = append(fields, clientapp.FieldRealmID)
 	}
@@ -3615,6 +3702,12 @@ func (m *ClientAppMutation) Fields() []string {
 	if m.metadata_url != nil {
 		fields = append(fields, clientapp.FieldMetadataURL)
 	}
+	if m.subject_type != nil {
+		fields = append(fields, clientapp.FieldSubjectType)
+	}
+	if m.sector_identifier != nil {
+		fields = append(fields, clientapp.FieldSectorIdentifier)
+	}
 	if m.session_idle_minutes != nil {
 		fields = append(fields, clientapp.FieldSessionIdleMinutes)
 	}
@@ -3695,6 +3788,10 @@ func (m *ClientAppMutation) Field(name string) (ent.Value, bool) {
 		return m.RequireConsent()
 	case clientapp.FieldMetadataURL:
 		return m.MetadataURL()
+	case clientapp.FieldSubjectType:
+		return m.SubjectType()
+	case clientapp.FieldSectorIdentifier:
+		return m.SectorIdentifier()
 	case clientapp.FieldSessionIdleMinutes:
 		return m.SessionIdleMinutes()
 	case clientapp.FieldSessionMaxMinutes:
@@ -3774,6 +3871,10 @@ func (m *ClientAppMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldRequireConsent(ctx)
 	case clientapp.FieldMetadataURL:
 		return m.OldMetadataURL(ctx)
+	case clientapp.FieldSubjectType:
+		return m.OldSubjectType(ctx)
+	case clientapp.FieldSectorIdentifier:
+		return m.OldSectorIdentifier(ctx)
 	case clientapp.FieldSessionIdleMinutes:
 		return m.OldSessionIdleMinutes(ctx)
 	case clientapp.FieldSessionMaxMinutes:
@@ -4018,6 +4119,20 @@ func (m *ClientAppMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetMetadataURL(v)
 		return nil
+	case clientapp.FieldSubjectType:
+		v, ok := value.(schema.ClientAppSubjectType)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSubjectType(v)
+		return nil
+	case clientapp.FieldSectorIdentifier:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSectorIdentifier(v)
+		return nil
 	case clientapp.FieldSessionIdleMinutes:
 		v, ok := value.(int)
 		if !ok {
@@ -4182,6 +4297,9 @@ func (m *ClientAppMutation) ClearedFields() []string {
 	if m.FieldCleared(clientapp.FieldMetadataURL) {
 		fields = append(fields, clientapp.FieldMetadataURL)
 	}
+	if m.FieldCleared(clientapp.FieldSectorIdentifier) {
+		fields = append(fields, clientapp.FieldSectorIdentifier)
+	}
 	if m.FieldCleared(clientapp.FieldSessionIdleMinutes) {
 		fields = append(fields, clientapp.FieldSessionIdleMinutes)
 	}
@@ -4258,6 +4376,9 @@ func (m *ClientAppMutation) ClearField(name string) error {
 		return nil
 	case clientapp.FieldMetadataURL:
 		m.ClearMetadataURL()
+		return nil
+	case clientapp.FieldSectorIdentifier:
+		m.ClearSectorIdentifier()
 		return nil
 	case clientapp.FieldSessionIdleMinutes:
 		m.ClearSessionIdleMinutes()
@@ -4371,6 +4492,12 @@ func (m *ClientAppMutation) ResetField(name string) error {
 		return nil
 	case clientapp.FieldMetadataURL:
 		m.ResetMetadataURL()
+		return nil
+	case clientapp.FieldSubjectType:
+		m.ResetSubjectType()
+		return nil
+	case clientapp.FieldSectorIdentifier:
+		m.ResetSectorIdentifier()
 		return nil
 	case clientapp.FieldSessionIdleMinutes:
 		m.ResetSessionIdleMinutes()
@@ -19143,6 +19270,7 @@ type RealmMutation struct {
 	created_at                *time.Time
 	updated_at                *time.Time
 	status                    *schema.RealmStatus
+	pairwise_subject_salt     *string
 	clearedFields             map[string]struct{}
 	users                     map[string]struct{}
 	removedusers              map[string]struct{}
@@ -19515,6 +19643,55 @@ func (m *RealmMutation) OldStatus(ctx context.Context) (v schema.RealmStatus, er
 // ResetStatus resets all changes to the "status" field.
 func (m *RealmMutation) ResetStatus() {
 	m.status = nil
+}
+
+// SetPairwiseSubjectSalt sets the "pairwise_subject_salt" field.
+func (m *RealmMutation) SetPairwiseSubjectSalt(s string) {
+	m.pairwise_subject_salt = &s
+}
+
+// PairwiseSubjectSalt returns the value of the "pairwise_subject_salt" field in the mutation.
+func (m *RealmMutation) PairwiseSubjectSalt() (r string, exists bool) {
+	v := m.pairwise_subject_salt
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPairwiseSubjectSalt returns the old "pairwise_subject_salt" field's value of the Realm entity.
+// If the Realm object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RealmMutation) OldPairwiseSubjectSalt(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPairwiseSubjectSalt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPairwiseSubjectSalt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPairwiseSubjectSalt: %w", err)
+	}
+	return oldValue.PairwiseSubjectSalt, nil
+}
+
+// ClearPairwiseSubjectSalt clears the value of the "pairwise_subject_salt" field.
+func (m *RealmMutation) ClearPairwiseSubjectSalt() {
+	m.pairwise_subject_salt = nil
+	m.clearedFields[realm.FieldPairwiseSubjectSalt] = struct{}{}
+}
+
+// PairwiseSubjectSaltCleared returns if the "pairwise_subject_salt" field was cleared in this mutation.
+func (m *RealmMutation) PairwiseSubjectSaltCleared() bool {
+	_, ok := m.clearedFields[realm.FieldPairwiseSubjectSalt]
+	return ok
+}
+
+// ResetPairwiseSubjectSalt resets all changes to the "pairwise_subject_salt" field.
+func (m *RealmMutation) ResetPairwiseSubjectSalt() {
+	m.pairwise_subject_salt = nil
+	delete(m.clearedFields, realm.FieldPairwiseSubjectSalt)
 }
 
 // AddUserIDs adds the "users" edge to the User entity by ids.
@@ -20184,7 +20361,7 @@ func (m *RealmMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RealmMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 7)
 	if m.name != nil {
 		fields = append(fields, realm.FieldName)
 	}
@@ -20202,6 +20379,9 @@ func (m *RealmMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, realm.FieldStatus)
+	}
+	if m.pairwise_subject_salt != nil {
+		fields = append(fields, realm.FieldPairwiseSubjectSalt)
 	}
 	return fields
 }
@@ -20223,6 +20403,8 @@ func (m *RealmMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case realm.FieldStatus:
 		return m.Status()
+	case realm.FieldPairwiseSubjectSalt:
+		return m.PairwiseSubjectSalt()
 	}
 	return nil, false
 }
@@ -20244,6 +20426,8 @@ func (m *RealmMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldUpdatedAt(ctx)
 	case realm.FieldStatus:
 		return m.OldStatus(ctx)
+	case realm.FieldPairwiseSubjectSalt:
+		return m.OldPairwiseSubjectSalt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Realm field %s", name)
 }
@@ -20295,6 +20479,13 @@ func (m *RealmMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetStatus(v)
 		return nil
+	case realm.FieldPairwiseSubjectSalt:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPairwiseSubjectSalt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Realm field %s", name)
 }
@@ -20328,6 +20519,9 @@ func (m *RealmMutation) ClearedFields() []string {
 	if m.FieldCleared(realm.FieldDisplayName) {
 		fields = append(fields, realm.FieldDisplayName)
 	}
+	if m.FieldCleared(realm.FieldPairwiseSubjectSalt) {
+		fields = append(fields, realm.FieldPairwiseSubjectSalt)
+	}
 	return fields
 }
 
@@ -20344,6 +20538,9 @@ func (m *RealmMutation) ClearField(name string) error {
 	switch name {
 	case realm.FieldDisplayName:
 		m.ClearDisplayName()
+		return nil
+	case realm.FieldPairwiseSubjectSalt:
+		m.ClearPairwiseSubjectSalt()
 		return nil
 	}
 	return fmt.Errorf("unknown Realm nullable field %s", name)
@@ -20370,6 +20567,9 @@ func (m *RealmMutation) ResetField(name string) error {
 		return nil
 	case realm.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case realm.FieldPairwiseSubjectSalt:
+		m.ResetPairwiseSubjectSalt()
 		return nil
 	}
 	return fmt.Errorf("unknown Realm field %s", name)

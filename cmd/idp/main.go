@@ -81,6 +81,8 @@ func main() {
 
 	userRepo := entstore.NewUserRepository(client)
 	clientRepo := entstore.NewClientRepository(client)
+	realmRepo := entstore.NewRealmRepository(client)
+	tokenRepo := entstore.NewTokenRepository(client)
 
 	authService := service.NewAuthService(
 		userRepo,
@@ -96,6 +98,7 @@ func main() {
 	sessionService := service.NewSessionService(
 		entstore.NewSessionRepository(client),
 		entstore.NewInstanceSettingsRepository(client),
+		tokenRepo,
 		valkeycache.NewSessionCache(valkeyClient),
 	)
 
@@ -110,7 +113,8 @@ func main() {
 		RBAC:        rbacService,
 		Users:       userRepo,
 		Clients:     clientRepo,
-		Tokens:      entstore.NewTokenRepository(client),
+		Realms:      realmRepo,
+		Tokens:      tokenRepo,
 		SigningKeys: entstore.NewSigningKeyRepository(client),
 		KeyManager:  keyManager,
 		Timeouts:    timeouts,
@@ -121,7 +125,7 @@ func main() {
 		authService,
 		sessionService,
 		rbacService,
-		entstore.NewRealmRepository(client),
+		realmRepo,
 		clientRepo,
 		valkeycache.NewRateLimiter(valkeyClient),
 	)

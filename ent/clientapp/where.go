@@ -205,6 +205,17 @@ func MetadataURL(v string) predicate.ClientApp {
 	return predicate.ClientApp(sql.FieldEQ(FieldMetadataURL, v))
 }
 
+// SubjectType applies equality check predicate on the "subject_type" field. It's identical to SubjectTypeEQ.
+func SubjectType(v schema.ClientAppSubjectType) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldEQ(FieldSubjectType, vc))
+}
+
+// SectorIdentifier applies equality check predicate on the "sector_identifier" field. It's identical to SectorIdentifierEQ.
+func SectorIdentifier(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEQ(FieldSectorIdentifier, v))
+}
+
 // SessionIdleMinutes applies equality check predicate on the "session_idle_minutes" field. It's identical to SessionIdleMinutesEQ.
 func SessionIdleMinutes(v int) predicate.ClientApp {
 	return predicate.ClientApp(sql.FieldEQ(FieldSessionIdleMinutes, v))
@@ -1864,6 +1875,165 @@ func MetadataURLEqualFold(v string) predicate.ClientApp {
 // MetadataURLContainsFold applies the ContainsFold predicate on the "metadata_url" field.
 func MetadataURLContainsFold(v string) predicate.ClientApp {
 	return predicate.ClientApp(sql.FieldContainsFold(FieldMetadataURL, v))
+}
+
+// SubjectTypeEQ applies the EQ predicate on the "subject_type" field.
+func SubjectTypeEQ(v schema.ClientAppSubjectType) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldEQ(FieldSubjectType, vc))
+}
+
+// SubjectTypeNEQ applies the NEQ predicate on the "subject_type" field.
+func SubjectTypeNEQ(v schema.ClientAppSubjectType) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldNEQ(FieldSubjectType, vc))
+}
+
+// SubjectTypeIn applies the In predicate on the "subject_type" field.
+func SubjectTypeIn(vs ...schema.ClientAppSubjectType) predicate.ClientApp {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = string(vs[i])
+	}
+	return predicate.ClientApp(sql.FieldIn(FieldSubjectType, v...))
+}
+
+// SubjectTypeNotIn applies the NotIn predicate on the "subject_type" field.
+func SubjectTypeNotIn(vs ...schema.ClientAppSubjectType) predicate.ClientApp {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = string(vs[i])
+	}
+	return predicate.ClientApp(sql.FieldNotIn(FieldSubjectType, v...))
+}
+
+// SubjectTypeGT applies the GT predicate on the "subject_type" field.
+func SubjectTypeGT(v schema.ClientAppSubjectType) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldGT(FieldSubjectType, vc))
+}
+
+// SubjectTypeGTE applies the GTE predicate on the "subject_type" field.
+func SubjectTypeGTE(v schema.ClientAppSubjectType) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldGTE(FieldSubjectType, vc))
+}
+
+// SubjectTypeLT applies the LT predicate on the "subject_type" field.
+func SubjectTypeLT(v schema.ClientAppSubjectType) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldLT(FieldSubjectType, vc))
+}
+
+// SubjectTypeLTE applies the LTE predicate on the "subject_type" field.
+func SubjectTypeLTE(v schema.ClientAppSubjectType) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldLTE(FieldSubjectType, vc))
+}
+
+// SubjectTypeContains applies the Contains predicate on the "subject_type" field.
+func SubjectTypeContains(v schema.ClientAppSubjectType) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldContains(FieldSubjectType, vc))
+}
+
+// SubjectTypeHasPrefix applies the HasPrefix predicate on the "subject_type" field.
+func SubjectTypeHasPrefix(v schema.ClientAppSubjectType) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldHasPrefix(FieldSubjectType, vc))
+}
+
+// SubjectTypeHasSuffix applies the HasSuffix predicate on the "subject_type" field.
+func SubjectTypeHasSuffix(v schema.ClientAppSubjectType) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldHasSuffix(FieldSubjectType, vc))
+}
+
+// SubjectTypeEqualFold applies the EqualFold predicate on the "subject_type" field.
+func SubjectTypeEqualFold(v schema.ClientAppSubjectType) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldEqualFold(FieldSubjectType, vc))
+}
+
+// SubjectTypeContainsFold applies the ContainsFold predicate on the "subject_type" field.
+func SubjectTypeContainsFold(v schema.ClientAppSubjectType) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldContainsFold(FieldSubjectType, vc))
+}
+
+// SectorIdentifierEQ applies the EQ predicate on the "sector_identifier" field.
+func SectorIdentifierEQ(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEQ(FieldSectorIdentifier, v))
+}
+
+// SectorIdentifierNEQ applies the NEQ predicate on the "sector_identifier" field.
+func SectorIdentifierNEQ(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNEQ(FieldSectorIdentifier, v))
+}
+
+// SectorIdentifierIn applies the In predicate on the "sector_identifier" field.
+func SectorIdentifierIn(vs ...string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldIn(FieldSectorIdentifier, vs...))
+}
+
+// SectorIdentifierNotIn applies the NotIn predicate on the "sector_identifier" field.
+func SectorIdentifierNotIn(vs ...string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNotIn(FieldSectorIdentifier, vs...))
+}
+
+// SectorIdentifierGT applies the GT predicate on the "sector_identifier" field.
+func SectorIdentifierGT(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldGT(FieldSectorIdentifier, v))
+}
+
+// SectorIdentifierGTE applies the GTE predicate on the "sector_identifier" field.
+func SectorIdentifierGTE(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldGTE(FieldSectorIdentifier, v))
+}
+
+// SectorIdentifierLT applies the LT predicate on the "sector_identifier" field.
+func SectorIdentifierLT(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldLT(FieldSectorIdentifier, v))
+}
+
+// SectorIdentifierLTE applies the LTE predicate on the "sector_identifier" field.
+func SectorIdentifierLTE(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldLTE(FieldSectorIdentifier, v))
+}
+
+// SectorIdentifierContains applies the Contains predicate on the "sector_identifier" field.
+func SectorIdentifierContains(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldContains(FieldSectorIdentifier, v))
+}
+
+// SectorIdentifierHasPrefix applies the HasPrefix predicate on the "sector_identifier" field.
+func SectorIdentifierHasPrefix(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldHasPrefix(FieldSectorIdentifier, v))
+}
+
+// SectorIdentifierHasSuffix applies the HasSuffix predicate on the "sector_identifier" field.
+func SectorIdentifierHasSuffix(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldHasSuffix(FieldSectorIdentifier, v))
+}
+
+// SectorIdentifierIsNil applies the IsNil predicate on the "sector_identifier" field.
+func SectorIdentifierIsNil() predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldIsNull(FieldSectorIdentifier))
+}
+
+// SectorIdentifierNotNil applies the NotNil predicate on the "sector_identifier" field.
+func SectorIdentifierNotNil() predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNotNull(FieldSectorIdentifier))
+}
+
+// SectorIdentifierEqualFold applies the EqualFold predicate on the "sector_identifier" field.
+func SectorIdentifierEqualFold(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEqualFold(FieldSectorIdentifier, v))
+}
+
+// SectorIdentifierContainsFold applies the ContainsFold predicate on the "sector_identifier" field.
+func SectorIdentifierContainsFold(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldContainsFold(FieldSectorIdentifier, v))
 }
 
 // SessionIdleMinutesEQ applies the EQ predicate on the "session_idle_minutes" field.

@@ -2,9 +2,14 @@ package service
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"slices"
+	"sync"
 	"time"
 
 	"sso.internal/sso/internal/core"
@@ -30,11 +35,16 @@ type IdentityCoreService struct {
 	rbac     *RBACService
 	users    repository.UserRepository
 	clients  repository.ClientRepository
+	realms   repository.RealmRepository
 	tokens   repository.TokenRepository
 	keys     repository.SigningKeyRepository
 	km       keymanager.KeyManager
 	timeouts TimeoutChecker
 	now      func() time.Time
+
+	// Pairwise salts never change once written, so they are cached forever.
+	saltMu sync.Mutex
+	salts  map[string]string // realmID -> salt
 }
 
 // IdentityCoreDeps groups the dependencies. A struct with named fields is
@@ -45,6 +55,7 @@ type IdentityCoreDeps struct {
 	RBAC        *RBACService
 	Users       repository.UserRepository
 	Clients     repository.ClientRepository
+	Realms      repository.RealmRepository // pairwise subject salt
 	Tokens      repository.TokenRepository
 	SigningKeys repository.SigningKeyRepository
 	KeyManager  keymanager.KeyManager
@@ -67,11 +78,13 @@ func NewIdentityCore(d IdentityCoreDeps, opts ...IdentityCoreOption) *IdentityCo
 		rbac:     d.RBAC,
 		users:    d.Users,
 		clients:  d.Clients,
+		realms:   d.Realms,
 		tokens:   d.Tokens,
 		keys:     d.SigningKeys,
 		km:       d.KeyManager,
 		timeouts: d.Timeouts,
 		now:      time.Now,
+		salts:    make(map[string]string),
 	}
 	if s.timeouts == nil {
 		s.timeouts = NoActiveTimeouts{}
@@ -172,6 +185,10 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 	if err != nil {
 		return nil, err
 	}
+	subject, err := s.subjectFor(ctx, user, client)
+	if err != nil {
+		return nil, err
+	}
 
 	// 5. Effective scopes, narrowed to what the client asked for.
 	//    (This resolves RBAC a second time; fine for now, can be merged
@@ -191,18 +208,107 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 
 	// 7. Build the neutral object.
 	return &core.IdentityAssertion{
-		Subject:     user.ID,
-		Audience:    audience,
-		IssuedAt:    now,
-		ExpiresAt:   expiresAt,
-		AuthTime:    sess.CreatedAt,
-		AuthMethod:  sess.AuthMethod,
-		MFAVerified: sess.MFAVerified,
-		SessionID:   sess.ID,
-		ClientRef:   client.ID,
-		Claims:      userClaims(user),
-		Scopes:      scopes,
+		Subject:        subject,
+		Audience:       audience,
+		IssuedAt:       now,
+		ExpiresAt:      expiresAt,
+		AuthTime:       sess.CreatedAt,
+		AuthMethods:    authMethodRefs(sess),
+		MFAVerified:    sess.MFAVerified,
+		SessionID:      sess.ID,
+		ClientRef:      client.ID,
+		UserID:         user.ID,
+		UserAttributes: userAttributes(user),
+		Scopes:         scopes,
 	}, nil
+}
+
+// subjectFor returns the identifier this client will see for this user.
+func (s *IdentityCoreService) subjectFor(ctx context.Context, u *domain.User, c *domain.ClientApp) (string, error) {
+	switch c.SubjectType {
+	case domain.ClientAppSubjectPublic, "":
+		return u.ID, nil
+	case domain.ClientAppSubjectPairwise:
+		salt, err := s.pairwiseSalt(ctx, c.RealmID)
+		if err != nil {
+			return "", err
+		}
+		sector := c.SectorIdentifier
+		if sector == "" {
+			sector = c.ID
+		}
+		return pairwiseSubject(salt, sector, u.ID), nil
+	default:
+		// Fail closed: never guess which identifier an unknown type means.
+		return "", fmt.Errorf("%w: client %s has unknown subject_type %q", core.ErrClientMisconfigured, c.ID, c.SubjectType)
+	}
+}
+
+// pairwiseSubject derives a stable, non-correlatable identifier
+// (OIDC Core §8.1): HMAC-SHA256 keyed with the realm salt, over the sector
+// and the user id. The 0x00 separator keeps ("ab","c") and ("a","bc")
+// distinct. Without the salt, nobody can link two sectors' subjects.
+func pairwiseSubject(salt, sector, userID string) string {
+	mac := hmac.New(sha256.New, []byte(salt))
+	mac.Write([]byte(sector))
+	mac.Write([]byte{0})
+	mac.Write([]byte(userID))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)) // 43 chars
+}
+
+// pairwiseSalt returns the realm salt, creating it on first use.
+func (s *IdentityCoreService) pairwiseSalt(ctx context.Context, realmID string) (string, error) {
+	s.saltMu.Lock()
+	salt, ok := s.salts[realmID]
+	s.saltMu.Unlock()
+	if ok {
+		return salt, nil
+	}
+
+	// If two processes race, the repository keeps the first value written
+	// and both get it back: everyone ends up with the same salt.
+	salt, err := s.realms.EnsurePairwiseSubjectSalt(ctx, realmID, rand.Text())
+	if err != nil {
+		return "", fmt.Errorf("pairwise subject salt: %w", err)
+	}
+	if salt == "" {
+		return "", fmt.Errorf("pairwise subject salt: empty salt for realm %s", realmID)
+	}
+
+	s.saltMu.Lock()
+	s.salts[realmID] = salt
+	s.saltMu.Unlock()
+	return salt, nil
+}
+
+// authMethodRefs builds the RFC 8176 list for the "amr" claim.
+func authMethodRefs(sess *domain.Session) []string {
+	amr := make([]string, 0, 3)
+	add := func(v string) {
+		if v != "" && !slices.Contains(amr, v) {
+			amr = append(amr, v)
+		}
+	}
+	add(sess.AuthMethod)
+	if sess.MFAVerified {
+		add(mfaMethodRef(domain.MfaMethodType(sess.MFAMethodType)))
+		add(domain.AuthMethodMFA)
+	}
+	return amr
+}
+
+// mfaMethodRef maps an MFA method to its RFC 8176 value. Passkeys and
+// biometrics are left out on purpose: their exact value ("hwk" vs "swk",
+// "fpt"/"face"...) is decided at Step 9. "mfa" is still added for them.
+func mfaMethodRef(t domain.MfaMethodType) string {
+	switch t {
+	case domain.MfaMethodTOTP, domain.MfaMethodBackupCodes:
+		return domain.AuthMethodOTP
+	case domain.MfaMethodWebAuthn:
+		return domain.AuthMethodHardwareKey
+	default:
+		return ""
+	}
 }
 
 func audienceFor(c *domain.ClientApp) (string, error) {
@@ -242,12 +348,12 @@ func filterRequestedScopes(effective []*domain.ClientScope, requested []string) 
 	return out
 }
 
-func userClaims(u *domain.User) map[string]any {
-	claims := map[string]any{"username": u.Username}
+func userAttributes(u *domain.User) map[string]any {
+	attrs := map[string]any{"username": u.Username}
 	if u.Email != "" {
-		claims["email"] = u.Email
+		attrs["email"] = u.Email
 	}
-	return claims
+	return attrs
 }
 
 // --- Authorization ----------------------------------------------------------

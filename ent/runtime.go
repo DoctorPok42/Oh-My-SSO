@@ -126,12 +126,16 @@ func init() {
 	clientappDescRequireConsent := clientappFields[32].Descriptor()
 	// clientapp.DefaultRequireConsent holds the default value on creation for the require_consent field.
 	clientapp.DefaultRequireConsent = clientappDescRequireConsent.Default.(bool)
+	// clientappDescSubjectType is the schema descriptor for subject_type field.
+	clientappDescSubjectType := clientappFields[34].Descriptor()
+	// clientapp.DefaultSubjectType holds the default value on creation for the subject_type field.
+	clientapp.DefaultSubjectType = schema.ClientAppSubjectType(clientappDescSubjectType.Default.(string))
 	// clientappDescSessionIdleMinutes is the schema descriptor for session_idle_minutes field.
-	clientappDescSessionIdleMinutes := clientappFields[34].Descriptor()
+	clientappDescSessionIdleMinutes := clientappFields[36].Descriptor()
 	// clientapp.SessionIdleMinutesValidator is a validator for the "session_idle_minutes" field. It is called by the builders before save.
 	clientapp.SessionIdleMinutesValidator = clientappDescSessionIdleMinutes.Validators[0].(func(int) error)
 	// clientappDescSessionMaxMinutes is the schema descriptor for session_max_minutes field.
-	clientappDescSessionMaxMinutes := clientappFields[35].Descriptor()
+	clientappDescSessionMaxMinutes := clientappFields[37].Descriptor()
 	// clientapp.SessionMaxMinutesValidator is a validator for the "session_max_minutes" field. It is called by the builders before save.
 	clientapp.SessionMaxMinutesValidator = clientappDescSessionMaxMinutes.Validators[0].(func(int) error)
 	// clientappDescID is the schema descriptor for id field.

@@ -31,6 +31,8 @@ type Realm struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Status holds the value of the "status" field.
 	Status schema.RealmStatus `json:"status,omitempty"`
+	// PairwiseSubjectSalt holds the value of the "pairwise_subject_salt" field.
+	PairwiseSubjectSalt string `json:"-"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RealmQuery when eager-loading is set.
 	Edges        RealmEdges `json:"edges"`
@@ -185,7 +187,7 @@ func (*Realm) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case realm.FieldIsSystemRealm:
 			values[i] = new(sql.NullBool)
-		case realm.FieldID, realm.FieldName, realm.FieldDisplayName, realm.FieldStatus:
+		case realm.FieldID, realm.FieldName, realm.FieldDisplayName, realm.FieldStatus, realm.FieldPairwiseSubjectSalt:
 			values[i] = new(sql.NullString)
 		case realm.FieldCreatedAt, realm.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -245,6 +247,12 @@ func (_m *Realm) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				_m.Status = schema.RealmStatus(value.String)
+			}
+		case realm.FieldPairwiseSubjectSalt:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field pairwise_subject_salt", values[i])
+			} else if value.Valid {
+				_m.PairwiseSubjectSalt = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -359,6 +367,8 @@ func (_m *Realm) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	builder.WriteString("pairwise_subject_salt=<sensitive>")
 	builder.WriteByte(')')
 	return builder.String()
 }

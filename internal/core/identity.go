@@ -45,7 +45,7 @@ type AuthContext struct {
 	RealmID       string
 	IPAddress     string
 	UserAgent     string
-	AuthMethod    string // "password" today; more values after Step 9
+	AuthMethod    string // RFC 8176 value, e.g. domain.AuthMethodPassword ("pwd")
 	MFAVerified   bool
 	MFAMethodType string
 }
@@ -70,25 +70,37 @@ type MFAChallenge struct {
 // IdentityAssertion is the neutral "identity card" handed to adapters.
 //
 // Every field has an equivalent in both protocols, e.g.
-//   - Subject   -> "sub" (OIDC)       / <Subject><NameID> (SAML)
-//   - Audience  -> "aud" (OIDC)       / <Audience> (SAML)
-//   - AuthTime  -> "auth_time" (OIDC) / AuthnInstant (SAML)
+//   - Subject     -> "sub" (OIDC)       / <Subject><NameID> (SAML)
+//   - Audience    -> "aud" (OIDC)       / <Audience> (SAML)
+//   - AuthTime    -> "auth_time" (OIDC) / AuthnInstant (SAML)
+//   - AuthMethods -> "amr" (OIDC)       / AuthnContextClassRef (SAML, mapped)
 //
 // The OIDC adapter turns it into a signed id_token, the SAML adapter into a
 // signed <saml:Assertion>.
 type IdentityAssertion struct {
-	Subject     string // User.ID — stable, never the email
-	Audience    string // client_id (OIDC) or entity_id (SAML)
-	IssuedAt    time.Time
-	ExpiresAt   time.Time // never later than the session's own expiry
-	AuthTime    time.Time // when the user actually logged in (Session.CreatedAt)
-	AuthMethod  string
+	// Subject is what the client sees as the user's identifier. It is stable
+	// and never the email. Depending on ClientApp.SubjectType it is either
+	// User.ID ("public") or a per-sector pairwise value ("pairwise").
+	Subject   string
+	Audience  string // client_id (OIDC) or entity_id (SAML)
+	IssuedAt  time.Time
+	ExpiresAt time.Time // never later than the session's own expiry
+	AuthTime  time.Time // when the user actually logged in (Session.CreatedAt)
+	// AuthMethods are RFC 8176 values, ready for the OIDC "amr" claim,
+	// e.g. ["pwd"] or ["pwd", "otp", "mfa"].
+	AuthMethods []string
 	MFAVerified bool
 	SessionID   string
 	ClientRef   string // ClientApp.ID the assertion was issued for
 
-	// Claims holds neutral user attributes (username, email, ...).
-	Claims map[string]any
+	// UserID is the internal User.ID, for the adapter's own bookkeeping
+	// (tokens, consents). NEVER emit it: use Subject.
+	UserID string
+
+	// UserAttributes are the raw user attributes (username, email, ...).
+	// NEVER emit them as-is: only what the ClaimMappers of the effective
+	// Scopes select may leave the IdP (minimal disclosure, OIDC Core §5.4).
+	UserAttributes map[string]any
 
 	// Scopes are the effective client scopes, already filtered by what the
 	// client requested. Adapters apply each scope's ClaimMappers, which are
@@ -128,6 +140,7 @@ type IdentityCore interface {
 	// GetSession is the back-channel lookup: server-to-server call, no
 	// cookie, only the session id. It does NOT refresh activity.
 	GetSession(ctx context.Context, sessionID string) (*domain.Session, error)
+	// RevokeSession also revokes every token issued for that session.
 	RevokeSession(ctx context.Context, sessionID string, reason domain.SessionRevokedReason) error
 
 	// --- Identity assertions (format-agnostic) ---

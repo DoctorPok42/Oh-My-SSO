@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/ratelimit"
 )
@@ -108,7 +109,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		UserID:     user.ID,
 		IPAddress:  ip,
 		UserAgent:  r.UserAgent(),
-		AuthMethod: "password",
+		AuthMethod: domain.AuthMethodPassword,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error")

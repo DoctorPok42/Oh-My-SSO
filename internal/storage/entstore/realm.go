@@ -2,6 +2,7 @@ package entstore
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -102,6 +103,32 @@ func (r *entRealmRepository) Update(ctx context.Context, id string, p repository
 
 func (r *entRealmRepository) Delete(ctx context.Context, id string) error {
 	return r.client.Realm.DeleteOneID(id).Exec(ctx)
+}
+
+func (r *entRealmRepository) EnsurePairwiseSubjectSalt(ctx context.Context, realmID, candidate string) (string, error) {
+	if candidate == "" {
+		return "", fmt.Errorf("ensure pairwise subject salt: empty candidate")
+	}
+	// Conditional UPDATE: PostgreSQL re-evaluates the WHERE clause after
+	// taking the row lock, so only the first concurrent writer wins.
+	if _, err := r.client.Realm.Update().
+		Where(
+			realm.ID(realmID),
+			realm.Or(realm.PairwiseSubjectSaltIsNil(), realm.PairwiseSubjectSaltEQ("")),
+		).
+		SetPairwiseSubjectSalt(candidate).
+		Save(ctx); err != nil {
+		return "", fmt.Errorf("ensure pairwise subject salt: %w", err)
+	}
+
+	e, err := r.client.Realm.Query().
+		Where(realm.ID(realmID)).
+		Select(realm.FieldPairwiseSubjectSalt).
+		Only(ctx)
+	if err != nil {
+		return "", mapNotFound(err)
+	}
+	return e.PairwiseSubjectSalt, nil
 }
 
 func toDomainRealm(e *ent.Realm) *domain.Realm {

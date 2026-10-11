@@ -23,10 +23,12 @@ const (
 	SessionRevoked SessionStatus = "revoked"
 )
 
+// SessionAuthMethod values follow RFC 8176 (Authentication Method Reference
+// Values), so the OIDC "amr" claim needs no translation.
 type SessionAuthMethod string
 
 const (
-	SessionAuthPassword SessionAuthMethod = "password"
+	SessionAuthPassword SessionAuthMethod = "pwd"
 	SessionAuthMFA      SessionAuthMethod = "mfa"
 )
 

@@ -95,6 +95,26 @@ func (_u *RealmUpdate) SetNillableStatus(v *schema.RealmStatus) *RealmUpdate {
 	return _u
 }
 
+// SetPairwiseSubjectSalt sets the "pairwise_subject_salt" field.
+func (_u *RealmUpdate) SetPairwiseSubjectSalt(v string) *RealmUpdate {
+	_u.mutation.SetPairwiseSubjectSalt(v)
+	return _u
+}
+
+// SetNillablePairwiseSubjectSalt sets the "pairwise_subject_salt" field if the given value is not nil.
+func (_u *RealmUpdate) SetNillablePairwiseSubjectSalt(v *string) *RealmUpdate {
+	if v != nil {
+		_u.SetPairwiseSubjectSalt(*v)
+	}
+	return _u
+}
+
+// ClearPairwiseSubjectSalt clears the value of the "pairwise_subject_salt" field.
+func (_u *RealmUpdate) ClearPairwiseSubjectSalt() *RealmUpdate {
+	_u.mutation.ClearPairwiseSubjectSalt()
+	return _u
+}
+
 // AddUserIDs adds the "users" edge to the User entity by IDs.
 func (_u *RealmUpdate) AddUserIDs(ids ...string) *RealmUpdate {
 	_u.mutation.AddUserIDs(ids...)
@@ -593,6 +613,12 @@ func (_u *RealmUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(realm.FieldStatus, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PairwiseSubjectSalt(); ok {
+		_spec.SetField(realm.FieldPairwiseSubjectSalt, field.TypeString, value)
+	}
+	if _u.mutation.PairwiseSubjectSaltCleared() {
+		_spec.ClearField(realm.FieldPairwiseSubjectSalt, field.TypeString)
 	}
 	if _u.mutation.UsersCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1192,6 +1218,26 @@ func (_u *RealmUpdateOne) SetNillableStatus(v *schema.RealmStatus) *RealmUpdateO
 	return _u
 }
 
+// SetPairwiseSubjectSalt sets the "pairwise_subject_salt" field.
+func (_u *RealmUpdateOne) SetPairwiseSubjectSalt(v string) *RealmUpdateOne {
+	_u.mutation.SetPairwiseSubjectSalt(v)
+	return _u
+}
+
+// SetNillablePairwiseSubjectSalt sets the "pairwise_subject_salt" field if the given value is not nil.
+func (_u *RealmUpdateOne) SetNillablePairwiseSubjectSalt(v *string) *RealmUpdateOne {
+	if v != nil {
+		_u.SetPairwiseSubjectSalt(*v)
+	}
+	return _u
+}
+
+// ClearPairwiseSubjectSalt clears the value of the "pairwise_subject_salt" field.
+func (_u *RealmUpdateOne) ClearPairwiseSubjectSalt() *RealmUpdateOne {
+	_u.mutation.ClearPairwiseSubjectSalt()
+	return _u
+}
+
 // AddUserIDs adds the "users" edge to the User entity by IDs.
 func (_u *RealmUpdateOne) AddUserIDs(ids ...string) *RealmUpdateOne {
 	_u.mutation.AddUserIDs(ids...)
@@ -1720,6 +1766,12 @@ func (_u *RealmUpdateOne) sqlSave(ctx context.Context) (_node *Realm, err error)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(realm.FieldStatus, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PairwiseSubjectSalt(); ok {
+		_spec.SetField(realm.FieldPairwiseSubjectSalt, field.TypeString, value)
+	}
+	if _u.mutation.PairwiseSubjectSaltCleared() {
+		_spec.ClearField(realm.FieldPairwiseSubjectSalt, field.TypeString)
 	}
 	if _u.mutation.UsersCleared() {
 		edge := &sqlgraph.EdgeSpec{

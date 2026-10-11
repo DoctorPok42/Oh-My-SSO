@@ -34,6 +34,10 @@ func (Realm) Fields() []ent.Field {
 		field.Time("created_at").Default(func() time.Time { return time.Now() }).Immutable(),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.String("status").GoType(RealmStatus("")).Default(string(RealmActive)),
+		// HMAC key for pairwise subject identifiers. Generated once, on first
+		// use, and never changed: rotating it would change every pairwise
+		// subject of the realm. Sensitive: hidden from String() and JSON.
+		field.String("pairwise_subject_salt").Optional().Sensitive(),
 	}
 }
 
