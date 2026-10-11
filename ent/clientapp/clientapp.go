@@ -81,6 +81,10 @@ const (
 	FieldRequireConsent = "require_consent"
 	// FieldMetadataURL holds the string denoting the metadata_url field in the database.
 	FieldMetadataURL = "metadata_url"
+	// FieldSubjectType holds the string denoting the subject_type field in the database.
+	FieldSubjectType = "subject_type"
+	// FieldSectorIdentifier holds the string denoting the sector_identifier field in the database.
+	FieldSectorIdentifier = "sector_identifier"
 	// FieldSessionIdleMinutes holds the string denoting the session_idle_minutes field in the database.
 	FieldSessionIdleMinutes = "session_idle_minutes"
 	// FieldSessionMaxMinutes holds the string denoting the session_max_minutes field in the database.
@@ -200,6 +204,8 @@ var Columns = []string{
 	FieldAttributeMappings,
 	FieldRequireConsent,
 	FieldMetadataURL,
+	FieldSubjectType,
+	FieldSectorIdentifier,
 	FieldSessionIdleMinutes,
 	FieldSessionMaxMinutes,
 }
@@ -257,6 +263,8 @@ var (
 	DefaultWantResponseSigned bool
 	// DefaultRequireConsent holds the default value on creation for the "require_consent" field.
 	DefaultRequireConsent bool
+	// DefaultSubjectType holds the default value on creation for the "subject_type" field.
+	DefaultSubjectType schema.ClientAppSubjectType
 	// SessionIdleMinutesValidator is a validator for the "session_idle_minutes" field. It is called by the builders before save.
 	SessionIdleMinutesValidator func(int) error
 	// SessionMaxMinutesValidator is a validator for the "session_max_minutes" field. It is called by the builders before save.
@@ -408,6 +416,16 @@ func ByRequireConsent(opts ...sql.OrderTermOption) OrderOption {
 // ByMetadataURL orders the results by the metadata_url field.
 func ByMetadataURL(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMetadataURL, opts...).ToFunc()
+}
+
+// BySubjectType orders the results by the subject_type field.
+func BySubjectType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSubjectType, opts...).ToFunc()
+}
+
+// BySectorIdentifier orders the results by the sector_identifier field.
+func BySectorIdentifier(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSectorIdentifier, opts...).ToFunc()
 }
 
 // BySessionIdleMinutes orders the results by the session_idle_minutes field.

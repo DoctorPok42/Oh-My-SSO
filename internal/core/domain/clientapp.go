@@ -31,6 +31,17 @@ const (
 	ClientAppTypePublic       ClientAppType = "public"
 )
 
+// ClientAppSubjectType decides which subject identifier a client receives.
+type ClientAppSubjectType string
+
+const (
+	// ClientAppSubjectPublic: every client receives User.ID.
+	ClientAppSubjectPublic ClientAppSubjectType = "public"
+	// ClientAppSubjectPairwise: each sector receives its own, non-correlatable
+	// identifier (OIDC Core §8.1).
+	ClientAppSubjectPairwise ClientAppSubjectType = "pairwise"
+)
+
 type ClientApp struct {
 	ID           string
 	RealmID      string
@@ -72,6 +83,10 @@ type ClientApp struct {
 	AttributeMappings map[string]interface{}
 	RequireConsent    bool
 	MetadataURL       string
+
+	// --- Subject identifier ---
+	SubjectType      ClientAppSubjectType
+	SectorIdentifier string // empty: ClientApp.ID is used as the sector
 }
 
 func (c *ClientApp) IsDeleted() bool {

@@ -58,4 +58,9 @@ type UpdateClientAppParams struct {
 	AttributeMappings map[string]interface{}
 	RequireConsent    *bool
 	MetadataURL       *string
+
+	// --- Subject identifier ---
+	// Changing either value changes every subject this client receives.
+	SubjectType      *domain.ClientAppSubjectType
+	SectorIdentifier *string
 }

@@ -420,6 +420,34 @@ func (_c *ClientAppCreate) SetNillableMetadataURL(v *string) *ClientAppCreate {
 	return _c
 }
 
+// SetSubjectType sets the "subject_type" field.
+func (_c *ClientAppCreate) SetSubjectType(v schema.ClientAppSubjectType) *ClientAppCreate {
+	_c.mutation.SetSubjectType(v)
+	return _c
+}
+
+// SetNillableSubjectType sets the "subject_type" field if the given value is not nil.
+func (_c *ClientAppCreate) SetNillableSubjectType(v *schema.ClientAppSubjectType) *ClientAppCreate {
+	if v != nil {
+		_c.SetSubjectType(*v)
+	}
+	return _c
+}
+
+// SetSectorIdentifier sets the "sector_identifier" field.
+func (_c *ClientAppCreate) SetSectorIdentifier(v string) *ClientAppCreate {
+	_c.mutation.SetSectorIdentifier(v)
+	return _c
+}
+
+// SetNillableSectorIdentifier sets the "sector_identifier" field if the given value is not nil.
+func (_c *ClientAppCreate) SetNillableSectorIdentifier(v *string) *ClientAppCreate {
+	if v != nil {
+		_c.SetSectorIdentifier(*v)
+	}
+	return _c
+}
+
 // SetSessionIdleMinutes sets the "session_idle_minutes" field.
 func (_c *ClientAppCreate) SetSessionIdleMinutes(v int) *ClientAppCreate {
 	_c.mutation.SetSessionIdleMinutes(v)
@@ -666,6 +694,10 @@ func (_c *ClientAppCreate) defaults() {
 		v := clientapp.DefaultRequireConsent
 		_c.mutation.SetRequireConsent(v)
 	}
+	if _, ok := _c.mutation.SubjectType(); !ok {
+		v := clientapp.DefaultSubjectType
+		_c.mutation.SetSubjectType(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := clientapp.DefaultID()
 		_c.mutation.SetID(v)
@@ -730,6 +762,9 @@ func (_c *ClientAppCreate) check() error {
 	}
 	if _, ok := _c.mutation.RequireConsent(); !ok {
 		return &ValidationError{Name: "require_consent", err: errors.New(`ent: missing required field "ClientApp.require_consent"`)}
+	}
+	if _, ok := _c.mutation.SubjectType(); !ok {
+		return &ValidationError{Name: "subject_type", err: errors.New(`ent: missing required field "ClientApp.subject_type"`)}
 	}
 	if v, ok := _c.mutation.SessionIdleMinutes(); ok {
 		if err := clientapp.SessionIdleMinutesValidator(v); err != nil {
@@ -911,6 +946,14 @@ func (_c *ClientAppCreate) createSpec() (*ClientApp, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.MetadataURL(); ok {
 		_spec.SetField(clientapp.FieldMetadataURL, field.TypeString, value)
 		_node.MetadataURL = value
+	}
+	if value, ok := _c.mutation.SubjectType(); ok {
+		_spec.SetField(clientapp.FieldSubjectType, field.TypeString, value)
+		_node.SubjectType = value
+	}
+	if value, ok := _c.mutation.SectorIdentifier(); ok {
+		_spec.SetField(clientapp.FieldSectorIdentifier, field.TypeString, value)
+		_node.SectorIdentifier = value
 	}
 	if value, ok := _c.mutation.SessionIdleMinutes(); ok {
 		_spec.SetField(clientapp.FieldSessionIdleMinutes, field.TypeInt, value)

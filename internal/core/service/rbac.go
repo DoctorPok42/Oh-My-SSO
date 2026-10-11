@@ -8,11 +8,12 @@ import (
 	"slices"
 	"strings"
 
+	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
 
-var ErrForbidden = errors.New("service: forbidden")
+var ErrForbidden = core.ErrForbidden // alias: same variable as core
 
 const auditActionAuthorizationDenied = "authorization_denied"
 

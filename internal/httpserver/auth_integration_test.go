@@ -112,6 +112,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	sessionService := service.NewSessionService(
 		entstore.NewSessionRepository(client),
 		entstore.NewInstanceSettingsRepository(client),
+		entstore.NewTokenRepository(client),
 		valkeycache.NewSessionCache(valkeyClient),
 		service.WithClock(clock.Now),
 	)

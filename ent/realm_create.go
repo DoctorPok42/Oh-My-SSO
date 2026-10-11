@@ -109,6 +109,20 @@ func (_c *RealmCreate) SetNillableStatus(v *schema.RealmStatus) *RealmCreate {
 	return _c
 }
 
+// SetPairwiseSubjectSalt sets the "pairwise_subject_salt" field.
+func (_c *RealmCreate) SetPairwiseSubjectSalt(v string) *RealmCreate {
+	_c.mutation.SetPairwiseSubjectSalt(v)
+	return _c
+}
+
+// SetNillablePairwiseSubjectSalt sets the "pairwise_subject_salt" field if the given value is not nil.
+func (_c *RealmCreate) SetNillablePairwiseSubjectSalt(v *string) *RealmCreate {
+	if v != nil {
+		_c.SetPairwiseSubjectSalt(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *RealmCreate) SetID(v string) *RealmCreate {
 	_c.mutation.SetID(v)
@@ -449,6 +463,10 @@ func (_c *RealmCreate) createSpec() (*Realm, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(realm.FieldStatus, field.TypeString, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.PairwiseSubjectSalt(); ok {
+		_spec.SetField(realm.FieldPairwiseSubjectSalt, field.TypeString, value)
+		_node.PairwiseSubjectSalt = value
 	}
 	if nodes := _c.mutation.UsersIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

@@ -75,11 +75,19 @@ func main() {
 	client := buildEntClient()
 	defer client.Close()
 
-	_ = buildKeyManager()
+	keyManager := buildKeyManager()
+
+	timeouts := service.NoActiveTimeouts{}
+
+	userRepo := entstore.NewUserRepository(client)
+	clientRepo := entstore.NewClientRepository(client)
+	realmRepo := entstore.NewRealmRepository(client)
+	tokenRepo := entstore.NewTokenRepository(client)
 
 	authService := service.NewAuthService(
-		entstore.NewUserRepository(client),
+		userRepo,
 		entstore.NewLoginAttemptRepository(client),
+		service.WithTimeoutChecker(timeouts),
 	)
 
 	valkeyClient, err := valkeycache.New(os.Getenv("VALKEY_ADDR"))
@@ -90,6 +98,7 @@ func main() {
 	sessionService := service.NewSessionService(
 		entstore.NewSessionRepository(client),
 		entstore.NewInstanceSettingsRepository(client),
+		tokenRepo,
 		valkeycache.NewSessionCache(valkeyClient),
 	)
 
@@ -98,12 +107,26 @@ func main() {
 		entstore.NewAuditLogRepository(client),
 	)
 
+	identityCore := service.NewIdentityCore(service.IdentityCoreDeps{
+		Auth:        authService,
+		Sessions:    sessionService,
+		RBAC:        rbacService,
+		Users:       userRepo,
+		Clients:     clientRepo,
+		Realms:      realmRepo,
+		Tokens:      tokenRepo,
+		SigningKeys: entstore.NewSigningKeyRepository(client),
+		KeyManager:  keyManager,
+		Timeouts:    timeouts,
+	})
+	_ = identityCore
+
 	srv := httpserver.New(
 		authService,
 		sessionService,
 		rbacService,
-		entstore.NewRealmRepository(client),
-		entstore.NewClientRepository(client),
+		realmRepo,
+		clientRepo,
 		valkeycache.NewRateLimiter(valkeyClient),
 	)
 

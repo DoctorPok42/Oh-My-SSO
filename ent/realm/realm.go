@@ -27,6 +27,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldPairwiseSubjectSalt holds the string denoting the pairwise_subject_salt field in the database.
+	FieldPairwiseSubjectSalt = "pairwise_subject_salt"
 	// EdgeUsers holds the string denoting the users edge name in mutations.
 	EdgeUsers = "users"
 	// EdgeRoles holds the string denoting the roles edge name in mutations.
@@ -148,6 +150,7 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldStatus,
+	FieldPairwiseSubjectSalt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -215,6 +218,11 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByPairwiseSubjectSalt orders the results by the pairwise_subject_salt field.
+func ByPairwiseSubjectSalt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPairwiseSubjectSalt, opts...).ToFunc()
 }
 
 // ByUsersCount orders the results by users count.

@@ -11,12 +11,13 @@ import (
 	"sync"
 	"time"
 
+	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/sessioncache"
 )
 
-var ErrSessionInvalid = errors.New("service: session invalid")
+var ErrSessionInvalid = core.ErrSessionInvalid // alias: same variable as core
 var ErrReauthRequired = errors.New("service: reauthentication required for this app")
 var ErrClientSessionLimitTooLong = errors.New("service: app session limit exceeds realm limit")
 
@@ -32,6 +33,7 @@ const (
 type SessionService struct {
 	sessions repository.SessionRepository
 	settings repository.InstanceSettingsRepository
+	tokens   repository.TokenRepository // revoked in cascade with their session
 	cache    sessioncache.Cache
 	now      func() time.Time
 	logger   *slog.Logger
@@ -58,12 +60,14 @@ func WithLogger(l *slog.Logger) SessionOption {
 func NewSessionService(
 	sessions repository.SessionRepository,
 	settings repository.InstanceSettingsRepository,
+	tokens repository.TokenRepository,
 	cache sessioncache.Cache,
 	opts ...SessionOption,
 ) *SessionService {
 	s := &SessionService{
 		sessions:    sessions,
 		settings:    settings,
+		tokens:      tokens,
 		cache:       cache,
 		now:         time.Now,
 		logger:      slog.Default(),
@@ -91,7 +95,7 @@ func (s *SessionService) Create(ctx context.Context, in CreateSessionInput) (raw
 	rawToken = rand.Text()
 	authMethod := in.AuthMethod
 	if authMethod == "" {
-		authMethod = "password"
+		authMethod = domain.AuthMethodPassword
 	}
 
 	sess, err = s.sessions.Create(ctx, repository.CreateSessionParams{
@@ -191,6 +195,34 @@ func (s *SessionService) validate(ctx context.Context, realmID, rawToken string,
 	return sess, nil
 }
 
+// GetActive loads a session by its id, for back-channel calls (no cookie,
+// e.g. the OIDC /token endpoint). Same validity rules as Validate, but it
+// does not refresh last_activity_at: a server-to-server call is not a proof
+// that the user is still active.
+func (s *SessionService) GetActive(ctx context.Context, sessionID string) (*domain.Session, error) {
+	if sessionID == "" {
+		return nil, ErrSessionInvalid
+	}
+	sess, err := s.sessions.GetByID(ctx, sessionID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, ErrSessionInvalid
+		}
+		return nil, fmt.Errorf("get active session: %w", err)
+	}
+	if sess.Status != domain.SessionActive {
+		return nil, ErrSessionInvalid
+	}
+
+	now := s.now()
+	policy := s.policy(ctx, sess.RealmID)
+	if !now.Before(sess.ExpiresAt) || !now.Before(sess.LastActivityAt.Add(policy.idleTimeout)) {
+		s.expire(ctx, sess)
+		return nil, ErrSessionInvalid
+	}
+	return sess, nil
+}
+
 func (s *SessionService) Revoke(ctx context.Context, sessionID string, reason domain.SessionRevokedReason) error {
 	sess, err := s.sessions.GetByID(ctx, sessionID)
 	if err != nil {
@@ -203,7 +235,10 @@ func (s *SessionService) Revoke(ctx context.Context, sessionID string, reason do
 	if err := s.sessions.Revoke(ctx, sess.ID, reason); err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return fmt.Errorf("revoke session: %w", err)
 	}
-	return s.markRevoked(ctx, sess)
+	if err := s.markRevoked(ctx, sess); err != nil {
+		return err
+	}
+	return s.revokeSessionTokens(ctx, sess.ID)
 }
 
 func (s *SessionService) Logout(ctx context.Context, rawToken string) error {
@@ -220,7 +255,10 @@ func (s *SessionService) Logout(ctx context.Context, rawToken string) error {
 	if err := s.sessions.Revoke(ctx, sess.ID, domain.SessionRevokedUserLogout); err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return fmt.Errorf("logout: %w", err)
 	}
-	return s.markRevoked(ctx, sess)
+	if err := s.markRevoked(ctx, sess); err != nil {
+		return err
+	}
+	return s.revokeSessionTokens(ctx, sess.ID)
 }
 
 func (s *SessionService) RevokeAllForUser(ctx context.Context, userID string, reason domain.SessionRevokedReason) error {
@@ -231,6 +269,28 @@ func (s *SessionService) RevokeAllForUser(ctx context.Context, userID string, re
 	for _, sess := range revoked {
 		if err := s.markRevoked(ctx, sess); err != nil {
 			return err
+		}
+		if err := s.revokeSessionTokens(ctx, sess.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// revokeSessionTokens revokes every token issued for a session. A token must
+// never outlive an explicit revocation of the session it was issued for.
+// Idempotent: calling Revoke again after a partial failure finishes the job.
+func (s *SessionService) revokeSessionTokens(ctx context.Context, sessionID string) error {
+	toks, err := s.tokens.ListBySession(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("revoke session tokens: %w", err)
+	}
+	for _, t := range toks {
+		if t.Revoked {
+			continue
+		}
+		if err := s.tokens.Revoke(ctx, t.ID); err != nil && !errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("revoke session tokens: token %s: %w", t.ID, err)
 		}
 	}
 	return nil

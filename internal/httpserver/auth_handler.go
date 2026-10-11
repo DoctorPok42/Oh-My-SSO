@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/ratelimit"
 )
@@ -93,7 +94,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrInvalidCredentials), errors.Is(err, service.ErrAccountNotActive):
+		case errors.Is(err, service.ErrInvalidCredentials),
+			errors.Is(err, service.ErrAccountNotActive),
+			errors.Is(err, service.ErrTimeoutActive):
 			writeError(w, http.StatusUnauthorized, "invalid_credentials")
 		default:
 			writeError(w, http.StatusInternalServerError, "internal_error")
@@ -106,7 +109,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		UserID:     user.ID,
 		IPAddress:  ip,
 		UserAgent:  r.UserAgent(),
-		AuthMethod: "password",
+		AuthMethod: domain.AuthMethodPassword,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error")

@@ -567,6 +567,40 @@ func (_u *ClientAppUpdate) ClearMetadataURL() *ClientAppUpdate {
 	return _u
 }
 
+// SetSubjectType sets the "subject_type" field.
+func (_u *ClientAppUpdate) SetSubjectType(v schema.ClientAppSubjectType) *ClientAppUpdate {
+	_u.mutation.SetSubjectType(v)
+	return _u
+}
+
+// SetNillableSubjectType sets the "subject_type" field if the given value is not nil.
+func (_u *ClientAppUpdate) SetNillableSubjectType(v *schema.ClientAppSubjectType) *ClientAppUpdate {
+	if v != nil {
+		_u.SetSubjectType(*v)
+	}
+	return _u
+}
+
+// SetSectorIdentifier sets the "sector_identifier" field.
+func (_u *ClientAppUpdate) SetSectorIdentifier(v string) *ClientAppUpdate {
+	_u.mutation.SetSectorIdentifier(v)
+	return _u
+}
+
+// SetNillableSectorIdentifier sets the "sector_identifier" field if the given value is not nil.
+func (_u *ClientAppUpdate) SetNillableSectorIdentifier(v *string) *ClientAppUpdate {
+	if v != nil {
+		_u.SetSectorIdentifier(*v)
+	}
+	return _u
+}
+
+// ClearSectorIdentifier clears the value of the "sector_identifier" field.
+func (_u *ClientAppUpdate) ClearSectorIdentifier() *ClientAppUpdate {
+	_u.mutation.ClearSectorIdentifier()
+	return _u
+}
+
 // SetSessionIdleMinutes sets the "session_idle_minutes" field.
 func (_u *ClientAppUpdate) SetSessionIdleMinutes(v int) *ClientAppUpdate {
 	_u.mutation.ResetSessionIdleMinutes()
@@ -1165,6 +1199,15 @@ func (_u *ClientAppUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.MetadataURLCleared() {
 		_spec.ClearField(clientapp.FieldMetadataURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.SubjectType(); ok {
+		_spec.SetField(clientapp.FieldSubjectType, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.SectorIdentifier(); ok {
+		_spec.SetField(clientapp.FieldSectorIdentifier, field.TypeString, value)
+	}
+	if _u.mutation.SectorIdentifierCleared() {
+		_spec.ClearField(clientapp.FieldSectorIdentifier, field.TypeString)
 	}
 	if value, ok := _u.mutation.SessionIdleMinutes(); ok {
 		_spec.SetField(clientapp.FieldSessionIdleMinutes, field.TypeInt, value)
@@ -2156,6 +2199,40 @@ func (_u *ClientAppUpdateOne) ClearMetadataURL() *ClientAppUpdateOne {
 	return _u
 }
 
+// SetSubjectType sets the "subject_type" field.
+func (_u *ClientAppUpdateOne) SetSubjectType(v schema.ClientAppSubjectType) *ClientAppUpdateOne {
+	_u.mutation.SetSubjectType(v)
+	return _u
+}
+
+// SetNillableSubjectType sets the "subject_type" field if the given value is not nil.
+func (_u *ClientAppUpdateOne) SetNillableSubjectType(v *schema.ClientAppSubjectType) *ClientAppUpdateOne {
+	if v != nil {
+		_u.SetSubjectType(*v)
+	}
+	return _u
+}
+
+// SetSectorIdentifier sets the "sector_identifier" field.
+func (_u *ClientAppUpdateOne) SetSectorIdentifier(v string) *ClientAppUpdateOne {
+	_u.mutation.SetSectorIdentifier(v)
+	return _u
+}
+
+// SetNillableSectorIdentifier sets the "sector_identifier" field if the given value is not nil.
+func (_u *ClientAppUpdateOne) SetNillableSectorIdentifier(v *string) *ClientAppUpdateOne {
+	if v != nil {
+		_u.SetSectorIdentifier(*v)
+	}
+	return _u
+}
+
+// ClearSectorIdentifier clears the value of the "sector_identifier" field.
+func (_u *ClientAppUpdateOne) ClearSectorIdentifier() *ClientAppUpdateOne {
+	_u.mutation.ClearSectorIdentifier()
+	return _u
+}
+
 // SetSessionIdleMinutes sets the "session_idle_minutes" field.
 func (_u *ClientAppUpdateOne) SetSessionIdleMinutes(v int) *ClientAppUpdateOne {
 	_u.mutation.ResetSessionIdleMinutes()
@@ -2784,6 +2861,15 @@ func (_u *ClientAppUpdateOne) sqlSave(ctx context.Context) (_node *ClientApp, er
 	}
 	if _u.mutation.MetadataURLCleared() {
 		_spec.ClearField(clientapp.FieldMetadataURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.SubjectType(); ok {
+		_spec.SetField(clientapp.FieldSubjectType, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.SectorIdentifier(); ok {
+		_spec.SetField(clientapp.FieldSectorIdentifier, field.TypeString, value)
+	}
+	if _u.mutation.SectorIdentifierCleared() {
+		_spec.ClearField(clientapp.FieldSectorIdentifier, field.TypeString)
 	}
 	if value, ok := _u.mutation.SessionIdleMinutes(); ok {
 		_spec.SetField(clientapp.FieldSessionIdleMinutes, field.TypeInt, value)

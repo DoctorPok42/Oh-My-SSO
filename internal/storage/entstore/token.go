@@ -39,7 +39,7 @@ func (r *entTokenRepository) Create(ctx context.Context, p repository.CreateToke
 func (r *entTokenRepository) GetByID(ctx context.Context, id string) (*domain.Token, error) {
 	e, err := r.client.Token.Get(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainToken(e), nil
 }
@@ -50,7 +50,7 @@ func (r *entTokenRepository) GetByJTI(ctx context.Context, jti string) (*domain.
 		Where(token.Jti(jti)).
 		Only(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainToken(e), nil
 }
@@ -72,7 +72,7 @@ func (r *entTokenRepository) ListBySession(ctx context.Context, sessionID string
 
 func (r *entTokenRepository) Revoke(ctx context.Context, id string) error {
 	_, err := r.client.Token.UpdateOneID(id).SetRevoked(true).Save(ctx)
-	return err
+	return mapNotFound(err)
 }
 
 func (r *entTokenRepository) Delete(ctx context.Context, id string) error {

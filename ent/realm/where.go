@@ -97,6 +97,11 @@ func Status(v schema.RealmStatus) predicate.Realm {
 	return predicate.Realm(sql.FieldEQ(FieldStatus, vc))
 }
 
+// PairwiseSubjectSalt applies equality check predicate on the "pairwise_subject_salt" field. It's identical to PairwiseSubjectSaltEQ.
+func PairwiseSubjectSalt(v string) predicate.Realm {
+	return predicate.Realm(sql.FieldEQ(FieldPairwiseSubjectSalt, v))
+}
+
 // NameEQ applies the EQ predicate on the "name" field.
 func NameEQ(v string) predicate.Realm {
 	return predicate.Realm(sql.FieldEQ(FieldName, v))
@@ -409,6 +414,81 @@ func StatusEqualFold(v schema.RealmStatus) predicate.Realm {
 func StatusContainsFold(v schema.RealmStatus) predicate.Realm {
 	vc := string(v)
 	return predicate.Realm(sql.FieldContainsFold(FieldStatus, vc))
+}
+
+// PairwiseSubjectSaltEQ applies the EQ predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltEQ(v string) predicate.Realm {
+	return predicate.Realm(sql.FieldEQ(FieldPairwiseSubjectSalt, v))
+}
+
+// PairwiseSubjectSaltNEQ applies the NEQ predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltNEQ(v string) predicate.Realm {
+	return predicate.Realm(sql.FieldNEQ(FieldPairwiseSubjectSalt, v))
+}
+
+// PairwiseSubjectSaltIn applies the In predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltIn(vs ...string) predicate.Realm {
+	return predicate.Realm(sql.FieldIn(FieldPairwiseSubjectSalt, vs...))
+}
+
+// PairwiseSubjectSaltNotIn applies the NotIn predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltNotIn(vs ...string) predicate.Realm {
+	return predicate.Realm(sql.FieldNotIn(FieldPairwiseSubjectSalt, vs...))
+}
+
+// PairwiseSubjectSaltGT applies the GT predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltGT(v string) predicate.Realm {
+	return predicate.Realm(sql.FieldGT(FieldPairwiseSubjectSalt, v))
+}
+
+// PairwiseSubjectSaltGTE applies the GTE predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltGTE(v string) predicate.Realm {
+	return predicate.Realm(sql.FieldGTE(FieldPairwiseSubjectSalt, v))
+}
+
+// PairwiseSubjectSaltLT applies the LT predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltLT(v string) predicate.Realm {
+	return predicate.Realm(sql.FieldLT(FieldPairwiseSubjectSalt, v))
+}
+
+// PairwiseSubjectSaltLTE applies the LTE predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltLTE(v string) predicate.Realm {
+	return predicate.Realm(sql.FieldLTE(FieldPairwiseSubjectSalt, v))
+}
+
+// PairwiseSubjectSaltContains applies the Contains predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltContains(v string) predicate.Realm {
+	return predicate.Realm(sql.FieldContains(FieldPairwiseSubjectSalt, v))
+}
+
+// PairwiseSubjectSaltHasPrefix applies the HasPrefix predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltHasPrefix(v string) predicate.Realm {
+	return predicate.Realm(sql.FieldHasPrefix(FieldPairwiseSubjectSalt, v))
+}
+
+// PairwiseSubjectSaltHasSuffix applies the HasSuffix predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltHasSuffix(v string) predicate.Realm {
+	return predicate.Realm(sql.FieldHasSuffix(FieldPairwiseSubjectSalt, v))
+}
+
+// PairwiseSubjectSaltIsNil applies the IsNil predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltIsNil() predicate.Realm {
+	return predicate.Realm(sql.FieldIsNull(FieldPairwiseSubjectSalt))
+}
+
+// PairwiseSubjectSaltNotNil applies the NotNil predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltNotNil() predicate.Realm {
+	return predicate.Realm(sql.FieldNotNull(FieldPairwiseSubjectSalt))
+}
+
+// PairwiseSubjectSaltEqualFold applies the EqualFold predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltEqualFold(v string) predicate.Realm {
+	return predicate.Realm(sql.FieldEqualFold(FieldPairwiseSubjectSalt, v))
+}
+
+// PairwiseSubjectSaltContainsFold applies the ContainsFold predicate on the "pairwise_subject_salt" field.
+func PairwiseSubjectSaltContainsFold(v string) predicate.Realm {
+	return predicate.Realm(sql.FieldContainsFold(FieldPairwiseSubjectSalt, v))
 }
 
 // HasUsers applies the HasEdge predicate on the "users" edge.

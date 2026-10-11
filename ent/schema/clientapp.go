@@ -44,6 +44,16 @@ const (
 	ClientAppTypePublic       ClientAppType = "public"
 )
 
+// ClientAppSubjectType decides which subject identifier a client receives
+// (OIDC Core §8). "public": the same value for every client (User.ID).
+// "pairwise": a different, non-correlatable value per sector.
+type ClientAppSubjectType string
+
+const (
+	ClientAppSubjectPublic   ClientAppSubjectType = "public"
+	ClientAppSubjectPairwise ClientAppSubjectType = "pairwise"
+)
+
 func (ClientApp) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
@@ -90,6 +100,13 @@ func (ClientApp) Fields() []ent.Field {
 		field.JSON("attribute_mappings", map[string]interface{}{}).Optional(),
 		field.Bool("require_consent").Default(false),
 		field.String("metadata_url").Optional(),
+
+		// --- Subject identifier (OIDC subject_type / SAML persistent NameID) ---
+		// Changing either value changes every subject this client receives.
+		field.String("subject_type").GoType(ClientAppSubjectType("")).Default(string(ClientAppSubjectPublic)),
+		// Clients sharing a sector identifier receive the same pairwise
+		// subject. Empty means "this client alone" (ClientApp.ID is used).
+		field.String("sector_identifier").Optional(),
 
 		// --- Session overrides ---
 		field.Int("session_idle_minutes").Optional().Nillable().Positive(),

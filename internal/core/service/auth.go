@@ -5,22 +5,42 @@ import (
 	"errors"
 	"fmt"
 
+	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
 
+// Aliases of the core errors: same variables, so errors.Is matches both names.
 var (
-	ErrInvalidCredentials = errors.New("service: invalid credentials")
-	ErrAccountNotActive   = errors.New("service: account not active")
+	ErrInvalidCredentials = core.ErrInvalidCredentials
+	ErrAccountNotActive   = core.ErrAccountNotActive
+	ErrTimeoutActive      = core.ErrTimeoutActive
 )
 
 type AuthService struct {
 	users         repository.UserRepository
 	loginAttempts repository.LoginAttemptRepository
+	timeouts      TimeoutChecker
 }
 
-func NewAuthService(users repository.UserRepository, loginAttempts repository.LoginAttemptRepository) *AuthService {
-	return &AuthService{users: users, loginAttempts: loginAttempts}
+type AuthOption func(*AuthService)
+
+// WithTimeoutChecker plugs the Timeout check into AuthenticateLocal.
+// Defaults to NoActiveTimeouts.
+func WithTimeoutChecker(tc TimeoutChecker) AuthOption {
+	return func(s *AuthService) {
+		if tc != nil {
+			s.timeouts = tc
+		}
+	}
+}
+
+func NewAuthService(users repository.UserRepository, loginAttempts repository.LoginAttemptRepository, opts ...AuthOption) *AuthService {
+	s := &AuthService{users: users, loginAttempts: loginAttempts, timeouts: NoActiveTimeouts{}}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 type AuthenticateLocalParams struct {
@@ -29,6 +49,7 @@ type AuthenticateLocalParams struct {
 	Password   string
 	IPAddress  string
 	UserAgent  string
+	ClientRef  string // optional: ClientApp.ID the login is for (timeout check)
 }
 
 func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocalParams) (*domain.User, error) {
@@ -59,6 +80,17 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 	if user.Status != domain.UserActive {
 		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, domain.LoginFailureAccountLocked)
 		return nil, ErrAccountNotActive
+	}
+
+	// Checked only once the password is proven correct, so a blocked state
+	// is never revealed to someone who doesn't know the password.
+	blocked, err := s.timeouts.HasActiveTimeout(ctx, user.ID, p.ClientRef)
+	if err != nil {
+		return nil, fmt.Errorf("authenticate local: check timeout: %w", err)
+	}
+	if blocked {
+		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, domain.LoginFailureTimeoutActive)
+		return nil, ErrTimeoutActive
 	}
 
 	s.recordAttempt(ctx, p, domain.LoginAttemptSuccess, "")
