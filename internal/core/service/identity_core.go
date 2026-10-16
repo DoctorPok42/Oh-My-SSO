@@ -429,6 +429,46 @@ func (s *IdentityCoreService) Signer(ctx context.Context, realmID string, purpos
 	return &kmsSigner{km: s.km, key: best}, nil
 }
 
+func (s *IdentityCoreService) PublicKeys(ctx context.Context, realmID string, purpose domain.SigningKeyPurpose) ([]*domain.SigningKey, error) {
+	keys, err := s.keys.ListActiveByRealm(ctx, realmID)
+	if err != nil {
+		return nil, fmt.Errorf("public keys: list keys: %w", err)
+	}
+	return VerificationKeys(keys, purpose, s.now()), nil
+}
+
+// VerificationKeys keeps the keys that may still verify a signature at now,
+// newest first.
+//
+// A "rotating" key is dropped as soon as its grace deadline has passed, even
+// if the retire job has not run yet: the deadline decides what is published,
+// the job only tidies the status and writes the KeyRotationLog. So the grace
+// period is enforced even without a cron.
+func VerificationKeys(keys []*domain.SigningKey, purpose domain.SigningKeyPurpose, now time.Time) []*domain.SigningKey {
+	out := make([]*domain.SigningKey, 0, len(keys))
+	for _, k := range keys {
+		if k.Purpose != purpose {
+			continue
+		}
+		switch k.Status {
+		case domain.SigningKeyActive:
+			out = append(out, k)
+		case domain.SigningKeyRotating:
+			// A zero RetireAfter only exists on rows created before the
+			// deadline column: keep them, the migration gave them one.
+			if k.RetireAfter.IsZero() || now.Before(k.RetireAfter) {
+				out = append(out, k)
+			}
+		}
+	}
+	// Newest first: a stable order gives a stable JWKS body (and ETag), and
+	// some naive clients simply take the first key.
+	slices.SortStableFunc(out, func(a, b *domain.SigningKey) int {
+		return b.CreatedAt.Compare(a.CreatedAt)
+	})
+	return out
+}
+
 // kmsSigner binds one SigningKey row to the KeyManager. The private key never
 // leaves the KMS: we only pass its reference.
 type kmsSigner struct {

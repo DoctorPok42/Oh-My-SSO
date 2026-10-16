@@ -28,5 +28,6 @@ type UpdateInstanceSettingsParams struct {
 	IPAllowlist              []string
 	MFARequiredGlobally      *bool
 	NotificationEmailEnabled *bool
+	KeyRotationGraceHours    *int
 	UpdatedBy                *string
 }

@@ -76,6 +76,44 @@ func (r *entSigningKeyRepository) ListActiveByRealm(ctx context.Context, realmID
 	return out, nil
 }
 
+func (r *entSigningKeyRepository) ListByRealm(ctx context.Context, realmID string) ([]*domain.SigningKey, error) {
+	rows, err := r.client.SigningKey.
+		Query().
+		Where(signingkey.RealmID(realmID)).
+		Order(ent.Desc(signingkey.FieldCreatedAt)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.SigningKey, 0, len(rows))
+	for _, e := range rows {
+		out = append(out, toDomainSigningKey(e))
+	}
+	return out, nil
+}
+
+func (r *entSigningKeyRepository) MarkRotating(ctx context.Context, id string, retireAfter time.Time) error {
+	// Conditional UPDATE ... WHERE id = $1 AND status = 'active': the check
+	// and the write are one statement, so two concurrent rotations cannot
+	// both "win" on the same key.
+	n, err := r.client.SigningKey.
+		Update().
+		Where(
+			signingkey.ID(id),
+			signingkey.StatusEQ(entschema.SigningKeyStatus(domain.SigningKeyActive)),
+		).
+		SetStatus(entschema.SigningKeyStatus(domain.SigningKeyRotating)).
+		SetRetireAfter(retireAfter).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return repository.ErrNotFound
+	}
+	return nil
+}
+
 func (r *entSigningKeyRepository) SetStatus(ctx context.Context, id string, status domain.SigningKeyStatus) error {
 	_, err := r.client.SigningKey.
 		UpdateOneID(id).
@@ -85,12 +123,22 @@ func (r *entSigningKeyRepository) SetStatus(ctx context.Context, id string, stat
 }
 
 func (r *entSigningKeyRepository) Retire(ctx context.Context, id string) error {
-	_, err := r.client.SigningKey.
-		UpdateOneID(id).
+	n, err := r.client.SigningKey.
+		Update().
+		Where(
+			signingkey.ID(id),
+			signingkey.StatusNEQ(entschema.SigningKeyStatus(domain.SigningKeyRetired)),
+		).
 		SetStatus(entschema.SigningKeyStatus(domain.SigningKeyRetired)).
 		SetRetiredAt(time.Now()).
 		Save(ctx)
-	return err
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return repository.ErrNotFound
+	}
+	return nil
 }
 
 func (r *entSigningKeyRepository) Delete(ctx context.Context, id string) error {
@@ -111,5 +159,6 @@ func toDomainSigningKey(e *ent.SigningKey) *domain.SigningKey {
 		CreatedAt:       e.CreatedAt,
 		UpdatedAt:       e.UpdatedAt,
 		RetiredAt:       e.RetiredAt,
+		RetireAfter:     e.RetireAfter,
 	}
 }

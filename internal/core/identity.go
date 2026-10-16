@@ -166,4 +166,10 @@ type IdentityCore interface {
 
 	// Signer returns the newest active key of the realm for that purpose.
 	Signer(ctx context.Context, realmID string, purpose domain.SigningKeyPurpose) (Signer, error)
+	// PublicKeys returns the keys whose public part must be published so
+	// that clients can verify signatures: the "active" keys plus the
+	// "rotating" keys still inside their grace period. Newest first.
+	// The OIDC adapter publishes the jwt_signing ones as a JWKS, the SAML
+	// adapter the saml_signing ones in its metadata.
+	PublicKeys(ctx context.Context, realmID string, purpose domain.SigningKeyPurpose) ([]*domain.SigningKey, error)
 }

@@ -42,6 +42,8 @@ type InstanceSettings struct {
 	MfaRequiredGlobally bool `json:"mfa_required_globally,omitempty"`
 	// NotificationEmailEnabled holds the value of the "notification_email_enabled" field.
 	NotificationEmailEnabled bool `json:"notification_email_enabled,omitempty"`
+	// KeyRotationGraceHours holds the value of the "key_rotation_grace_hours" field.
+	KeyRotationGraceHours int `json:"key_rotation_grace_hours,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// UpdatedBy holds the value of the "updated_by" field.
@@ -81,7 +83,7 @@ func (*InstanceSettings) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled:
 			values[i] = new(sql.NullBool)
-		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes:
+		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours:
 			values[i] = new(sql.NullInt64)
 		case instancesettings.FieldID, instancesettings.FieldRealmID, instancesettings.FieldManagedBy, instancesettings.FieldUpdatedBy:
 			values[i] = new(sql.NullString)
@@ -176,6 +178,12 @@ func (_m *InstanceSettings) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.NotificationEmailEnabled = value.Bool
 			}
+		case instancesettings.FieldKeyRotationGraceHours:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field key_rotation_grace_hours", values[i])
+			} else if value.Valid {
+				_m.KeyRotationGraceHours = int(value.Int64)
+			}
 		case instancesettings.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
@@ -261,6 +269,9 @@ func (_m *InstanceSettings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("notification_email_enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.NotificationEmailEnabled))
+	builder.WriteString(", ")
+	builder.WriteString("key_rotation_grace_hours=")
+	builder.WriteString(fmt.Sprintf("%v", _m.KeyRotationGraceHours))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"sso.internal/sso/internal/core/domain"
 )
@@ -10,8 +11,20 @@ type SigningKeyRepository interface {
 	Create(ctx context.Context, p CreateSigningKeyParams) (*domain.SigningKey, error)
 	GetByID(ctx context.Context, id string) (*domain.SigningKey, error)
 	GetByKid(ctx context.Context, kid string) (*domain.SigningKey, error)
+	// ListActiveByRealm returns the "active" and "rotating" keys of a realm,
+	// i.e. every key whose public part may still verify something.
 	ListActiveByRealm(ctx context.Context, realmID string) ([]*domain.SigningKey, error)
+	// ListByRealm returns every key of a realm, retired ones included,
+	// newest first (admin listing).
+	ListByRealm(ctx context.Context, realmID string) ([]*domain.SigningKey, error)
 	SetStatus(ctx context.Context, id string, status domain.SigningKeyStatus) error
+	// MarkRotating moves an "active" key to "rotating" with its grace
+	// deadline. It only touches a key that is still "active": it returns
+	// ErrNotFound if the key does not exist or was already moved by a
+	// concurrent rotation, so a retired key can never come back.
+	MarkRotating(ctx context.Context, id string, retireAfter time.Time) error
+	// Retire moves an "active" or "rotating" key to "retired". Same
+	// ErrNotFound rule as MarkRotating if the key is already retired.
 	Retire(ctx context.Context, id string) error
 	Delete(ctx context.Context, id string) error
 }

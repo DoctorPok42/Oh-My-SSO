@@ -458,6 +458,7 @@ var (
 		{Name: "ip_allowlist", Type: field.TypeJSON, Nullable: true},
 		{Name: "mfa_required_globally", Type: field.TypeBool, Default: false},
 		{Name: "notification_email_enabled", Type: field.TypeBool, Default: false},
+		{Name: "key_rotation_grace_hours", Type: field.TypeInt, Default: 24},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "updated_by", Type: field.TypeString, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString, Unique: true},
@@ -470,7 +471,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instance_settings_realms_instance_settings",
-				Columns:    []*schema.Column{InstanceSettingsColumns[13]},
+				Columns:    []*schema.Column{InstanceSettingsColumns[14]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -801,6 +802,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "retired_at", Type: field.TypeTime, Nullable: true},
+		{Name: "retire_after", Type: field.TypeTime, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString},
 	}
 	// SigningKeysTable holds the schema information for the "signing_keys" table.
@@ -811,9 +813,16 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "signing_keys_realms_signing_keys",
-				Columns:    []*schema.Column{SigningKeysColumns[11]},
+				Columns:    []*schema.Column{SigningKeysColumns[12]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "signingkey_realm_id_purpose_status",
+				Unique:  false,
+				Columns: []*schema.Column{SigningKeysColumns[12], SigningKeysColumns[2], SigningKeysColumns[7]},
 			},
 		},
 	}

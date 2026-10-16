@@ -117,6 +117,11 @@ func NotificationEmailEnabled(v bool) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldNotificationEmailEnabled, v))
 }
 
+// KeyRotationGraceHours applies equality check predicate on the "key_rotation_grace_hours" field. It's identical to KeyRotationGraceHoursEQ.
+func KeyRotationGraceHours(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldKeyRotationGraceHours, v))
+}
+
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldUpdatedAt, v))
@@ -544,6 +549,46 @@ func NotificationEmailEnabledEQ(v bool) predicate.InstanceSettings {
 // NotificationEmailEnabledNEQ applies the NEQ predicate on the "notification_email_enabled" field.
 func NotificationEmailEnabledNEQ(v bool) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldNEQ(FieldNotificationEmailEnabled, v))
+}
+
+// KeyRotationGraceHoursEQ applies the EQ predicate on the "key_rotation_grace_hours" field.
+func KeyRotationGraceHoursEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldKeyRotationGraceHours, v))
+}
+
+// KeyRotationGraceHoursNEQ applies the NEQ predicate on the "key_rotation_grace_hours" field.
+func KeyRotationGraceHoursNEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldKeyRotationGraceHours, v))
+}
+
+// KeyRotationGraceHoursIn applies the In predicate on the "key_rotation_grace_hours" field.
+func KeyRotationGraceHoursIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldKeyRotationGraceHours, vs...))
+}
+
+// KeyRotationGraceHoursNotIn applies the NotIn predicate on the "key_rotation_grace_hours" field.
+func KeyRotationGraceHoursNotIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldKeyRotationGraceHours, vs...))
+}
+
+// KeyRotationGraceHoursGT applies the GT predicate on the "key_rotation_grace_hours" field.
+func KeyRotationGraceHoursGT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldKeyRotationGraceHours, v))
+}
+
+// KeyRotationGraceHoursGTE applies the GTE predicate on the "key_rotation_grace_hours" field.
+func KeyRotationGraceHoursGTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldKeyRotationGraceHours, v))
+}
+
+// KeyRotationGraceHoursLT applies the LT predicate on the "key_rotation_grace_hours" field.
+func KeyRotationGraceHoursLT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldKeyRotationGraceHours, v))
+}
+
+// KeyRotationGraceHoursLTE applies the LTE predicate on the "key_rotation_grace_hours" field.
+func KeyRotationGraceHoursLTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldKeyRotationGraceHours, v))
 }
 
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.

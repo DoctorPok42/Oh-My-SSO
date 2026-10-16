@@ -22,6 +22,7 @@ type InstanceSettings struct {
 	IPAllowlist              []string
 	MFARequiredGlobally      bool
 	NotificationEmailEnabled bool
+	KeyRotationGraceHours    int
 	UpdatedAt                time.Time
 	UpdatedBy                string
 }

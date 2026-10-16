@@ -90,6 +90,26 @@ func (_u *SigningKeyUpdate) ClearRetiredAt() *SigningKeyUpdate {
 	return _u
 }
 
+// SetRetireAfter sets the "retire_after" field.
+func (_u *SigningKeyUpdate) SetRetireAfter(v time.Time) *SigningKeyUpdate {
+	_u.mutation.SetRetireAfter(v)
+	return _u
+}
+
+// SetNillableRetireAfter sets the "retire_after" field if the given value is not nil.
+func (_u *SigningKeyUpdate) SetNillableRetireAfter(v *time.Time) *SigningKeyUpdate {
+	if v != nil {
+		_u.SetRetireAfter(*v)
+	}
+	return _u
+}
+
+// ClearRetireAfter clears the value of the "retire_after" field.
+func (_u *SigningKeyUpdate) ClearRetireAfter() *SigningKeyUpdate {
+	_u.mutation.ClearRetireAfter()
+	return _u
+}
+
 // AddRotationLogIDs adds the "rotation_logs" edge to the KeyRotationLog entity by IDs.
 func (_u *SigningKeyUpdate) AddRotationLogIDs(ids ...string) *SigningKeyUpdate {
 	_u.mutation.AddRotationLogIDs(ids...)
@@ -204,6 +224,12 @@ func (_u *SigningKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	}
 	if _u.mutation.RetiredAtCleared() {
 		_spec.ClearField(signingkey.FieldRetiredAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.RetireAfter(); ok {
+		_spec.SetField(signingkey.FieldRetireAfter, field.TypeTime, value)
+	}
+	if _u.mutation.RetireAfterCleared() {
+		_spec.ClearField(signingkey.FieldRetireAfter, field.TypeTime)
 	}
 	if _u.mutation.RotationLogsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -327,6 +353,26 @@ func (_u *SigningKeyUpdateOne) SetNillableRetiredAt(v *time.Time) *SigningKeyUpd
 // ClearRetiredAt clears the value of the "retired_at" field.
 func (_u *SigningKeyUpdateOne) ClearRetiredAt() *SigningKeyUpdateOne {
 	_u.mutation.ClearRetiredAt()
+	return _u
+}
+
+// SetRetireAfter sets the "retire_after" field.
+func (_u *SigningKeyUpdateOne) SetRetireAfter(v time.Time) *SigningKeyUpdateOne {
+	_u.mutation.SetRetireAfter(v)
+	return _u
+}
+
+// SetNillableRetireAfter sets the "retire_after" field if the given value is not nil.
+func (_u *SigningKeyUpdateOne) SetNillableRetireAfter(v *time.Time) *SigningKeyUpdateOne {
+	if v != nil {
+		_u.SetRetireAfter(*v)
+	}
+	return _u
+}
+
+// ClearRetireAfter clears the value of the "retire_after" field.
+func (_u *SigningKeyUpdateOne) ClearRetireAfter() *SigningKeyUpdateOne {
+	_u.mutation.ClearRetireAfter()
 	return _u
 }
 
@@ -474,6 +520,12 @@ func (_u *SigningKeyUpdateOne) sqlSave(ctx context.Context) (_node *SigningKey, 
 	}
 	if _u.mutation.RetiredAtCleared() {
 		_spec.ClearField(signingkey.FieldRetiredAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.RetireAfter(); ok {
+		_spec.SetField(signingkey.FieldRetireAfter, field.TypeTime, value)
+	}
+	if _u.mutation.RetireAfterCleared() {
+		_spec.ClearField(signingkey.FieldRetireAfter, field.TypeTime)
 	}
 	if _u.mutation.RotationLogsCleared() {
 		edge := &sqlgraph.EdgeSpec{

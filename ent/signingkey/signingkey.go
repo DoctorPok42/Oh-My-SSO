@@ -37,6 +37,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// FieldRetiredAt holds the string denoting the retired_at field in the database.
 	FieldRetiredAt = "retired_at"
+	// FieldRetireAfter holds the string denoting the retire_after field in the database.
+	FieldRetireAfter = "retire_after"
 	// EdgeRealm holds the string denoting the realm edge name in mutations.
 	EdgeRealm = "realm"
 	// EdgeRotationLogs holds the string denoting the rotation_logs edge name in mutations.
@@ -73,6 +75,7 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldRetiredAt,
+	FieldRetireAfter,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -169,6 +172,11 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByRetiredAt orders the results by the retired_at field.
 func ByRetiredAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRetiredAt, opts...).ToFunc()
+}
+
+// ByRetireAfter orders the results by the retire_after field.
+func ByRetireAfter(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRetireAfter, opts...).ToFunc()
 }
 
 // ByRealmField orders the results by realm field.

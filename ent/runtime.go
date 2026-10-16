@@ -432,8 +432,12 @@ func init() {
 	instancesettingsDescNotificationEmailEnabled := instancesettingsFields[11].Descriptor()
 	// instancesettings.DefaultNotificationEmailEnabled holds the default value on creation for the notification_email_enabled field.
 	instancesettings.DefaultNotificationEmailEnabled = instancesettingsDescNotificationEmailEnabled.Default.(bool)
+	// instancesettingsDescKeyRotationGraceHours is the schema descriptor for key_rotation_grace_hours field.
+	instancesettingsDescKeyRotationGraceHours := instancesettingsFields[12].Descriptor()
+	// instancesettings.DefaultKeyRotationGraceHours holds the default value on creation for the key_rotation_grace_hours field.
+	instancesettings.DefaultKeyRotationGraceHours = instancesettingsDescKeyRotationGraceHours.Default.(int)
 	// instancesettingsDescUpdatedAt is the schema descriptor for updated_at field.
-	instancesettingsDescUpdatedAt := instancesettingsFields[12].Descriptor()
+	instancesettingsDescUpdatedAt := instancesettingsFields[13].Descriptor()
 	// instancesettings.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	instancesettings.DefaultUpdatedAt = instancesettingsDescUpdatedAt.Default.(func() time.Time)
 	// instancesettings.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

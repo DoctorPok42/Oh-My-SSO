@@ -38,6 +38,10 @@ func (InstanceSettings) Fields() []ent.Field {
 		field.JSON("ip_allowlist", []string{}).Optional(),
 		field.Bool("mfa_required_globally").Default(false),
 		field.Bool("notification_email_enabled").Default(false),
+		// Grace period of a rotated signing key: how long the old public key
+		// stays in the JWKS so tokens it signed can still be verified. Must
+		// be longer than the longest token lifetime plus the JWKS cache time.
+		field.Int("key_rotation_grace_hours").Default(24),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.String("updated_by").Optional(),
 	}

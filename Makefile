@@ -110,6 +110,25 @@ run-admin:
 	go run ./cmd/idp-admin
 
 # ------------------------------------------------------------------------------
+# Signing keys (Step 8) — same code as POST /r/{realm}/admin/signing-keys/...
+# Not with KEYMANAGER_BACKEND=local_dev for rotate: use the HTTP endpoint then.
+# ------------------------------------------------------------------------------
+
+realm ?= master
+
+## keys-list: List the signing keys of a realm (usage: make keys-list realm=master)
+keys-list:
+	go run ./cmd/idp keys list --realm $(realm)
+
+## keys-rotate: Rotate the JWT signing key of a realm (usage: make keys-rotate realm=master)
+keys-rotate:
+	go run ./cmd/idp keys rotate --realm $(realm)
+
+## keys-retire: Retire the keys whose grace period ended (usage: make keys-retire realm=master)
+keys-retire:
+	go run ./cmd/idp keys retire --realm $(realm)
+
+# ------------------------------------------------------------------------------
 # Tests
 # ------------------------------------------------------------------------------
 
@@ -220,6 +239,7 @@ clean:
 .PHONY: help tools tidy generate \
 	migrate-diff migrate-apply migrate-status migrate-lint \
 	build run run-admin \
+	keys-list keys-rotate keys-retire \
 	test test-integration test-all coverage \
 	lint fmt vuln check check-core-deps \
 	docker-up docker-down docker-reset docker-logs psql dev \

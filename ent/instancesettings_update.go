@@ -216,6 +216,27 @@ func (_u *InstanceSettingsUpdate) SetNillableNotificationEmailEnabled(v *bool) *
 	return _u
 }
 
+// SetKeyRotationGraceHours sets the "key_rotation_grace_hours" field.
+func (_u *InstanceSettingsUpdate) SetKeyRotationGraceHours(v int) *InstanceSettingsUpdate {
+	_u.mutation.ResetKeyRotationGraceHours()
+	_u.mutation.SetKeyRotationGraceHours(v)
+	return _u
+}
+
+// SetNillableKeyRotationGraceHours sets the "key_rotation_grace_hours" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableKeyRotationGraceHours(v *int) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetKeyRotationGraceHours(*v)
+	}
+	return _u
+}
+
+// AddKeyRotationGraceHours adds value to the "key_rotation_grace_hours" field.
+func (_u *InstanceSettingsUpdate) AddKeyRotationGraceHours(v int) *InstanceSettingsUpdate {
+	_u.mutation.AddKeyRotationGraceHours(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdate) SetUpdatedAt(v time.Time) *InstanceSettingsUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -358,6 +379,12 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.NotificationEmailEnabled(); ok {
 		_spec.SetField(instancesettings.FieldNotificationEmailEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.KeyRotationGraceHours(); ok {
+		_spec.SetField(instancesettings.FieldKeyRotationGraceHours, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedKeyRotationGraceHours(); ok {
+		_spec.AddField(instancesettings.FieldKeyRotationGraceHours, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)
@@ -574,6 +601,27 @@ func (_u *InstanceSettingsUpdateOne) SetNillableNotificationEmailEnabled(v *bool
 	return _u
 }
 
+// SetKeyRotationGraceHours sets the "key_rotation_grace_hours" field.
+func (_u *InstanceSettingsUpdateOne) SetKeyRotationGraceHours(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.ResetKeyRotationGraceHours()
+	_u.mutation.SetKeyRotationGraceHours(v)
+	return _u
+}
+
+// SetNillableKeyRotationGraceHours sets the "key_rotation_grace_hours" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableKeyRotationGraceHours(v *int) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetKeyRotationGraceHours(*v)
+	}
+	return _u
+}
+
+// AddKeyRotationGraceHours adds value to the "key_rotation_grace_hours" field.
+func (_u *InstanceSettingsUpdateOne) AddKeyRotationGraceHours(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.AddKeyRotationGraceHours(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdateOne) SetUpdatedAt(v time.Time) *InstanceSettingsUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -746,6 +794,12 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.NotificationEmailEnabled(); ok {
 		_spec.SetField(instancesettings.FieldNotificationEmailEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.KeyRotationGraceHours(); ok {
+		_spec.SetField(instancesettings.FieldKeyRotationGraceHours, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedKeyRotationGraceHours(); ok {
+		_spec.AddField(instancesettings.FieldKeyRotationGraceHours, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)
