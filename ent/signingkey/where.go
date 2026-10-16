@@ -124,6 +124,11 @@ func RetiredAt(v time.Time) predicate.SigningKey {
 	return predicate.SigningKey(sql.FieldEQ(FieldRetiredAt, v))
 }
 
+// RetireAfter applies equality check predicate on the "retire_after" field. It's identical to RetireAfterEQ.
+func RetireAfter(v time.Time) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldEQ(FieldRetireAfter, v))
+}
+
 // RealmIDEQ applies the EQ predicate on the "realm_id" field.
 func RealmIDEQ(v string) predicate.SigningKey {
 	return predicate.SigningKey(sql.FieldEQ(FieldRealmID, v))
@@ -839,6 +844,56 @@ func RetiredAtIsNil() predicate.SigningKey {
 // RetiredAtNotNil applies the NotNil predicate on the "retired_at" field.
 func RetiredAtNotNil() predicate.SigningKey {
 	return predicate.SigningKey(sql.FieldNotNull(FieldRetiredAt))
+}
+
+// RetireAfterEQ applies the EQ predicate on the "retire_after" field.
+func RetireAfterEQ(v time.Time) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldEQ(FieldRetireAfter, v))
+}
+
+// RetireAfterNEQ applies the NEQ predicate on the "retire_after" field.
+func RetireAfterNEQ(v time.Time) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldNEQ(FieldRetireAfter, v))
+}
+
+// RetireAfterIn applies the In predicate on the "retire_after" field.
+func RetireAfterIn(vs ...time.Time) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldIn(FieldRetireAfter, vs...))
+}
+
+// RetireAfterNotIn applies the NotIn predicate on the "retire_after" field.
+func RetireAfterNotIn(vs ...time.Time) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldNotIn(FieldRetireAfter, vs...))
+}
+
+// RetireAfterGT applies the GT predicate on the "retire_after" field.
+func RetireAfterGT(v time.Time) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldGT(FieldRetireAfter, v))
+}
+
+// RetireAfterGTE applies the GTE predicate on the "retire_after" field.
+func RetireAfterGTE(v time.Time) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldGTE(FieldRetireAfter, v))
+}
+
+// RetireAfterLT applies the LT predicate on the "retire_after" field.
+func RetireAfterLT(v time.Time) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldLT(FieldRetireAfter, v))
+}
+
+// RetireAfterLTE applies the LTE predicate on the "retire_after" field.
+func RetireAfterLTE(v time.Time) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldLTE(FieldRetireAfter, v))
+}
+
+// RetireAfterIsNil applies the IsNil predicate on the "retire_after" field.
+func RetireAfterIsNil() predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldIsNull(FieldRetireAfter))
+}
+
+// RetireAfterNotNil applies the NotNil predicate on the "retire_after" field.
+func RetireAfterNotNil() predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldNotNull(FieldRetireAfter))
 }
 
 // HasRealm applies the HasEdge predicate on the "realm" edge.

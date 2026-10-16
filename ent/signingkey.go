@@ -41,6 +41,8 @@ type SigningKey struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// RetiredAt holds the value of the "retired_at" field.
 	RetiredAt time.Time `json:"retired_at,omitempty"`
+	// RetireAfter holds the value of the "retire_after" field.
+	RetireAfter time.Time `json:"retire_after,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the SigningKeyQuery when eager-loading is set.
 	Edges        SigningKeyEdges `json:"edges"`
@@ -85,7 +87,7 @@ func (*SigningKey) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case signingkey.FieldID, signingkey.FieldRealmID, signingkey.FieldKeyType, signingkey.FieldPurpose, signingkey.FieldKmsKeyReference, signingkey.FieldKmsBackend, signingkey.FieldPublicKey, signingkey.FieldKid, signingkey.FieldStatus:
 			values[i] = new(sql.NullString)
-		case signingkey.FieldCreatedAt, signingkey.FieldUpdatedAt, signingkey.FieldRetiredAt:
+		case signingkey.FieldCreatedAt, signingkey.FieldUpdatedAt, signingkey.FieldRetiredAt, signingkey.FieldRetireAfter:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -174,6 +176,12 @@ func (_m *SigningKey) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.RetiredAt = value.Time
 			}
+		case signingkey.FieldRetireAfter:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field retire_after", values[i])
+			} else if value.Valid {
+				_m.RetireAfter = value.Time
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -252,6 +260,9 @@ func (_m *SigningKey) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("retired_at=")
 	builder.WriteString(_m.RetiredAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("retire_after=")
+	builder.WriteString(_m.RetireAfter.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

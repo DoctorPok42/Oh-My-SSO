@@ -39,4 +39,7 @@ type SigningKey struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	RetiredAt       time.Time
+	// RetireAfter is the end of the grace period of a "rotating" key (zero
+	// for an "active" key). After it, the key leaves the JWKS.
+	RetireAfter time.Time
 }

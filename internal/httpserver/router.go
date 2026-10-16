@@ -19,6 +19,24 @@ type Server struct {
 	realms      repository.RealmRepository
 	clients     repository.ClientRepository
 	rateLimiter ratelimit.Limiter
+
+	// Optional, set with options (Step 8). Their routes are only mounted
+	// when provided, so existing callers of New keep working unchanged.
+	publicKeys PublicKeySource
+	keyRotator KeyRotator
+}
+
+// Option configures optional parts of the Server.
+type Option func(*Server)
+
+// WithJWKS mounts GET /r/{realm}/.well-known/jwks.json.
+func WithJWKS(src PublicKeySource) Option {
+	return func(s *Server) { s.publicKeys = src }
+}
+
+// WithSigningKeyAdmin mounts /r/{realm}/admin/signing-keys/... (RBAC protected).
+func WithSigningKeyAdmin(rot KeyRotator) Option {
+	return func(s *Server) { s.keyRotator = rot }
 }
 
 func New(
@@ -28,6 +46,7 @@ func New(
 	realms repository.RealmRepository,
 	clients repository.ClientRepository,
 	rateLimiter ratelimit.Limiter,
+	opts ...Option,
 ) *Server {
 	s := &Server{
 		router:      chi.NewRouter(),
@@ -37,6 +56,9 @@ func New(
 		realms:      realms,
 		clients:     clients,
 		rateLimiter: rateLimiter,
+	}
+	for _, opt := range opts {
+		opt(s)
 	}
 
 	s.router.Use(middleware.RequestID)
@@ -48,6 +70,12 @@ func New(
 	s.router.Route("/r/{realmName}", func(r chi.Router) {
 		r.Use(s.realmMiddleware)
 		s.mountAuth(r)
+		if s.publicKeys != nil {
+			s.mountJWKS(r)
+		}
+		if s.keyRotator != nil {
+			s.mountSigningKeyAdmin(r)
+		}
 	})
 
 	return s

@@ -13094,6 +13094,8 @@ type InstanceSettingsMutation struct {
 	appendip_allowlist          []string
 	mfa_required_globally       *bool
 	notification_email_enabled  *bool
+	key_rotation_grace_hours    *int
+	addkey_rotation_grace_hours *int
 	updated_at                  *time.Time
 	updated_by                  *string
 	clearedFields               map[string]struct{}
@@ -13753,6 +13755,62 @@ func (m *InstanceSettingsMutation) ResetNotificationEmailEnabled() {
 	m.notification_email_enabled = nil
 }
 
+// SetKeyRotationGraceHours sets the "key_rotation_grace_hours" field.
+func (m *InstanceSettingsMutation) SetKeyRotationGraceHours(i int) {
+	m.key_rotation_grace_hours = &i
+	m.addkey_rotation_grace_hours = nil
+}
+
+// KeyRotationGraceHours returns the value of the "key_rotation_grace_hours" field in the mutation.
+func (m *InstanceSettingsMutation) KeyRotationGraceHours() (r int, exists bool) {
+	v := m.key_rotation_grace_hours
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKeyRotationGraceHours returns the old "key_rotation_grace_hours" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldKeyRotationGraceHours(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKeyRotationGraceHours is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKeyRotationGraceHours requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeyRotationGraceHours: %w", err)
+	}
+	return oldValue.KeyRotationGraceHours, nil
+}
+
+// AddKeyRotationGraceHours adds i to the "key_rotation_grace_hours" field.
+func (m *InstanceSettingsMutation) AddKeyRotationGraceHours(i int) {
+	if m.addkey_rotation_grace_hours != nil {
+		*m.addkey_rotation_grace_hours += i
+	} else {
+		m.addkey_rotation_grace_hours = &i
+	}
+}
+
+// AddedKeyRotationGraceHours returns the value that was added to the "key_rotation_grace_hours" field in this mutation.
+func (m *InstanceSettingsMutation) AddedKeyRotationGraceHours() (r int, exists bool) {
+	v := m.addkey_rotation_grace_hours
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetKeyRotationGraceHours resets all changes to the "key_rotation_grace_hours" field.
+func (m *InstanceSettingsMutation) ResetKeyRotationGraceHours() {
+	m.key_rotation_grace_hours = nil
+	m.addkey_rotation_grace_hours = nil
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (m *InstanceSettingsMutation) SetUpdatedAt(t time.Time) {
 	m.updated_at = &t
@@ -13899,7 +13957,7 @@ func (m *InstanceSettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstanceSettingsMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 14)
 	if m.realm != nil {
 		fields = append(fields, instancesettings.FieldRealmID)
 	}
@@ -13932,6 +13990,9 @@ func (m *InstanceSettingsMutation) Fields() []string {
 	}
 	if m.notification_email_enabled != nil {
 		fields = append(fields, instancesettings.FieldNotificationEmailEnabled)
+	}
+	if m.key_rotation_grace_hours != nil {
+		fields = append(fields, instancesettings.FieldKeyRotationGraceHours)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, instancesettings.FieldUpdatedAt)
@@ -13969,6 +14030,8 @@ func (m *InstanceSettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.MfaRequiredGlobally()
 	case instancesettings.FieldNotificationEmailEnabled:
 		return m.NotificationEmailEnabled()
+	case instancesettings.FieldKeyRotationGraceHours:
+		return m.KeyRotationGraceHours()
 	case instancesettings.FieldUpdatedAt:
 		return m.UpdatedAt()
 	case instancesettings.FieldUpdatedBy:
@@ -14004,6 +14067,8 @@ func (m *InstanceSettingsMutation) OldField(ctx context.Context, name string) (e
 		return m.OldMfaRequiredGlobally(ctx)
 	case instancesettings.FieldNotificationEmailEnabled:
 		return m.OldNotificationEmailEnabled(ctx)
+	case instancesettings.FieldKeyRotationGraceHours:
+		return m.OldKeyRotationGraceHours(ctx)
 	case instancesettings.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
 	case instancesettings.FieldUpdatedBy:
@@ -14094,6 +14159,13 @@ func (m *InstanceSettingsMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetNotificationEmailEnabled(v)
 		return nil
+	case instancesettings.FieldKeyRotationGraceHours:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeyRotationGraceHours(v)
+		return nil
 	case instancesettings.FieldUpdatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -14134,6 +14206,9 @@ func (m *InstanceSettingsMutation) AddedFields() []string {
 	if m.addlockout_duration_minutes != nil {
 		fields = append(fields, instancesettings.FieldLockoutDurationMinutes)
 	}
+	if m.addkey_rotation_grace_hours != nil {
+		fields = append(fields, instancesettings.FieldKeyRotationGraceHours)
+	}
 	return fields
 }
 
@@ -14154,6 +14229,8 @@ func (m *InstanceSettingsMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedLockoutThreshold()
 	case instancesettings.FieldLockoutDurationMinutes:
 		return m.AddedLockoutDurationMinutes()
+	case instancesettings.FieldKeyRotationGraceHours:
+		return m.AddedKeyRotationGraceHours()
 	}
 	return nil, false
 }
@@ -14204,6 +14281,13 @@ func (m *InstanceSettingsMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddLockoutDurationMinutes(v)
+		return nil
+	case instancesettings.FieldKeyRotationGraceHours:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddKeyRotationGraceHours(v)
 		return nil
 	}
 	return fmt.Errorf("unknown InstanceSettings numeric field %s", name)
@@ -14279,6 +14363,9 @@ func (m *InstanceSettingsMutation) ResetField(name string) error {
 		return nil
 	case instancesettings.FieldNotificationEmailEnabled:
 		m.ResetNotificationEmailEnabled()
+		return nil
+	case instancesettings.FieldKeyRotationGraceHours:
+		m.ResetKeyRotationGraceHours()
 		return nil
 	case instancesettings.FieldUpdatedAt:
 		m.ResetUpdatedAt()
@@ -24055,6 +24142,7 @@ type SigningKeyMutation struct {
 	created_at           *time.Time
 	updated_at           *time.Time
 	retired_at           *time.Time
+	retire_after         *time.Time
 	clearedFields        map[string]struct{}
 	realm                *string
 	clearedrealm         bool
@@ -24592,6 +24680,55 @@ func (m *SigningKeyMutation) ResetRetiredAt() {
 	delete(m.clearedFields, signingkey.FieldRetiredAt)
 }
 
+// SetRetireAfter sets the "retire_after" field.
+func (m *SigningKeyMutation) SetRetireAfter(t time.Time) {
+	m.retire_after = &t
+}
+
+// RetireAfter returns the value of the "retire_after" field in the mutation.
+func (m *SigningKeyMutation) RetireAfter() (r time.Time, exists bool) {
+	v := m.retire_after
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRetireAfter returns the old "retire_after" field's value of the SigningKey entity.
+// If the SigningKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SigningKeyMutation) OldRetireAfter(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRetireAfter is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRetireAfter requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRetireAfter: %w", err)
+	}
+	return oldValue.RetireAfter, nil
+}
+
+// ClearRetireAfter clears the value of the "retire_after" field.
+func (m *SigningKeyMutation) ClearRetireAfter() {
+	m.retire_after = nil
+	m.clearedFields[signingkey.FieldRetireAfter] = struct{}{}
+}
+
+// RetireAfterCleared returns if the "retire_after" field was cleared in this mutation.
+func (m *SigningKeyMutation) RetireAfterCleared() bool {
+	_, ok := m.clearedFields[signingkey.FieldRetireAfter]
+	return ok
+}
+
+// ResetRetireAfter resets all changes to the "retire_after" field.
+func (m *SigningKeyMutation) ResetRetireAfter() {
+	m.retire_after = nil
+	delete(m.clearedFields, signingkey.FieldRetireAfter)
+}
+
 // ClearRealm clears the "realm" edge to the Realm entity.
 func (m *SigningKeyMutation) ClearRealm() {
 	m.clearedrealm = true
@@ -24707,7 +24844,7 @@ func (m *SigningKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SigningKeyMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.realm != nil {
 		fields = append(fields, signingkey.FieldRealmID)
 	}
@@ -24741,6 +24878,9 @@ func (m *SigningKeyMutation) Fields() []string {
 	if m.retired_at != nil {
 		fields = append(fields, signingkey.FieldRetiredAt)
 	}
+	if m.retire_after != nil {
+		fields = append(fields, signingkey.FieldRetireAfter)
+	}
 	return fields
 }
 
@@ -24771,6 +24911,8 @@ func (m *SigningKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case signingkey.FieldRetiredAt:
 		return m.RetiredAt()
+	case signingkey.FieldRetireAfter:
+		return m.RetireAfter()
 	}
 	return nil, false
 }
@@ -24802,6 +24944,8 @@ func (m *SigningKeyMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldUpdatedAt(ctx)
 	case signingkey.FieldRetiredAt:
 		return m.OldRetiredAt(ctx)
+	case signingkey.FieldRetireAfter:
+		return m.OldRetireAfter(ctx)
 	}
 	return nil, fmt.Errorf("unknown SigningKey field %s", name)
 }
@@ -24888,6 +25032,13 @@ func (m *SigningKeyMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetRetiredAt(v)
 		return nil
+	case signingkey.FieldRetireAfter:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRetireAfter(v)
+		return nil
 	}
 	return fmt.Errorf("unknown SigningKey field %s", name)
 }
@@ -24924,6 +25075,9 @@ func (m *SigningKeyMutation) ClearedFields() []string {
 	if m.FieldCleared(signingkey.FieldRetiredAt) {
 		fields = append(fields, signingkey.FieldRetiredAt)
 	}
+	if m.FieldCleared(signingkey.FieldRetireAfter) {
+		fields = append(fields, signingkey.FieldRetireAfter)
+	}
 	return fields
 }
 
@@ -24943,6 +25097,9 @@ func (m *SigningKeyMutation) ClearField(name string) error {
 		return nil
 	case signingkey.FieldRetiredAt:
 		m.ClearRetiredAt()
+		return nil
+	case signingkey.FieldRetireAfter:
+		m.ClearRetireAfter()
 		return nil
 	}
 	return fmt.Errorf("unknown SigningKey nullable field %s", name)
@@ -24984,6 +25141,9 @@ func (m *SigningKeyMutation) ResetField(name string) error {
 		return nil
 	case signingkey.FieldRetiredAt:
 		m.ResetRetiredAt()
+		return nil
+	case signingkey.FieldRetireAfter:
+		m.ResetRetireAfter()
 		return nil
 	}
 	return fmt.Errorf("unknown SigningKey field %s", name)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -23,7 +24,9 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-func buildKeyManager() keymanager.KeyManager {
+// buildKeyManager returns the KeyManager and the backend name stored on each
+// SigningKey it creates (SigningKey.kms_backend).
+func buildKeyManager() (keymanager.KeyManager, string) {
 	switch backend := os.Getenv("KEYMANAGER_BACKEND"); backend {
 	case "vault":
 		km, err := vault.New(vault.Config{
@@ -33,7 +36,7 @@ func buildKeyManager() keymanager.KeyManager {
 		if err != nil {
 			log.Fatalf("keymanager: %v", err)
 		}
-		return km
+		return km, backend
 	case "ovhkms":
 		okmsID, err := uuid.Parse(os.Getenv("OVHKMS_DOMAIN_ID"))
 		if err != nil {
@@ -48,12 +51,12 @@ func buildKeyManager() keymanager.KeyManager {
 		if err != nil {
 			log.Fatalf("keymanager: %v", err)
 		}
-		return km
+		return km, backend
 	case "local_dev", "":
-		return localdev.New(os.Getenv("APP_ENV"))
+		return localdev.New(os.Getenv("APP_ENV")), backendLocalDev
 	default:
 		log.Fatalf("keymanager: unknown backend %q", backend)
-		return nil
+		return nil, ""
 	}
 }
 
@@ -66,7 +69,27 @@ func buildEntClient() *ent.Client {
 	return ent.NewClient(ent.Driver(drv))
 }
 
+const backendLocalDev = "local_dev"
+
+// main dispatches between the two modes of the binary:
+//
+//	idp            (or "idp serve") start the HTTP server
+//	idp keys ...   manage signing keys from the command line (see keys.go)
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "serve":
+		case "keys":
+			os.Exit(runKeysCommand(os.Args[2:]))
+		default:
+			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|retire|list> [flags]\n", os.Args[1])
+			os.Exit(2)
+		}
+	}
+	serve()
+}
+
+func serve() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -75,7 +98,7 @@ func main() {
 	client := buildEntClient()
 	defer client.Close()
 
-	keyManager := buildKeyManager()
+	keyManager, kmsBackend := buildKeyManager()
 
 	timeouts := service.NoActiveTimeouts{}
 
@@ -83,6 +106,8 @@ func main() {
 	clientRepo := entstore.NewClientRepository(client)
 	realmRepo := entstore.NewRealmRepository(client)
 	tokenRepo := entstore.NewTokenRepository(client)
+	signingKeyRepo := entstore.NewSigningKeyRepository(client)
+	settingsRepo := entstore.NewInstanceSettingsRepository(client)
 
 	authService := service.NewAuthService(
 		userRepo,
@@ -97,7 +122,7 @@ func main() {
 
 	sessionService := service.NewSessionService(
 		entstore.NewSessionRepository(client),
-		entstore.NewInstanceSettingsRepository(client),
+		settingsRepo,
 		tokenRepo,
 		valkeycache.NewSessionCache(valkeyClient),
 	)
@@ -105,6 +130,14 @@ func main() {
 	rbacService := service.NewRBACService(
 		entstore.NewAccessRepository(client),
 		entstore.NewAuditLogRepository(client),
+	)
+
+	keyRotation := service.NewKeyRotationService(
+		signingKeyRepo,
+		entstore.NewKeyRotationLogRepository(client),
+		settingsRepo,
+		keyManager,
+		kmsBackend,
 	)
 
 	identityCore := service.NewIdentityCore(service.IdentityCoreDeps{
@@ -115,11 +148,10 @@ func main() {
 		Clients:     clientRepo,
 		Realms:      realmRepo,
 		Tokens:      tokenRepo,
-		SigningKeys: entstore.NewSigningKeyRepository(client),
+		SigningKeys: signingKeyRepo,
 		KeyManager:  keyManager,
 		Timeouts:    timeouts,
 	})
-	_ = identityCore
 
 	srv := httpserver.New(
 		authService,
@@ -128,6 +160,8 @@ func main() {
 		realmRepo,
 		clientRepo,
 		valkeycache.NewRateLimiter(valkeyClient),
+		httpserver.WithJWKS(identityCore),
+		httpserver.WithSigningKeyAdmin(keyRotation),
 	)
 
 	log.Printf("Starting server on port %s...", port)

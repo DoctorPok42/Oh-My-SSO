@@ -160,6 +160,20 @@ func (_c *InstanceSettingsCreate) SetNillableNotificationEmailEnabled(v *bool) *
 	return _c
 }
 
+// SetKeyRotationGraceHours sets the "key_rotation_grace_hours" field.
+func (_c *InstanceSettingsCreate) SetKeyRotationGraceHours(v int) *InstanceSettingsCreate {
+	_c.mutation.SetKeyRotationGraceHours(v)
+	return _c
+}
+
+// SetNillableKeyRotationGraceHours sets the "key_rotation_grace_hours" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableKeyRotationGraceHours(v *int) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetKeyRotationGraceHours(*v)
+	}
+	return _c
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_c *InstanceSettingsCreate) SetUpdatedAt(v time.Time) *InstanceSettingsCreate {
 	_c.mutation.SetUpdatedAt(v)
@@ -278,6 +292,10 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultNotificationEmailEnabled
 		_c.mutation.SetNotificationEmailEnabled(v)
 	}
+	if _, ok := _c.mutation.KeyRotationGraceHours(); !ok {
+		v := instancesettings.DefaultKeyRotationGraceHours
+		_c.mutation.SetKeyRotationGraceHours(v)
+	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := instancesettings.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
@@ -324,6 +342,9 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.NotificationEmailEnabled(); !ok {
 		return &ValidationError{Name: "notification_email_enabled", err: errors.New(`ent: missing required field "InstanceSettings.notification_email_enabled"`)}
+	}
+	if _, ok := _c.mutation.KeyRotationGraceHours(); !ok {
+		return &ValidationError{Name: "key_rotation_grace_hours", err: errors.New(`ent: missing required field "InstanceSettings.key_rotation_grace_hours"`)}
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "InstanceSettings.updated_at"`)}
@@ -410,6 +431,10 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.NotificationEmailEnabled(); ok {
 		_spec.SetField(instancesettings.FieldNotificationEmailEnabled, field.TypeBool, value)
 		_node.NotificationEmailEnabled = value
+	}
+	if value, ok := _c.mutation.KeyRotationGraceHours(); ok {
+		_spec.SetField(instancesettings.FieldKeyRotationGraceHours, field.TypeInt, value)
+		_node.KeyRotationGraceHours = value
 	}
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

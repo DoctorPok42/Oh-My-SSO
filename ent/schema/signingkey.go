@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 	"github.com/google/uuid"
 )
 
@@ -56,6 +57,20 @@ func (SigningKey) Fields() []ent.Field {
 		field.Time("created_at").Default(func() time.Time { return time.Now() }).Immutable(),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.Time("retired_at").Optional(),
+		// retire_after is the end of the grace period of a "rotating" key.
+		// It is set once, when the key leaves "active", from the realm's
+		// key_rotation_grace_hours. Storing the deadline on the key (instead
+		// of recomputing it) means changing the realm setting later never
+		// shortens the grace period of a key that is already rotating.
+		field.Time("retire_after").Optional(),
+	}
+}
+
+func (SigningKey) Indexes() []ent.Index {
+	return []ent.Index{
+		// JWKS endpoint and Signer: "keys of this realm, for this purpose,
+		// with this status". Without it, every JWKS request scans the table.
+		index.Fields("realm_id", "purpose", "status"),
 	}
 }
 
