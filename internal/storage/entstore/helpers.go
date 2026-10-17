@@ -1,6 +1,8 @@
 package entstore
 
 import (
+	"time"
+
 	"sso.internal/sso/ent"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -10,6 +12,13 @@ func nonEmpty(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+func nonZeroTime(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t
 }
 
 func mapNotFound(err error) error {

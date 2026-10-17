@@ -77,6 +77,11 @@ func Type(v schema.MfaMethodType) predicate.MfaMethod {
 	return predicate.MfaMethod(sql.FieldEQ(FieldType, vc))
 }
 
+// Name applies equality check predicate on the "name" field. It's identical to NameEQ.
+func Name(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldEQ(FieldName, v))
+}
+
 // SecretEncrypted applies equality check predicate on the "secret_encrypted" field. It's identical to SecretEncryptedEQ.
 func SecretEncrypted(v string) predicate.MfaMethod {
 	return predicate.MfaMethod(sql.FieldEQ(FieldSecretEncrypted, v))
@@ -116,6 +121,11 @@ func UpdatedAt(v time.Time) predicate.MfaMethod {
 // LastUsedAt applies equality check predicate on the "last_used_at" field. It's identical to LastUsedAtEQ.
 func LastUsedAt(v time.Time) predicate.MfaMethod {
 	return predicate.MfaMethod(sql.FieldEQ(FieldLastUsedAt, v))
+}
+
+// LastUsedCounter applies equality check predicate on the "last_used_counter" field. It's identical to LastUsedCounterEQ.
+func LastUsedCounter(v int64) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldEQ(FieldLastUsedCounter, v))
 }
 
 // UserIDEQ applies the EQ predicate on the "user_id" field.
@@ -265,6 +275,81 @@ func TypeEqualFold(v schema.MfaMethodType) predicate.MfaMethod {
 func TypeContainsFold(v schema.MfaMethodType) predicate.MfaMethod {
 	vc := string(v)
 	return predicate.MfaMethod(sql.FieldContainsFold(FieldType, vc))
+}
+
+// NameEQ applies the EQ predicate on the "name" field.
+func NameEQ(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldEQ(FieldName, v))
+}
+
+// NameNEQ applies the NEQ predicate on the "name" field.
+func NameNEQ(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldNEQ(FieldName, v))
+}
+
+// NameIn applies the In predicate on the "name" field.
+func NameIn(vs ...string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldIn(FieldName, vs...))
+}
+
+// NameNotIn applies the NotIn predicate on the "name" field.
+func NameNotIn(vs ...string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldNotIn(FieldName, vs...))
+}
+
+// NameGT applies the GT predicate on the "name" field.
+func NameGT(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldGT(FieldName, v))
+}
+
+// NameGTE applies the GTE predicate on the "name" field.
+func NameGTE(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldGTE(FieldName, v))
+}
+
+// NameLT applies the LT predicate on the "name" field.
+func NameLT(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldLT(FieldName, v))
+}
+
+// NameLTE applies the LTE predicate on the "name" field.
+func NameLTE(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldLTE(FieldName, v))
+}
+
+// NameContains applies the Contains predicate on the "name" field.
+func NameContains(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldContains(FieldName, v))
+}
+
+// NameHasPrefix applies the HasPrefix predicate on the "name" field.
+func NameHasPrefix(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldHasPrefix(FieldName, v))
+}
+
+// NameHasSuffix applies the HasSuffix predicate on the "name" field.
+func NameHasSuffix(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldHasSuffix(FieldName, v))
+}
+
+// NameIsNil applies the IsNil predicate on the "name" field.
+func NameIsNil() predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldIsNull(FieldName))
+}
+
+// NameNotNil applies the NotNil predicate on the "name" field.
+func NameNotNil() predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldNotNull(FieldName))
+}
+
+// NameEqualFold applies the EqualFold predicate on the "name" field.
+func NameEqualFold(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldEqualFold(FieldName, v))
+}
+
+// NameContainsFold applies the ContainsFold predicate on the "name" field.
+func NameContainsFold(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldContainsFold(FieldName, v))
 }
 
 // SecretEncryptedEQ applies the EQ predicate on the "secret_encrypted" field.
@@ -714,6 +799,46 @@ func LastUsedAtIsNil() predicate.MfaMethod {
 // LastUsedAtNotNil applies the NotNil predicate on the "last_used_at" field.
 func LastUsedAtNotNil() predicate.MfaMethod {
 	return predicate.MfaMethod(sql.FieldNotNull(FieldLastUsedAt))
+}
+
+// LastUsedCounterEQ applies the EQ predicate on the "last_used_counter" field.
+func LastUsedCounterEQ(v int64) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldEQ(FieldLastUsedCounter, v))
+}
+
+// LastUsedCounterNEQ applies the NEQ predicate on the "last_used_counter" field.
+func LastUsedCounterNEQ(v int64) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldNEQ(FieldLastUsedCounter, v))
+}
+
+// LastUsedCounterIn applies the In predicate on the "last_used_counter" field.
+func LastUsedCounterIn(vs ...int64) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldIn(FieldLastUsedCounter, vs...))
+}
+
+// LastUsedCounterNotIn applies the NotIn predicate on the "last_used_counter" field.
+func LastUsedCounterNotIn(vs ...int64) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldNotIn(FieldLastUsedCounter, vs...))
+}
+
+// LastUsedCounterGT applies the GT predicate on the "last_used_counter" field.
+func LastUsedCounterGT(v int64) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldGT(FieldLastUsedCounter, v))
+}
+
+// LastUsedCounterGTE applies the GTE predicate on the "last_used_counter" field.
+func LastUsedCounterGTE(v int64) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldGTE(FieldLastUsedCounter, v))
+}
+
+// LastUsedCounterLT applies the LT predicate on the "last_used_counter" field.
+func LastUsedCounterLT(v int64) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldLT(FieldLastUsedCounter, v))
+}
+
+// LastUsedCounterLTE applies the LTE predicate on the "last_used_counter" field.
+func LastUsedCounterLTE(v int64) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldLTE(FieldLastUsedCounter, v))
 }
 
 // HasOwner applies the HasEdge predicate on the "owner" edge.

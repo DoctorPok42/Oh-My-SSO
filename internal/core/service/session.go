@@ -87,6 +87,8 @@ type CreateSessionInput struct {
 	AuthMethod    string
 	MFAVerified   bool
 	MFAMethodType string
+	// MFAVerifiedAt defaults to "now" when MFAVerified is true.
+	MFAVerifiedAt time.Time
 }
 
 func (s *SessionService) Create(ctx context.Context, in CreateSessionInput) (rawToken string, sess *domain.Session, err error) {
@@ -96,6 +98,10 @@ func (s *SessionService) Create(ctx context.Context, in CreateSessionInput) (raw
 	authMethod := in.AuthMethod
 	if authMethod == "" {
 		authMethod = domain.AuthMethodPassword
+	}
+	mfaAt := in.MFAVerifiedAt
+	if in.MFAVerified && mfaAt.IsZero() {
+		mfaAt = s.now()
 	}
 
 	sess, err = s.sessions.Create(ctx, repository.CreateSessionParams{
@@ -107,6 +113,7 @@ func (s *SessionService) Create(ctx context.Context, in CreateSessionInput) (raw
 		UserAgent:     in.UserAgent,
 		MFAVerified:   in.MFAVerified,
 		MFAMethodType: in.MFAMethodType,
+		MFAVerifiedAt: mfaAt,
 		AuthMethod:    authMethod,
 	})
 	if err != nil {
@@ -221,6 +228,39 @@ func (s *SessionService) GetActive(ctx context.Context, sessionID string) (*doma
 		return nil, ErrSessionInvalid
 	}
 	return sess, nil
+}
+
+// MarkMFAVerified upgrades an active session after a successful second
+// factor (step-up, or first enrollment). The session keeps its id and its
+// tokens; only mfa_verified, mfa_method_type and mfa_verified_at change.
+//
+// The cache is rewritten with the fresh values (update if present, create
+// otherwise). If a concurrent request writes a stale copy afterwards, the
+// worst case is "MFA not verified" until the next step-up: it fails closed,
+// never open.
+func (s *SessionService) MarkMFAVerified(ctx context.Context, sess *domain.Session, method string) (*domain.Session, error) {
+	at := s.now()
+	if err := s.sessions.MarkMFAVerified(ctx, sess.ID, method, at); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, ErrSessionInvalid
+		}
+		return nil, fmt.Errorf("mark mfa verified: %w", err)
+	}
+	upd := *sess
+	upd.MFAVerified = true
+	upd.MFAMethodType = method
+	upd.MFAVerifiedAt = at
+
+	if upd.TokenHash != "" {
+		entry := sessioncache.EntryFromSession(&upd)
+		if err := s.cache.Refresh(ctx, upd.TokenHash, entry, s.ttl(&upd)); err != nil {
+			s.logger.WarnContext(ctx, "session cache refresh failed", "session_id", upd.ID, "error", err)
+		}
+		if err := s.cache.Fill(ctx, upd.TokenHash, entry, s.ttl(&upd)); err != nil {
+			s.logger.WarnContext(ctx, "session cache fill failed", "session_id", upd.ID, "error", err)
+		}
+	}
+	return &upd, nil
 }
 
 func (s *SessionService) Revoke(ctx context.Context, sessionID string, reason domain.SessionRevokedReason) error {

@@ -17,6 +17,7 @@ import (
 	"sso.internal/sso/ent/group"
 	"sso.internal/sso/ent/identityprovider"
 	"sso.internal/sso/ent/instancesettings"
+	"sso.internal/sso/ent/mfapolicy"
 	"sso.internal/sso/ent/permission"
 	"sso.internal/sso/ent/predicate"
 	"sso.internal/sso/ent/realm"
@@ -299,6 +300,21 @@ func (_u *RealmUpdate) AddTimeouts(v ...*Timeout) *RealmUpdate {
 	return _u.AddTimeoutIDs(ids...)
 }
 
+// AddMfaPolicyIDs adds the "mfa_policies" edge to the MfaPolicy entity by IDs.
+func (_u *RealmUpdate) AddMfaPolicyIDs(ids ...string) *RealmUpdate {
+	_u.mutation.AddMfaPolicyIDs(ids...)
+	return _u
+}
+
+// AddMfaPolicies adds the "mfa_policies" edges to the MfaPolicy entity.
+func (_u *RealmUpdate) AddMfaPolicies(v ...*MfaPolicy) *RealmUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMfaPolicyIDs(ids...)
+}
+
 // Mutation returns the RealmMutation object of the builder.
 func (_u *RealmUpdate) Mutation() *RealmMutation {
 	return _u.mutation
@@ -539,6 +555,27 @@ func (_u *RealmUpdate) RemoveTimeouts(v ...*Timeout) *RealmUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveTimeoutIDs(ids...)
+}
+
+// ClearMfaPolicies clears all "mfa_policies" edges to the MfaPolicy entity.
+func (_u *RealmUpdate) ClearMfaPolicies() *RealmUpdate {
+	_u.mutation.ClearMfaPolicies()
+	return _u
+}
+
+// RemoveMfaPolicyIDs removes the "mfa_policies" edge to MfaPolicy entities by IDs.
+func (_u *RealmUpdate) RemoveMfaPolicyIDs(ids ...string) *RealmUpdate {
+	_u.mutation.RemoveMfaPolicyIDs(ids...)
+	return _u
+}
+
+// RemoveMfaPolicies removes "mfa_policies" edges to MfaPolicy entities.
+func (_u *RealmUpdate) RemoveMfaPolicies(v ...*MfaPolicy) *RealmUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMfaPolicyIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -1144,6 +1181,51 @@ func (_u *RealmUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.MfaPoliciesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.MfaPoliciesTable,
+			Columns: []string{realm.MfaPoliciesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMfaPoliciesIDs(); len(nodes) > 0 && !_u.mutation.MfaPoliciesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.MfaPoliciesTable,
+			Columns: []string{realm.MfaPoliciesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MfaPoliciesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.MfaPoliciesTable,
+			Columns: []string{realm.MfaPoliciesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{realm.Label}
@@ -1422,6 +1504,21 @@ func (_u *RealmUpdateOne) AddTimeouts(v ...*Timeout) *RealmUpdateOne {
 	return _u.AddTimeoutIDs(ids...)
 }
 
+// AddMfaPolicyIDs adds the "mfa_policies" edge to the MfaPolicy entity by IDs.
+func (_u *RealmUpdateOne) AddMfaPolicyIDs(ids ...string) *RealmUpdateOne {
+	_u.mutation.AddMfaPolicyIDs(ids...)
+	return _u
+}
+
+// AddMfaPolicies adds the "mfa_policies" edges to the MfaPolicy entity.
+func (_u *RealmUpdateOne) AddMfaPolicies(v ...*MfaPolicy) *RealmUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMfaPolicyIDs(ids...)
+}
+
 // Mutation returns the RealmMutation object of the builder.
 func (_u *RealmUpdateOne) Mutation() *RealmMutation {
 	return _u.mutation
@@ -1662,6 +1759,27 @@ func (_u *RealmUpdateOne) RemoveTimeouts(v ...*Timeout) *RealmUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveTimeoutIDs(ids...)
+}
+
+// ClearMfaPolicies clears all "mfa_policies" edges to the MfaPolicy entity.
+func (_u *RealmUpdateOne) ClearMfaPolicies() *RealmUpdateOne {
+	_u.mutation.ClearMfaPolicies()
+	return _u
+}
+
+// RemoveMfaPolicyIDs removes the "mfa_policies" edge to MfaPolicy entities by IDs.
+func (_u *RealmUpdateOne) RemoveMfaPolicyIDs(ids ...string) *RealmUpdateOne {
+	_u.mutation.RemoveMfaPolicyIDs(ids...)
+	return _u
+}
+
+// RemoveMfaPolicies removes "mfa_policies" edges to MfaPolicy entities.
+func (_u *RealmUpdateOne) RemoveMfaPolicies(v ...*MfaPolicy) *RealmUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMfaPolicyIDs(ids...)
 }
 
 // Where appends a list predicates to the RealmUpdate builder.
@@ -2290,6 +2408,51 @@ func (_u *RealmUpdateOne) sqlSave(ctx context.Context) (_node *Realm, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(timeout.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.MfaPoliciesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.MfaPoliciesTable,
+			Columns: []string{realm.MfaPoliciesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMfaPoliciesIDs(); len(nodes) > 0 && !_u.mutation.MfaPoliciesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.MfaPoliciesTable,
+			Columns: []string{realm.MfaPoliciesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MfaPoliciesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.MfaPoliciesTable,
+			Columns: []string{realm.MfaPoliciesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

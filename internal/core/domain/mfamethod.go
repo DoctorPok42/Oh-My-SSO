@@ -15,14 +15,37 @@ const (
 type MfaMethodStatus string
 
 const (
+	// MfaMethodPending: enrollment started, not confirmed yet. Never usable.
+	MfaMethodPending  MfaMethodStatus = "pending"
 	MfaMethodActive   MfaMethodStatus = "active"
 	MfaMethodDisabled MfaMethodStatus = "disabled"
 )
+
+// KnownMfaMethodTypes are the values accepted in MFA policies
+// (allowed_methods). "biometric" is not one: it is not a factor of its own
+// (a passkey unlocked with Face ID is a "passkey").
+var KnownMfaMethodTypes = []MfaMethodType{
+	MfaMethodTOTP,
+	MfaMethodPasskey,
+	MfaMethodWebAuthn,
+	MfaMethodBackupCodes,
+}
+
+// IsKnownPolicyMethod tells whether t may appear in an MFA policy.
+func IsKnownPolicyMethod(t MfaMethodType) bool {
+	for _, k := range KnownMfaMethodTypes {
+		if k == t {
+			return true
+		}
+	}
+	return false
+}
 
 type MfaMethod struct {
 	ID              string
 	UserID          string
 	Type            MfaMethodType
+	Name            string // label chosen by the user, display only
 	SecretEncrypted string
 	CredentialID    string
 	PublicKey       string
@@ -31,4 +54,12 @@ type MfaMethod struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	LastUsedAt      time.Time
+	// LastUsedCounter is the TOTP time step of the last accepted code
+	// (anti-replay). Zero for other types.
+	LastUsedCounter int64
+}
+
+// IsUsable tells whether the factor can answer a challenge right now.
+func (m *MfaMethod) IsUsable() bool {
+	return m.Status == MfaMethodActive
 }

@@ -35,6 +35,8 @@ const (
 	FieldMfaVerified = "mfa_verified"
 	// FieldMfaMethodType holds the string denoting the mfa_method_type field in the database.
 	FieldMfaMethodType = "mfa_method_type"
+	// FieldMfaVerifiedAt holds the string denoting the mfa_verified_at field in the database.
+	FieldMfaVerifiedAt = "mfa_verified_at"
 	// FieldAuthMethod holds the string denoting the auth_method field in the database.
 	FieldAuthMethod = "auth_method"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -87,6 +89,7 @@ var Columns = []string{
 	FieldDeviceFingerprint,
 	FieldMfaVerified,
 	FieldMfaMethodType,
+	FieldMfaVerifiedAt,
 	FieldAuthMethod,
 	FieldStatus,
 	FieldRevokedReason,
@@ -182,6 +185,11 @@ func ByMfaVerified(opts ...sql.OrderTermOption) OrderOption {
 // ByMfaMethodType orders the results by the mfa_method_type field.
 func ByMfaMethodType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMfaMethodType, opts...).ToFunc()
+}
+
+// ByMfaVerifiedAt orders the results by the mfa_verified_at field.
+func ByMfaVerifiedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMfaVerifiedAt, opts...).ToFunc()
 }
 
 // ByAuthMethod orders the results by the auth_method field.

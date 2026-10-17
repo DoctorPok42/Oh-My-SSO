@@ -1,6 +1,7 @@
 package localdev_test
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
@@ -97,5 +98,55 @@ func verifySignature(t *testing.T, keyType keymanager.KeyType, publicKeyPEM stri
 		}
 	default:
 		t.Fatalf("unhandled key type %q in test helper", keyType)
+	}
+}
+
+func TestEncryptDecrypt(t *testing.T) {
+	ctx := context.Background()
+	km := localdev.New("test")
+
+	ref, err := km.GenerateEncryptionKey(ctx)
+	if err != nil {
+		t.Fatalf("GenerateEncryptionKey: %v", err)
+	}
+	ct, err := km.Encrypt(ctx, ref, []byte("data key"))
+	if err != nil {
+		t.Fatalf("Encrypt: %v", err)
+	}
+	if bytes.Contains(ct, []byte("data key")) {
+		t.Fatal("ciphertext contains the plaintext")
+	}
+	pt, err := km.Decrypt(ctx, ref, ct)
+	if err != nil || string(pt) != "data key" {
+		t.Fatalf("Decrypt = %q, %v", pt, err)
+	}
+
+	other, _ := km.GenerateEncryptionKey(ctx)
+	if _, err := km.Decrypt(ctx, other, ct); err == nil {
+		t.Fatal("decrypting with another key must fail")
+	}
+	ct[len(ct)-1] ^= 1
+	if _, err := km.Decrypt(ctx, ref, ct); err == nil {
+		t.Fatal("tampered ciphertext must fail")
+	}
+}
+
+func TestEnvelopeMasterKeySurvivesRestart(t *testing.T) {
+	ctx := context.Background()
+	master := bytes.Repeat([]byte{7}, 32)
+
+	first := localdev.New("test", localdev.WithEnvelopeMasterKey(master))
+	ref, _ := first.GenerateEncryptionKey(ctx)
+	ct, err := first.Encrypt(ctx, ref, []byte("totp secret"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	restarted := localdev.New("test", localdev.WithEnvelopeMasterKey(master))
+	if pt, err := restarted.Decrypt(ctx, ref, ct); err != nil || string(pt) != "totp secret" {
+		t.Fatalf("same master key after restart: %q, %v", pt, err)
+	}
+	if _, err := localdev.New("test").Decrypt(ctx, ref, ct); err == nil {
+		t.Fatal("a random master key (no LOCALDEV_ENVELOPE_KEY) cannot decrypt the previous run's data")
 	}
 }

@@ -237,6 +237,27 @@ func (_u *InstanceSettingsUpdate) AddKeyRotationGraceHours(v int) *InstanceSetti
 	return _u
 }
 
+// SetMfaStepUpMaxAgeMinutes sets the "mfa_step_up_max_age_minutes" field.
+func (_u *InstanceSettingsUpdate) SetMfaStepUpMaxAgeMinutes(v int) *InstanceSettingsUpdate {
+	_u.mutation.ResetMfaStepUpMaxAgeMinutes()
+	_u.mutation.SetMfaStepUpMaxAgeMinutes(v)
+	return _u
+}
+
+// SetNillableMfaStepUpMaxAgeMinutes sets the "mfa_step_up_max_age_minutes" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableMfaStepUpMaxAgeMinutes(v *int) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetMfaStepUpMaxAgeMinutes(*v)
+	}
+	return _u
+}
+
+// AddMfaStepUpMaxAgeMinutes adds value to the "mfa_step_up_max_age_minutes" field.
+func (_u *InstanceSettingsUpdate) AddMfaStepUpMaxAgeMinutes(v int) *InstanceSettingsUpdate {
+	_u.mutation.AddMfaStepUpMaxAgeMinutes(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdate) SetUpdatedAt(v time.Time) *InstanceSettingsUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -385,6 +406,12 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.AddedKeyRotationGraceHours(); ok {
 		_spec.AddField(instancesettings.FieldKeyRotationGraceHours, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.MfaStepUpMaxAgeMinutes(); ok {
+		_spec.SetField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedMfaStepUpMaxAgeMinutes(); ok {
+		_spec.AddField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)
@@ -622,6 +649,27 @@ func (_u *InstanceSettingsUpdateOne) AddKeyRotationGraceHours(v int) *InstanceSe
 	return _u
 }
 
+// SetMfaStepUpMaxAgeMinutes sets the "mfa_step_up_max_age_minutes" field.
+func (_u *InstanceSettingsUpdateOne) SetMfaStepUpMaxAgeMinutes(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.ResetMfaStepUpMaxAgeMinutes()
+	_u.mutation.SetMfaStepUpMaxAgeMinutes(v)
+	return _u
+}
+
+// SetNillableMfaStepUpMaxAgeMinutes sets the "mfa_step_up_max_age_minutes" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableMfaStepUpMaxAgeMinutes(v *int) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetMfaStepUpMaxAgeMinutes(*v)
+	}
+	return _u
+}
+
+// AddMfaStepUpMaxAgeMinutes adds value to the "mfa_step_up_max_age_minutes" field.
+func (_u *InstanceSettingsUpdateOne) AddMfaStepUpMaxAgeMinutes(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.AddMfaStepUpMaxAgeMinutes(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdateOne) SetUpdatedAt(v time.Time) *InstanceSettingsUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -800,6 +848,12 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.AddedKeyRotationGraceHours(); ok {
 		_spec.AddField(instancesettings.FieldKeyRotationGraceHours, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.MfaStepUpMaxAgeMinutes(); ok {
+		_spec.SetField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedMfaStepUpMaxAgeMinutes(); ok {
+		_spec.AddField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

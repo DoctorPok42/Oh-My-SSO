@@ -23,10 +23,18 @@ var (
 	ErrTimeoutActive       = errors.New("core: an active timeout blocks this user or client")
 	ErrSessionInvalid      = errors.New("core: session invalid")
 	ErrForbidden           = errors.New("core: forbidden")
-	ErrMFANotImplemented   = errors.New("core: mfa verification not implemented yet")
+	ErrMFANotImplemented   = errors.New("core: mfa verification not configured")
+	ErrMFARequired         = errors.New("core: multi-factor authentication required")
 	ErrNoActiveSigningKey  = errors.New("core: no active signing key")
 	ErrClientMisconfigured = errors.New("core: client misconfigured")
 )
+
+// About the two MFA errors:
+//   - ErrMFANotImplemented: VerifyMFA was called on an IdentityCore built
+//     without the MFA service (Step 9 wiring missing).
+//   - ErrMFARequired: the session does not satisfy the MFA policy of the
+//     client, of the user's roles or of the realm. Use errors.As with
+//     *MFARequiredError to know which methods are accepted.
 
 // Credentials is the input of a local (username/email + password) login.
 type Credentials struct {
@@ -59,13 +67,33 @@ type IssuedSession struct {
 	Session  *domain.Session
 }
 
-// MFAChallenge is the user's answer to a second-factor challenge.
-// Placeholder: fields will be refined at Step 9 (TOTP, WebAuthn, backup codes).
-// Adding fields to a struct does not break the interface.
+// MFAChallenge is the user's answer to a code-based second-factor
+// challenge. WebAuthn/passkey answers are not codes: they go through their
+// own ceremony (Step 9b).
 type MFAChallenge struct {
-	Method   string
-	Response string
+	Method   string // "totp" or "backup_code"
+	Response string // the code typed by the user
 }
+
+// MFARequiredError details ErrMFARequired for the protocol adapters: the
+// adapter sends the user to the step-up page (same session, no new login)
+// or, when EnrollmentRequired, to the MFA enrollment page.
+type MFARequiredError struct {
+	// AllowedMethods that satisfy the requirement. nil: any method.
+	AllowedMethods []domain.MfaMethodType
+	// EnrollmentRequired: the user has no factor that satisfies the
+	// requirement yet, they must enroll one first.
+	EnrollmentRequired bool
+}
+
+func (e *MFARequiredError) Error() string {
+	if e.EnrollmentRequired {
+		return "core: multi-factor authentication required (enrollment needed)"
+	}
+	return ErrMFARequired.Error()
+}
+
+func (e *MFARequiredError) Unwrap() error { return ErrMFARequired }
 
 // IdentityAssertion is the neutral "identity card" handed to adapters.
 //
@@ -128,7 +156,9 @@ type IdentityCore interface {
 	// AuthenticateLocal checks credentials, the account status and active
 	// timeouts. It records a LoginAttempt in every case.
 	AuthenticateLocal(ctx context.Context, c Credentials) (*domain.User, error)
-	// VerifyMFA returns ErrMFANotImplemented until Step 9.
+	// VerifyMFA checks (and consumes) a TOTP or backup code of the user.
+	// A valid code can never be accepted twice. It does not touch any
+	// session: callers decide what a successful verification unlocks.
 	VerifyMFA(ctx context.Context, userID string, ch MFAChallenge) (bool, error)
 
 	// --- Sessions ---
@@ -146,7 +176,8 @@ type IdentityCore interface {
 	// --- Identity assertions (format-agnostic) ---
 
 	// IssueIdentityAssertion checks the session, the user's right to access
-	// the client and active timeouts, then builds the neutral assertion.
+	// the client, active timeouts and the MFA policy (*MFARequiredError),
+	// then builds the neutral assertion.
 	// An empty requestedScopes means "all effective scopes".
 	IssueIdentityAssertion(ctx context.Context, sessionID, clientRef string, requestedScopes []string) (*IdentityAssertion, error)
 

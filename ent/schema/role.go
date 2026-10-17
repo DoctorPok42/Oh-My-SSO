@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
@@ -60,6 +61,10 @@ func (Role) Edges() []ent.Edge {
 			Through("role_client_scopes", RoleClientScope.Type),
 		edge.To("client_apps", ClientApp.Type).
 			Through("client_roles", ClientRole.Type),
+		// At most one MFA policy per role; deleting the role deletes it.
+		edge.To("mfa_policy", MfaPolicy.Type).
+			Unique().
+			Annotations(entsql.OnDelete(entsql.Cascade)),
 	}
 }
 

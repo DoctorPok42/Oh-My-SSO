@@ -1,0 +1,62 @@
+package httpserver
+
+import (
+	"errors"
+	"net/http"
+
+	"sso.internal/sso/internal/core/service"
+)
+
+// stepUpResponse tells the client what kind of re-authentication is needed.
+type stepUpResponse struct {
+	Error          string   `json:"error"`
+	AllowedMethods []string `json:"allowed_methods,omitempty"`
+	MaxAgeSeconds  int      `json:"max_age_seconds"`
+}
+
+// requireStepUp lets the request through only if the session authenticated
+// recently enough for this kind of action (Step 9). Without the MFA service
+// it does nothing, so servers built without MFA keep working.
+//
+// It must run after requireSession.
+//
+//	403 {"error":"step_up_required"}        -> POST /auth/step-up, then retry
+//	403 {"error":"recent_login_required"}   -> no factor: log in again
+//	403 {"error":"mfa_enrollment_required"} -> a policy wants MFA: enroll first
+//
+// Same idea as OAuth 2.0 Step-Up (RFC 9470), for a cookie session.
+func (s *Server) requireStepUp(mode service.StepUpMode) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		if s.mfa == nil {
+			return next
+		}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			sess := sessionFromContext(r)
+			if sess == nil {
+				writeError(w, http.StatusUnauthorized, "unauthenticated")
+				return
+			}
+			err := s.mfa.CheckStepUp(r.Context(), sess, mode)
+			var su *service.StepUpRequiredError
+			switch {
+			case err == nil:
+				next.ServeHTTP(w, r)
+			case errors.As(err, &su):
+				code := "step_up_required"
+				switch su.Reason {
+				case service.StepUpNeedRecentLogin:
+					code = "recent_login_required"
+				case service.StepUpNeedEnrollment:
+					code = "mfa_enrollment_required"
+				}
+				writeJSON(w, http.StatusForbidden, stepUpResponse{
+					Error:          code,
+					AllowedMethods: methodStrings(su.AllowedMethods),
+					MaxAgeSeconds:  int(su.MaxAge.Seconds()),
+				})
+			default:
+				writeError(w, http.StatusInternalServerError, "internal_error")
+			}
+		})
+	}
+}

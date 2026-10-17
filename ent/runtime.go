@@ -21,6 +21,7 @@ import (
 	"sso.internal/sso/ent/loginattempt"
 	"sso.internal/sso/ent/mfabackupcode"
 	"sso.internal/sso/ent/mfamethod"
+	"sso.internal/sso/ent/mfapolicy"
 	"sso.internal/sso/ent/passwordresettoken"
 	"sso.internal/sso/ent/permission"
 	"sso.internal/sso/ent/realm"
@@ -138,6 +139,10 @@ func init() {
 	clientappDescSessionMaxMinutes := clientappFields[37].Descriptor()
 	// clientapp.SessionMaxMinutesValidator is a validator for the "session_max_minutes" field. It is called by the builders before save.
 	clientapp.SessionMaxMinutesValidator = clientappDescSessionMaxMinutes.Validators[0].(func(int) error)
+	// clientappDescMfaPolicy is the schema descriptor for mfa_policy field.
+	clientappDescMfaPolicy := clientappFields[38].Descriptor()
+	// clientapp.DefaultMfaPolicy holds the default value on creation for the mfa_policy field.
+	clientapp.DefaultMfaPolicy = schema.ClientAppMFAPolicy(clientappDescMfaPolicy.Default.(string))
 	// clientappDescID is the schema descriptor for id field.
 	clientappDescID := clientappFields[0].Descriptor()
 	// clientapp.DefaultID holds the default value on creation for the id field.
@@ -436,8 +441,12 @@ func init() {
 	instancesettingsDescKeyRotationGraceHours := instancesettingsFields[12].Descriptor()
 	// instancesettings.DefaultKeyRotationGraceHours holds the default value on creation for the key_rotation_grace_hours field.
 	instancesettings.DefaultKeyRotationGraceHours = instancesettingsDescKeyRotationGraceHours.Default.(int)
+	// instancesettingsDescMfaStepUpMaxAgeMinutes is the schema descriptor for mfa_step_up_max_age_minutes field.
+	instancesettingsDescMfaStepUpMaxAgeMinutes := instancesettingsFields[13].Descriptor()
+	// instancesettings.DefaultMfaStepUpMaxAgeMinutes holds the default value on creation for the mfa_step_up_max_age_minutes field.
+	instancesettings.DefaultMfaStepUpMaxAgeMinutes = instancesettingsDescMfaStepUpMaxAgeMinutes.Default.(int)
 	// instancesettingsDescUpdatedAt is the schema descriptor for updated_at field.
-	instancesettingsDescUpdatedAt := instancesettingsFields[13].Descriptor()
+	instancesettingsDescUpdatedAt := instancesettingsFields[14].Descriptor()
 	// instancesettings.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	instancesettings.DefaultUpdatedAt = instancesettingsDescUpdatedAt.Default.(func() time.Time)
 	// instancesettings.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -524,30 +533,82 @@ func init() {
 	mfamethodDescUserID := mfamethodFields[1].Descriptor()
 	// mfamethod.UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
 	mfamethod.UserIDValidator = mfamethodDescUserID.Validators[0].(func(string) error)
+	// mfamethodDescName is the schema descriptor for name field.
+	mfamethodDescName := mfamethodFields[3].Descriptor()
+	// mfamethod.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	mfamethod.NameValidator = mfamethodDescName.Validators[0].(func(string) error)
 	// mfamethodDescIsDiscoverable is the schema descriptor for is_discoverable field.
-	mfamethodDescIsDiscoverable := mfamethodFields[6].Descriptor()
+	mfamethodDescIsDiscoverable := mfamethodFields[7].Descriptor()
 	// mfamethod.DefaultIsDiscoverable holds the default value on creation for the is_discoverable field.
 	mfamethod.DefaultIsDiscoverable = mfamethodDescIsDiscoverable.Default.(bool)
 	// mfamethodDescStatus is the schema descriptor for status field.
-	mfamethodDescStatus := mfamethodFields[7].Descriptor()
+	mfamethodDescStatus := mfamethodFields[8].Descriptor()
 	// mfamethod.DefaultStatus holds the default value on creation for the status field.
 	mfamethod.DefaultStatus = schema.MfaMethodStatus(mfamethodDescStatus.Default.(string))
 	// mfamethodDescCreatedAt is the schema descriptor for created_at field.
-	mfamethodDescCreatedAt := mfamethodFields[8].Descriptor()
+	mfamethodDescCreatedAt := mfamethodFields[9].Descriptor()
 	// mfamethod.DefaultCreatedAt holds the default value on creation for the created_at field.
 	mfamethod.DefaultCreatedAt = mfamethodDescCreatedAt.Default.(func() time.Time)
 	// mfamethodDescUpdatedAt is the schema descriptor for updated_at field.
-	mfamethodDescUpdatedAt := mfamethodFields[9].Descriptor()
+	mfamethodDescUpdatedAt := mfamethodFields[10].Descriptor()
 	// mfamethod.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	mfamethod.DefaultUpdatedAt = mfamethodDescUpdatedAt.Default.(func() time.Time)
 	// mfamethod.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	mfamethod.UpdateDefaultUpdatedAt = mfamethodDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// mfamethodDescLastUsedCounter is the schema descriptor for last_used_counter field.
+	mfamethodDescLastUsedCounter := mfamethodFields[12].Descriptor()
+	// mfamethod.DefaultLastUsedCounter holds the default value on creation for the last_used_counter field.
+	mfamethod.DefaultLastUsedCounter = mfamethodDescLastUsedCounter.Default.(int64)
 	// mfamethodDescID is the schema descriptor for id field.
 	mfamethodDescID := mfamethodFields[0].Descriptor()
 	// mfamethod.DefaultID holds the default value on creation for the id field.
 	mfamethod.DefaultID = mfamethodDescID.Default.(func() string)
 	// mfamethod.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	mfamethod.IDValidator = mfamethodDescID.Validators[0].(func(string) error)
+	mfapolicyFields := schema.MfaPolicy{}.Fields()
+	_ = mfapolicyFields
+	// mfapolicyDescRealmID is the schema descriptor for realm_id field.
+	mfapolicyDescRealmID := mfapolicyFields[1].Descriptor()
+	// mfapolicy.RealmIDValidator is a validator for the "realm_id" field. It is called by the builders before save.
+	mfapolicy.RealmIDValidator = mfapolicyDescRealmID.Validators[0].(func(string) error)
+	// mfapolicyDescRoleID is the schema descriptor for role_id field.
+	mfapolicyDescRoleID := mfapolicyFields[2].Descriptor()
+	// mfapolicy.RoleIDValidator is a validator for the "role_id" field. It is called by the builders before save.
+	mfapolicy.RoleIDValidator = mfapolicyDescRoleID.Validators[0].(func(string) error)
+	// mfapolicyDescManagedBy is the schema descriptor for managed_by field.
+	mfapolicyDescManagedBy := mfapolicyFields[3].Descriptor()
+	// mfapolicy.DefaultManagedBy holds the default value on creation for the managed_by field.
+	mfapolicy.DefaultManagedBy = schema.MfaPolicyManagedBy(mfapolicyDescManagedBy.Default.(string))
+	// mfapolicyDescRequired is the schema descriptor for required field.
+	mfapolicyDescRequired := mfapolicyFields[4].Descriptor()
+	// mfapolicy.DefaultRequired holds the default value on creation for the required field.
+	mfapolicy.DefaultRequired = mfapolicyDescRequired.Default.(bool)
+	// mfapolicyDescEnrollmentGraceDays is the schema descriptor for enrollment_grace_days field.
+	mfapolicyDescEnrollmentGraceDays := mfapolicyFields[6].Descriptor()
+	// mfapolicy.DefaultEnrollmentGraceDays holds the default value on creation for the enrollment_grace_days field.
+	mfapolicy.DefaultEnrollmentGraceDays = mfapolicyDescEnrollmentGraceDays.Default.(int)
+	// mfapolicy.EnrollmentGraceDaysValidator is a validator for the "enrollment_grace_days" field. It is called by the builders before save.
+	mfapolicy.EnrollmentGraceDaysValidator = mfapolicyDescEnrollmentGraceDays.Validators[0].(func(int) error)
+	// mfapolicyDescStepUpForSensitiveActions is the schema descriptor for step_up_for_sensitive_actions field.
+	mfapolicyDescStepUpForSensitiveActions := mfapolicyFields[7].Descriptor()
+	// mfapolicy.DefaultStepUpForSensitiveActions holds the default value on creation for the step_up_for_sensitive_actions field.
+	mfapolicy.DefaultStepUpForSensitiveActions = mfapolicyDescStepUpForSensitiveActions.Default.(bool)
+	// mfapolicyDescCreatedAt is the schema descriptor for created_at field.
+	mfapolicyDescCreatedAt := mfapolicyFields[9].Descriptor()
+	// mfapolicy.DefaultCreatedAt holds the default value on creation for the created_at field.
+	mfapolicy.DefaultCreatedAt = mfapolicyDescCreatedAt.Default.(func() time.Time)
+	// mfapolicyDescUpdatedAt is the schema descriptor for updated_at field.
+	mfapolicyDescUpdatedAt := mfapolicyFields[10].Descriptor()
+	// mfapolicy.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	mfapolicy.DefaultUpdatedAt = mfapolicyDescUpdatedAt.Default.(func() time.Time)
+	// mfapolicy.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	mfapolicy.UpdateDefaultUpdatedAt = mfapolicyDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// mfapolicyDescID is the schema descriptor for id field.
+	mfapolicyDescID := mfapolicyFields[0].Descriptor()
+	// mfapolicy.DefaultID holds the default value on creation for the id field.
+	mfapolicy.DefaultID = mfapolicyDescID.Default.(func() string)
+	// mfapolicy.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	mfapolicy.IDValidator = mfapolicyDescID.Validators[0].(func(string) error)
 	passwordresettokenFields := schema.PasswordResetToken{}.Fields()
 	_ = passwordresettokenFields
 	// passwordresettokenDescUserID is the schema descriptor for user_id field.
@@ -727,15 +788,15 @@ func init() {
 	// session.DefaultMfaVerified holds the default value on creation for the mfa_verified field.
 	session.DefaultMfaVerified = sessionDescMfaVerified.Default.(bool)
 	// sessionDescAuthMethod is the schema descriptor for auth_method field.
-	sessionDescAuthMethod := sessionFields[11].Descriptor()
+	sessionDescAuthMethod := sessionFields[12].Descriptor()
 	// session.DefaultAuthMethod holds the default value on creation for the auth_method field.
 	session.DefaultAuthMethod = sessionDescAuthMethod.Default.(string)
 	// sessionDescStatus is the schema descriptor for status field.
-	sessionDescStatus := sessionFields[12].Descriptor()
+	sessionDescStatus := sessionFields[13].Descriptor()
 	// session.DefaultStatus holds the default value on creation for the status field.
 	session.DefaultStatus = schema.SessionStatus(sessionDescStatus.Default.(string))
 	// sessionDescTokenHash is the schema descriptor for token_hash field.
-	sessionDescTokenHash := sessionFields[14].Descriptor()
+	sessionDescTokenHash := sessionFields[15].Descriptor()
 	// session.TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
 	session.TokenHashValidator = sessionDescTokenHash.Validators[0].(func(string) error)
 	// sessionDescID is the schema descriptor for id field.

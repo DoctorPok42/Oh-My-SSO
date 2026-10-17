@@ -116,6 +116,11 @@ func MfaMethodType(v string) predicate.Session {
 	return predicate.Session(sql.FieldEQ(FieldMfaMethodType, v))
 }
 
+// MfaVerifiedAt applies equality check predicate on the "mfa_verified_at" field. It's identical to MfaVerifiedAtEQ.
+func MfaVerifiedAt(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldMfaVerifiedAt, v))
+}
+
 // AuthMethod applies equality check predicate on the "auth_method" field. It's identical to AuthMethodEQ.
 func AuthMethod(v string) predicate.Session {
 	return predicate.Session(sql.FieldEQ(FieldAuthMethod, v))
@@ -695,6 +700,56 @@ func MfaMethodTypeEqualFold(v string) predicate.Session {
 // MfaMethodTypeContainsFold applies the ContainsFold predicate on the "mfa_method_type" field.
 func MfaMethodTypeContainsFold(v string) predicate.Session {
 	return predicate.Session(sql.FieldContainsFold(FieldMfaMethodType, v))
+}
+
+// MfaVerifiedAtEQ applies the EQ predicate on the "mfa_verified_at" field.
+func MfaVerifiedAtEQ(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldMfaVerifiedAt, v))
+}
+
+// MfaVerifiedAtNEQ applies the NEQ predicate on the "mfa_verified_at" field.
+func MfaVerifiedAtNEQ(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldNEQ(FieldMfaVerifiedAt, v))
+}
+
+// MfaVerifiedAtIn applies the In predicate on the "mfa_verified_at" field.
+func MfaVerifiedAtIn(vs ...time.Time) predicate.Session {
+	return predicate.Session(sql.FieldIn(FieldMfaVerifiedAt, vs...))
+}
+
+// MfaVerifiedAtNotIn applies the NotIn predicate on the "mfa_verified_at" field.
+func MfaVerifiedAtNotIn(vs ...time.Time) predicate.Session {
+	return predicate.Session(sql.FieldNotIn(FieldMfaVerifiedAt, vs...))
+}
+
+// MfaVerifiedAtGT applies the GT predicate on the "mfa_verified_at" field.
+func MfaVerifiedAtGT(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldGT(FieldMfaVerifiedAt, v))
+}
+
+// MfaVerifiedAtGTE applies the GTE predicate on the "mfa_verified_at" field.
+func MfaVerifiedAtGTE(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldGTE(FieldMfaVerifiedAt, v))
+}
+
+// MfaVerifiedAtLT applies the LT predicate on the "mfa_verified_at" field.
+func MfaVerifiedAtLT(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldLT(FieldMfaVerifiedAt, v))
+}
+
+// MfaVerifiedAtLTE applies the LTE predicate on the "mfa_verified_at" field.
+func MfaVerifiedAtLTE(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldLTE(FieldMfaVerifiedAt, v))
+}
+
+// MfaVerifiedAtIsNil applies the IsNil predicate on the "mfa_verified_at" field.
+func MfaVerifiedAtIsNil() predicate.Session {
+	return predicate.Session(sql.FieldIsNull(FieldMfaVerifiedAt))
+}
+
+// MfaVerifiedAtNotNil applies the NotNil predicate on the "mfa_verified_at" field.
+func MfaVerifiedAtNotNil() predicate.Session {
+	return predicate.Session(sql.FieldNotNull(FieldMfaVerifiedAt))
 }
 
 // AuthMethodEQ applies the EQ predicate on the "auth_method" field.

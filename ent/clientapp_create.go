@@ -476,6 +476,26 @@ func (_c *ClientAppCreate) SetNillableSessionMaxMinutes(v *int) *ClientAppCreate
 	return _c
 }
 
+// SetMfaPolicy sets the "mfa_policy" field.
+func (_c *ClientAppCreate) SetMfaPolicy(v schema.ClientAppMFAPolicy) *ClientAppCreate {
+	_c.mutation.SetMfaPolicy(v)
+	return _c
+}
+
+// SetNillableMfaPolicy sets the "mfa_policy" field if the given value is not nil.
+func (_c *ClientAppCreate) SetNillableMfaPolicy(v *schema.ClientAppMFAPolicy) *ClientAppCreate {
+	if v != nil {
+		_c.SetMfaPolicy(*v)
+	}
+	return _c
+}
+
+// SetMfaAllowedMethods sets the "mfa_allowed_methods" field.
+func (_c *ClientAppCreate) SetMfaAllowedMethods(v []string) *ClientAppCreate {
+	_c.mutation.SetMfaAllowedMethods(v)
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *ClientAppCreate) SetID(v string) *ClientAppCreate {
 	_c.mutation.SetID(v)
@@ -698,6 +718,10 @@ func (_c *ClientAppCreate) defaults() {
 		v := clientapp.DefaultSubjectType
 		_c.mutation.SetSubjectType(v)
 	}
+	if _, ok := _c.mutation.MfaPolicy(); !ok {
+		v := clientapp.DefaultMfaPolicy
+		_c.mutation.SetMfaPolicy(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := clientapp.DefaultID()
 		_c.mutation.SetID(v)
@@ -775,6 +799,9 @@ func (_c *ClientAppCreate) check() error {
 		if err := clientapp.SessionMaxMinutesValidator(v); err != nil {
 			return &ValidationError{Name: "session_max_minutes", err: fmt.Errorf(`ent: validator failed for field "ClientApp.session_max_minutes": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.MfaPolicy(); !ok {
+		return &ValidationError{Name: "mfa_policy", err: errors.New(`ent: missing required field "ClientApp.mfa_policy"`)}
 	}
 	if v, ok := _c.mutation.ID(); ok {
 		if err := clientapp.IDValidator(v); err != nil {
@@ -962,6 +989,14 @@ func (_c *ClientAppCreate) createSpec() (*ClientApp, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.SessionMaxMinutes(); ok {
 		_spec.SetField(clientapp.FieldSessionMaxMinutes, field.TypeInt, value)
 		_node.SessionMaxMinutes = &value
+	}
+	if value, ok := _c.mutation.MfaPolicy(); ok {
+		_spec.SetField(clientapp.FieldMfaPolicy, field.TypeString, value)
+		_node.MfaPolicy = value
+	}
+	if value, ok := _c.mutation.MfaAllowedMethods(); ok {
+		_spec.SetField(clientapp.FieldMfaAllowedMethods, field.TypeJSON, value)
+		_node.MfaAllowedMethods = value
 	}
 	if nodes := _c.mutation.RealmIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

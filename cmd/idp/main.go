@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -53,7 +54,17 @@ func buildKeyManager() (keymanager.KeyManager, string) {
 		}
 		return km, backend
 	case "local_dev", "":
-		return localdev.New(os.Getenv("APP_ENV")), backendLocalDev
+		var opts []localdev.Option
+		if raw := os.Getenv("LOCALDEV_ENVELOPE_KEY"); raw != "" {
+			key, err := base64.StdEncoding.DecodeString(raw)
+			if err != nil || len(key) != 32 {
+				log.Fatalf("keymanager: LOCALDEV_ENVELOPE_KEY must be 32 bytes, base64 encoded (openssl rand -base64 32)")
+			}
+			opts = append(opts, localdev.WithEnvelopeMasterKey(key))
+		} else {
+			log.Printf("keymanager: LOCALDEV_ENVELOPE_KEY is not set: TOTP secrets enrolled now will be unreadable after a restart")
+		}
+		return localdev.New(os.Getenv("APP_ENV"), opts...), backendLocalDev
 	default:
 		log.Fatalf("keymanager: unknown backend %q", backend)
 		return nil, ""
@@ -75,14 +86,17 @@ const backendLocalDev = "local_dev"
 //
 //	idp            (or "idp serve") start the HTTP server
 //	idp keys ...   manage signing keys from the command line (see keys.go)
+//	idp mfa ...    manage second factors and MFA policies (see mfa.go)
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "serve":
 		case "keys":
 			os.Exit(runKeysCommand(os.Args[2:]))
+		case "mfa":
+			os.Exit(runMFACommand(os.Args[2:]))
 		default:
-			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|retire|list> [flags]\n", os.Args[1])
+			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n", os.Args[1])
 			os.Exit(2)
 		}
 	}
@@ -140,6 +154,36 @@ func serve() {
 		kmsBackend,
 	)
 
+	// --- MFA (Step 9) ---
+	encrypter, ok := keyManager.(keymanager.Encrypter)
+	if !ok {
+		log.Fatalf("keymanager: backend %q cannot encrypt (needed for TOTP secrets)", kmsBackend)
+	}
+	auditRepo := entstore.NewAuditLogRepository(client)
+	mfaPolicy := service.NewMFAPolicyService(service.MFAPolicyDeps{
+		Settings: settingsRepo,
+		Clients:  clientRepo,
+		Roles:    entstore.NewRoleRepository(client),
+		Policies: entstore.NewMfaPolicyRepository(client),
+		Access:   entstore.NewAccessRepository(client),
+		Audit:    auditRepo,
+	})
+	mfaService := service.NewMFAService(service.MFADeps{
+		Users:         userRepo,
+		Methods:       entstore.NewMfaMethodRepository(client),
+		BackupCodes:   entstore.NewMfaBackupCodeRepository(client),
+		Sessions:      sessionService,
+		Policy:        mfaPolicy,
+		Envelope:      service.NewEnvelopeService(signingKeyRepo, encrypter, kmsBackend),
+		Store:         valkeycache.NewMFAStore(valkeyClient),
+		Limiter:       valkeycache.NewRateLimiter(valkeyClient),
+		LoginAttempts: entstore.NewLoginAttemptRepository(client),
+		Audit:         auditRepo,
+		Realms:        realmRepo,
+		Clients:       clientRepo,
+		IssuerName:    os.Getenv("MFA_TOTP_ISSUER"),
+	})
+
 	identityCore := service.NewIdentityCore(service.IdentityCoreDeps{
 		Auth:        authService,
 		Sessions:    sessionService,
@@ -151,6 +195,7 @@ func serve() {
 		SigningKeys: signingKeyRepo,
 		KeyManager:  keyManager,
 		Timeouts:    timeouts,
+		MFA:         mfaService,
 	})
 
 	srv := httpserver.New(
@@ -162,6 +207,8 @@ func serve() {
 		valkeycache.NewRateLimiter(valkeyClient),
 		httpserver.WithJWKS(identityCore),
 		httpserver.WithSigningKeyAdmin(keyRotation),
+		httpserver.WithMFA(mfaService),
+		httpserver.WithDevPages(os.Getenv("APP_ENV") == "development"),
 	)
 
 	log.Printf("Starting server on port %s...", port)

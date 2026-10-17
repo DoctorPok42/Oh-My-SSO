@@ -39,6 +39,8 @@ const (
 	EdgeClientScopes = "client_scopes"
 	// EdgeClientApps holds the string denoting the client_apps edge name in mutations.
 	EdgeClientApps = "client_apps"
+	// EdgeMfaPolicy holds the string denoting the mfa_policy edge name in mutations.
+	EdgeMfaPolicy = "mfa_policy"
 	// EdgeRoleClientScopes holds the string denoting the role_client_scopes edge name in mutations.
 	EdgeRoleClientScopes = "role_client_scopes"
 	// EdgeClientRoles holds the string denoting the client_roles edge name in mutations.
@@ -72,6 +74,13 @@ const (
 	// ClientAppsInverseTable is the table name for the ClientApp entity.
 	// It exists in this package in order to avoid circular dependency with the "clientapp" package.
 	ClientAppsInverseTable = "client_apps"
+	// MfaPolicyTable is the table that holds the mfa_policy relation/edge.
+	MfaPolicyTable = "mfa_policies"
+	// MfaPolicyInverseTable is the table name for the MfaPolicy entity.
+	// It exists in this package in order to avoid circular dependency with the "mfapolicy" package.
+	MfaPolicyInverseTable = "mfa_policies"
+	// MfaPolicyColumn is the table column denoting the mfa_policy relation/edge.
+	MfaPolicyColumn = "role_id"
 	// RoleClientScopesTable is the table that holds the role_client_scopes relation/edge.
 	RoleClientScopesTable = "role_client_scopes"
 	// RoleClientScopesInverseTable is the table name for the RoleClientScope entity.
@@ -252,6 +261,13 @@ func ByClientApps(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByMfaPolicyField orders the results by mfa_policy field.
+func ByMfaPolicyField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMfaPolicyStep(), sql.OrderByField(field, opts...))
+	}
+}
+
 // ByRoleClientScopesCount orders the results by role_client_scopes count.
 func ByRoleClientScopesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -312,6 +328,13 @@ func newClientAppsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ClientAppsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, ClientAppsTable, ClientAppsPrimaryKey...),
+	)
+}
+func newMfaPolicyStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(MfaPolicyInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, MfaPolicyTable, MfaPolicyColumn),
 	)
 }
 func newRoleClientScopesStep() *sqlgraph.Step {

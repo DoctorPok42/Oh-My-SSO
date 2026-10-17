@@ -94,6 +94,10 @@ type ClientApp struct {
 	SessionIdleMinutes *int `json:"session_idle_minutes,omitempty"`
 	// SessionMaxMinutes holds the value of the "session_max_minutes" field.
 	SessionMaxMinutes *int `json:"session_max_minutes,omitempty"`
+	// MfaPolicy holds the value of the "mfa_policy" field.
+	MfaPolicy schema.ClientAppMFAPolicy `json:"mfa_policy,omitempty"`
+	// MfaAllowedMethods holds the value of the "mfa_allowed_methods" field.
+	MfaAllowedMethods []string `json:"mfa_allowed_methods,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ClientAppQuery when eager-loading is set.
 	Edges        ClientAppEdges `json:"edges"`
@@ -213,13 +217,13 @@ func (*ClientApp) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case clientapp.FieldRedirectUris, clientapp.FieldPostLogoutRedirectUris, clientapp.FieldAllowedGrantTypes, clientapp.FieldAllowedScopes, clientapp.FieldClientCertificates, clientapp.FieldAttributeMappings:
+		case clientapp.FieldRedirectUris, clientapp.FieldPostLogoutRedirectUris, clientapp.FieldAllowedGrantTypes, clientapp.FieldAllowedScopes, clientapp.FieldClientCertificates, clientapp.FieldAttributeMappings, clientapp.FieldMfaAllowedMethods:
 			values[i] = new([]byte)
 		case clientapp.FieldRequirePkce, clientapp.FieldWantAssertionSigned, clientapp.FieldWantResponseSigned, clientapp.FieldRequireConsent:
 			values[i] = new(sql.NullBool)
 		case clientapp.FieldAccessTokenTTL, clientapp.FieldRefreshTokenTTL, clientapp.FieldIDTokenTTL, clientapp.FieldSessionIdleMinutes, clientapp.FieldSessionMaxMinutes:
 			values[i] = new(sql.NullInt64)
-		case clientapp.FieldID, clientapp.FieldRealmID, clientapp.FieldManagedBy, clientapp.FieldName, clientapp.FieldProtocol, clientapp.FieldStatus, clientapp.FieldOwnerAdminID, clientapp.FieldClientID, clientapp.FieldClientSecretHash, clientapp.FieldClientType, clientapp.FieldTokenEndpointAuthMethod, clientapp.FieldIDTokenSignedAlg, clientapp.FieldEntityID, clientapp.FieldAcsURL, clientapp.FieldSloURL, clientapp.FieldNameIDFormat, clientapp.FieldDefaultRelayState, clientapp.FieldMetadataURL, clientapp.FieldSubjectType, clientapp.FieldSectorIdentifier:
+		case clientapp.FieldID, clientapp.FieldRealmID, clientapp.FieldManagedBy, clientapp.FieldName, clientapp.FieldProtocol, clientapp.FieldStatus, clientapp.FieldOwnerAdminID, clientapp.FieldClientID, clientapp.FieldClientSecretHash, clientapp.FieldClientType, clientapp.FieldTokenEndpointAuthMethod, clientapp.FieldIDTokenSignedAlg, clientapp.FieldEntityID, clientapp.FieldAcsURL, clientapp.FieldSloURL, clientapp.FieldNameIDFormat, clientapp.FieldDefaultRelayState, clientapp.FieldMetadataURL, clientapp.FieldSubjectType, clientapp.FieldSectorIdentifier, clientapp.FieldMfaPolicy:
 			values[i] = new(sql.NullString)
 		case clientapp.FieldCreatedAt, clientapp.FieldUpdatedAt, clientapp.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
@@ -480,6 +484,20 @@ func (_m *ClientApp) assignValues(columns []string, values []any) error {
 				_m.SessionMaxMinutes = new(int)
 				*_m.SessionMaxMinutes = int(value.Int64)
 			}
+		case clientapp.FieldMfaPolicy:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mfa_policy", values[i])
+			} else if value.Valid {
+				_m.MfaPolicy = schema.ClientAppMFAPolicy(value.String)
+			}
+		case clientapp.FieldMfaAllowedMethods:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field mfa_allowed_methods", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.MfaAllowedMethods); err != nil {
+					return fmt.Errorf("unmarshal field mfa_allowed_methods: %w", err)
+				}
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -675,6 +693,12 @@ func (_m *ClientApp) String() string {
 		builder.WriteString("session_max_minutes=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("mfa_policy=")
+	builder.WriteString(fmt.Sprintf("%v", _m.MfaPolicy))
+	builder.WriteString(", ")
+	builder.WriteString("mfa_allowed_methods=")
+	builder.WriteString(fmt.Sprintf("%v", _m.MfaAllowedMethods))
 	builder.WriteByte(')')
 	return builder.String()
 }

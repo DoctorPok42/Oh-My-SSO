@@ -152,6 +152,26 @@ func (_u *SessionUpdate) ClearMfaMethodType() *SessionUpdate {
 	return _u
 }
 
+// SetMfaVerifiedAt sets the "mfa_verified_at" field.
+func (_u *SessionUpdate) SetMfaVerifiedAt(v time.Time) *SessionUpdate {
+	_u.mutation.SetMfaVerifiedAt(v)
+	return _u
+}
+
+// SetNillableMfaVerifiedAt sets the "mfa_verified_at" field if the given value is not nil.
+func (_u *SessionUpdate) SetNillableMfaVerifiedAt(v *time.Time) *SessionUpdate {
+	if v != nil {
+		_u.SetMfaVerifiedAt(*v)
+	}
+	return _u
+}
+
+// ClearMfaVerifiedAt clears the value of the "mfa_verified_at" field.
+func (_u *SessionUpdate) ClearMfaVerifiedAt() *SessionUpdate {
+	_u.mutation.ClearMfaVerifiedAt()
+	return _u
+}
+
 // SetAuthMethod sets the "auth_method" field.
 func (_u *SessionUpdate) SetAuthMethod(v string) *SessionUpdate {
 	_u.mutation.SetAuthMethod(v)
@@ -323,6 +343,12 @@ func (_u *SessionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.MfaMethodTypeCleared() {
 		_spec.ClearField(session.FieldMfaMethodType, field.TypeString)
+	}
+	if value, ok := _u.mutation.MfaVerifiedAt(); ok {
+		_spec.SetField(session.FieldMfaVerifiedAt, field.TypeTime, value)
+	}
+	if _u.mutation.MfaVerifiedAtCleared() {
+		_spec.ClearField(session.FieldMfaVerifiedAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.AuthMethod(); ok {
 		_spec.SetField(session.FieldAuthMethod, field.TypeString, value)
@@ -520,6 +546,26 @@ func (_u *SessionUpdateOne) SetNillableMfaMethodType(v *string) *SessionUpdateOn
 // ClearMfaMethodType clears the value of the "mfa_method_type" field.
 func (_u *SessionUpdateOne) ClearMfaMethodType() *SessionUpdateOne {
 	_u.mutation.ClearMfaMethodType()
+	return _u
+}
+
+// SetMfaVerifiedAt sets the "mfa_verified_at" field.
+func (_u *SessionUpdateOne) SetMfaVerifiedAt(v time.Time) *SessionUpdateOne {
+	_u.mutation.SetMfaVerifiedAt(v)
+	return _u
+}
+
+// SetNillableMfaVerifiedAt sets the "mfa_verified_at" field if the given value is not nil.
+func (_u *SessionUpdateOne) SetNillableMfaVerifiedAt(v *time.Time) *SessionUpdateOne {
+	if v != nil {
+		_u.SetMfaVerifiedAt(*v)
+	}
+	return _u
+}
+
+// ClearMfaVerifiedAt clears the value of the "mfa_verified_at" field.
+func (_u *SessionUpdateOne) ClearMfaVerifiedAt() *SessionUpdateOne {
+	_u.mutation.ClearMfaVerifiedAt()
 	return _u
 }
 
@@ -724,6 +770,12 @@ func (_u *SessionUpdateOne) sqlSave(ctx context.Context) (_node *Session, err er
 	}
 	if _u.mutation.MfaMethodTypeCleared() {
 		_spec.ClearField(session.FieldMfaMethodType, field.TypeString)
+	}
+	if value, ok := _u.mutation.MfaVerifiedAt(); ok {
+		_spec.SetField(session.FieldMfaVerifiedAt, field.TypeTime, value)
+	}
+	if _u.mutation.MfaVerifiedAtCleared() {
+		_spec.ClearField(session.FieldMfaVerifiedAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.AuthMethod(); ok {
 		_spec.SetField(session.FieldAuthMethod, field.TypeString, value)

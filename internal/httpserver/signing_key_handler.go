@@ -71,9 +71,13 @@ func (s *Server) mountSigningKeyAdmin(r chi.Router) {
 		r.Use(s.requireSession)
 		r.With(s.requirePermission(permResourceSigningKey, permActionRead)).
 			Get("/", s.handleListSigningKeys)
-		r.With(s.requirePermission(permResourceSigningKey, permActionRotate), requireJSON).
+		// Rotating keys is a sensitive action: a recent second factor (or a
+		// recent login for users without any) is needed on top of the
+		// permission (Step 9). No-op when the server runs without MFA.
+		stepUp := s.requireStepUp(service.StepUpSensitiveAction)
+		r.With(s.requirePermission(permResourceSigningKey, permActionRotate), stepUp, requireJSON).
 			Post("/rotate", s.handleRotateSigningKey)
-		r.With(s.requirePermission(permResourceSigningKey, permActionRotate), requireJSON).
+		r.With(s.requirePermission(permResourceSigningKey, permActionRotate), stepUp, requireJSON).
 			Post("/retire-expired", s.handleRetireExpiredSigningKeys)
 	})
 }

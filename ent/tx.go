@@ -44,6 +44,8 @@ type Tx struct {
 	MfaBackupCode *MfaBackupCodeClient
 	// MfaMethod is the client for interacting with the MfaMethod builders.
 	MfaMethod *MfaMethodClient
+	// MfaPolicy is the client for interacting with the MfaPolicy builders.
+	MfaPolicy *MfaPolicyClient
 	// PasswordResetToken is the client for interacting with the PasswordResetToken builders.
 	PasswordResetToken *PasswordResetTokenClient
 	// Permission is the client for interacting with the Permission builders.
@@ -211,6 +213,7 @@ func (tx *Tx) init() {
 	tx.LoginAttempt = NewLoginAttemptClient(tx.config)
 	tx.MfaBackupCode = NewMfaBackupCodeClient(tx.config)
 	tx.MfaMethod = NewMfaMethodClient(tx.config)
+	tx.MfaPolicy = NewMfaPolicyClient(tx.config)
 	tx.PasswordResetToken = NewPasswordResetTokenClient(tx.config)
 	tx.Permission = NewPermissionClient(tx.config)
 	tx.Realm = NewRealmClient(tx.config)

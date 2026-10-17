@@ -140,6 +140,20 @@ func (_c *SessionCreate) SetNillableMfaMethodType(v *string) *SessionCreate {
 	return _c
 }
 
+// SetMfaVerifiedAt sets the "mfa_verified_at" field.
+func (_c *SessionCreate) SetMfaVerifiedAt(v time.Time) *SessionCreate {
+	_c.mutation.SetMfaVerifiedAt(v)
+	return _c
+}
+
+// SetNillableMfaVerifiedAt sets the "mfa_verified_at" field if the given value is not nil.
+func (_c *SessionCreate) SetNillableMfaVerifiedAt(v *time.Time) *SessionCreate {
+	if v != nil {
+		_c.SetMfaVerifiedAt(*v)
+	}
+	return _c
+}
+
 // SetAuthMethod sets the "auth_method" field.
 func (_c *SessionCreate) SetAuthMethod(v string) *SessionCreate {
 	_c.mutation.SetAuthMethod(v)
@@ -415,6 +429,10 @@ func (_c *SessionCreate) createSpec() (*Session, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.MfaMethodType(); ok {
 		_spec.SetField(session.FieldMfaMethodType, field.TypeString, value)
 		_node.MfaMethodType = value
+	}
+	if value, ok := _c.mutation.MfaVerifiedAt(); ok {
+		_spec.SetField(session.FieldMfaVerifiedAt, field.TypeTime, value)
+		_node.MfaVerifiedAt = value
 	}
 	if value, ok := _c.mutation.AuthMethod(); ok {
 		_spec.SetField(session.FieldAuthMethod, field.TypeString, value)

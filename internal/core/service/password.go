@@ -28,46 +28,63 @@ func HashPassword(password string) (string, error) {
 	}
 
 	key := argon2.IDKey([]byte(password), salt, argon2Iterations, argon2Memory, argon2Parallelism, argon2KeyLength)
-
-	encoded := fmt.Sprintf(
-		"$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
-		argon2.Version,
-		argon2Memory,
-		argon2Iterations,
-		argon2Parallelism,
-		base64.RawStdEncoding.EncodeToString(salt),
-		base64.RawStdEncoding.EncodeToString(key),
-	)
-	return encoded, nil
+	return encodeArgon2id(argon2Memory, argon2Iterations, argon2Parallelism, salt, key), nil
 }
 
 func verifyPassword(password, encodedHash string) (bool, error) {
+	h, err := parseArgon2idHash(encodedHash)
+	if err != nil {
+		return false, err
+	}
+	got := argon2.IDKey([]byte(password), h.salt, h.iterations, h.memory, h.parallelism, uint32(len(h.key)))
+	return subtle.ConstantTimeCompare(got, h.key) == 1, nil
+}
+
+// argon2idHash is a parsed PHC string:
+// $argon2id$v=19$m=<memory>,t=<iterations>,p=<parallelism>$<salt>$<key>
+type argon2idHash struct {
+	memory      uint32
+	iterations  uint32
+	parallelism uint8
+	salt        []byte
+	key         []byte
+}
+
+// encodeArgon2id formats a PHC string (same format as HashPassword).
+func encodeArgon2id(memory, iterations uint32, parallelism uint8, salt, key []byte) string {
+	return fmt.Sprintf(
+		"$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
+		argon2.Version,
+		memory,
+		iterations,
+		parallelism,
+		base64.RawStdEncoding.EncodeToString(salt),
+		base64.RawStdEncoding.EncodeToString(key),
+	)
+}
+
+func parseArgon2idHash(encodedHash string) (*argon2idHash, error) {
 	parts := strings.Split(encodedHash, "$")
 	if len(parts) != 6 || parts[1] != "argon2id" {
-		return false, errInvalidHashFormat
+		return nil, errInvalidHashFormat
 	}
 
 	var version int
 	if _, err := fmt.Sscanf(parts[2], "v=%d", &version); err != nil || version != argon2.Version {
-		return false, errInvalidHashFormat
+		return nil, errInvalidHashFormat
 	}
 
-	var memory, iterations uint32
-	var parallelism uint8
-	if _, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &memory, &iterations, &parallelism); err != nil {
-		return false, errInvalidHashFormat
+	h := &argon2idHash{}
+	if _, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &h.memory, &h.iterations, &h.parallelism); err != nil {
+		return nil, errInvalidHashFormat
 	}
 
-	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
-	if err != nil {
-		return false, errInvalidHashFormat
+	var err error
+	if h.salt, err = base64.RawStdEncoding.DecodeString(parts[4]); err != nil {
+		return nil, errInvalidHashFormat
 	}
-	want, err := base64.RawStdEncoding.DecodeString(parts[5])
-	if err != nil {
-		return false, errInvalidHashFormat
+	if h.key, err = base64.RawStdEncoding.DecodeString(parts[5]); err != nil {
+		return nil, errInvalidHashFormat
 	}
-
-	got := argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, uint32(len(want)))
-
-	return subtle.ConstantTimeCompare(got, want) == 1, nil
+	return h, nil
 }

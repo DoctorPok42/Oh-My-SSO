@@ -63,4 +63,9 @@ type UpdateClientAppParams struct {
 	// Changing either value changes every subject this client receives.
 	SubjectType      *domain.ClientAppSubjectType
 	SectorIdentifier *string
+
+	// --- MFA ---
+	MFAPolicy *domain.ClientAppMFAPolicy
+	// nil: unchanged. Empty non-nil slice: clear (any method allowed).
+	MFAAllowedMethods []domain.MfaMethodType
 }

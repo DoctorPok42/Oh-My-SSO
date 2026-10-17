@@ -29,5 +29,6 @@ type UpdateInstanceSettingsParams struct {
 	MFARequiredGlobally      *bool
 	NotificationEmailEnabled *bool
 	KeyRotationGraceHours    *int
+	MFAStepUpMaxAgeMinutes   *int
 	UpdatedBy                *string
 }

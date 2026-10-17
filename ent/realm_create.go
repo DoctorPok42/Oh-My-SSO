@@ -16,6 +16,7 @@ import (
 	"sso.internal/sso/ent/group"
 	"sso.internal/sso/ent/identityprovider"
 	"sso.internal/sso/ent/instancesettings"
+	"sso.internal/sso/ent/mfapolicy"
 	"sso.internal/sso/ent/permission"
 	"sso.internal/sso/ent/realm"
 	"sso.internal/sso/ent/role"
@@ -319,6 +320,21 @@ func (_c *RealmCreate) AddTimeouts(v ...*Timeout) *RealmCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddTimeoutIDs(ids...)
+}
+
+// AddMfaPolicyIDs adds the "mfa_policies" edge to the MfaPolicy entity by IDs.
+func (_c *RealmCreate) AddMfaPolicyIDs(ids ...string) *RealmCreate {
+	_c.mutation.AddMfaPolicyIDs(ids...)
+	return _c
+}
+
+// AddMfaPolicies adds the "mfa_policies" edges to the MfaPolicy entity.
+func (_c *RealmCreate) AddMfaPolicies(v ...*MfaPolicy) *RealmCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddMfaPolicyIDs(ids...)
 }
 
 // Mutation returns the RealmMutation object of the builder.
@@ -653,6 +669,22 @@ func (_c *RealmCreate) createSpec() (*Realm, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(timeout.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.MfaPoliciesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.MfaPoliciesTable,
+			Columns: []string{realm.MfaPoliciesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

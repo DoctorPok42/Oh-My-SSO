@@ -40,6 +40,7 @@ type IdentityCoreService struct {
 	keys     repository.SigningKeyRepository
 	km       keymanager.KeyManager
 	timeouts TimeoutChecker
+	mfa      *MFAService // nil: MFA not configured (no policy enforced)
 	now      func() time.Time
 
 	// Pairwise salts never change once written, so they are cached forever.
@@ -62,6 +63,9 @@ type IdentityCoreDeps struct {
 	// Timeouts should be the same checker given to AuthService. nil means
 	// NoActiveTimeouts.
 	Timeouts TimeoutChecker
+	// MFA enforces the MFA policies in IssueIdentityAssertion and backs
+	// VerifyMFA (Step 9). nil: no MFA (tests of earlier steps).
+	MFA *MFAService
 }
 
 type IdentityCoreOption func(*IdentityCoreService)
@@ -83,6 +87,7 @@ func NewIdentityCore(d IdentityCoreDeps, opts ...IdentityCoreOption) *IdentityCo
 		keys:     d.SigningKeys,
 		km:       d.KeyManager,
 		timeouts: d.Timeouts,
+		mfa:      d.MFA,
 		now:      time.Now,
 		salts:    make(map[string]string),
 	}
@@ -108,8 +113,12 @@ func (s *IdentityCoreService) AuthenticateLocal(ctx context.Context, c core.Cred
 	})
 }
 
-func (s *IdentityCoreService) VerifyMFA(context.Context, string, core.MFAChallenge) (bool, error) {
-	return false, core.ErrMFANotImplemented
+func (s *IdentityCoreService) VerifyMFA(ctx context.Context, userID string, ch core.MFAChallenge) (bool, error) {
+	if s.mfa == nil {
+		return false, core.ErrMFANotImplemented
+	}
+	_, ok, err := s.mfa.VerifyCode(ctx, userID, ch.Method, ch.Response)
+	return ok, err
 }
 
 // --- Sessions ---------------------------------------------------------------
@@ -185,6 +194,16 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 	if err != nil {
 		return nil, err
 	}
+
+	// 4b. MFA policies of the realm, the client and the user's roles
+	//     (Step 9). On failure the adapter sends the user to the step-up
+	//     page (same session) or to MFA enrollment: *core.MFARequiredError.
+	if s.mfa != nil {
+		if err := s.mfa.CheckClientAccess(ctx, sess, user, client); err != nil {
+			return nil, err
+		}
+	}
+
 	subject, err := s.subjectFor(ctx, user, client)
 	if err != nil {
 		return nil, err
@@ -297,14 +316,15 @@ func authMethodRefs(sess *domain.Session) []string {
 	return amr
 }
 
-// mfaMethodRef maps an MFA method to its RFC 8176 value. Passkeys and
-// biometrics are left out on purpose: their exact value ("hwk" vs "swk",
-// "fpt"/"face"...) is decided at Step 9. "mfa" is still added for them.
+// mfaMethodRef maps an MFA method to its RFC 8176 value. RFC 8176 has no
+// "passkey" value: a passkey is a proof of possession of a key protected by
+// the device ("hwk"), like a security key. Biometrics are not a separate
+// factor here (Face ID only unlocks the passkey). "mfa" is always added.
 func mfaMethodRef(t domain.MfaMethodType) string {
 	switch t {
 	case domain.MfaMethodTOTP, domain.MfaMethodBackupCodes:
 		return domain.AuthMethodOTP
-	case domain.MfaMethodWebAuthn:
+	case domain.MfaMethodWebAuthn, domain.MfaMethodPasskey:
 		return domain.AuthMethodHardwareKey
 	default:
 		return ""

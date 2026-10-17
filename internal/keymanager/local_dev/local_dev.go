@@ -3,13 +3,17 @@ package localdev
 import (
 	"context"
 	"crypto"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/hkdf"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -26,16 +30,96 @@ type storedKey struct {
 type KeyManager struct {
 	mu   sync.RWMutex
 	keys map[string]storedKey
+
+	// envelopeMaster is the root secret of the symmetric keys used for
+	// envelope encryption. Each key is derived from it with HKDF and its
+	// reference, so a key can be recomputed after a restart as long as the
+	// same master is given back (WithEnvelopeMasterKey). Without it, a
+	// random master is drawn at startup and everything it encrypted is lost
+	// with the process.
+	envelopeMaster []byte
 }
 
-var _ keymanager.KeyManager = (*KeyManager)(nil)
+var (
+	_ keymanager.KeyManager = (*KeyManager)(nil)
+	_ keymanager.Encrypter  = (*KeyManager)(nil)
+)
+
+// Option configures a local_dev KeyManager.
+type Option func(*KeyManager)
+
+// WithEnvelopeMasterKey sets the 32-byte root secret of the envelope
+// encryption keys (LOCALDEV_ENVELOPE_KEY), so data encrypted in a previous
+// run (TOTP secrets...) can still be decrypted after a restart.
+func WithEnvelopeMasterKey(key []byte) Option {
+	return func(k *KeyManager) {
+		if len(key) == 32 {
+			k.envelopeMaster = append([]byte(nil), key...)
+		}
+	}
+}
 
 
-func New(env string) *KeyManager {
+func New(env string, opts ...Option) *KeyManager {
 	if env == "production" {
 		panic("keymanager/local_dev: never use this backend with env=production")
 	}
-	return &KeyManager{keys: make(map[string]storedKey)}
+	k := &KeyManager{keys: make(map[string]storedKey)}
+	for _, opt := range opts {
+		opt(k)
+	}
+	if k.envelopeMaster == nil {
+		k.envelopeMaster = make([]byte, 32)
+		_, _ = rand.Read(k.envelopeMaster) // crypto/rand.Read never fails (Go >= 1.24)
+	}
+	return k
+}
+
+// GenerateEncryptionKey returns a new key reference. There is nothing to
+// store: the key itself is derived from the master and the reference.
+func (k *KeyManager) GenerateEncryptionKey(ctx context.Context) (string, error) {
+	return "aes-" + uuid.NewString(), nil
+}
+
+// Encrypt: AES-256-GCM, output = nonce (12 bytes) || ciphertext+tag.
+func (k *KeyManager) Encrypt(ctx context.Context, kmsKeyReference string, plaintext []byte) ([]byte, error) {
+	gcm, err := k.envelopeAEAD(kmsKeyReference)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	_, _ = rand.Read(nonce)
+	return gcm.Seal(nonce, nonce, plaintext, []byte(kmsKeyReference)), nil
+}
+
+func (k *KeyManager) Decrypt(ctx context.Context, kmsKeyReference string, ciphertext []byte) ([]byte, error) {
+	gcm, err := k.envelopeAEAD(kmsKeyReference)
+	if err != nil {
+		return nil, err
+	}
+	if len(ciphertext) < gcm.NonceSize() {
+		return nil, errors.New("local_dev keymanager: ciphertext too short")
+	}
+	nonce, body := ciphertext[:gcm.NonceSize()], ciphertext[gcm.NonceSize():]
+	plain, err := gcm.Open(nil, nonce, body, []byte(kmsKeyReference))
+	if err != nil {
+		// Most likely cause in development: the process restarted without
+		// LOCALDEV_ENVELOPE_KEY, so the master key is not the same anymore.
+		return nil, fmt.Errorf("local_dev keymanager: decrypt with %q failed (was LOCALDEV_ENVELOPE_KEY changed or unset?): %w", kmsKeyReference, err)
+	}
+	return plain, nil
+}
+
+func (k *KeyManager) envelopeAEAD(kmsKeyReference string) (cipher.AEAD, error) {
+	key, err := hkdf.Key(sha256.New, k.envelopeMaster, nil, "oh-my-sso/local_dev/envelope/"+kmsKeyReference, 32)
+	if err != nil {
+		return nil, fmt.Errorf("local_dev keymanager: derive key: %w", err)
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	return cipher.NewGCM(block)
 }
 
 func (k *KeyManager) GenerateKey(ctx context.Context, keyType keymanager.KeyType) (*keymanager.GeneratedKey, error) {

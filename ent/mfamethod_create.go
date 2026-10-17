@@ -34,6 +34,20 @@ func (_c *MfaMethodCreate) SetType(v schema.MfaMethodType) *MfaMethodCreate {
 	return _c
 }
 
+// SetName sets the "name" field.
+func (_c *MfaMethodCreate) SetName(v string) *MfaMethodCreate {
+	_c.mutation.SetName(v)
+	return _c
+}
+
+// SetNillableName sets the "name" field if the given value is not nil.
+func (_c *MfaMethodCreate) SetNillableName(v *string) *MfaMethodCreate {
+	if v != nil {
+		_c.SetName(*v)
+	}
+	return _c
+}
+
 // SetSecretEncrypted sets the "secret_encrypted" field.
 func (_c *MfaMethodCreate) SetSecretEncrypted(v string) *MfaMethodCreate {
 	_c.mutation.SetSecretEncrypted(v)
@@ -146,6 +160,20 @@ func (_c *MfaMethodCreate) SetNillableLastUsedAt(v *time.Time) *MfaMethodCreate 
 	return _c
 }
 
+// SetLastUsedCounter sets the "last_used_counter" field.
+func (_c *MfaMethodCreate) SetLastUsedCounter(v int64) *MfaMethodCreate {
+	_c.mutation.SetLastUsedCounter(v)
+	return _c
+}
+
+// SetNillableLastUsedCounter sets the "last_used_counter" field if the given value is not nil.
+func (_c *MfaMethodCreate) SetNillableLastUsedCounter(v *int64) *MfaMethodCreate {
+	if v != nil {
+		_c.SetLastUsedCounter(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *MfaMethodCreate) SetID(v string) *MfaMethodCreate {
 	_c.mutation.SetID(v)
@@ -222,6 +250,10 @@ func (_c *MfaMethodCreate) defaults() {
 		v := mfamethod.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.LastUsedCounter(); !ok {
+		v := mfamethod.DefaultLastUsedCounter
+		_c.mutation.SetLastUsedCounter(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := mfamethod.DefaultID()
 		_c.mutation.SetID(v)
@@ -241,6 +273,11 @@ func (_c *MfaMethodCreate) check() error {
 	if _, ok := _c.mutation.GetType(); !ok {
 		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "MfaMethod.type"`)}
 	}
+	if v, ok := _c.mutation.Name(); ok {
+		if err := mfamethod.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "MfaMethod.name": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.IsDiscoverable(); !ok {
 		return &ValidationError{Name: "is_discoverable", err: errors.New(`ent: missing required field "MfaMethod.is_discoverable"`)}
 	}
@@ -252,6 +289,9 @@ func (_c *MfaMethodCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "MfaMethod.updated_at"`)}
+	}
+	if _, ok := _c.mutation.LastUsedCounter(); !ok {
+		return &ValidationError{Name: "last_used_counter", err: errors.New(`ent: missing required field "MfaMethod.last_used_counter"`)}
 	}
 	if v, ok := _c.mutation.ID(); ok {
 		if err := mfamethod.IDValidator(v); err != nil {
@@ -300,6 +340,10 @@ func (_c *MfaMethodCreate) createSpec() (*MfaMethod, *sqlgraph.CreateSpec) {
 		_spec.SetField(mfamethod.FieldType, field.TypeString, value)
 		_node.Type = value
 	}
+	if value, ok := _c.mutation.Name(); ok {
+		_spec.SetField(mfamethod.FieldName, field.TypeString, value)
+		_node.Name = value
+	}
 	if value, ok := _c.mutation.SecretEncrypted(); ok {
 		_spec.SetField(mfamethod.FieldSecretEncrypted, field.TypeString, value)
 		_node.SecretEncrypted = value
@@ -331,6 +375,10 @@ func (_c *MfaMethodCreate) createSpec() (*MfaMethod, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.LastUsedAt(); ok {
 		_spec.SetField(mfamethod.FieldLastUsedAt, field.TypeTime, value)
 		_node.LastUsedAt = value
+	}
+	if value, ok := _c.mutation.LastUsedCounter(); ok {
+		_spec.SetField(mfamethod.FieldLastUsedCounter, field.TypeInt64, value)
+		_node.LastUsedCounter = value
 	}
 	if nodes := _c.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

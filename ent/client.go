@@ -31,6 +31,7 @@ import (
 	"sso.internal/sso/ent/loginattempt"
 	"sso.internal/sso/ent/mfabackupcode"
 	"sso.internal/sso/ent/mfamethod"
+	"sso.internal/sso/ent/mfapolicy"
 	"sso.internal/sso/ent/passwordresettoken"
 	"sso.internal/sso/ent/permission"
 	"sso.internal/sso/ent/realm"
@@ -80,6 +81,8 @@ type Client struct {
 	MfaBackupCode *MfaBackupCodeClient
 	// MfaMethod is the client for interacting with the MfaMethod builders.
 	MfaMethod *MfaMethodClient
+	// MfaPolicy is the client for interacting with the MfaPolicy builders.
+	MfaPolicy *MfaPolicyClient
 	// PasswordResetToken is the client for interacting with the PasswordResetToken builders.
 	PasswordResetToken *PasswordResetTokenClient
 	// Permission is the client for interacting with the Permission builders.
@@ -127,6 +130,7 @@ func (c *Client) init() {
 	c.LoginAttempt = NewLoginAttemptClient(c.config)
 	c.MfaBackupCode = NewMfaBackupCodeClient(c.config)
 	c.MfaMethod = NewMfaMethodClient(c.config)
+	c.MfaPolicy = NewMfaPolicyClient(c.config)
 	c.PasswordResetToken = NewPasswordResetTokenClient(c.config)
 	c.Permission = NewPermissionClient(c.config)
 	c.Realm = NewRealmClient(c.config)
@@ -245,6 +249,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		LoginAttempt:       NewLoginAttemptClient(cfg),
 		MfaBackupCode:      NewMfaBackupCodeClient(cfg),
 		MfaMethod:          NewMfaMethodClient(cfg),
+		MfaPolicy:          NewMfaPolicyClient(cfg),
 		PasswordResetToken: NewPasswordResetTokenClient(cfg),
 		Permission:         NewPermissionClient(cfg),
 		Realm:              NewRealmClient(cfg),
@@ -290,6 +295,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		LoginAttempt:       NewLoginAttemptClient(cfg),
 		MfaBackupCode:      NewMfaBackupCodeClient(cfg),
 		MfaMethod:          NewMfaMethodClient(cfg),
+		MfaPolicy:          NewMfaPolicyClient(cfg),
 		PasswordResetToken: NewPasswordResetTokenClient(cfg),
 		Permission:         NewPermissionClient(cfg),
 		Realm:              NewRealmClient(cfg),
@@ -332,9 +338,9 @@ func (c *Client) Use(hooks ...Hook) {
 		c.AuditLog, c.ClientApp, c.ClientGroup, c.ClientRole, c.ClientScope,
 		c.ClientScopeMapping, c.Consent, c.FederatedIdentity, c.Group,
 		c.GroupClientScope, c.IdentityProvider, c.InstanceSettings, c.KeyRotationLog,
-		c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.PasswordResetToken,
-		c.Permission, c.Realm, c.Role, c.RoleClientScope, c.Session, c.SigningKey,
-		c.Timeout, c.Token, c.User,
+		c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.MfaPolicy,
+		c.PasswordResetToken, c.Permission, c.Realm, c.Role, c.RoleClientScope,
+		c.Session, c.SigningKey, c.Timeout, c.Token, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -347,9 +353,9 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.AuditLog, c.ClientApp, c.ClientGroup, c.ClientRole, c.ClientScope,
 		c.ClientScopeMapping, c.Consent, c.FederatedIdentity, c.Group,
 		c.GroupClientScope, c.IdentityProvider, c.InstanceSettings, c.KeyRotationLog,
-		c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.PasswordResetToken,
-		c.Permission, c.Realm, c.Role, c.RoleClientScope, c.Session, c.SigningKey,
-		c.Timeout, c.Token, c.User,
+		c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.MfaPolicy,
+		c.PasswordResetToken, c.Permission, c.Realm, c.Role, c.RoleClientScope,
+		c.Session, c.SigningKey, c.Timeout, c.Token, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -390,6 +396,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.MfaBackupCode.mutate(ctx, m)
 	case *MfaMethodMutation:
 		return c.MfaMethod.mutate(ctx, m)
+	case *MfaPolicyMutation:
+		return c.MfaPolicy.mutate(ctx, m)
 	case *PasswordResetTokenMutation:
 		return c.PasswordResetToken.mutate(ctx, m)
 	case *PermissionMutation:
@@ -3215,6 +3223,171 @@ func (c *MfaMethodClient) mutate(ctx context.Context, m *MfaMethodMutation) (Val
 	}
 }
 
+// MfaPolicyClient is a client for the MfaPolicy schema.
+type MfaPolicyClient struct {
+	config
+}
+
+// NewMfaPolicyClient returns a client for the MfaPolicy from the given config.
+func NewMfaPolicyClient(c config) *MfaPolicyClient {
+	return &MfaPolicyClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `mfapolicy.Hooks(f(g(h())))`.
+func (c *MfaPolicyClient) Use(hooks ...Hook) {
+	c.hooks.MfaPolicy = append(c.hooks.MfaPolicy, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `mfapolicy.Intercept(f(g(h())))`.
+func (c *MfaPolicyClient) Intercept(interceptors ...Interceptor) {
+	c.inters.MfaPolicy = append(c.inters.MfaPolicy, interceptors...)
+}
+
+// Create returns a builder for creating a MfaPolicy entity.
+func (c *MfaPolicyClient) Create() *MfaPolicyCreate {
+	mutation := newMfaPolicyMutation(c.config, OpCreate)
+	return &MfaPolicyCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of MfaPolicy entities.
+func (c *MfaPolicyClient) CreateBulk(builders ...*MfaPolicyCreate) *MfaPolicyCreateBulk {
+	return &MfaPolicyCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *MfaPolicyClient) MapCreateBulk(slice any, setFunc func(*MfaPolicyCreate, int)) *MfaPolicyCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &MfaPolicyCreateBulk{err: fmt.Errorf("calling to MfaPolicyClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*MfaPolicyCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &MfaPolicyCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for MfaPolicy.
+func (c *MfaPolicyClient) Update() *MfaPolicyUpdate {
+	mutation := newMfaPolicyMutation(c.config, OpUpdate)
+	return &MfaPolicyUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MfaPolicyClient) UpdateOne(_m *MfaPolicy) *MfaPolicyUpdateOne {
+	mutation := newMfaPolicyMutation(c.config, OpUpdateOne, withMfaPolicy(_m))
+	return &MfaPolicyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *MfaPolicyClient) UpdateOneID(id string) *MfaPolicyUpdateOne {
+	mutation := newMfaPolicyMutation(c.config, OpUpdateOne, withMfaPolicyID(id))
+	return &MfaPolicyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for MfaPolicy.
+func (c *MfaPolicyClient) Delete() *MfaPolicyDelete {
+	mutation := newMfaPolicyMutation(c.config, OpDelete)
+	return &MfaPolicyDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *MfaPolicyClient) DeleteOne(_m *MfaPolicy) *MfaPolicyDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *MfaPolicyClient) DeleteOneID(id string) *MfaPolicyDeleteOne {
+	builder := c.Delete().Where(mfapolicy.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &MfaPolicyDeleteOne{builder}
+}
+
+// Query returns a query builder for MfaPolicy.
+func (c *MfaPolicyClient) Query() *MfaPolicyQuery {
+	return &MfaPolicyQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeMfaPolicy},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a MfaPolicy entity by its id.
+func (c *MfaPolicyClient) Get(ctx context.Context, id string) (*MfaPolicy, error) {
+	return c.Query().Where(mfapolicy.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MfaPolicyClient) GetX(ctx context.Context, id string) *MfaPolicy {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryRealm queries the realm edge of a MfaPolicy.
+func (c *MfaPolicyClient) QueryRealm(_m *MfaPolicy) *RealmQuery {
+	query := (&RealmClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(mfapolicy.Table, mfapolicy.FieldID, id),
+			sqlgraph.To(realm.Table, realm.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, mfapolicy.RealmTable, mfapolicy.RealmColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRole queries the role edge of a MfaPolicy.
+func (c *MfaPolicyClient) QueryRole(_m *MfaPolicy) *RoleQuery {
+	query := (&RoleClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(mfapolicy.Table, mfapolicy.FieldID, id),
+			sqlgraph.To(role.Table, role.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, mfapolicy.RoleTable, mfapolicy.RoleColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *MfaPolicyClient) Hooks() []Hook {
+	return c.hooks.MfaPolicy
+}
+
+// Interceptors returns the client interceptors.
+func (c *MfaPolicyClient) Interceptors() []Interceptor {
+	return c.inters.MfaPolicy
+}
+
+func (c *MfaPolicyClient) mutate(ctx context.Context, m *MfaPolicyMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&MfaPolicyCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&MfaPolicyUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&MfaPolicyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&MfaPolicyDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown MfaPolicy mutation op: %q", m.Op())
+	}
+}
+
 // PasswordResetTokenClient is a client for the PasswordResetToken schema.
 type PasswordResetTokenClient struct {
 	config
@@ -3845,6 +4018,22 @@ func (c *RealmClient) QueryTimeouts(_m *Realm) *TimeoutQuery {
 	return query
 }
 
+// QueryMfaPolicies queries the mfa_policies edge of a Realm.
+func (c *RealmClient) QueryMfaPolicies(_m *Realm) *MfaPolicyQuery {
+	query := (&MfaPolicyClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(realm.Table, realm.FieldID, id),
+			sqlgraph.To(mfapolicy.Table, mfapolicy.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, realm.MfaPoliciesTable, realm.MfaPoliciesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *RealmClient) Hooks() []Hook {
 	return c.hooks.Realm
@@ -4051,6 +4240,22 @@ func (c *RoleClient) QueryClientApps(_m *Role) *ClientAppQuery {
 			sqlgraph.From(role.Table, role.FieldID, id),
 			sqlgraph.To(clientapp.Table, clientapp.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, role.ClientAppsTable, role.ClientAppsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryMfaPolicy queries the mfa_policy edge of a Role.
+func (c *RoleClient) QueryMfaPolicy(_m *Role) *MfaPolicyQuery {
+	query := (&MfaPolicyClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(role.Table, role.FieldID, id),
+			sqlgraph.To(mfapolicy.Table, mfapolicy.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, role.MfaPolicyTable, role.MfaPolicyColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -5223,14 +5428,14 @@ type (
 		AuditLog, ClientApp, ClientGroup, ClientRole, ClientScope, ClientScopeMapping,
 		Consent, FederatedIdentity, Group, GroupClientScope, IdentityProvider,
 		InstanceSettings, KeyRotationLog, LoginAttempt, MfaBackupCode, MfaMethod,
-		PasswordResetToken, Permission, Realm, Role, RoleClientScope, Session,
-		SigningKey, Timeout, Token, User []ent.Hook
+		MfaPolicy, PasswordResetToken, Permission, Realm, Role, RoleClientScope,
+		Session, SigningKey, Timeout, Token, User []ent.Hook
 	}
 	inters struct {
 		AuditLog, ClientApp, ClientGroup, ClientRole, ClientScope, ClientScopeMapping,
 		Consent, FederatedIdentity, Group, GroupClientScope, IdentityProvider,
 		InstanceSettings, KeyRotationLog, LoginAttempt, MfaBackupCode, MfaMethod,
-		PasswordResetToken, Permission, Realm, Role, RoleClientScope, Session,
-		SigningKey, Timeout, Token, User []ent.Interceptor
+		MfaPolicy, PasswordResetToken, Permission, Realm, Role, RoleClientScope,
+		Session, SigningKey, Timeout, Token, User []ent.Interceptor
 	}
 )

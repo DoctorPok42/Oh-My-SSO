@@ -54,6 +54,9 @@ type MfaBackupCode func(*sql.Selector)
 // MfaMethod is the predicate function for mfamethod builders.
 type MfaMethod func(*sql.Selector)
 
+// MfaPolicy is the predicate function for mfapolicy builders.
+type MfaPolicy func(*sql.Selector)
+
 // PasswordResetToken is the predicate function for passwordresettoken builders.
 type PasswordResetToken func(*sql.Selector)
 

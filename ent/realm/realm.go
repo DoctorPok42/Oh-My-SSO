@@ -53,6 +53,8 @@ const (
 	EdgeInstanceSettings = "instance_settings"
 	// EdgeTimeouts holds the string denoting the timeouts edge name in mutations.
 	EdgeTimeouts = "timeouts"
+	// EdgeMfaPolicies holds the string denoting the mfa_policies edge name in mutations.
+	EdgeMfaPolicies = "mfa_policies"
 	// Table holds the table name of the realm in the database.
 	Table = "realms"
 	// UsersTable is the table that holds the users relation/edge.
@@ -139,6 +141,13 @@ const (
 	TimeoutsInverseTable = "timeouts"
 	// TimeoutsColumn is the table column denoting the timeouts relation/edge.
 	TimeoutsColumn = "realm_id"
+	// MfaPoliciesTable is the table that holds the mfa_policies relation/edge.
+	MfaPoliciesTable = "mfa_policies"
+	// MfaPoliciesInverseTable is the table name for the MfaPolicy entity.
+	// It exists in this package in order to avoid circular dependency with the "mfapolicy" package.
+	MfaPoliciesInverseTable = "mfa_policies"
+	// MfaPoliciesColumn is the table column denoting the mfa_policies relation/edge.
+	MfaPoliciesColumn = "realm_id"
 )
 
 // Columns holds all SQL columns for realm fields.
@@ -385,6 +394,20 @@ func ByTimeouts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newTimeoutsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByMfaPoliciesCount orders the results by mfa_policies count.
+func ByMfaPoliciesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newMfaPoliciesStep(), opts...)
+	}
+}
+
+// ByMfaPolicies orders the results by mfa_policies terms.
+func ByMfaPolicies(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMfaPoliciesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUsersStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -467,5 +490,12 @@ func newTimeoutsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(TimeoutsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, TimeoutsTable, TimeoutsColumn),
+	)
+}
+func newMfaPoliciesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(MfaPoliciesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, MfaPoliciesTable, MfaPoliciesColumn),
 	)
 }

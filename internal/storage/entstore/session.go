@@ -33,6 +33,7 @@ func (r *entSessionRepository) Create(ctx context.Context, p repository.CreateSe
 		SetNillableDeviceFingerprint(nonEmpty(p.DeviceFingerprint)).
 		SetMfaVerified(p.MFAVerified).
 		SetNillableMfaMethodType(nonEmpty(p.MFAMethodType)).
+		SetNillableMfaVerifiedAt(nonZeroTime(p.MFAVerifiedAt)).
 		SetAuthMethod(p.AuthMethod).
 		Save(ctx)
 	if err != nil {
@@ -118,6 +119,23 @@ func (r *entSessionRepository) Revoke(ctx context.Context, id string, reason dom
 	return nil
 }
 
+func (r *entSessionRepository) MarkMFAVerified(ctx context.Context, id string, method string, at time.Time) error {
+	n, err := r.client.Session.
+		Update().
+		Where(session.ID(id), session.Status(activeStatus)).
+		SetMfaVerified(true).
+		SetMfaMethodType(method).
+		SetMfaVerifiedAt(at).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return repository.ErrNotFound
+	}
+	return nil
+}
+
 func (r *entSessionRepository) RevokeAllByUser(ctx context.Context, userID string, reason domain.SessionRevokedReason) ([]*domain.Session, error) {
 	active, err := r.ListActiveByUser(ctx, userID)
 	if err != nil {
@@ -162,6 +180,7 @@ func toDomainSession(e *ent.Session) *domain.Session {
 		DeviceFingerprint: e.DeviceFingerprint,
 		MFAVerified:       e.MfaVerified,
 		MFAMethodType:     e.MfaMethodType,
+		MFAVerifiedAt:     e.MfaVerifiedAt,
 		AuthMethod:        e.AuthMethod,
 		Status:            domain.SessionStatus(e.Status),
 		RevokedReason:     domain.SessionRevokedReason(e.RevokedReason),

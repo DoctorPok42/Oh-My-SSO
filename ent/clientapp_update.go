@@ -655,6 +655,38 @@ func (_u *ClientAppUpdate) ClearSessionMaxMinutes() *ClientAppUpdate {
 	return _u
 }
 
+// SetMfaPolicy sets the "mfa_policy" field.
+func (_u *ClientAppUpdate) SetMfaPolicy(v schema.ClientAppMFAPolicy) *ClientAppUpdate {
+	_u.mutation.SetMfaPolicy(v)
+	return _u
+}
+
+// SetNillableMfaPolicy sets the "mfa_policy" field if the given value is not nil.
+func (_u *ClientAppUpdate) SetNillableMfaPolicy(v *schema.ClientAppMFAPolicy) *ClientAppUpdate {
+	if v != nil {
+		_u.SetMfaPolicy(*v)
+	}
+	return _u
+}
+
+// SetMfaAllowedMethods sets the "mfa_allowed_methods" field.
+func (_u *ClientAppUpdate) SetMfaAllowedMethods(v []string) *ClientAppUpdate {
+	_u.mutation.SetMfaAllowedMethods(v)
+	return _u
+}
+
+// AppendMfaAllowedMethods appends value to the "mfa_allowed_methods" field.
+func (_u *ClientAppUpdate) AppendMfaAllowedMethods(v []string) *ClientAppUpdate {
+	_u.mutation.AppendMfaAllowedMethods(v)
+	return _u
+}
+
+// ClearMfaAllowedMethods clears the value of the "mfa_allowed_methods" field.
+func (_u *ClientAppUpdate) ClearMfaAllowedMethods() *ClientAppUpdate {
+	_u.mutation.ClearMfaAllowedMethods()
+	return _u
+}
+
 // AddRoleIDs adds the "roles" edge to the Role entity by IDs.
 func (_u *ClientAppUpdate) AddRoleIDs(ids ...string) *ClientAppUpdate {
 	_u.mutation.AddRoleIDs(ids...)
@@ -1226,6 +1258,20 @@ func (_u *ClientAppUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.SessionMaxMinutesCleared() {
 		_spec.ClearField(clientapp.FieldSessionMaxMinutes, field.TypeInt)
+	}
+	if value, ok := _u.mutation.MfaPolicy(); ok {
+		_spec.SetField(clientapp.FieldMfaPolicy, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MfaAllowedMethods(); ok {
+		_spec.SetField(clientapp.FieldMfaAllowedMethods, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedMfaAllowedMethods(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, clientapp.FieldMfaAllowedMethods, value)
+		})
+	}
+	if _u.mutation.MfaAllowedMethodsCleared() {
+		_spec.ClearField(clientapp.FieldMfaAllowedMethods, field.TypeJSON)
 	}
 	if _u.mutation.RolesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -2287,6 +2333,38 @@ func (_u *ClientAppUpdateOne) ClearSessionMaxMinutes() *ClientAppUpdateOne {
 	return _u
 }
 
+// SetMfaPolicy sets the "mfa_policy" field.
+func (_u *ClientAppUpdateOne) SetMfaPolicy(v schema.ClientAppMFAPolicy) *ClientAppUpdateOne {
+	_u.mutation.SetMfaPolicy(v)
+	return _u
+}
+
+// SetNillableMfaPolicy sets the "mfa_policy" field if the given value is not nil.
+func (_u *ClientAppUpdateOne) SetNillableMfaPolicy(v *schema.ClientAppMFAPolicy) *ClientAppUpdateOne {
+	if v != nil {
+		_u.SetMfaPolicy(*v)
+	}
+	return _u
+}
+
+// SetMfaAllowedMethods sets the "mfa_allowed_methods" field.
+func (_u *ClientAppUpdateOne) SetMfaAllowedMethods(v []string) *ClientAppUpdateOne {
+	_u.mutation.SetMfaAllowedMethods(v)
+	return _u
+}
+
+// AppendMfaAllowedMethods appends value to the "mfa_allowed_methods" field.
+func (_u *ClientAppUpdateOne) AppendMfaAllowedMethods(v []string) *ClientAppUpdateOne {
+	_u.mutation.AppendMfaAllowedMethods(v)
+	return _u
+}
+
+// ClearMfaAllowedMethods clears the value of the "mfa_allowed_methods" field.
+func (_u *ClientAppUpdateOne) ClearMfaAllowedMethods() *ClientAppUpdateOne {
+	_u.mutation.ClearMfaAllowedMethods()
+	return _u
+}
+
 // AddRoleIDs adds the "roles" edge to the Role entity by IDs.
 func (_u *ClientAppUpdateOne) AddRoleIDs(ids ...string) *ClientAppUpdateOne {
 	_u.mutation.AddRoleIDs(ids...)
@@ -2888,6 +2966,20 @@ func (_u *ClientAppUpdateOne) sqlSave(ctx context.Context) (_node *ClientApp, er
 	}
 	if _u.mutation.SessionMaxMinutesCleared() {
 		_spec.ClearField(clientapp.FieldSessionMaxMinutes, field.TypeInt)
+	}
+	if value, ok := _u.mutation.MfaPolicy(); ok {
+		_spec.SetField(clientapp.FieldMfaPolicy, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MfaAllowedMethods(); ok {
+		_spec.SetField(clientapp.FieldMfaAllowedMethods, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedMfaAllowedMethods(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, clientapp.FieldMfaAllowedMethods, value)
+		})
+	}
+	if _u.mutation.MfaAllowedMethodsCleared() {
+		_spec.ClearField(clientapp.FieldMfaAllowedMethods, field.TypeJSON)
 	}
 	if _u.mutation.RolesCleared() {
 		edge := &sqlgraph.EdgeSpec{

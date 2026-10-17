@@ -54,6 +54,19 @@ const (
 	ClientAppSubjectPairwise ClientAppSubjectType = "pairwise"
 )
 
+// ClientAppMFAPolicy decides whether this client requires a second factor.
+// Policies combine (realm, client, roles): the strictest one wins, so a
+// client can make MFA mandatory but never relax a realm or role requirement.
+type ClientAppMFAPolicy string
+
+const (
+	// ClientAppMFAInherit: the client adds no requirement of its own.
+	ClientAppMFAInherit ClientAppMFAPolicy = "inherit"
+	// ClientAppMFARequired: a session needs a verified second factor to get
+	// an assertion for this client.
+	ClientAppMFARequired ClientAppMFAPolicy = "required"
+)
+
 func (ClientApp) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
@@ -111,6 +124,12 @@ func (ClientApp) Fields() []ent.Field {
 		// --- Session overrides ---
 		field.Int("session_idle_minutes").Optional().Nillable().Positive(),
 		field.Int("session_max_minutes").Optional().Nillable().Positive(),
+
+		// --- MFA ---
+		field.String("mfa_policy").GoType(ClientAppMFAPolicy("")).Default(string(ClientAppMFAInherit)),
+		// Methods that satisfy an MFA requirement for this client ("totp",
+		// "passkey", "webauthn", "backup_codes"). Empty means any method.
+		field.JSON("mfa_allowed_methods", []string{}).Optional(),
 	}
 }
 

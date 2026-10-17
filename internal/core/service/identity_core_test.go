@@ -65,15 +65,20 @@ func (f *fakeUserRepo) GetByRealmAndEmail(_ context.Context, realmID, email stri
 
 type fakeLoginAttemptRepo struct {
 	repository.LoginAttemptRepository
+	mu       sync.Mutex
 	attempts []repository.CreateLoginAttemptParams
 }
 
 func (f *fakeLoginAttemptRepo) Create(_ context.Context, p repository.CreateLoginAttemptParams) (*domain.LoginAttempt, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.attempts = append(f.attempts, p)
 	return &domain.LoginAttempt{Status: p.Status, FailureReason: p.FailureReason}, nil
 }
 
 func (f *fakeLoginAttemptRepo) last() repository.CreateLoginAttemptParams {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.attempts[len(f.attempts)-1]
 }
 
@@ -94,8 +99,8 @@ func (f *fakeSessionRepo) Create(_ context.Context, p repository.CreateSessionPa
 		ID: fmt.Sprintf("sess-%d", f.seq), RealmID: p.RealmID, UserID: p.UserID,
 		CreatedAt: now, LastActivityAt: now, ExpiresAt: p.ExpiresAt,
 		IPAddress: p.IPAddress, UserAgent: p.UserAgent,
-		MFAVerified: p.MFAVerified, MFAMethodType: p.MFAMethodType, AuthMethod: p.AuthMethod,
-		Status: domain.SessionActive, TokenHash: p.TokenHash,
+		MFAVerified: p.MFAVerified, MFAMethodType: p.MFAMethodType, MFAVerifiedAt: p.MFAVerifiedAt,
+		AuthMethod: p.AuthMethod, Status: domain.SessionActive, TokenHash: p.TokenHash,
 	}
 	f.byID[s.ID] = s
 	cp := *s
@@ -147,6 +152,31 @@ func (f *fakeSessionRepo) Revoke(_ context.Context, id string, reason domain.Ses
 	}
 	s.Status, s.RevokedReason = domain.SessionRevoked, reason
 	return nil
+}
+
+func (f *fakeSessionRepo) MarkMFAVerified(_ context.Context, id, method string, at time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, ok := f.byID[id]
+	if !ok || s.Status != domain.SessionActive {
+		return repository.ErrNotFound
+	}
+	s.MFAVerified, s.MFAMethodType, s.MFAVerifiedAt = true, method, at
+	return nil
+}
+
+func (f *fakeSessionRepo) RevokeAllByUser(_ context.Context, userID string, reason domain.SessionRevokedReason) ([]*domain.Session, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*domain.Session
+	for _, s := range f.byID {
+		if s.UserID == userID && s.Status == domain.SessionActive {
+			s.Status, s.RevokedReason = domain.SessionRevoked, reason
+			cp := *s
+			out = append(out, &cp)
+		}
+	}
+	return out, nil
 }
 
 // fakeSettingsRepo always misses: SessionService falls back to its defaults

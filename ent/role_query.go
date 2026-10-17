@@ -15,6 +15,7 @@ import (
 	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/clientrole"
 	"sso.internal/sso/ent/clientscope"
+	"sso.internal/sso/ent/mfapolicy"
 	"sso.internal/sso/ent/permission"
 	"sso.internal/sso/ent/predicate"
 	"sso.internal/sso/ent/realm"
@@ -35,6 +36,7 @@ type RoleQuery struct {
 	withPermissions      *PermissionQuery
 	withClientScopes     *ClientScopeQuery
 	withClientApps       *ClientAppQuery
+	withMfaPolicy        *MfaPolicyQuery
 	withRoleClientScopes *RoleClientScopeQuery
 	withClientRoles      *ClientRoleQuery
 	// intermediate query (i.e. traversal path).
@@ -176,6 +178,28 @@ func (_q *RoleQuery) QueryClientApps() *ClientAppQuery {
 			sqlgraph.From(role.Table, role.FieldID, selector),
 			sqlgraph.To(clientapp.Table, clientapp.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, role.ClientAppsTable, role.ClientAppsPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryMfaPolicy chains the current query on the "mfa_policy" edge.
+func (_q *RoleQuery) QueryMfaPolicy() *MfaPolicyQuery {
+	query := (&MfaPolicyClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(role.Table, role.FieldID, selector),
+			sqlgraph.To(mfapolicy.Table, mfapolicy.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, role.MfaPolicyTable, role.MfaPolicyColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -424,6 +448,7 @@ func (_q *RoleQuery) Clone() *RoleQuery {
 		withPermissions:      _q.withPermissions.Clone(),
 		withClientScopes:     _q.withClientScopes.Clone(),
 		withClientApps:       _q.withClientApps.Clone(),
+		withMfaPolicy:        _q.withMfaPolicy.Clone(),
 		withRoleClientScopes: _q.withRoleClientScopes.Clone(),
 		withClientRoles:      _q.withClientRoles.Clone(),
 		// clone intermediate query.
@@ -484,6 +509,17 @@ func (_q *RoleQuery) WithClientApps(opts ...func(*ClientAppQuery)) *RoleQuery {
 		opt(query)
 	}
 	_q.withClientApps = query
+	return _q
+}
+
+// WithMfaPolicy tells the query-builder to eager-load the nodes that are connected to
+// the "mfa_policy" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *RoleQuery) WithMfaPolicy(opts ...func(*MfaPolicyQuery)) *RoleQuery {
+	query := (&MfaPolicyClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withMfaPolicy = query
 	return _q
 }
 
@@ -587,12 +623,13 @@ func (_q *RoleQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Role, e
 	var (
 		nodes       = []*Role{}
 		_spec       = _q.querySpec()
-		loadedTypes = [7]bool{
+		loadedTypes = [8]bool{
 			_q.withRealm != nil,
 			_q.withUsers != nil,
 			_q.withPermissions != nil,
 			_q.withClientScopes != nil,
 			_q.withClientApps != nil,
+			_q.withMfaPolicy != nil,
 			_q.withRoleClientScopes != nil,
 			_q.withClientRoles != nil,
 		}
@@ -646,6 +683,12 @@ func (_q *RoleQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Role, e
 		if err := _q.loadClientApps(ctx, query, nodes,
 			func(n *Role) { n.Edges.ClientApps = []*ClientApp{} },
 			func(n *Role, e *ClientApp) { n.Edges.ClientApps = append(n.Edges.ClientApps, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withMfaPolicy; query != nil {
+		if err := _q.loadMfaPolicy(ctx, query, nodes, nil,
+			func(n *Role, e *MfaPolicy) { n.Edges.MfaPolicy = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -936,6 +979,33 @@ func (_q *RoleQuery) loadClientApps(ctx context.Context, query *ClientAppQuery, 
 		for kn := range nodes {
 			assign(kn, n)
 		}
+	}
+	return nil
+}
+func (_q *RoleQuery) loadMfaPolicy(ctx context.Context, query *MfaPolicyQuery, nodes []*Role, init func(*Role), assign func(*Role, *MfaPolicy)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*Role)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(mfapolicy.FieldRoleID)
+	}
+	query.Where(predicate.MfaPolicy(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(role.MfaPolicyColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.RoleID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "role_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

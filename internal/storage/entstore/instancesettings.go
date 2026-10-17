@@ -56,6 +56,7 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 		SetNillableMfaRequiredGlobally(p.MFARequiredGlobally).
 		SetNillableNotificationEmailEnabled(p.NotificationEmailEnabled).
 		SetNillableKeyRotationGraceHours(p.KeyRotationGraceHours).
+		SetNillableMfaStepUpMaxAgeMinutes(p.MFAStepUpMaxAgeMinutes).
 		SetNillableUpdatedBy(p.UpdatedBy)
 	if p.IPAllowlist != nil {
 		builder = builder.SetIPAllowlist(p.IPAllowlist)
@@ -87,6 +88,7 @@ func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings 
 		MFARequiredGlobally:      e.MfaRequiredGlobally,
 		NotificationEmailEnabled: e.NotificationEmailEnabled,
 		KeyRotationGraceHours:    e.KeyRotationGraceHours,
+		MFAStepUpMaxAgeMinutes:   e.MfaStepUpMaxAgeMinutes,
 		UpdatedAt:                e.UpdatedAt,
 		UpdatedBy:                e.UpdatedBy,
 	}

@@ -14,6 +14,7 @@ import (
 	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/clientrole"
 	"sso.internal/sso/ent/clientscope"
+	"sso.internal/sso/ent/mfapolicy"
 	"sso.internal/sso/ent/permission"
 	"sso.internal/sso/ent/predicate"
 	"sso.internal/sso/ent/role"
@@ -163,6 +164,25 @@ func (_u *RoleUpdate) AddClientApps(v ...*ClientApp) *RoleUpdate {
 	return _u.AddClientAppIDs(ids...)
 }
 
+// SetMfaPolicyID sets the "mfa_policy" edge to the MfaPolicy entity by ID.
+func (_u *RoleUpdate) SetMfaPolicyID(id string) *RoleUpdate {
+	_u.mutation.SetMfaPolicyID(id)
+	return _u
+}
+
+// SetNillableMfaPolicyID sets the "mfa_policy" edge to the MfaPolicy entity by ID if the given value is not nil.
+func (_u *RoleUpdate) SetNillableMfaPolicyID(id *string) *RoleUpdate {
+	if id != nil {
+		_u = _u.SetMfaPolicyID(*id)
+	}
+	return _u
+}
+
+// SetMfaPolicy sets the "mfa_policy" edge to the MfaPolicy entity.
+func (_u *RoleUpdate) SetMfaPolicy(v *MfaPolicy) *RoleUpdate {
+	return _u.SetMfaPolicyID(v.ID)
+}
+
 // AddRoleClientScopeIDs adds the "role_client_scopes" edge to the RoleClientScope entity by IDs.
 func (_u *RoleUpdate) AddRoleClientScopeIDs(ids ...string) *RoleUpdate {
 	_u.mutation.AddRoleClientScopeIDs(ids...)
@@ -280,6 +300,12 @@ func (_u *RoleUpdate) RemoveClientApps(v ...*ClientApp) *RoleUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveClientAppIDs(ids...)
+}
+
+// ClearMfaPolicy clears the "mfa_policy" edge to the MfaPolicy entity.
+func (_u *RoleUpdate) ClearMfaPolicy() *RoleUpdate {
+	_u.mutation.ClearMfaPolicy()
+	return _u
 }
 
 // ClearRoleClientScopes clears all "role_client_scopes" edges to the RoleClientScope entity.
@@ -625,6 +651,35 @@ func (_u *RoleUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.MfaPolicyCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   role.MfaPolicyTable,
+			Columns: []string{role.MfaPolicyColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MfaPolicyIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   role.MfaPolicyTable,
+			Columns: []string{role.MfaPolicyColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.RoleClientScopesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -863,6 +918,25 @@ func (_u *RoleUpdateOne) AddClientApps(v ...*ClientApp) *RoleUpdateOne {
 	return _u.AddClientAppIDs(ids...)
 }
 
+// SetMfaPolicyID sets the "mfa_policy" edge to the MfaPolicy entity by ID.
+func (_u *RoleUpdateOne) SetMfaPolicyID(id string) *RoleUpdateOne {
+	_u.mutation.SetMfaPolicyID(id)
+	return _u
+}
+
+// SetNillableMfaPolicyID sets the "mfa_policy" edge to the MfaPolicy entity by ID if the given value is not nil.
+func (_u *RoleUpdateOne) SetNillableMfaPolicyID(id *string) *RoleUpdateOne {
+	if id != nil {
+		_u = _u.SetMfaPolicyID(*id)
+	}
+	return _u
+}
+
+// SetMfaPolicy sets the "mfa_policy" edge to the MfaPolicy entity.
+func (_u *RoleUpdateOne) SetMfaPolicy(v *MfaPolicy) *RoleUpdateOne {
+	return _u.SetMfaPolicyID(v.ID)
+}
+
 // AddRoleClientScopeIDs adds the "role_client_scopes" edge to the RoleClientScope entity by IDs.
 func (_u *RoleUpdateOne) AddRoleClientScopeIDs(ids ...string) *RoleUpdateOne {
 	_u.mutation.AddRoleClientScopeIDs(ids...)
@@ -980,6 +1054,12 @@ func (_u *RoleUpdateOne) RemoveClientApps(v ...*ClientApp) *RoleUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveClientAppIDs(ids...)
+}
+
+// ClearMfaPolicy clears the "mfa_policy" edge to the MfaPolicy entity.
+func (_u *RoleUpdateOne) ClearMfaPolicy() *RoleUpdateOne {
+	_u.mutation.ClearMfaPolicy()
+	return _u
 }
 
 // ClearRoleClientScopes clears all "role_client_scopes" edges to the RoleClientScope entity.
@@ -1352,6 +1432,35 @@ func (_u *RoleUpdateOne) sqlSave(ctx context.Context) (_node *Role, err error) {
 		edge.Target.Fields = specE.Fields
 		if specE.ID.Value != nil {
 			edge.Target.Fields = append(edge.Target.Fields, specE.ID)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.MfaPolicyCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   role.MfaPolicyTable,
+			Columns: []string{role.MfaPolicyColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MfaPolicyIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   role.MfaPolicyTable,
+			Columns: []string{role.MfaPolicyColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}

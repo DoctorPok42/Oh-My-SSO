@@ -89,6 +89,10 @@ const (
 	FieldSessionIdleMinutes = "session_idle_minutes"
 	// FieldSessionMaxMinutes holds the string denoting the session_max_minutes field in the database.
 	FieldSessionMaxMinutes = "session_max_minutes"
+	// FieldMfaPolicy holds the string denoting the mfa_policy field in the database.
+	FieldMfaPolicy = "mfa_policy"
+	// FieldMfaAllowedMethods holds the string denoting the mfa_allowed_methods field in the database.
+	FieldMfaAllowedMethods = "mfa_allowed_methods"
 	// EdgeRealm holds the string denoting the realm edge name in mutations.
 	EdgeRealm = "realm"
 	// EdgeRoles holds the string denoting the roles edge name in mutations.
@@ -208,6 +212,8 @@ var Columns = []string{
 	FieldSectorIdentifier,
 	FieldSessionIdleMinutes,
 	FieldSessionMaxMinutes,
+	FieldMfaPolicy,
+	FieldMfaAllowedMethods,
 }
 
 var (
@@ -269,6 +275,8 @@ var (
 	SessionIdleMinutesValidator func(int) error
 	// SessionMaxMinutesValidator is a validator for the "session_max_minutes" field. It is called by the builders before save.
 	SessionMaxMinutesValidator func(int) error
+	// DefaultMfaPolicy holds the default value on creation for the "mfa_policy" field.
+	DefaultMfaPolicy schema.ClientAppMFAPolicy
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() string
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
@@ -436,6 +444,11 @@ func BySessionIdleMinutes(opts ...sql.OrderTermOption) OrderOption {
 // BySessionMaxMinutes orders the results by the session_max_minutes field.
 func BySessionMaxMinutes(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSessionMaxMinutes, opts...).ToFunc()
+}
+
+// ByMfaPolicy orders the results by the mfa_policy field.
+func ByMfaPolicy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMfaPolicy, opts...).ToFunc()
 }
 
 // ByRealmField orders the results by realm field.

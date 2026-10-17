@@ -42,6 +42,15 @@ const (
 	ClientAppSubjectPairwise ClientAppSubjectType = "pairwise"
 )
 
+// ClientAppMFAPolicy: see ent/schema/clientapp.go. The strictest of the
+// realm, client and role policies always wins.
+type ClientAppMFAPolicy string
+
+const (
+	ClientAppMFAInherit  ClientAppMFAPolicy = "inherit"
+	ClientAppMFARequired ClientAppMFAPolicy = "required"
+)
+
 type ClientApp struct {
 	ID           string
 	RealmID      string
@@ -87,6 +96,10 @@ type ClientApp struct {
 	// --- Subject identifier ---
 	SubjectType      ClientAppSubjectType
 	SectorIdentifier string // empty: ClientApp.ID is used as the sector
+
+	// --- MFA ---
+	MFAPolicy         ClientAppMFAPolicy
+	MFAAllowedMethods []MfaMethodType // empty: any method
 }
 
 func (c *ClientApp) IsDeleted() bool {
