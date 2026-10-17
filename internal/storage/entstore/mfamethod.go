@@ -34,9 +34,13 @@ func (r *entMfaMethodRepository) Create(ctx context.Context, p repository.Create
 		SetNillableSecretEncrypted(nonEmpty(p.SecretEncrypted)).
 		SetNillableCredentialID(nonEmpty(p.CredentialID)).
 		SetNillablePublicKey(nonEmpty(p.PublicKey)).
+		SetNillableWebauthnCredential(nonEmpty(p.WebAuthnCredential)).
 		SetIsDiscoverable(p.IsDiscoverable).
 		Save(ctx)
 	if err != nil {
+		if ent.IsConstraintError(err) {
+			return nil, fmt.Errorf("%w: %v", repository.ErrConflict, err)
+		}
 		return nil, err
 	}
 	return toDomainMfaMethod(e), nil
@@ -181,20 +185,29 @@ func (r *entMfaMethodRepository) DeleteByUser(ctx context.Context, userID string
 	return r.client.MfaMethod.Delete().Where(mfamethod.UserID(userID)).Exec(ctx)
 }
 
+func (r *entMfaMethodRepository) UpdateWebAuthnCredential(ctx context.Context, id string, credentialJSON string, at time.Time) error {
+	_, err := r.client.MfaMethod.UpdateOneID(id).
+		SetWebauthnCredential(credentialJSON).
+		SetLastUsedAt(at).
+		Save(ctx)
+	return mapNotFound(err)
+}
+
 func toDomainMfaMethod(e *ent.MfaMethod) *domain.MfaMethod {
 	return &domain.MfaMethod{
-		ID:              e.ID,
-		UserID:          e.UserID,
-		Type:            domain.MfaMethodType(e.Type),
-		Name:            e.Name,
-		SecretEncrypted: e.SecretEncrypted,
-		CredentialID:    e.CredentialID,
-		PublicKey:       e.PublicKey,
-		IsDiscoverable:  e.IsDiscoverable,
-		Status:          domain.MfaMethodStatus(e.Status),
-		CreatedAt:       e.CreatedAt,
-		UpdatedAt:       e.UpdatedAt,
-		LastUsedAt:      e.LastUsedAt,
-		LastUsedCounter: e.LastUsedCounter,
+		ID:                 e.ID,
+		UserID:             e.UserID,
+		Type:               domain.MfaMethodType(e.Type),
+		Name:               e.Name,
+		SecretEncrypted:    e.SecretEncrypted,
+		CredentialID:       e.CredentialID,
+		PublicKey:          e.PublicKey,
+		IsDiscoverable:     e.IsDiscoverable,
+		WebAuthnCredential: e.WebauthnCredential,
+		Status:             domain.MfaMethodStatus(e.Status),
+		CreatedAt:          e.CreatedAt,
+		UpdatedAt:          e.UpdatedAt,
+		LastUsedAt:         e.LastUsedAt,
+		LastUsedCounter:    e.LastUsedCounter,
 	}
 }

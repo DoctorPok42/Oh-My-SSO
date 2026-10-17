@@ -31,6 +31,8 @@ type MfaMethod struct {
 	CredentialID string `json:"credential_id,omitempty"`
 	// PublicKey holds the value of the "public_key" field.
 	PublicKey string `json:"public_key,omitempty"`
+	// WebauthnCredential holds the value of the "webauthn_credential" field.
+	WebauthnCredential string `json:"webauthn_credential,omitempty"`
 	// IsDiscoverable holds the value of the "is_discoverable" field.
 	IsDiscoverable bool `json:"is_discoverable,omitempty"`
 	// Status holds the value of the "status" field.
@@ -78,7 +80,7 @@ func (*MfaMethod) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case mfamethod.FieldLastUsedCounter:
 			values[i] = new(sql.NullInt64)
-		case mfamethod.FieldID, mfamethod.FieldUserID, mfamethod.FieldType, mfamethod.FieldName, mfamethod.FieldSecretEncrypted, mfamethod.FieldCredentialID, mfamethod.FieldPublicKey, mfamethod.FieldStatus:
+		case mfamethod.FieldID, mfamethod.FieldUserID, mfamethod.FieldType, mfamethod.FieldName, mfamethod.FieldSecretEncrypted, mfamethod.FieldCredentialID, mfamethod.FieldPublicKey, mfamethod.FieldWebauthnCredential, mfamethod.FieldStatus:
 			values[i] = new(sql.NullString)
 		case mfamethod.FieldCreatedAt, mfamethod.FieldUpdatedAt, mfamethod.FieldLastUsedAt:
 			values[i] = new(sql.NullTime)
@@ -138,6 +140,12 @@ func (_m *MfaMethod) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field public_key", values[i])
 			} else if value.Valid {
 				_m.PublicKey = value.String
+			}
+		case mfamethod.FieldWebauthnCredential:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field webauthn_credential", values[i])
+			} else if value.Valid {
+				_m.WebauthnCredential = value.String
 			}
 		case mfamethod.FieldIsDiscoverable:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -232,6 +240,9 @@ func (_m *MfaMethod) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("public_key=")
 	builder.WriteString(_m.PublicKey)
+	builder.WriteString(", ")
+	builder.WriteString("webauthn_credential=")
+	builder.WriteString(_m.WebauthnCredential)
 	builder.WriteString(", ")
 	builder.WriteString("is_discoverable=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsDiscoverable))

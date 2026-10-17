@@ -30,6 +30,8 @@ import (
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/httpserver"
 	localdev "sso.internal/sso/internal/keymanager/local_dev"
+	"sso.internal/sso/internal/passkey"
+	"sso.internal/sso/internal/passkey/passkeytest"
 	"sso.internal/sso/internal/storage/entstore"
 )
 
@@ -88,6 +90,10 @@ func setupMFATestEnv(t *testing.T) *mfaTestEnv {
 		Audit:    audit,
 		Now:      clock.Now,
 	})
+	// Passkeys: the software authenticator answers from this origin.
+	passkeys, err := passkey.New(passkey.Config{RPID: "sso.test", RPOrigins: []string{passkeyTestOrigin}})
+	require.NoError(t, err)
+
 	mfa := service.NewMFAService(service.MFADeps{
 		Users:         users,
 		Methods:       entstore.NewMfaMethodRepository(client),
@@ -101,6 +107,7 @@ func setupMFATestEnv(t *testing.T) *mfaTestEnv {
 		Audit:         audit,
 		Realms:        realms,
 		Clients:       clients,
+		Passkeys:      passkeys,
 		Now:           clock.Now,
 	})
 	rbac := service.NewRBACService(entstore.NewAccessRepository(client), audit)
@@ -142,6 +149,8 @@ func startTestValkey(t *testing.T, ctx context.Context) string {
 	return host + ":" + port.Port()
 }
 
+const passkeyTestOrigin = "https://sso.test"
+
 // browser is an HTTP client with its own cookie jar, like a browser tab.
 type browser struct {
 	t     *testing.T
@@ -160,8 +169,20 @@ func (e *mfaTestEnv) newBrowser(t *testing.T, realm string) *browser {
 
 func (b *browser) do(method, path string, body any) (int, map[string]any) {
 	b.t.Helper()
+	status, raw := b.doRaw(method, path, body)
+	out := map[string]any{}
+	_ = json.Unmarshal(raw, &out)
+	return status, out
+}
+
+// doRaw sends body (a value to encode, or json.RawMessage as is) and
+// returns the raw response body.
+func (b *browser) doRaw(method, path string, body any) (int, []byte) {
+	b.t.Helper()
 	var rd io.Reader
-	if body != nil {
+	if raw, ok := body.(json.RawMessage); ok {
+		rd = bytes.NewReader(raw)
+	} else if body != nil {
 		data, err := json.Marshal(body)
 		require.NoError(b.t, err)
 		rd = bytes.NewReader(data)
@@ -174,9 +195,9 @@ func (b *browser) do(method, path string, body any) (int, map[string]any) {
 	resp, err := b.c.Do(req)
 	require.NoError(b.t, err)
 	defer resp.Body.Close()
-	out := map[string]any{}
-	_ = json.NewDecoder(resp.Body).Decode(&out)
-	return resp.StatusCode, out
+	raw, err := io.ReadAll(resp.Body)
+	require.NoError(b.t, err)
+	return resp.StatusCode, raw
 }
 
 func (b *browser) hasCookie(name string) bool {
@@ -350,4 +371,86 @@ func mustURL(t *testing.T, raw string) *url.URL {
 	u, err := url.Parse(raw)
 	require.NoError(t, err)
 	return u
+}
+
+// Step 9b Definition of Done, over HTTP: passkey enrollment -> login with
+// the passkey as second factor (software authenticator, real signatures).
+func TestMFA_HTTP_Passkey_Integration(t *testing.T) {
+	env := setupMFATestEnv(t)
+	ctx := context.Background()
+
+	realm, err := env.realms.Create(ctx, repository.CreateRealmParams{Name: "passkey-realm"})
+	require.NoError(t, err)
+	hash, err := service.HashPassword("correct-horse-battery-staple")
+	require.NoError(t, err)
+	_, err = env.users.Create(ctx, repository.CreateUserParams{RealmID: realm.ID, Username: "alice", Email: "alice@example.test", PasswordHash: hash, Status: domain.UserActive})
+	require.NoError(t, err)
+	login := map[string]string{"identifier": "alice", "password": "correct-horse-battery-staple"}
+	phone := passkeytest.New(passkeyTestOrigin)
+	b := env.newBrowser(t, realm.Name)
+
+	// --- enrollment ------------------------------------------------------------
+	status, body := b.do(http.MethodPost, "/auth/login", login)
+	require.Equal(t, http.StatusOK, status, body)
+
+	status, options := b.doRaw(http.MethodPost, "/account/mfa/webauthn/register/options", map[string]string{"kind": "passkey", "name": "iPhone"})
+	require.Equal(t, http.StatusOK, status, string(options))
+	require.Contains(t, string(options), `"residentKey":"required"`)
+	credential, err := phone.Create(options)
+	require.NoError(t, err)
+
+	status, body = b.do(http.MethodPost, "/account/mfa/webauthn/register/verify", json.RawMessage(credential))
+	require.Equal(t, http.StatusOK, status, body)
+	require.Equal(t, "passkey", body["method"].(map[string]any)["type"])
+	require.Equal(t, "iPhone", body["method"].(map[string]any)["name"])
+	require.Len(t, body["backup_codes"], 10)
+
+	status, body = b.do(http.MethodPost, "/account/mfa/webauthn/register/verify", json.RawMessage(credential))
+	require.Equal(t, http.StatusBadRequest, status)
+	require.Equal(t, "webauthn_ceremony_expired", body["error"], "a ceremony is answered once")
+
+	// --- login with the passkey -----------------------------------------------
+	_, _ = b.do(http.MethodPost, "/auth/logout", nil)
+	status, body = b.do(http.MethodPost, "/auth/login", login)
+	require.Equal(t, http.StatusOK, status)
+	require.Equal(t, "mfa_required", body["status"])
+	require.Equal(t, []any{"passkey", "backup_codes"}, body["methods"])
+
+	status, options = b.doRaw(http.MethodPost, "/auth/mfa/webauthn/options", map[string]string{})
+	require.Equal(t, http.StatusOK, status, string(options))
+	assertion, err := phone.Get(options)
+	require.NoError(t, err)
+	status, body = b.do(http.MethodPost, "/auth/mfa/webauthn/verify", json.RawMessage(assertion))
+	require.Equal(t, http.StatusOK, status, body)
+	require.Equal(t, "authenticated", body["status"])
+	require.Equal(t, "passkey", body["mfa_method"])
+	require.False(t, b.hasCookie("sso_mfa"))
+
+	status, body = b.do(http.MethodGet, "/auth/session", nil)
+	require.Equal(t, http.StatusOK, status)
+	require.Equal(t, "passkey", body["mfa_method"])
+
+	// --- step-up with the passkey ---------------------------------------------
+	status, options = b.doRaw(http.MethodPost, "/auth/step-up/webauthn/options", map[string]string{})
+	require.Equal(t, http.StatusOK, status, string(options))
+	assertion, err = phone.Get(options)
+	require.NoError(t, err)
+	status, body = b.do(http.MethodPost, "/auth/step-up/webauthn/verify", json.RawMessage(assertion))
+	require.Equal(t, http.StatusOK, status, body)
+	require.Equal(t, "passkey", body["mfa_method"])
+
+	// --- a replayed assertion is refused ---------------------------------------
+	_, _ = b.do(http.MethodPost, "/auth/logout", nil)
+	_, _ = b.do(http.MethodPost, "/auth/login", login)
+	status, _ = b.doRaw(http.MethodPost, "/auth/mfa/webauthn/options", map[string]string{})
+	require.Equal(t, http.StatusOK, status)
+	status, body = b.do(http.MethodPost, "/auth/mfa/webauthn/verify", json.RawMessage(assertion))
+	require.Equal(t, http.StatusUnauthorized, status)
+	require.Equal(t, "invalid_mfa_code", body["error"])
+
+	// --- no challenge cookie, no options ---------------------------------------
+	stranger := env.newBrowser(t, realm.Name)
+	status, body = stranger.do(http.MethodPost, "/auth/mfa/webauthn/options", map[string]string{})
+	require.Equal(t, http.StatusUnauthorized, status)
+	require.Equal(t, "mfa_challenge_expired", body["error"])
 }

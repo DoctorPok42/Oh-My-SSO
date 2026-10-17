@@ -24,6 +24,7 @@ func NewMFAStore(client valkey.Client) mfastore.Store {
 // slot if Valkey ever runs as a cluster.
 func challengeKey(key string) string { return "mfa:chal:{" + key + "}" }
 func attemptsKey(key string) string  { return "mfa:chal:{" + key + "}:n" }
+func ceremonyKey(key string) string  { return "mfa:webauthn:{" + key + "}" }
 
 func (s *mfaStore) SaveChallenge(ctx context.Context, key string, c mfastore.LoginChallenge, ttl time.Duration) error {
 	if ttl < minTTL {
@@ -85,4 +86,37 @@ func (s *mfaStore) TakeChallenge(ctx context.Context, key string) (bool, error) 
 	}
 	_ = s.client.Do(ctx, s.client.B().Del().Key(attemptsKey(key)).Build()).Error()
 	return n == 1, nil
+}
+
+func (s *mfaStore) SaveCeremony(ctx context.Context, key string, c mfastore.Ceremony, ttl time.Duration) error {
+	if ttl < minTTL {
+		ttl = minTTL
+	}
+	data, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+	if err := s.client.Do(ctx, s.client.B().Set().
+		Key(ceremonyKey(key)).Value(string(data)).
+		Ex(ttl).
+		Build()).Error(); err != nil {
+		return fmt.Errorf("mfastore: save webauthn ceremony: %w", err)
+	}
+	return nil
+}
+
+func (s *mfaStore) TakeCeremony(ctx context.Context, key string) (*mfastore.Ceremony, error) {
+	// GETDEL (Valkey / Redis >= 6.2): read and delete in one atomic command.
+	raw, err := s.client.Do(ctx, s.client.B().Getdel().Key(ceremonyKey(key)).Build()).ToString()
+	if valkey.IsValkeyNil(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("mfastore: take webauthn ceremony: %w", err)
+	}
+	var c mfastore.Ceremony
+	if err := json.Unmarshal([]byte(raw), &c); err != nil {
+		return nil, fmt.Errorf("mfastore: decode webauthn ceremony: %w", err)
+	}
+	return &c, nil
 }

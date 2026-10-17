@@ -263,3 +263,35 @@ func TestClientRepository_MFAPolicy(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, c.MFAAllowedMethods, "empty slice = cleared")
 }
+
+func TestMfaMethodRepository_WebAuthn(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	realm := newTestRealm(t, ctx, client)
+	alice := newMFATestUser(t, ctx, realm.ID)
+	bob := newMFATestUser(t, ctx, realm.ID)
+	repo := entstore.NewMfaMethodRepository(client)
+	credID := "cred-" + uuid.NewString()
+
+	m, err := repo.Create(ctx, repository.CreateMfaMethodParams{
+		UserID: alice.ID, Type: domain.MfaMethodPasskey, Name: "iPhone", CredentialID: credID,
+		PublicKey: "pk", IsDiscoverable: true, WebAuthnCredential: `{"signCount":0}`,
+	})
+	require.NoError(t, err)
+	require.Equal(t, `{"signCount":0}`, m.WebAuthnCredential)
+
+	// Several passkeys per user are fine (one per device)...
+	_, err = repo.Create(ctx, repository.CreateMfaMethodParams{UserID: alice.ID, Type: domain.MfaMethodPasskey, CredentialID: "cred-" + uuid.NewString()})
+	require.NoError(t, err)
+	// ...but a credential id exists once, whoever registers it.
+	_, err = repo.Create(ctx, repository.CreateMfaMethodParams{UserID: bob.ID, Type: domain.MfaMethodWebAuthn, CredentialID: credID})
+	require.ErrorIs(t, err, repository.ErrConflict)
+
+	at := time.Now().UTC().Truncate(time.Microsecond)
+	require.NoError(t, repo.UpdateWebAuthnCredential(ctx, m.ID, `{"signCount":5}`, at))
+	got, err := repo.GetByID(ctx, m.ID)
+	require.NoError(t, err)
+	require.Equal(t, `{"signCount":5}`, got.WebAuthnCredential)
+	require.True(t, at.Equal(got.LastUsedAt))
+	require.ErrorIs(t, repo.UpdateWebAuthnCredential(ctx, "missing", "{}", at), repository.ErrNotFound)
+}

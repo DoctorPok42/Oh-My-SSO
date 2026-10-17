@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -22,6 +23,7 @@ import (
 	localdev "sso.internal/sso/internal/keymanager/local_dev"
 	"sso.internal/sso/internal/keymanager/ovhkms"
 	"sso.internal/sso/internal/keymanager/vault"
+	"sso.internal/sso/internal/passkey"
 	"sso.internal/sso/internal/storage/entstore"
 )
 
@@ -69,6 +71,35 @@ func buildKeyManager() (keymanager.KeyManager, string) {
 		log.Fatalf("keymanager: unknown backend %q", backend)
 		return nil, ""
 	}
+}
+
+// buildPasskeys returns the WebAuthn engine, or nil (passkeys disabled) when
+// WEBAUTHN_RP_ID is not set.
+//
+//	WEBAUTHN_RP_ID=localhost
+//	WEBAUTHN_RP_ORIGINS=http://localhost:8080          (comma separated)
+//	WEBAUTHN_RP_DISPLAY_NAME=Oh-My-SSO                  (optional)
+func buildPasskeys() service.PasskeyProvider {
+	rpID := os.Getenv("WEBAUTHN_RP_ID")
+	if rpID == "" {
+		log.Printf("passkeys: disabled (set WEBAUTHN_RP_ID and WEBAUTHN_RP_ORIGINS to enable them)")
+		return nil
+	}
+	var origins []string
+	for _, o := range strings.Split(os.Getenv("WEBAUTHN_RP_ORIGINS"), ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			origins = append(origins, o)
+		}
+	}
+	p, err := passkey.New(passkey.Config{
+		RPID:          rpID,
+		RPDisplayName: os.Getenv("WEBAUTHN_RP_DISPLAY_NAME"),
+		RPOrigins:     origins,
+	})
+	if err != nil {
+		log.Fatalf("passkeys: %v", err)
+	}
+	return p
 }
 
 func buildEntClient() *ent.Client {
@@ -181,6 +212,7 @@ func serve() {
 		Audit:         auditRepo,
 		Realms:        realmRepo,
 		Clients:       clientRepo,
+		Passkeys:      buildPasskeys(),
 		IssuerName:    os.Getenv("MFA_TOTP_ISSUER"),
 	})
 

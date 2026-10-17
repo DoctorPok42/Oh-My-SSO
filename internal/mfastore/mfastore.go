@@ -10,6 +10,7 @@ package mfastore
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 )
 
@@ -26,6 +27,23 @@ type LoginChallenge struct {
 	ExpiresAt time.Time `json:"exp"`
 }
 
+// Ceremony is a WebAuthn ceremony in progress (Step 9b): the server sent
+// options with a random challenge to the browser and waits for the signed
+// answer. SessionData is go-webauthn's state, stored verbatim (the library
+// asks for that: a hand-rebuilt copy loses information).
+type Ceremony struct {
+	Purpose     string          `json:"p"` // "register", "login" or "step_up"
+	RealmID     string          `json:"rid"`
+	UserID      string          `json:"uid"`
+	SessionData json.RawMessage `json:"sd"`
+	// Registration only: what the user asked to create.
+	Kind string `json:"kind,omitempty"` // "passkey" or "security_key"
+	Name string `json:"name,omitempty"`
+	// Login / step-up: which factor types may answer.
+	Methods   []string  `json:"m,omitempty"`
+	ExpiresAt time.Time `json:"exp"`
+}
+
 // Store is implemented by Valkey (production) and Memory (tests).
 type Store interface {
 	SaveChallenge(ctx context.Context, key string, c LoginChallenge, ttl time.Duration) error
@@ -39,4 +57,9 @@ type Store interface {
 	// one that deleted it. A challenge can be used exactly once, even when
 	// two requests race.
 	TakeChallenge(ctx context.Context, key string) (bool, error)
+
+	SaveCeremony(ctx context.Context, key string, c Ceremony, ttl time.Duration) error
+	// TakeCeremony returns and deletes the ceremony in one atomic step:
+	// a WebAuthn challenge can be answered once. (nil, nil) if absent.
+	TakeCeremony(ctx context.Context, key string) (*Ceremony, error)
 }

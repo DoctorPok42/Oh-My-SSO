@@ -577,6 +577,7 @@ var (
 		{Name: "secret_encrypted", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "credential_id", Type: field.TypeString, Nullable: true},
 		{Name: "public_key", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "webauthn_credential", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "is_discoverable", Type: field.TypeBool, Default: false},
 		{Name: "status", Type: field.TypeString, Default: "active"},
 		{Name: "created_at", Type: field.TypeTime},
@@ -593,7 +594,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "mfa_methods_users_mfa_methods",
-				Columns:    []*schema.Column{MfaMethodsColumns[12]},
+				Columns:    []*schema.Column{MfaMethodsColumns[13]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -602,12 +603,17 @@ var (
 			{
 				Name:    "mfamethod_user_id_type",
 				Unique:  false,
-				Columns: []*schema.Column{MfaMethodsColumns[12], MfaMethodsColumns[1]},
+				Columns: []*schema.Column{MfaMethodsColumns[13], MfaMethodsColumns[1]},
+			},
+			{
+				Name:    "mfamethod_credential_id",
+				Unique:  true,
+				Columns: []*schema.Column{MfaMethodsColumns[4]},
 			},
 			{
 				Name:    "mfamethod_user_id_active_totp",
 				Unique:  true,
-				Columns: []*schema.Column{MfaMethodsColumns[12]},
+				Columns: []*schema.Column{MfaMethodsColumns[13]},
 				Annotation: &entsql.IndexAnnotation{
 					Where: "type = 'totp' AND status = 'active'",
 				},

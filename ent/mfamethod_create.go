@@ -90,6 +90,20 @@ func (_c *MfaMethodCreate) SetNillablePublicKey(v *string) *MfaMethodCreate {
 	return _c
 }
 
+// SetWebauthnCredential sets the "webauthn_credential" field.
+func (_c *MfaMethodCreate) SetWebauthnCredential(v string) *MfaMethodCreate {
+	_c.mutation.SetWebauthnCredential(v)
+	return _c
+}
+
+// SetNillableWebauthnCredential sets the "webauthn_credential" field if the given value is not nil.
+func (_c *MfaMethodCreate) SetNillableWebauthnCredential(v *string) *MfaMethodCreate {
+	if v != nil {
+		_c.SetWebauthnCredential(*v)
+	}
+	return _c
+}
+
 // SetIsDiscoverable sets the "is_discoverable" field.
 func (_c *MfaMethodCreate) SetIsDiscoverable(v bool) *MfaMethodCreate {
 	_c.mutation.SetIsDiscoverable(v)
@@ -355,6 +369,10 @@ func (_c *MfaMethodCreate) createSpec() (*MfaMethod, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.PublicKey(); ok {
 		_spec.SetField(mfamethod.FieldPublicKey, field.TypeString, value)
 		_node.PublicKey = value
+	}
+	if value, ok := _c.mutation.WebauthnCredential(); ok {
+		_spec.SetField(mfamethod.FieldWebauthnCredential, field.TypeString, value)
+		_node.WebauthnCredential = value
 	}
 	if value, ok := _c.mutation.IsDiscoverable(); ok {
 		_spec.SetField(mfamethod.FieldIsDiscoverable, field.TypeBool, value)

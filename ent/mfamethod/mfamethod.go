@@ -27,6 +27,8 @@ const (
 	FieldCredentialID = "credential_id"
 	// FieldPublicKey holds the string denoting the public_key field in the database.
 	FieldPublicKey = "public_key"
+	// FieldWebauthnCredential holds the string denoting the webauthn_credential field in the database.
+	FieldWebauthnCredential = "webauthn_credential"
 	// FieldIsDiscoverable holds the string denoting the is_discoverable field in the database.
 	FieldIsDiscoverable = "is_discoverable"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -61,6 +63,7 @@ var Columns = []string{
 	FieldSecretEncrypted,
 	FieldCredentialID,
 	FieldPublicKey,
+	FieldWebauthnCredential,
 	FieldIsDiscoverable,
 	FieldStatus,
 	FieldCreatedAt,
@@ -138,6 +141,11 @@ func ByCredentialID(opts ...sql.OrderTermOption) OrderOption {
 // ByPublicKey orders the results by the public_key field.
 func ByPublicKey(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPublicKey, opts...).ToFunc()
+}
+
+// ByWebauthnCredential orders the results by the webauthn_credential field.
+func ByWebauthnCredential(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldWebauthnCredential, opts...).ToFunc()
 }
 
 // ByIsDiscoverable orders the results by the is_discoverable field.

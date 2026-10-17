@@ -109,6 +109,26 @@ func (_u *MfaMethodUpdate) ClearPublicKey() *MfaMethodUpdate {
 	return _u
 }
 
+// SetWebauthnCredential sets the "webauthn_credential" field.
+func (_u *MfaMethodUpdate) SetWebauthnCredential(v string) *MfaMethodUpdate {
+	_u.mutation.SetWebauthnCredential(v)
+	return _u
+}
+
+// SetNillableWebauthnCredential sets the "webauthn_credential" field if the given value is not nil.
+func (_u *MfaMethodUpdate) SetNillableWebauthnCredential(v *string) *MfaMethodUpdate {
+	if v != nil {
+		_u.SetWebauthnCredential(*v)
+	}
+	return _u
+}
+
+// ClearWebauthnCredential clears the value of the "webauthn_credential" field.
+func (_u *MfaMethodUpdate) ClearWebauthnCredential() *MfaMethodUpdate {
+	_u.mutation.ClearWebauthnCredential()
+	return _u
+}
+
 // SetIsDiscoverable sets the "is_discoverable" field.
 func (_u *MfaMethodUpdate) SetIsDiscoverable(v bool) *MfaMethodUpdate {
 	_u.mutation.SetIsDiscoverable(v)
@@ -274,6 +294,12 @@ func (_u *MfaMethodUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.PublicKeyCleared() {
 		_spec.ClearField(mfamethod.FieldPublicKey, field.TypeString)
 	}
+	if value, ok := _u.mutation.WebauthnCredential(); ok {
+		_spec.SetField(mfamethod.FieldWebauthnCredential, field.TypeString, value)
+	}
+	if _u.mutation.WebauthnCredentialCleared() {
+		_spec.ClearField(mfamethod.FieldWebauthnCredential, field.TypeString)
+	}
 	if value, ok := _u.mutation.IsDiscoverable(); ok {
 		_spec.SetField(mfamethod.FieldIsDiscoverable, field.TypeBool, value)
 	}
@@ -392,6 +418,26 @@ func (_u *MfaMethodUpdateOne) SetNillablePublicKey(v *string) *MfaMethodUpdateOn
 // ClearPublicKey clears the value of the "public_key" field.
 func (_u *MfaMethodUpdateOne) ClearPublicKey() *MfaMethodUpdateOne {
 	_u.mutation.ClearPublicKey()
+	return _u
+}
+
+// SetWebauthnCredential sets the "webauthn_credential" field.
+func (_u *MfaMethodUpdateOne) SetWebauthnCredential(v string) *MfaMethodUpdateOne {
+	_u.mutation.SetWebauthnCredential(v)
+	return _u
+}
+
+// SetNillableWebauthnCredential sets the "webauthn_credential" field if the given value is not nil.
+func (_u *MfaMethodUpdateOne) SetNillableWebauthnCredential(v *string) *MfaMethodUpdateOne {
+	if v != nil {
+		_u.SetWebauthnCredential(*v)
+	}
+	return _u
+}
+
+// ClearWebauthnCredential clears the value of the "webauthn_credential" field.
+func (_u *MfaMethodUpdateOne) ClearWebauthnCredential() *MfaMethodUpdateOne {
+	_u.mutation.ClearWebauthnCredential()
 	return _u
 }
 
@@ -589,6 +635,12 @@ func (_u *MfaMethodUpdateOne) sqlSave(ctx context.Context) (_node *MfaMethod, er
 	}
 	if _u.mutation.PublicKeyCleared() {
 		_spec.ClearField(mfamethod.FieldPublicKey, field.TypeString)
+	}
+	if value, ok := _u.mutation.WebauthnCredential(); ok {
+		_spec.SetField(mfamethod.FieldWebauthnCredential, field.TypeString, value)
+	}
+	if _u.mutation.WebauthnCredentialCleared() {
+		_spec.ClearField(mfamethod.FieldWebauthnCredential, field.TypeString)
 	}
 	if value, ok := _u.mutation.IsDiscoverable(); ok {
 		_spec.SetField(mfamethod.FieldIsDiscoverable, field.TypeBool, value)

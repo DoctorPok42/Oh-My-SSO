@@ -19,6 +19,7 @@ import (
 	"sso.internal/sso/internal/core/service"
 	localdev "sso.internal/sso/internal/keymanager/local_dev"
 	"sso.internal/sso/internal/mfastore"
+	"sso.internal/sso/internal/passkey"
 	"sso.internal/sso/internal/storage/memstore"
 )
 
@@ -185,7 +186,15 @@ type mfaFixture struct {
 	limiter    *countingLimiter
 	users      *fakeUserRepo
 	core       *service.IdentityCoreService
+	passkeys   service.PasskeyProvider
 }
+
+// Relying party used by the passkey tests (the software authenticator of
+// internal/passkey/passkeytest answers from this origin).
+const (
+	testRPID   = "sso.test"
+	testOrigin = "https://sso.test"
+)
 
 func (f *mfaFixture) clock() time.Time        { return f.now }
 func (f *mfaFixture) advance(d time.Duration) { f.now = f.now.Add(d) }
@@ -243,6 +252,10 @@ func newMFAFixture(t *testing.T) *mfaFixture {
 		Audit:    f.audit,
 		Now:      clock,
 	})
+	pk, err := passkey.New(passkey.Config{RPID: testRPID, RPOrigins: []string{testOrigin}})
+	require.NoError(t, err)
+	f.passkeys = pk
+
 	f.mfa = service.NewMFAService(service.MFADeps{
 		Users:         f.users,
 		Methods:       f.methods,
@@ -255,6 +268,7 @@ func newMFAFixture(t *testing.T) *mfaFixture {
 		LoginAttempts: f.attempts,
 		Audit:         f.audit,
 		Clients:       f.clients,
+		Passkeys:      f.passkeys,
 		IssuerName:    "Oh-My-SSO test",
 		Now:           clock,
 	})

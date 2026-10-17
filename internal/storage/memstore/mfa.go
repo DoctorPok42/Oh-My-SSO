@@ -42,7 +42,12 @@ func (s *MfaMethods) Create(_ context.Context, p repository.CreateMfaMethodParam
 	m := &domain.MfaMethod{
 		ID: uuid.NewString(), UserID: p.UserID, Type: p.Type, Name: p.Name, Status: status,
 		SecretEncrypted: p.SecretEncrypted, CredentialID: p.CredentialID, PublicKey: p.PublicKey,
-		IsDiscoverable: p.IsDiscoverable, CreatedAt: now, UpdatedAt: now,
+		IsDiscoverable: p.IsDiscoverable, WebAuthnCredential: p.WebAuthnCredential, CreatedAt: now, UpdatedAt: now,
+	}
+	for _, o := range s.methods {
+		if p.CredentialID != "" && o.CredentialID == p.CredentialID {
+			return nil, repository.ErrConflict
+		}
 	}
 	s.methods = append(s.methods, m)
 	cp := *m
@@ -159,6 +164,18 @@ func (s *MfaMethods) DeletePendingByUser(_ context.Context, userID string, t dom
 		return m.UserID == userID && m.Type == t && m.Status == domain.MfaMethodPending
 	})
 	return before - len(s.methods), nil
+}
+
+func (s *MfaMethods) UpdateWebAuthnCredential(_ context.Context, id string, credentialJSON string, at time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	m := s.find(id)
+	if m == nil {
+		return repository.ErrNotFound
+	}
+	m.WebAuthnCredential = credentialJSON
+	m.LastUsedAt = at
+	return nil
 }
 
 func (s *MfaMethods) DeleteByUser(_ context.Context, userID string) (int, error) {

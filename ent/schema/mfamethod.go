@@ -50,8 +50,14 @@ func (MfaMethod) Fields() []ent.Field {
 		field.String("name").Optional().MaxLen(100),
 		// TOTP only: envelope-encrypted secret (see service/envelope.go).
 		field.Text("secret_encrypted").Optional().Sensitive(),
+		// WebAuthn / passkey: credential id (base64url) and COSE public key
+		// (base64), kept for display and lookups. The full credential record
+		// (sign counter, flags, transports...) is in webauthn_credential.
 		field.String("credential_id").Optional(),
 		field.Text("public_key").Optional(),
+		// WebAuthn / passkey: the credential record as JSON, exactly as the
+		// go-webauthn library needs it back at each login (Step 9b).
+		field.Text("webauthn_credential").Optional(),
 		field.Bool("is_discoverable").Default(false),
 		field.String("status").GoType(MfaMethodStatus("")).Default(string(MfaMethodActive)),
 		field.Time("created_at").Default(func() time.Time { return time.Now() }).Immutable(),
@@ -78,6 +84,9 @@ func (MfaMethod) Edges() []ent.Edge {
 func (MfaMethod) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("user_id", "type"),
+		// A WebAuthn credential id is globally unique: the same authenticator
+		// credential can never be registered twice (or for two users).
+		index.Fields("credential_id").Unique(),
 		// At most one ACTIVE TOTP per user (partial unique index). Pending
 		// enrollments are not concerned, so a user can enroll a new phone
 		// while the old one still works; the swap happens in one

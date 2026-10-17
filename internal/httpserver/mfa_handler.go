@@ -159,8 +159,13 @@ func (s *Server) handleMFAVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clearMFAChallengeCookie(w, realm.Name)
-	setSessionCookie(w, realm.Name, res.RawToken, res.Session.ExpiresAt)
+	s.writeVerifiedLogin(w, realm.Name, res)
+}
+
+// writeVerifiedLogin ends the second step of a login (code or passkey).
+func (s *Server) writeVerifiedLogin(w http.ResponseWriter, realmName string, res *service.VerifiedLogin) {
+	clearMFAChallengeCookie(w, realmName)
+	setSessionCookie(w, realmName, res.RawToken, res.Session.ExpiresAt)
 	out := mfaVerifyResponse{
 		Status:    string(res.Outcome),
 		UserID:    res.User.ID,
@@ -356,6 +361,18 @@ func (s *Server) writeMFAError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusBadRequest, "invalid_request")
 	case errors.Is(err, service.ErrSessionInvalid):
 		writeError(w, http.StatusUnauthorized, "unauthenticated")
+	case errors.Is(err, service.ErrMFAUnavailable):
+		writeError(w, http.StatusServiceUnavailable, "mfa_unavailable")
+	case errors.Is(err, service.ErrPasskeysDisabled):
+		writeError(w, http.StatusNotFound, "passkeys_disabled")
+	case errors.Is(err, service.ErrWebAuthnCeremonyInvalid):
+		writeError(w, http.StatusBadRequest, "webauthn_ceremony_expired")
+	case errors.Is(err, service.ErrPasskeyRegistrationFailed):
+		writeError(w, http.StatusBadRequest, "webauthn_rejected")
+	case errors.Is(err, service.ErrPasskeyAlreadyRegistered):
+		writeError(w, http.StatusConflict, "already_registered")
+	case errors.Is(err, service.ErrUnknownPasskeyKind):
+		writeError(w, http.StatusBadRequest, "invalid_request")
 	default:
 		writeError(w, http.StatusInternalServerError, "internal_error")
 	}

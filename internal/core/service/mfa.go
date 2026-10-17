@@ -43,6 +43,10 @@ var (
 	ErrMFARateLimited      = errors.New("service: too many mfa attempts, try again later")
 	ErrMFARequiredByPolicy = errors.New("service: a policy requires mfa, the last allowed factor cannot be removed")
 	ErrStepUpRequired      = errors.New("service: a recent authentication is required")
+	// ErrMFAUnavailable: the user has second factors, but this server cannot
+	// verify any of them (e.g. passkeys while WEBAUTHN_RP_ID is not set) and
+	// no backup code is left. We refuse the login rather than skip MFA.
+	ErrMFAUnavailable = errors.New("service: none of the user's second factors can be verified by this server")
 )
 
 // MFACodeError is ErrInvalidMFACode with the number of tries left on the
@@ -108,6 +112,7 @@ type MFAService struct {
 	audit         repository.AuditLogRepository     // optional
 	realms        repository.RealmRepository        // optional: TOTP issuer name
 	clients       repository.ClientRepository       // optional: client of a challenge
+	passkeys      PasskeyProvider                   // optional: WebAuthn (Step 9b)
 	issuerName    string                            // optional override
 	now           func() time.Time
 	logger        *slog.Logger
@@ -127,6 +132,9 @@ type MFADeps struct {
 	Audit         repository.AuditLogRepository     // optional
 	Realms        repository.RealmRepository        // optional
 	Clients       repository.ClientRepository       // optional
+	// Passkeys is the WebAuthn engine (internal/passkey). nil: passkeys and
+	// security keys are disabled.
+	Passkeys PasskeyProvider
 	// IssuerName overrides the name shown in authenticator apps
 	// (default: the realm display name, or "Oh-My-SSO (<realm>)").
 	IssuerName string
@@ -148,6 +156,7 @@ func NewMFAService(d MFADeps) *MFAService {
 		audit:         d.Audit,
 		realms:        d.Realms,
 		clients:       d.Clients,
+		passkeys:      d.Passkeys,
 		issuerName:    d.IssuerName,
 		now:           d.Now,
 		logger:        d.Logger,
@@ -216,6 +225,17 @@ func (s *MFAService) BeginLogin(ctx context.Context, in BeginLoginInput) (*Login
 	all, err := s.answerableMethods(ctx, in.User.ID)
 	if err != nil {
 		return nil, err
+	}
+	if len(all) == 0 {
+		// Fail closed: having factors that cannot be checked here must never
+		// turn into "no MFA at all".
+		factors, err := s.activeFactors(ctx, in.User.ID)
+		if err != nil {
+			return nil, err
+		}
+		if len(factors) > 0 {
+			return nil, ErrMFAUnavailable
+		}
 	}
 
 	if len(all) == 0 {
@@ -290,38 +310,16 @@ type VerifiedLogin struct {
 }
 
 func (s *MFAService) VerifyLogin(ctx context.Context, in VerifyLoginInput) (*VerifiedLogin, error) {
-	if in.ChallengeToken == "" {
-		return nil, ErrMFAChallengeInvalid
-	}
-	key := HashSessionToken(in.ChallengeToken)
-	c, err := s.store.GetChallenge(ctx, key)
+	lc, err := s.openChallenge(ctx, in.RealmID, in.ChallengeToken)
 	if err != nil {
-		return nil, fmt.Errorf("mfa login: %w", err)
+		return nil, err
 	}
-	if c == nil || c.RealmID != in.RealmID || !s.now().Before(c.ExpiresAt) {
-		return nil, ErrMFAChallengeInvalid
-	}
-
-	tries, err := s.store.IncrementAttempts(ctx, key, c.ExpiresAt.Sub(s.now())+time.Second)
-	if err != nil {
-		return nil, fmt.Errorf("mfa login: %w", err)
-	}
-	if tries > maxLoginChallengeTries {
-		_, _ = s.store.TakeChallenge(ctx, key) // burn it: back to the password
-		return nil, ErrMFAChallengeInvalid
-	}
-
 	method, ok := parseCodeMethod(in.Method)
-	if !ok || !slices.Contains(c.Methods, string(method)) {
+	if !ok || !slices.Contains(lc.c.Methods, string(method)) {
 		return nil, ErrMFAMethodNotAllowed
 	}
-
-	user, err := s.users.GetByID(ctx, c.UserID)
-	if err != nil || user.Status != domain.UserActive {
-		_, _ = s.store.TakeChallenge(ctx, key)
-		return nil, ErrMFAChallengeInvalid
-	}
-	if err := s.allowAttempt(ctx, user); err != nil {
+	user, err := s.challengeUser(ctx, lc)
+	if err != nil {
 		return nil, err
 	}
 
@@ -331,12 +329,65 @@ func (s *MFAService) VerifyLogin(ctx context.Context, in VerifyLoginInput) (*Ver
 	}
 	if !valid {
 		s.recordMFAFailure(ctx, user, in.IPAddress, in.UserAgent)
-		return nil, &MFACodeError{AttemptsRemaining: maxLoginChallengeTries - int(tries)}
+		return nil, &MFACodeError{AttemptsRemaining: lc.remaining()}
 	}
+	return s.finishLogin(ctx, lc, user, method, in.IPAddress, in.UserAgent)
+}
 
+// openedChallenge is a login challenge being answered.
+type openedChallenge struct {
+	key   string // hash of the token (store key)
+	c     *mfastore.LoginChallenge
+	tries int64
+}
+
+func (lc *openedChallenge) remaining() int { return maxLoginChallengeTries - int(lc.tries) }
+
+// openChallenge loads a login challenge and counts one more answer to it.
+// After maxLoginChallengeTries answers the challenge is burnt: back to the
+// password.
+func (s *MFAService) openChallenge(ctx context.Context, realmID, token string) (*openedChallenge, error) {
+	if token == "" {
+		return nil, ErrMFAChallengeInvalid
+	}
+	key := HashSessionToken(token)
+	c, err := s.store.GetChallenge(ctx, key)
+	if err != nil {
+		return nil, fmt.Errorf("mfa login: %w", err)
+	}
+	if c == nil || c.RealmID != realmID || !s.now().Before(c.ExpiresAt) {
+		return nil, ErrMFAChallengeInvalid
+	}
+	tries, err := s.store.IncrementAttempts(ctx, key, c.ExpiresAt.Sub(s.now())+time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("mfa login: %w", err)
+	}
+	if tries > maxLoginChallengeTries {
+		_, _ = s.store.TakeChallenge(ctx, key)
+		return nil, ErrMFAChallengeInvalid
+	}
+	return &openedChallenge{key: key, c: c, tries: tries}, nil
+}
+
+// challengeUser loads the user of a challenge. A user suspended between the
+// two steps loses the challenge.
+func (s *MFAService) challengeUser(ctx context.Context, lc *openedChallenge) (*domain.User, error) {
+	user, err := s.users.GetByID(ctx, lc.c.UserID)
+	if err != nil || user.Status != domain.UserActive {
+		_, _ = s.store.TakeChallenge(ctx, lc.key)
+		return nil, ErrMFAChallengeInvalid
+	}
+	if err := s.allowAttempt(ctx, user); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// finishLogin consumes the challenge and creates the MFA-verified session.
+func (s *MFAService) finishLogin(ctx context.Context, lc *openedChallenge, user *domain.User, method domain.MfaMethodType, ip, ua string) (*VerifiedLogin, error) {
 	// Single use: if a concurrent request already finished this challenge,
 	// stop here (its session is the only one).
-	taken, err := s.store.TakeChallenge(ctx, key)
+	taken, err := s.store.TakeChallenge(ctx, lc.key)
 	if err != nil {
 		return nil, fmt.Errorf("mfa login: %w", err)
 	}
@@ -347,8 +398,8 @@ func (s *MFAService) VerifyLogin(ctx context.Context, in VerifyLoginInput) (*Ver
 	raw, sess, err := s.sessions.Create(ctx, CreateSessionInput{
 		RealmID:       user.RealmID,
 		UserID:        user.ID,
-		IPAddress:     in.IPAddress,
-		UserAgent:     in.UserAgent,
+		IPAddress:     ip,
+		UserAgent:     ua,
 		AuthMethod:    domain.AuthMethodPassword,
 		MFAVerified:   true,
 		MFAMethodType: string(method),
@@ -362,8 +413,8 @@ func (s *MFAService) VerifyLogin(ctx context.Context, in VerifyLoginInput) (*Ver
 		Outcome: LoginAuthenticated, BackupCodesRemaining: -1,
 	}
 	var client *domain.ClientApp
-	if c.ClientRef != "" && s.clients != nil {
-		client, _ = s.clients.GetByID(ctx, c.ClientRef)
+	if lc.c.ClientRef != "" && s.clients != nil {
+		client, _ = s.clients.GetByID(ctx, lc.c.ClientRef)
 	}
 	if req, err := s.policy.Requirement(ctx, user, client); err == nil {
 		out.Requirement = req
@@ -711,7 +762,7 @@ func (s *MFAService) activeFactors(ctx context.Context, userID string) ([]*domai
 
 // answerableMethods lists the method types the user can answer a challenge
 // with right now, in a stable order. Backup codes count only next to a real
-// factor and when some are left.
+// factor (even one this server cannot verify) and when some are left.
 func (s *MFAService) answerableMethods(ctx context.Context, userID string) ([]domain.MfaMethodType, error) {
 	factors, err := s.activeFactors(ctx, userID)
 	if err != nil {
@@ -723,7 +774,7 @@ func (s *MFAService) answerableMethods(ctx context.Context, userID string) ([]do
 			out = append(out, t)
 		}
 	}
-	if len(out) > 0 {
+	if len(factors) > 0 {
 		sum, err := s.backupCodesSummary(ctx, userID)
 		if err != nil {
 			return nil, err
@@ -735,10 +786,16 @@ func (s *MFAService) answerableMethods(ctx context.Context, userID string) ([]do
 	return out, nil
 }
 
-// canVerify tells whether this build can verify a method type. Passkeys
-// arrive with Step 9b.
+// canVerify tells whether this server can verify a method type: passkeys
+// and security keys need the WebAuthn configuration (WEBAUTHN_RP_ID).
 func (s *MFAService) canVerify(t domain.MfaMethodType) bool {
-	return t == domain.MfaMethodTOTP
+	switch t {
+	case domain.MfaMethodTOTP:
+		return true
+	case domain.MfaMethodPasskey, domain.MfaMethodWebAuthn:
+		return s.passkeys != nil
+	}
+	return false
 }
 
 // newRandomToken returns a 26-character base32 token with 128 bits of

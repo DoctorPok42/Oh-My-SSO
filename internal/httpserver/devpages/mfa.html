@@ -40,7 +40,7 @@
     <div id="challenge" class="hidden">
       <label for="method">Second factor</label><select id="method"></select>
       <label for="code">Code</label><input id="code" inputmode="numeric" autocomplete="one-time-code">
-      <div class="row"><button id="verify">Verify</button></div>
+      <div class="row"><button id="verify">Verify</button><button class="secondary hidden" id="pkverify">Use my passkey / security key</button></div>
     </div>
   </section>
 
@@ -63,10 +63,18 @@
   </section>
 
   <section>
+    <h2>3b. Add a passkey or a security key (WebAuthn)</h2>
+    <p class="warn">Needs WEBAUTHN_RP_ID / WEBAUTHN_RP_ORIGINS on the server, matching this page's address.</p>
+    <label for="pkkind">Kind</label><select id="pkkind"><option value="passkey">passkey (Face ID, Windows Hello, phone...)</option><option value="security_key">security key (YubiKey...)</option></select>
+    <label for="pkname">Name shown in the list</label><input id="pkname" placeholder="MacBook Touch ID">
+    <div class="row"><button id="pkadd">Create</button></div>
+  </section>
+
+  <section>
     <h2>4. Step-up and factor management</h2>
     <label for="sumethod">Method</label><select id="sumethod"><option value="totp">totp</option><option value="backup_code">backup_code</option></select>
     <label for="sucode">Code</label><input id="sucode" autocomplete="one-time-code">
-    <div class="row"><button id="stepup">POST /auth/step-up</button><button class="secondary" id="regen">New backup codes</button></div>
+    <div class="row"><button id="stepup">POST /auth/step-up</button><button class="secondary" id="pkstepup">Step-up with a passkey</button><button class="secondary" id="regen">New backup codes</button></div>
     <label for="delid">Factor id to remove</label><input id="delid">
     <div class="row"><button class="secondary" id="delete">DELETE /account/mfa/{id}</button></div>
   </section>
@@ -95,6 +103,37 @@
     log(`${method} ${path}`, res.status, data);
     return { status: res.status, data };
   }
+  // --- WebAuthn: the server speaks JSON (base64url), the browser API wants
+  // ArrayBuffers. Modern browsers have PublicKeyCredential.parse*FromJSON and
+  // credential.toJSON(); the manual versions below work everywhere.
+  const dec = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
+  const enc = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const creationOptions = (o) => {
+    const pk = o.publicKey;
+    return { ...pk, challenge: dec(pk.challenge), user: { ...pk.user, id: dec(pk.user.id) },
+      excludeCredentials: (pk.excludeCredentials || []).map((c) => ({ ...c, id: dec(c.id) })) };
+  };
+  const requestOptions = (o) => {
+    const pk = o.publicKey;
+    return { ...pk, challenge: dec(pk.challenge), allowCredentials: (pk.allowCredentials || []).map((c) => ({ ...c, id: dec(c.id) })) };
+  };
+  const credentialJSON = (cred) => {
+    if (cred.toJSON) return cred.toJSON();
+    const r = cred.response, out = { id: cred.id, rawId: enc(cred.rawId), type: cred.type,
+      authenticatorAttachment: cred.authenticatorAttachment, clientExtensionResults: cred.getClientExtensionResults(), response: { clientDataJSON: enc(r.clientDataJSON) } };
+    if (r.attestationObject) { out.response.attestationObject = enc(r.attestationObject); out.response.transports = r.getTransports ? r.getTransports() : []; }
+    if (r.signature) { out.response.authenticatorData = enc(r.authenticatorData); out.response.signature = enc(r.signature); out.response.userHandle = r.userHandle ? enc(r.userHandle) : null; }
+    return out;
+  };
+  async function webauthnGet(optionsPath, verifyPath) {
+    const { status, data } = await call("POST", optionsPath, {});
+    if (status !== 200) return { status };
+    let cred;
+    try { cred = await navigator.credentials.get({ publicKey: requestOptions(data) }); }
+    catch (e) { log("navigator.credentials.get", "error", String(e)); return { status: 0 }; }
+    return call("POST", verifyPath, credentialJSON(cred));
+  }
+
   const showCodes = (codes) => {
     if (!codes || !codes.length) return;
     $("codes").innerHTML = codes.map((c) => `<div>${c}</div>`).join("");
@@ -106,7 +145,9 @@
     if ($("client").value) body.client_id = $("client").value;
     const { data } = await call("POST", "/auth/login", body);
     if (data && data.status === "mfa_required") {
-      $("method").innerHTML = data.methods.map((m) => `<option value="${m === "backup_codes" ? "backup_code" : m}">${m}</option>`).join("");
+      const codes = data.methods.filter((m) => m === "totp" || m === "backup_codes");
+      $("method").innerHTML = codes.map((m) => `<option value="${m === "backup_codes" ? "backup_code" : m}">${m}</option>`).join("");
+      $("pkverify").classList.toggle("hidden", !data.methods.some((m) => m === "passkey" || m === "webauthn"));
       $("challenge").classList.remove("hidden");
       $("code").focus();
     } else {
@@ -117,6 +158,20 @@
     const { status } = await call("POST", "/auth/mfa/verify", { method: $("method").value, code: $("code").value });
     if (status === 200) $("challenge").classList.add("hidden");
   };
+  $("pkverify").onclick = async () => {
+    const { status } = await webauthnGet("/auth/mfa/webauthn/options", "/auth/mfa/webauthn/verify");
+    if (status === 200) $("challenge").classList.add("hidden");
+  };
+  $("pkadd").onclick = async () => {
+    const { status, data } = await call("POST", "/account/mfa/webauthn/register/options", { kind: $("pkkind").value, name: $("pkname").value });
+    if (status !== 200) return;
+    let cred;
+    try { cred = await navigator.credentials.create({ publicKey: creationOptions(data) }); }
+    catch (e) { log("navigator.credentials.create", "error", String(e)); return; }
+    const res = await call("POST", "/account/mfa/webauthn/register/verify", credentialJSON(cred));
+    if (res.status === 200) showCodes(res.data.backup_codes);
+  };
+  $("pkstepup").onclick = () => webauthnGet("/auth/step-up/webauthn/options", "/auth/step-up/webauthn/verify");
   $("logout").onclick = () => call("POST", "/auth/logout");
   $("session").onclick = () => call("GET", "/auth/session");
   $("status").onclick = () => call("GET", "/auth/mfa/status" + ($("client").value ? "?client_id=" + encodeURIComponent($("client").value) : ""));

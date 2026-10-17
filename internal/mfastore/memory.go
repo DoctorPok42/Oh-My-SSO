@@ -9,10 +9,16 @@ import (
 // Memory is an in-process Store for tests (and a single-instance dev
 // server). It is safe for concurrent use.
 type Memory struct {
-	mu       sync.Mutex
-	now      func() time.Time
-	items    map[string]memItem
-	attempts map[string]memCounter
+	mu         sync.Mutex
+	now        func() time.Time
+	items      map[string]memItem
+	attempts   map[string]memCounter
+	ceremonies map[string]memCeremony
+}
+
+type memCeremony struct {
+	c   Ceremony
+	exp time.Time
 }
 
 type memItem struct {
@@ -32,7 +38,7 @@ func NewMemory(now func() time.Time) *Memory {
 	if now == nil {
 		now = time.Now
 	}
-	return &Memory{now: now, items: map[string]memItem{}, attempts: map[string]memCounter{}}
+	return &Memory{now: now, items: map[string]memItem{}, attempts: map[string]memCounter{}, ceremonies: map[string]memCeremony{}}
 }
 
 func (m *Memory) SaveChallenge(_ context.Context, key string, c LoginChallenge, ttl time.Duration) error {
@@ -73,4 +79,23 @@ func (m *Memory) TakeChallenge(_ context.Context, key string) (bool, error) {
 	delete(m.items, key)
 	delete(m.attempts, key)
 	return ok && m.now().Before(it.exp), nil
+}
+
+func (m *Memory) SaveCeremony(_ context.Context, key string, c Ceremony, ttl time.Duration) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ceremonies[key] = memCeremony{c: c, exp: m.now().Add(ttl)}
+	return nil
+}
+
+func (m *Memory) TakeCeremony(_ context.Context, key string) (*Ceremony, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	it, ok := m.ceremonies[key]
+	delete(m.ceremonies, key)
+	if !ok || !m.now().Before(it.exp) {
+		return nil, nil
+	}
+	c := it.c
+	return &c, nil
 }

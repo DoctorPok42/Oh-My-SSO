@@ -538,25 +538,25 @@ func init() {
 	// mfamethod.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	mfamethod.NameValidator = mfamethodDescName.Validators[0].(func(string) error)
 	// mfamethodDescIsDiscoverable is the schema descriptor for is_discoverable field.
-	mfamethodDescIsDiscoverable := mfamethodFields[7].Descriptor()
+	mfamethodDescIsDiscoverable := mfamethodFields[8].Descriptor()
 	// mfamethod.DefaultIsDiscoverable holds the default value on creation for the is_discoverable field.
 	mfamethod.DefaultIsDiscoverable = mfamethodDescIsDiscoverable.Default.(bool)
 	// mfamethodDescStatus is the schema descriptor for status field.
-	mfamethodDescStatus := mfamethodFields[8].Descriptor()
+	mfamethodDescStatus := mfamethodFields[9].Descriptor()
 	// mfamethod.DefaultStatus holds the default value on creation for the status field.
 	mfamethod.DefaultStatus = schema.MfaMethodStatus(mfamethodDescStatus.Default.(string))
 	// mfamethodDescCreatedAt is the schema descriptor for created_at field.
-	mfamethodDescCreatedAt := mfamethodFields[9].Descriptor()
+	mfamethodDescCreatedAt := mfamethodFields[10].Descriptor()
 	// mfamethod.DefaultCreatedAt holds the default value on creation for the created_at field.
 	mfamethod.DefaultCreatedAt = mfamethodDescCreatedAt.Default.(func() time.Time)
 	// mfamethodDescUpdatedAt is the schema descriptor for updated_at field.
-	mfamethodDescUpdatedAt := mfamethodFields[10].Descriptor()
+	mfamethodDescUpdatedAt := mfamethodFields[11].Descriptor()
 	// mfamethod.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	mfamethod.DefaultUpdatedAt = mfamethodDescUpdatedAt.Default.(func() time.Time)
 	// mfamethod.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	mfamethod.UpdateDefaultUpdatedAt = mfamethodDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// mfamethodDescLastUsedCounter is the schema descriptor for last_used_counter field.
-	mfamethodDescLastUsedCounter := mfamethodFields[12].Descriptor()
+	mfamethodDescLastUsedCounter := mfamethodFields[13].Descriptor()
 	// mfamethod.DefaultLastUsedCounter holds the default value on creation for the last_used_counter field.
 	mfamethod.DefaultLastUsedCounter = mfamethodDescLastUsedCounter.Default.(int64)
 	// mfamethodDescID is the schema descriptor for id field.

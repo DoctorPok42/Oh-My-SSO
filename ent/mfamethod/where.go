@@ -97,6 +97,11 @@ func PublicKey(v string) predicate.MfaMethod {
 	return predicate.MfaMethod(sql.FieldEQ(FieldPublicKey, v))
 }
 
+// WebauthnCredential applies equality check predicate on the "webauthn_credential" field. It's identical to WebauthnCredentialEQ.
+func WebauthnCredential(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldEQ(FieldWebauthnCredential, v))
+}
+
 // IsDiscoverable applies equality check predicate on the "is_discoverable" field. It's identical to IsDiscoverableEQ.
 func IsDiscoverable(v bool) predicate.MfaMethod {
 	return predicate.MfaMethod(sql.FieldEQ(FieldIsDiscoverable, v))
@@ -575,6 +580,81 @@ func PublicKeyEqualFold(v string) predicate.MfaMethod {
 // PublicKeyContainsFold applies the ContainsFold predicate on the "public_key" field.
 func PublicKeyContainsFold(v string) predicate.MfaMethod {
 	return predicate.MfaMethod(sql.FieldContainsFold(FieldPublicKey, v))
+}
+
+// WebauthnCredentialEQ applies the EQ predicate on the "webauthn_credential" field.
+func WebauthnCredentialEQ(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldEQ(FieldWebauthnCredential, v))
+}
+
+// WebauthnCredentialNEQ applies the NEQ predicate on the "webauthn_credential" field.
+func WebauthnCredentialNEQ(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldNEQ(FieldWebauthnCredential, v))
+}
+
+// WebauthnCredentialIn applies the In predicate on the "webauthn_credential" field.
+func WebauthnCredentialIn(vs ...string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldIn(FieldWebauthnCredential, vs...))
+}
+
+// WebauthnCredentialNotIn applies the NotIn predicate on the "webauthn_credential" field.
+func WebauthnCredentialNotIn(vs ...string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldNotIn(FieldWebauthnCredential, vs...))
+}
+
+// WebauthnCredentialGT applies the GT predicate on the "webauthn_credential" field.
+func WebauthnCredentialGT(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldGT(FieldWebauthnCredential, v))
+}
+
+// WebauthnCredentialGTE applies the GTE predicate on the "webauthn_credential" field.
+func WebauthnCredentialGTE(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldGTE(FieldWebauthnCredential, v))
+}
+
+// WebauthnCredentialLT applies the LT predicate on the "webauthn_credential" field.
+func WebauthnCredentialLT(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldLT(FieldWebauthnCredential, v))
+}
+
+// WebauthnCredentialLTE applies the LTE predicate on the "webauthn_credential" field.
+func WebauthnCredentialLTE(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldLTE(FieldWebauthnCredential, v))
+}
+
+// WebauthnCredentialContains applies the Contains predicate on the "webauthn_credential" field.
+func WebauthnCredentialContains(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldContains(FieldWebauthnCredential, v))
+}
+
+// WebauthnCredentialHasPrefix applies the HasPrefix predicate on the "webauthn_credential" field.
+func WebauthnCredentialHasPrefix(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldHasPrefix(FieldWebauthnCredential, v))
+}
+
+// WebauthnCredentialHasSuffix applies the HasSuffix predicate on the "webauthn_credential" field.
+func WebauthnCredentialHasSuffix(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldHasSuffix(FieldWebauthnCredential, v))
+}
+
+// WebauthnCredentialIsNil applies the IsNil predicate on the "webauthn_credential" field.
+func WebauthnCredentialIsNil() predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldIsNull(FieldWebauthnCredential))
+}
+
+// WebauthnCredentialNotNil applies the NotNil predicate on the "webauthn_credential" field.
+func WebauthnCredentialNotNil() predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldNotNull(FieldWebauthnCredential))
+}
+
+// WebauthnCredentialEqualFold applies the EqualFold predicate on the "webauthn_credential" field.
+func WebauthnCredentialEqualFold(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldEqualFold(FieldWebauthnCredential, v))
+}
+
+// WebauthnCredentialContainsFold applies the ContainsFold predicate on the "webauthn_credential" field.
+func WebauthnCredentialContainsFold(v string) predicate.MfaMethod {
+	return predicate.MfaMethod(sql.FieldContainsFold(FieldWebauthnCredential, v))
 }
 
 // IsDiscoverableEQ applies the EQ predicate on the "is_discoverable" field.

@@ -16726,6 +16726,7 @@ type MfaMethodMutation struct {
 	secret_encrypted     *string
 	credential_id        *string
 	public_key           *string
+	webauthn_credential  *string
 	is_discoverable      *bool
 	status               *schema.MfaMethodStatus
 	created_at           *time.Time
@@ -17113,6 +17114,55 @@ func (m *MfaMethodMutation) ResetPublicKey() {
 	delete(m.clearedFields, mfamethod.FieldPublicKey)
 }
 
+// SetWebauthnCredential sets the "webauthn_credential" field.
+func (m *MfaMethodMutation) SetWebauthnCredential(s string) {
+	m.webauthn_credential = &s
+}
+
+// WebauthnCredential returns the value of the "webauthn_credential" field in the mutation.
+func (m *MfaMethodMutation) WebauthnCredential() (r string, exists bool) {
+	v := m.webauthn_credential
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWebauthnCredential returns the old "webauthn_credential" field's value of the MfaMethod entity.
+// If the MfaMethod object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaMethodMutation) OldWebauthnCredential(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWebauthnCredential is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWebauthnCredential requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWebauthnCredential: %w", err)
+	}
+	return oldValue.WebauthnCredential, nil
+}
+
+// ClearWebauthnCredential clears the value of the "webauthn_credential" field.
+func (m *MfaMethodMutation) ClearWebauthnCredential() {
+	m.webauthn_credential = nil
+	m.clearedFields[mfamethod.FieldWebauthnCredential] = struct{}{}
+}
+
+// WebauthnCredentialCleared returns if the "webauthn_credential" field was cleared in this mutation.
+func (m *MfaMethodMutation) WebauthnCredentialCleared() bool {
+	_, ok := m.clearedFields[mfamethod.FieldWebauthnCredential]
+	return ok
+}
+
+// ResetWebauthnCredential resets all changes to the "webauthn_credential" field.
+func (m *MfaMethodMutation) ResetWebauthnCredential() {
+	m.webauthn_credential = nil
+	delete(m.clearedFields, mfamethod.FieldWebauthnCredential)
+}
+
 // SetIsDiscoverable sets the "is_discoverable" field.
 func (m *MfaMethodMutation) SetIsDiscoverable(b bool) {
 	m.is_discoverable = &b
@@ -17436,7 +17486,7 @@ func (m *MfaMethodMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MfaMethodMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.owner != nil {
 		fields = append(fields, mfamethod.FieldUserID)
 	}
@@ -17454,6 +17504,9 @@ func (m *MfaMethodMutation) Fields() []string {
 	}
 	if m.public_key != nil {
 		fields = append(fields, mfamethod.FieldPublicKey)
+	}
+	if m.webauthn_credential != nil {
+		fields = append(fields, mfamethod.FieldWebauthnCredential)
 	}
 	if m.is_discoverable != nil {
 		fields = append(fields, mfamethod.FieldIsDiscoverable)
@@ -17493,6 +17546,8 @@ func (m *MfaMethodMutation) Field(name string) (ent.Value, bool) {
 		return m.CredentialID()
 	case mfamethod.FieldPublicKey:
 		return m.PublicKey()
+	case mfamethod.FieldWebauthnCredential:
+		return m.WebauthnCredential()
 	case mfamethod.FieldIsDiscoverable:
 		return m.IsDiscoverable()
 	case mfamethod.FieldStatus:
@@ -17526,6 +17581,8 @@ func (m *MfaMethodMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldCredentialID(ctx)
 	case mfamethod.FieldPublicKey:
 		return m.OldPublicKey(ctx)
+	case mfamethod.FieldWebauthnCredential:
+		return m.OldWebauthnCredential(ctx)
 	case mfamethod.FieldIsDiscoverable:
 		return m.OldIsDiscoverable(ctx)
 	case mfamethod.FieldStatus:
@@ -17588,6 +17645,13 @@ func (m *MfaMethodMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPublicKey(v)
+		return nil
+	case mfamethod.FieldWebauthnCredential:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWebauthnCredential(v)
 		return nil
 	case mfamethod.FieldIsDiscoverable:
 		v, ok := value.(bool)
@@ -17688,6 +17752,9 @@ func (m *MfaMethodMutation) ClearedFields() []string {
 	if m.FieldCleared(mfamethod.FieldPublicKey) {
 		fields = append(fields, mfamethod.FieldPublicKey)
 	}
+	if m.FieldCleared(mfamethod.FieldWebauthnCredential) {
+		fields = append(fields, mfamethod.FieldWebauthnCredential)
+	}
 	if m.FieldCleared(mfamethod.FieldLastUsedAt) {
 		fields = append(fields, mfamethod.FieldLastUsedAt)
 	}
@@ -17717,6 +17784,9 @@ func (m *MfaMethodMutation) ClearField(name string) error {
 	case mfamethod.FieldPublicKey:
 		m.ClearPublicKey()
 		return nil
+	case mfamethod.FieldWebauthnCredential:
+		m.ClearWebauthnCredential()
+		return nil
 	case mfamethod.FieldLastUsedAt:
 		m.ClearLastUsedAt()
 		return nil
@@ -17745,6 +17815,9 @@ func (m *MfaMethodMutation) ResetField(name string) error {
 		return nil
 	case mfamethod.FieldPublicKey:
 		m.ResetPublicKey()
+		return nil
+	case mfamethod.FieldWebauthnCredential:
+		m.ResetWebauthnCredential()
 		return nil
 	case mfamethod.FieldIsDiscoverable:
 		m.ResetIsDiscoverable()

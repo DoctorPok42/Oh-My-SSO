@@ -60,3 +60,24 @@ func TestMemoryStore(t *testing.T) {
 		t.Fatal("an expired challenge cannot be taken")
 	}
 }
+
+func TestMemoryStore_Ceremony(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 10, 17, 9, 0, 0, 0, time.UTC)
+	s := mfastore.NewMemory(func() time.Time { return now })
+
+	_ = s.SaveCeremony(ctx, "register:s1", mfastore.Ceremony{Purpose: "register", UserID: "u1", SessionData: []byte(`{"challenge":"x"}`)}, time.Minute)
+	c, _ := s.TakeCeremony(ctx, "register:s1")
+	if c == nil || c.UserID != "u1" || string(c.SessionData) != `{"challenge":"x"}` {
+		t.Fatalf("got %+v", c)
+	}
+	if c, _ := s.TakeCeremony(ctx, "register:s1"); c != nil {
+		t.Fatal("a ceremony is single use")
+	}
+
+	_ = s.SaveCeremony(ctx, "login:k", mfastore.Ceremony{Purpose: "login"}, time.Minute)
+	now = now.Add(2 * time.Minute)
+	if c, _ := s.TakeCeremony(ctx, "login:k"); c != nil {
+		t.Fatal("an expired ceremony is gone")
+	}
+}

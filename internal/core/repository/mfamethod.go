@@ -33,6 +33,10 @@ type MfaMethodRepository interface {
 
 	// DeleteByUser removes every factor of the user (admin MFA reset).
 	DeleteByUser(ctx context.Context, userID string) (int, error)
+
+	// UpdateWebAuthnCredential stores the credential record returned by a
+	// successful WebAuthn login (new sign counter, backup state...).
+	UpdateWebAuthnCredential(ctx context.Context, id string, credentialJSON string, at time.Time) error
 }
 
 type CreateMfaMethodParams struct {
@@ -44,6 +48,8 @@ type CreateMfaMethodParams struct {
 	CredentialID    string
 	PublicKey       string
 	IsDiscoverable  bool
+	// WebAuthnCredential: full credential record (JSON), passkeys only.
+	WebAuthnCredential string
 }
 
 type UpdateMfaMethodParams struct {

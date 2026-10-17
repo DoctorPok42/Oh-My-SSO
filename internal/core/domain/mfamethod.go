@@ -47,8 +47,8 @@ type MfaMethod struct {
 	Type            MfaMethodType
 	Name            string // label chosen by the user, display only
 	SecretEncrypted string
-	CredentialID    string
-	PublicKey       string
+	CredentialID    string // WebAuthn: base64url credential id
+	PublicKey       string // WebAuthn: base64 COSE public key (display only)
 	IsDiscoverable  bool
 	Status          MfaMethodStatus
 	CreatedAt       time.Time
@@ -57,6 +57,15 @@ type MfaMethod struct {
 	// LastUsedCounter is the TOTP time step of the last accepted code
 	// (anti-replay). Zero for other types.
 	LastUsedCounter int64
+	// WebAuthnCredential is the full credential record (JSON) the WebAuthn
+	// library needs at each login: sign counter, flags, transports...
+	WebAuthnCredential string
+}
+
+// IsWebAuthn tells whether the factor is a WebAuthn credential (passkey or
+// security key).
+func (m *MfaMethod) IsWebAuthn() bool {
+	return m.Type == MfaMethodPasskey || m.Type == MfaMethodWebAuthn
 }
 
 // IsUsable tells whether the factor can answer a challenge right now.

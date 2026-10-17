@@ -88,6 +88,9 @@ func New(
 		s.mountAuth(r)
 		if s.mfa != nil {
 			s.mountMFA(r)
+			if s.mfa.PasskeysEnabled() {
+				s.mountWebAuthn(r)
+			}
 			if s.devPages {
 				s.mountDevPages(r)
 			}
