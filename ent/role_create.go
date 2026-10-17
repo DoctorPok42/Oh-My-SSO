@@ -13,6 +13,7 @@ import (
 	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/clientrole"
 	"sso.internal/sso/ent/clientscope"
+	"sso.internal/sso/ent/mfapolicy"
 	"sso.internal/sso/ent/permission"
 	"sso.internal/sso/ent/realm"
 	"sso.internal/sso/ent/role"
@@ -187,6 +188,25 @@ func (_c *RoleCreate) AddClientApps(v ...*ClientApp) *RoleCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddClientAppIDs(ids...)
+}
+
+// SetMfaPolicyID sets the "mfa_policy" edge to the MfaPolicy entity by ID.
+func (_c *RoleCreate) SetMfaPolicyID(id string) *RoleCreate {
+	_c.mutation.SetMfaPolicyID(id)
+	return _c
+}
+
+// SetNillableMfaPolicyID sets the "mfa_policy" edge to the MfaPolicy entity by ID if the given value is not nil.
+func (_c *RoleCreate) SetNillableMfaPolicyID(id *string) *RoleCreate {
+	if id != nil {
+		_c = _c.SetMfaPolicyID(*id)
+	}
+	return _c
+}
+
+// SetMfaPolicy sets the "mfa_policy" edge to the MfaPolicy entity.
+func (_c *RoleCreate) SetMfaPolicy(v *MfaPolicy) *RoleCreate {
+	return _c.SetMfaPolicyID(v.ID)
 }
 
 // AddRoleClientScopeIDs adds the "role_client_scopes" edge to the RoleClientScope entity by IDs.
@@ -465,6 +485,22 @@ func (_c *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 		edge.Target.Fields = specE.Fields
 		if specE.ID.Value != nil {
 			edge.Target.Fields = append(edge.Target.Fields, specE.ID)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.MfaPolicyIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   role.MfaPolicyTable,
+			Columns: []string{role.MfaPolicyColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}

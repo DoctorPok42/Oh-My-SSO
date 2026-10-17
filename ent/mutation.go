@@ -27,6 +27,7 @@ import (
 	"sso.internal/sso/ent/loginattempt"
 	"sso.internal/sso/ent/mfabackupcode"
 	"sso.internal/sso/ent/mfamethod"
+	"sso.internal/sso/ent/mfapolicy"
 	"sso.internal/sso/ent/passwordresettoken"
 	"sso.internal/sso/ent/permission"
 	"sso.internal/sso/ent/predicate"
@@ -66,6 +67,7 @@ const (
 	TypeLoginAttempt       = "LoginAttempt"
 	TypeMfaBackupCode      = "MfaBackupCode"
 	TypeMfaMethod          = "MfaMethod"
+	TypeMfaPolicy          = "MfaPolicy"
 	TypePasswordResetToken = "PasswordResetToken"
 	TypePermission         = "Permission"
 	TypeRealm              = "Realm"
@@ -1173,6 +1175,9 @@ type ClientAppMutation struct {
 	addsession_idle_minutes         *int
 	session_max_minutes             *int
 	addsession_max_minutes          *int
+	mfa_policy                      *schema.ClientAppMFAPolicy
+	mfa_allowed_methods             *[]string
+	appendmfa_allowed_methods       []string
 	clearedFields                   map[string]struct{}
 	realm                           *string
 	clearedrealm                    bool
@@ -3109,6 +3114,107 @@ func (m *ClientAppMutation) ResetSessionMaxMinutes() {
 	delete(m.clearedFields, clientapp.FieldSessionMaxMinutes)
 }
 
+// SetMfaPolicy sets the "mfa_policy" field.
+func (m *ClientAppMutation) SetMfaPolicy(samp schema.ClientAppMFAPolicy) {
+	m.mfa_policy = &samp
+}
+
+// MfaPolicy returns the value of the "mfa_policy" field in the mutation.
+func (m *ClientAppMutation) MfaPolicy() (r schema.ClientAppMFAPolicy, exists bool) {
+	v := m.mfa_policy
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMfaPolicy returns the old "mfa_policy" field's value of the ClientApp entity.
+// If the ClientApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ClientAppMutation) OldMfaPolicy(ctx context.Context) (v schema.ClientAppMFAPolicy, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMfaPolicy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMfaPolicy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMfaPolicy: %w", err)
+	}
+	return oldValue.MfaPolicy, nil
+}
+
+// ResetMfaPolicy resets all changes to the "mfa_policy" field.
+func (m *ClientAppMutation) ResetMfaPolicy() {
+	m.mfa_policy = nil
+}
+
+// SetMfaAllowedMethods sets the "mfa_allowed_methods" field.
+func (m *ClientAppMutation) SetMfaAllowedMethods(s []string) {
+	m.mfa_allowed_methods = &s
+	m.appendmfa_allowed_methods = nil
+}
+
+// MfaAllowedMethods returns the value of the "mfa_allowed_methods" field in the mutation.
+func (m *ClientAppMutation) MfaAllowedMethods() (r []string, exists bool) {
+	v := m.mfa_allowed_methods
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMfaAllowedMethods returns the old "mfa_allowed_methods" field's value of the ClientApp entity.
+// If the ClientApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ClientAppMutation) OldMfaAllowedMethods(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMfaAllowedMethods is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMfaAllowedMethods requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMfaAllowedMethods: %w", err)
+	}
+	return oldValue.MfaAllowedMethods, nil
+}
+
+// AppendMfaAllowedMethods adds s to the "mfa_allowed_methods" field.
+func (m *ClientAppMutation) AppendMfaAllowedMethods(s []string) {
+	m.appendmfa_allowed_methods = append(m.appendmfa_allowed_methods, s...)
+}
+
+// AppendedMfaAllowedMethods returns the list of values that were appended to the "mfa_allowed_methods" field in this mutation.
+func (m *ClientAppMutation) AppendedMfaAllowedMethods() ([]string, bool) {
+	if len(m.appendmfa_allowed_methods) == 0 {
+		return nil, false
+	}
+	return m.appendmfa_allowed_methods, true
+}
+
+// ClearMfaAllowedMethods clears the value of the "mfa_allowed_methods" field.
+func (m *ClientAppMutation) ClearMfaAllowedMethods() {
+	m.mfa_allowed_methods = nil
+	m.appendmfa_allowed_methods = nil
+	m.clearedFields[clientapp.FieldMfaAllowedMethods] = struct{}{}
+}
+
+// MfaAllowedMethodsCleared returns if the "mfa_allowed_methods" field was cleared in this mutation.
+func (m *ClientAppMutation) MfaAllowedMethodsCleared() bool {
+	_, ok := m.clearedFields[clientapp.FieldMfaAllowedMethods]
+	return ok
+}
+
+// ResetMfaAllowedMethods resets all changes to the "mfa_allowed_methods" field.
+func (m *ClientAppMutation) ResetMfaAllowedMethods() {
+	m.mfa_allowed_methods = nil
+	m.appendmfa_allowed_methods = nil
+	delete(m.clearedFields, clientapp.FieldMfaAllowedMethods)
+}
+
 // ClearRealm clears the "realm" edge to the Realm entity.
 func (m *ClientAppMutation) ClearRealm() {
 	m.clearedrealm = true
@@ -3602,7 +3708,7 @@ func (m *ClientAppMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ClientAppMutation) Fields() []string {
-	fields := make([]string, 0, 37)
+	fields := make([]string, 0, 39)
 	if m.realm != nil {
 		fields = append(fields, clientapp.FieldRealmID)
 	}
@@ -3714,6 +3820,12 @@ func (m *ClientAppMutation) Fields() []string {
 	if m.session_max_minutes != nil {
 		fields = append(fields, clientapp.FieldSessionMaxMinutes)
 	}
+	if m.mfa_policy != nil {
+		fields = append(fields, clientapp.FieldMfaPolicy)
+	}
+	if m.mfa_allowed_methods != nil {
+		fields = append(fields, clientapp.FieldMfaAllowedMethods)
+	}
 	return fields
 }
 
@@ -3796,6 +3908,10 @@ func (m *ClientAppMutation) Field(name string) (ent.Value, bool) {
 		return m.SessionIdleMinutes()
 	case clientapp.FieldSessionMaxMinutes:
 		return m.SessionMaxMinutes()
+	case clientapp.FieldMfaPolicy:
+		return m.MfaPolicy()
+	case clientapp.FieldMfaAllowedMethods:
+		return m.MfaAllowedMethods()
 	}
 	return nil, false
 }
@@ -3879,6 +3995,10 @@ func (m *ClientAppMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldSessionIdleMinutes(ctx)
 	case clientapp.FieldSessionMaxMinutes:
 		return m.OldSessionMaxMinutes(ctx)
+	case clientapp.FieldMfaPolicy:
+		return m.OldMfaPolicy(ctx)
+	case clientapp.FieldMfaAllowedMethods:
+		return m.OldMfaAllowedMethods(ctx)
 	}
 	return nil, fmt.Errorf("unknown ClientApp field %s", name)
 }
@@ -4147,6 +4267,20 @@ func (m *ClientAppMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetSessionMaxMinutes(v)
 		return nil
+	case clientapp.FieldMfaPolicy:
+		v, ok := value.(schema.ClientAppMFAPolicy)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMfaPolicy(v)
+		return nil
+	case clientapp.FieldMfaAllowedMethods:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMfaAllowedMethods(v)
+		return nil
 	}
 	return fmt.Errorf("unknown ClientApp field %s", name)
 }
@@ -4306,6 +4440,9 @@ func (m *ClientAppMutation) ClearedFields() []string {
 	if m.FieldCleared(clientapp.FieldSessionMaxMinutes) {
 		fields = append(fields, clientapp.FieldSessionMaxMinutes)
 	}
+	if m.FieldCleared(clientapp.FieldMfaAllowedMethods) {
+		fields = append(fields, clientapp.FieldMfaAllowedMethods)
+	}
 	return fields
 }
 
@@ -4385,6 +4522,9 @@ func (m *ClientAppMutation) ClearField(name string) error {
 		return nil
 	case clientapp.FieldSessionMaxMinutes:
 		m.ClearSessionMaxMinutes()
+		return nil
+	case clientapp.FieldMfaAllowedMethods:
+		m.ClearMfaAllowedMethods()
 		return nil
 	}
 	return fmt.Errorf("unknown ClientApp nullable field %s", name)
@@ -4504,6 +4644,12 @@ func (m *ClientAppMutation) ResetField(name string) error {
 		return nil
 	case clientapp.FieldSessionMaxMinutes:
 		m.ResetSessionMaxMinutes()
+		return nil
+	case clientapp.FieldMfaPolicy:
+		m.ResetMfaPolicy()
+		return nil
+	case clientapp.FieldMfaAllowedMethods:
+		m.ResetMfaAllowedMethods()
 		return nil
 	}
 	return fmt.Errorf("unknown ClientApp field %s", name)
@@ -13074,36 +13220,38 @@ func (m *IdentityProviderMutation) ResetEdge(name string) error {
 // InstanceSettingsMutation represents an operation that mutates the InstanceSettings nodes in the graph.
 type InstanceSettingsMutation struct {
 	config
-	op                          Op
-	typ                         string
-	id                          *string
-	managed_by                  *schema.InstanceSettingsManagedBy
-	min_password_length         *int
-	addmin_password_length      *int
-	password_expiry_days        *int
-	addpassword_expiry_days     *int
-	session_idle_minutes        *int
-	addsession_idle_minutes     *int
-	session_max_hours           *int
-	addsession_max_hours        *int
-	lockout_threshold           *int
-	addlockout_threshold        *int
-	lockout_duration_minutes    *int
-	addlockout_duration_minutes *int
-	ip_allowlist                *[]string
-	appendip_allowlist          []string
-	mfa_required_globally       *bool
-	notification_email_enabled  *bool
-	key_rotation_grace_hours    *int
-	addkey_rotation_grace_hours *int
-	updated_at                  *time.Time
-	updated_by                  *string
-	clearedFields               map[string]struct{}
-	realm                       *string
-	clearedrealm                bool
-	done                        bool
-	oldValue                    func(context.Context) (*InstanceSettings, error)
-	predicates                  []predicate.InstanceSettings
+	op                             Op
+	typ                            string
+	id                             *string
+	managed_by                     *schema.InstanceSettingsManagedBy
+	min_password_length            *int
+	addmin_password_length         *int
+	password_expiry_days           *int
+	addpassword_expiry_days        *int
+	session_idle_minutes           *int
+	addsession_idle_minutes        *int
+	session_max_hours              *int
+	addsession_max_hours           *int
+	lockout_threshold              *int
+	addlockout_threshold           *int
+	lockout_duration_minutes       *int
+	addlockout_duration_minutes    *int
+	ip_allowlist                   *[]string
+	appendip_allowlist             []string
+	mfa_required_globally          *bool
+	notification_email_enabled     *bool
+	key_rotation_grace_hours       *int
+	addkey_rotation_grace_hours    *int
+	mfa_step_up_max_age_minutes    *int
+	addmfa_step_up_max_age_minutes *int
+	updated_at                     *time.Time
+	updated_by                     *string
+	clearedFields                  map[string]struct{}
+	realm                          *string
+	clearedrealm                   bool
+	done                           bool
+	oldValue                       func(context.Context) (*InstanceSettings, error)
+	predicates                     []predicate.InstanceSettings
 }
 
 var _ ent.Mutation = (*InstanceSettingsMutation)(nil)
@@ -13811,6 +13959,62 @@ func (m *InstanceSettingsMutation) ResetKeyRotationGraceHours() {
 	m.addkey_rotation_grace_hours = nil
 }
 
+// SetMfaStepUpMaxAgeMinutes sets the "mfa_step_up_max_age_minutes" field.
+func (m *InstanceSettingsMutation) SetMfaStepUpMaxAgeMinutes(i int) {
+	m.mfa_step_up_max_age_minutes = &i
+	m.addmfa_step_up_max_age_minutes = nil
+}
+
+// MfaStepUpMaxAgeMinutes returns the value of the "mfa_step_up_max_age_minutes" field in the mutation.
+func (m *InstanceSettingsMutation) MfaStepUpMaxAgeMinutes() (r int, exists bool) {
+	v := m.mfa_step_up_max_age_minutes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMfaStepUpMaxAgeMinutes returns the old "mfa_step_up_max_age_minutes" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldMfaStepUpMaxAgeMinutes(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMfaStepUpMaxAgeMinutes is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMfaStepUpMaxAgeMinutes requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMfaStepUpMaxAgeMinutes: %w", err)
+	}
+	return oldValue.MfaStepUpMaxAgeMinutes, nil
+}
+
+// AddMfaStepUpMaxAgeMinutes adds i to the "mfa_step_up_max_age_minutes" field.
+func (m *InstanceSettingsMutation) AddMfaStepUpMaxAgeMinutes(i int) {
+	if m.addmfa_step_up_max_age_minutes != nil {
+		*m.addmfa_step_up_max_age_minutes += i
+	} else {
+		m.addmfa_step_up_max_age_minutes = &i
+	}
+}
+
+// AddedMfaStepUpMaxAgeMinutes returns the value that was added to the "mfa_step_up_max_age_minutes" field in this mutation.
+func (m *InstanceSettingsMutation) AddedMfaStepUpMaxAgeMinutes() (r int, exists bool) {
+	v := m.addmfa_step_up_max_age_minutes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetMfaStepUpMaxAgeMinutes resets all changes to the "mfa_step_up_max_age_minutes" field.
+func (m *InstanceSettingsMutation) ResetMfaStepUpMaxAgeMinutes() {
+	m.mfa_step_up_max_age_minutes = nil
+	m.addmfa_step_up_max_age_minutes = nil
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (m *InstanceSettingsMutation) SetUpdatedAt(t time.Time) {
 	m.updated_at = &t
@@ -13957,7 +14161,7 @@ func (m *InstanceSettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstanceSettingsMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 15)
 	if m.realm != nil {
 		fields = append(fields, instancesettings.FieldRealmID)
 	}
@@ -13993,6 +14197,9 @@ func (m *InstanceSettingsMutation) Fields() []string {
 	}
 	if m.key_rotation_grace_hours != nil {
 		fields = append(fields, instancesettings.FieldKeyRotationGraceHours)
+	}
+	if m.mfa_step_up_max_age_minutes != nil {
+		fields = append(fields, instancesettings.FieldMfaStepUpMaxAgeMinutes)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, instancesettings.FieldUpdatedAt)
@@ -14032,6 +14239,8 @@ func (m *InstanceSettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.NotificationEmailEnabled()
 	case instancesettings.FieldKeyRotationGraceHours:
 		return m.KeyRotationGraceHours()
+	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
+		return m.MfaStepUpMaxAgeMinutes()
 	case instancesettings.FieldUpdatedAt:
 		return m.UpdatedAt()
 	case instancesettings.FieldUpdatedBy:
@@ -14069,6 +14278,8 @@ func (m *InstanceSettingsMutation) OldField(ctx context.Context, name string) (e
 		return m.OldNotificationEmailEnabled(ctx)
 	case instancesettings.FieldKeyRotationGraceHours:
 		return m.OldKeyRotationGraceHours(ctx)
+	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
+		return m.OldMfaStepUpMaxAgeMinutes(ctx)
 	case instancesettings.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
 	case instancesettings.FieldUpdatedBy:
@@ -14166,6 +14377,13 @@ func (m *InstanceSettingsMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetKeyRotationGraceHours(v)
 		return nil
+	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMfaStepUpMaxAgeMinutes(v)
+		return nil
 	case instancesettings.FieldUpdatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -14209,6 +14427,9 @@ func (m *InstanceSettingsMutation) AddedFields() []string {
 	if m.addkey_rotation_grace_hours != nil {
 		fields = append(fields, instancesettings.FieldKeyRotationGraceHours)
 	}
+	if m.addmfa_step_up_max_age_minutes != nil {
+		fields = append(fields, instancesettings.FieldMfaStepUpMaxAgeMinutes)
+	}
 	return fields
 }
 
@@ -14231,6 +14452,8 @@ func (m *InstanceSettingsMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedLockoutDurationMinutes()
 	case instancesettings.FieldKeyRotationGraceHours:
 		return m.AddedKeyRotationGraceHours()
+	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
+		return m.AddedMfaStepUpMaxAgeMinutes()
 	}
 	return nil, false
 }
@@ -14288,6 +14511,13 @@ func (m *InstanceSettingsMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddKeyRotationGraceHours(v)
+		return nil
+	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMfaStepUpMaxAgeMinutes(v)
 		return nil
 	}
 	return fmt.Errorf("unknown InstanceSettings numeric field %s", name)
@@ -14366,6 +14596,9 @@ func (m *InstanceSettingsMutation) ResetField(name string) error {
 		return nil
 	case instancesettings.FieldKeyRotationGraceHours:
 		m.ResetKeyRotationGraceHours()
+		return nil
+	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
+		m.ResetMfaStepUpMaxAgeMinutes()
 		return nil
 	case instancesettings.FieldUpdatedAt:
 		m.ResetUpdatedAt()
@@ -16485,24 +16718,28 @@ func (m *MfaBackupCodeMutation) ResetEdge(name string) error {
 // MfaMethodMutation represents an operation that mutates the MfaMethod nodes in the graph.
 type MfaMethodMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *string
-	_type            *schema.MfaMethodType
-	secret_encrypted *string
-	credential_id    *string
-	public_key       *string
-	is_discoverable  *bool
-	status           *schema.MfaMethodStatus
-	created_at       *time.Time
-	updated_at       *time.Time
-	last_used_at     *time.Time
-	clearedFields    map[string]struct{}
-	owner            *string
-	clearedowner     bool
-	done             bool
-	oldValue         func(context.Context) (*MfaMethod, error)
-	predicates       []predicate.MfaMethod
+	op                   Op
+	typ                  string
+	id                   *string
+	_type                *schema.MfaMethodType
+	name                 *string
+	secret_encrypted     *string
+	credential_id        *string
+	public_key           *string
+	webauthn_credential  *string
+	is_discoverable      *bool
+	status               *schema.MfaMethodStatus
+	created_at           *time.Time
+	updated_at           *time.Time
+	last_used_at         *time.Time
+	last_used_counter    *int64
+	addlast_used_counter *int64
+	clearedFields        map[string]struct{}
+	owner                *string
+	clearedowner         bool
+	done                 bool
+	oldValue             func(context.Context) (*MfaMethod, error)
+	predicates           []predicate.MfaMethod
 }
 
 var _ ent.Mutation = (*MfaMethodMutation)(nil)
@@ -16681,6 +16918,55 @@ func (m *MfaMethodMutation) ResetType() {
 	m._type = nil
 }
 
+// SetName sets the "name" field.
+func (m *MfaMethodMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *MfaMethodMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the MfaMethod entity.
+// If the MfaMethod object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaMethodMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ClearName clears the value of the "name" field.
+func (m *MfaMethodMutation) ClearName() {
+	m.name = nil
+	m.clearedFields[mfamethod.FieldName] = struct{}{}
+}
+
+// NameCleared returns if the "name" field was cleared in this mutation.
+func (m *MfaMethodMutation) NameCleared() bool {
+	_, ok := m.clearedFields[mfamethod.FieldName]
+	return ok
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *MfaMethodMutation) ResetName() {
+	m.name = nil
+	delete(m.clearedFields, mfamethod.FieldName)
+}
+
 // SetSecretEncrypted sets the "secret_encrypted" field.
 func (m *MfaMethodMutation) SetSecretEncrypted(s string) {
 	m.secret_encrypted = &s
@@ -16826,6 +17112,55 @@ func (m *MfaMethodMutation) PublicKeyCleared() bool {
 func (m *MfaMethodMutation) ResetPublicKey() {
 	m.public_key = nil
 	delete(m.clearedFields, mfamethod.FieldPublicKey)
+}
+
+// SetWebauthnCredential sets the "webauthn_credential" field.
+func (m *MfaMethodMutation) SetWebauthnCredential(s string) {
+	m.webauthn_credential = &s
+}
+
+// WebauthnCredential returns the value of the "webauthn_credential" field in the mutation.
+func (m *MfaMethodMutation) WebauthnCredential() (r string, exists bool) {
+	v := m.webauthn_credential
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWebauthnCredential returns the old "webauthn_credential" field's value of the MfaMethod entity.
+// If the MfaMethod object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaMethodMutation) OldWebauthnCredential(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWebauthnCredential is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWebauthnCredential requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWebauthnCredential: %w", err)
+	}
+	return oldValue.WebauthnCredential, nil
+}
+
+// ClearWebauthnCredential clears the value of the "webauthn_credential" field.
+func (m *MfaMethodMutation) ClearWebauthnCredential() {
+	m.webauthn_credential = nil
+	m.clearedFields[mfamethod.FieldWebauthnCredential] = struct{}{}
+}
+
+// WebauthnCredentialCleared returns if the "webauthn_credential" field was cleared in this mutation.
+func (m *MfaMethodMutation) WebauthnCredentialCleared() bool {
+	_, ok := m.clearedFields[mfamethod.FieldWebauthnCredential]
+	return ok
+}
+
+// ResetWebauthnCredential resets all changes to the "webauthn_credential" field.
+func (m *MfaMethodMutation) ResetWebauthnCredential() {
+	m.webauthn_credential = nil
+	delete(m.clearedFields, mfamethod.FieldWebauthnCredential)
 }
 
 // SetIsDiscoverable sets the "is_discoverable" field.
@@ -17021,6 +17356,62 @@ func (m *MfaMethodMutation) ResetLastUsedAt() {
 	delete(m.clearedFields, mfamethod.FieldLastUsedAt)
 }
 
+// SetLastUsedCounter sets the "last_used_counter" field.
+func (m *MfaMethodMutation) SetLastUsedCounter(i int64) {
+	m.last_used_counter = &i
+	m.addlast_used_counter = nil
+}
+
+// LastUsedCounter returns the value of the "last_used_counter" field in the mutation.
+func (m *MfaMethodMutation) LastUsedCounter() (r int64, exists bool) {
+	v := m.last_used_counter
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastUsedCounter returns the old "last_used_counter" field's value of the MfaMethod entity.
+// If the MfaMethod object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaMethodMutation) OldLastUsedCounter(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastUsedCounter is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastUsedCounter requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastUsedCounter: %w", err)
+	}
+	return oldValue.LastUsedCounter, nil
+}
+
+// AddLastUsedCounter adds i to the "last_used_counter" field.
+func (m *MfaMethodMutation) AddLastUsedCounter(i int64) {
+	if m.addlast_used_counter != nil {
+		*m.addlast_used_counter += i
+	} else {
+		m.addlast_used_counter = &i
+	}
+}
+
+// AddedLastUsedCounter returns the value that was added to the "last_used_counter" field in this mutation.
+func (m *MfaMethodMutation) AddedLastUsedCounter() (r int64, exists bool) {
+	v := m.addlast_used_counter
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLastUsedCounter resets all changes to the "last_used_counter" field.
+func (m *MfaMethodMutation) ResetLastUsedCounter() {
+	m.last_used_counter = nil
+	m.addlast_used_counter = nil
+}
+
 // SetOwnerID sets the "owner" edge to the User entity by id.
 func (m *MfaMethodMutation) SetOwnerID(id string) {
 	m.owner = &id
@@ -17095,12 +17486,15 @@ func (m *MfaMethodMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MfaMethodMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 13)
 	if m.owner != nil {
 		fields = append(fields, mfamethod.FieldUserID)
 	}
 	if m._type != nil {
 		fields = append(fields, mfamethod.FieldType)
+	}
+	if m.name != nil {
+		fields = append(fields, mfamethod.FieldName)
 	}
 	if m.secret_encrypted != nil {
 		fields = append(fields, mfamethod.FieldSecretEncrypted)
@@ -17110,6 +17504,9 @@ func (m *MfaMethodMutation) Fields() []string {
 	}
 	if m.public_key != nil {
 		fields = append(fields, mfamethod.FieldPublicKey)
+	}
+	if m.webauthn_credential != nil {
+		fields = append(fields, mfamethod.FieldWebauthnCredential)
 	}
 	if m.is_discoverable != nil {
 		fields = append(fields, mfamethod.FieldIsDiscoverable)
@@ -17126,6 +17523,9 @@ func (m *MfaMethodMutation) Fields() []string {
 	if m.last_used_at != nil {
 		fields = append(fields, mfamethod.FieldLastUsedAt)
 	}
+	if m.last_used_counter != nil {
+		fields = append(fields, mfamethod.FieldLastUsedCounter)
+	}
 	return fields
 }
 
@@ -17138,12 +17538,16 @@ func (m *MfaMethodMutation) Field(name string) (ent.Value, bool) {
 		return m.UserID()
 	case mfamethod.FieldType:
 		return m.GetType()
+	case mfamethod.FieldName:
+		return m.Name()
 	case mfamethod.FieldSecretEncrypted:
 		return m.SecretEncrypted()
 	case mfamethod.FieldCredentialID:
 		return m.CredentialID()
 	case mfamethod.FieldPublicKey:
 		return m.PublicKey()
+	case mfamethod.FieldWebauthnCredential:
+		return m.WebauthnCredential()
 	case mfamethod.FieldIsDiscoverable:
 		return m.IsDiscoverable()
 	case mfamethod.FieldStatus:
@@ -17154,6 +17558,8 @@ func (m *MfaMethodMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case mfamethod.FieldLastUsedAt:
 		return m.LastUsedAt()
+	case mfamethod.FieldLastUsedCounter:
+		return m.LastUsedCounter()
 	}
 	return nil, false
 }
@@ -17167,12 +17573,16 @@ func (m *MfaMethodMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldUserID(ctx)
 	case mfamethod.FieldType:
 		return m.OldType(ctx)
+	case mfamethod.FieldName:
+		return m.OldName(ctx)
 	case mfamethod.FieldSecretEncrypted:
 		return m.OldSecretEncrypted(ctx)
 	case mfamethod.FieldCredentialID:
 		return m.OldCredentialID(ctx)
 	case mfamethod.FieldPublicKey:
 		return m.OldPublicKey(ctx)
+	case mfamethod.FieldWebauthnCredential:
+		return m.OldWebauthnCredential(ctx)
 	case mfamethod.FieldIsDiscoverable:
 		return m.OldIsDiscoverable(ctx)
 	case mfamethod.FieldStatus:
@@ -17183,6 +17593,8 @@ func (m *MfaMethodMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldUpdatedAt(ctx)
 	case mfamethod.FieldLastUsedAt:
 		return m.OldLastUsedAt(ctx)
+	case mfamethod.FieldLastUsedCounter:
+		return m.OldLastUsedCounter(ctx)
 	}
 	return nil, fmt.Errorf("unknown MfaMethod field %s", name)
 }
@@ -17206,6 +17618,13 @@ func (m *MfaMethodMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetType(v)
 		return nil
+	case mfamethod.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
 	case mfamethod.FieldSecretEncrypted:
 		v, ok := value.(string)
 		if !ok {
@@ -17226,6 +17645,13 @@ func (m *MfaMethodMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPublicKey(v)
+		return nil
+	case mfamethod.FieldWebauthnCredential:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWebauthnCredential(v)
 		return nil
 	case mfamethod.FieldIsDiscoverable:
 		v, ok := value.(bool)
@@ -17262,6 +17688,13 @@ func (m *MfaMethodMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetLastUsedAt(v)
 		return nil
+	case mfamethod.FieldLastUsedCounter:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastUsedCounter(v)
+		return nil
 	}
 	return fmt.Errorf("unknown MfaMethod field %s", name)
 }
@@ -17269,13 +17702,21 @@ func (m *MfaMethodMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *MfaMethodMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addlast_used_counter != nil {
+		fields = append(fields, mfamethod.FieldLastUsedCounter)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *MfaMethodMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case mfamethod.FieldLastUsedCounter:
+		return m.AddedLastUsedCounter()
+	}
 	return nil, false
 }
 
@@ -17284,6 +17725,13 @@ func (m *MfaMethodMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *MfaMethodMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case mfamethod.FieldLastUsedCounter:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLastUsedCounter(v)
+		return nil
 	}
 	return fmt.Errorf("unknown MfaMethod numeric field %s", name)
 }
@@ -17292,6 +17740,9 @@ func (m *MfaMethodMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *MfaMethodMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(mfamethod.FieldName) {
+		fields = append(fields, mfamethod.FieldName)
+	}
 	if m.FieldCleared(mfamethod.FieldSecretEncrypted) {
 		fields = append(fields, mfamethod.FieldSecretEncrypted)
 	}
@@ -17300,6 +17751,9 @@ func (m *MfaMethodMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(mfamethod.FieldPublicKey) {
 		fields = append(fields, mfamethod.FieldPublicKey)
+	}
+	if m.FieldCleared(mfamethod.FieldWebauthnCredential) {
+		fields = append(fields, mfamethod.FieldWebauthnCredential)
 	}
 	if m.FieldCleared(mfamethod.FieldLastUsedAt) {
 		fields = append(fields, mfamethod.FieldLastUsedAt)
@@ -17318,6 +17772,9 @@ func (m *MfaMethodMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *MfaMethodMutation) ClearField(name string) error {
 	switch name {
+	case mfamethod.FieldName:
+		m.ClearName()
+		return nil
 	case mfamethod.FieldSecretEncrypted:
 		m.ClearSecretEncrypted()
 		return nil
@@ -17326,6 +17783,9 @@ func (m *MfaMethodMutation) ClearField(name string) error {
 		return nil
 	case mfamethod.FieldPublicKey:
 		m.ClearPublicKey()
+		return nil
+	case mfamethod.FieldWebauthnCredential:
+		m.ClearWebauthnCredential()
 		return nil
 	case mfamethod.FieldLastUsedAt:
 		m.ClearLastUsedAt()
@@ -17344,6 +17804,9 @@ func (m *MfaMethodMutation) ResetField(name string) error {
 	case mfamethod.FieldType:
 		m.ResetType()
 		return nil
+	case mfamethod.FieldName:
+		m.ResetName()
+		return nil
 	case mfamethod.FieldSecretEncrypted:
 		m.ResetSecretEncrypted()
 		return nil
@@ -17352,6 +17815,9 @@ func (m *MfaMethodMutation) ResetField(name string) error {
 		return nil
 	case mfamethod.FieldPublicKey:
 		m.ResetPublicKey()
+		return nil
+	case mfamethod.FieldWebauthnCredential:
+		m.ResetWebauthnCredential()
 		return nil
 	case mfamethod.FieldIsDiscoverable:
 		m.ResetIsDiscoverable()
@@ -17367,6 +17833,9 @@ func (m *MfaMethodMutation) ResetField(name string) error {
 		return nil
 	case mfamethod.FieldLastUsedAt:
 		m.ResetLastUsedAt()
+		return nil
+	case mfamethod.FieldLastUsedCounter:
+		m.ResetLastUsedCounter()
 		return nil
 	}
 	return fmt.Errorf("unknown MfaMethod field %s", name)
@@ -17444,6 +17913,1018 @@ func (m *MfaMethodMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown MfaMethod edge %s", name)
+}
+
+// MfaPolicyMutation represents an operation that mutates the MfaPolicy nodes in the graph.
+type MfaPolicyMutation struct {
+	config
+	op                            Op
+	typ                           string
+	id                            *string
+	managed_by                    *schema.MfaPolicyManagedBy
+	required                      *bool
+	allowed_methods               *[]string
+	appendallowed_methods         []string
+	enrollment_grace_days         *int
+	addenrollment_grace_days      *int
+	step_up_for_sensitive_actions *bool
+	required_since                *time.Time
+	created_at                    *time.Time
+	updated_at                    *time.Time
+	clearedFields                 map[string]struct{}
+	realm                         *string
+	clearedrealm                  bool
+	role                          *string
+	clearedrole                   bool
+	done                          bool
+	oldValue                      func(context.Context) (*MfaPolicy, error)
+	predicates                    []predicate.MfaPolicy
+}
+
+var _ ent.Mutation = (*MfaPolicyMutation)(nil)
+
+// mfapolicyOption allows management of the mutation configuration using functional options.
+type mfapolicyOption func(*MfaPolicyMutation)
+
+// newMfaPolicyMutation creates new mutation for the MfaPolicy entity.
+func newMfaPolicyMutation(c config, op Op, opts ...mfapolicyOption) *MfaPolicyMutation {
+	m := &MfaPolicyMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeMfaPolicy,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withMfaPolicyID sets the ID field of the mutation.
+func withMfaPolicyID(id string) mfapolicyOption {
+	return func(m *MfaPolicyMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *MfaPolicy
+		)
+		m.oldValue = func(ctx context.Context) (*MfaPolicy, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().MfaPolicy.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withMfaPolicy sets the old MfaPolicy of the mutation.
+func withMfaPolicy(node *MfaPolicy) mfapolicyOption {
+	return func(m *MfaPolicyMutation) {
+		m.oldValue = func(context.Context) (*MfaPolicy, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m MfaPolicyMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m MfaPolicyMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of MfaPolicy entities.
+func (m *MfaPolicyMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *MfaPolicyMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *MfaPolicyMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().MfaPolicy.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetRealmID sets the "realm_id" field.
+func (m *MfaPolicyMutation) SetRealmID(s string) {
+	m.realm = &s
+}
+
+// RealmID returns the value of the "realm_id" field in the mutation.
+func (m *MfaPolicyMutation) RealmID() (r string, exists bool) {
+	v := m.realm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRealmID returns the old "realm_id" field's value of the MfaPolicy entity.
+// If the MfaPolicy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaPolicyMutation) OldRealmID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRealmID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRealmID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRealmID: %w", err)
+	}
+	return oldValue.RealmID, nil
+}
+
+// ResetRealmID resets all changes to the "realm_id" field.
+func (m *MfaPolicyMutation) ResetRealmID() {
+	m.realm = nil
+}
+
+// SetRoleID sets the "role_id" field.
+func (m *MfaPolicyMutation) SetRoleID(s string) {
+	m.role = &s
+}
+
+// RoleID returns the value of the "role_id" field in the mutation.
+func (m *MfaPolicyMutation) RoleID() (r string, exists bool) {
+	v := m.role
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRoleID returns the old "role_id" field's value of the MfaPolicy entity.
+// If the MfaPolicy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaPolicyMutation) OldRoleID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRoleID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRoleID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRoleID: %w", err)
+	}
+	return oldValue.RoleID, nil
+}
+
+// ResetRoleID resets all changes to the "role_id" field.
+func (m *MfaPolicyMutation) ResetRoleID() {
+	m.role = nil
+}
+
+// SetManagedBy sets the "managed_by" field.
+func (m *MfaPolicyMutation) SetManagedBy(spmb schema.MfaPolicyManagedBy) {
+	m.managed_by = &spmb
+}
+
+// ManagedBy returns the value of the "managed_by" field in the mutation.
+func (m *MfaPolicyMutation) ManagedBy() (r schema.MfaPolicyManagedBy, exists bool) {
+	v := m.managed_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldManagedBy returns the old "managed_by" field's value of the MfaPolicy entity.
+// If the MfaPolicy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaPolicyMutation) OldManagedBy(ctx context.Context) (v schema.MfaPolicyManagedBy, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldManagedBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldManagedBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldManagedBy: %w", err)
+	}
+	return oldValue.ManagedBy, nil
+}
+
+// ResetManagedBy resets all changes to the "managed_by" field.
+func (m *MfaPolicyMutation) ResetManagedBy() {
+	m.managed_by = nil
+}
+
+// SetRequired sets the "required" field.
+func (m *MfaPolicyMutation) SetRequired(b bool) {
+	m.required = &b
+}
+
+// Required returns the value of the "required" field in the mutation.
+func (m *MfaPolicyMutation) Required() (r bool, exists bool) {
+	v := m.required
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequired returns the old "required" field's value of the MfaPolicy entity.
+// If the MfaPolicy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaPolicyMutation) OldRequired(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequired is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequired requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequired: %w", err)
+	}
+	return oldValue.Required, nil
+}
+
+// ResetRequired resets all changes to the "required" field.
+func (m *MfaPolicyMutation) ResetRequired() {
+	m.required = nil
+}
+
+// SetAllowedMethods sets the "allowed_methods" field.
+func (m *MfaPolicyMutation) SetAllowedMethods(s []string) {
+	m.allowed_methods = &s
+	m.appendallowed_methods = nil
+}
+
+// AllowedMethods returns the value of the "allowed_methods" field in the mutation.
+func (m *MfaPolicyMutation) AllowedMethods() (r []string, exists bool) {
+	v := m.allowed_methods
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAllowedMethods returns the old "allowed_methods" field's value of the MfaPolicy entity.
+// If the MfaPolicy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaPolicyMutation) OldAllowedMethods(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAllowedMethods is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAllowedMethods requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAllowedMethods: %w", err)
+	}
+	return oldValue.AllowedMethods, nil
+}
+
+// AppendAllowedMethods adds s to the "allowed_methods" field.
+func (m *MfaPolicyMutation) AppendAllowedMethods(s []string) {
+	m.appendallowed_methods = append(m.appendallowed_methods, s...)
+}
+
+// AppendedAllowedMethods returns the list of values that were appended to the "allowed_methods" field in this mutation.
+func (m *MfaPolicyMutation) AppendedAllowedMethods() ([]string, bool) {
+	if len(m.appendallowed_methods) == 0 {
+		return nil, false
+	}
+	return m.appendallowed_methods, true
+}
+
+// ClearAllowedMethods clears the value of the "allowed_methods" field.
+func (m *MfaPolicyMutation) ClearAllowedMethods() {
+	m.allowed_methods = nil
+	m.appendallowed_methods = nil
+	m.clearedFields[mfapolicy.FieldAllowedMethods] = struct{}{}
+}
+
+// AllowedMethodsCleared returns if the "allowed_methods" field was cleared in this mutation.
+func (m *MfaPolicyMutation) AllowedMethodsCleared() bool {
+	_, ok := m.clearedFields[mfapolicy.FieldAllowedMethods]
+	return ok
+}
+
+// ResetAllowedMethods resets all changes to the "allowed_methods" field.
+func (m *MfaPolicyMutation) ResetAllowedMethods() {
+	m.allowed_methods = nil
+	m.appendallowed_methods = nil
+	delete(m.clearedFields, mfapolicy.FieldAllowedMethods)
+}
+
+// SetEnrollmentGraceDays sets the "enrollment_grace_days" field.
+func (m *MfaPolicyMutation) SetEnrollmentGraceDays(i int) {
+	m.enrollment_grace_days = &i
+	m.addenrollment_grace_days = nil
+}
+
+// EnrollmentGraceDays returns the value of the "enrollment_grace_days" field in the mutation.
+func (m *MfaPolicyMutation) EnrollmentGraceDays() (r int, exists bool) {
+	v := m.enrollment_grace_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnrollmentGraceDays returns the old "enrollment_grace_days" field's value of the MfaPolicy entity.
+// If the MfaPolicy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaPolicyMutation) OldEnrollmentGraceDays(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEnrollmentGraceDays is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEnrollmentGraceDays requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnrollmentGraceDays: %w", err)
+	}
+	return oldValue.EnrollmentGraceDays, nil
+}
+
+// AddEnrollmentGraceDays adds i to the "enrollment_grace_days" field.
+func (m *MfaPolicyMutation) AddEnrollmentGraceDays(i int) {
+	if m.addenrollment_grace_days != nil {
+		*m.addenrollment_grace_days += i
+	} else {
+		m.addenrollment_grace_days = &i
+	}
+}
+
+// AddedEnrollmentGraceDays returns the value that was added to the "enrollment_grace_days" field in this mutation.
+func (m *MfaPolicyMutation) AddedEnrollmentGraceDays() (r int, exists bool) {
+	v := m.addenrollment_grace_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetEnrollmentGraceDays resets all changes to the "enrollment_grace_days" field.
+func (m *MfaPolicyMutation) ResetEnrollmentGraceDays() {
+	m.enrollment_grace_days = nil
+	m.addenrollment_grace_days = nil
+}
+
+// SetStepUpForSensitiveActions sets the "step_up_for_sensitive_actions" field.
+func (m *MfaPolicyMutation) SetStepUpForSensitiveActions(b bool) {
+	m.step_up_for_sensitive_actions = &b
+}
+
+// StepUpForSensitiveActions returns the value of the "step_up_for_sensitive_actions" field in the mutation.
+func (m *MfaPolicyMutation) StepUpForSensitiveActions() (r bool, exists bool) {
+	v := m.step_up_for_sensitive_actions
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStepUpForSensitiveActions returns the old "step_up_for_sensitive_actions" field's value of the MfaPolicy entity.
+// If the MfaPolicy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaPolicyMutation) OldStepUpForSensitiveActions(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStepUpForSensitiveActions is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStepUpForSensitiveActions requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStepUpForSensitiveActions: %w", err)
+	}
+	return oldValue.StepUpForSensitiveActions, nil
+}
+
+// ResetStepUpForSensitiveActions resets all changes to the "step_up_for_sensitive_actions" field.
+func (m *MfaPolicyMutation) ResetStepUpForSensitiveActions() {
+	m.step_up_for_sensitive_actions = nil
+}
+
+// SetRequiredSince sets the "required_since" field.
+func (m *MfaPolicyMutation) SetRequiredSince(t time.Time) {
+	m.required_since = &t
+}
+
+// RequiredSince returns the value of the "required_since" field in the mutation.
+func (m *MfaPolicyMutation) RequiredSince() (r time.Time, exists bool) {
+	v := m.required_since
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequiredSince returns the old "required_since" field's value of the MfaPolicy entity.
+// If the MfaPolicy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaPolicyMutation) OldRequiredSince(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequiredSince is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequiredSince requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequiredSince: %w", err)
+	}
+	return oldValue.RequiredSince, nil
+}
+
+// ClearRequiredSince clears the value of the "required_since" field.
+func (m *MfaPolicyMutation) ClearRequiredSince() {
+	m.required_since = nil
+	m.clearedFields[mfapolicy.FieldRequiredSince] = struct{}{}
+}
+
+// RequiredSinceCleared returns if the "required_since" field was cleared in this mutation.
+func (m *MfaPolicyMutation) RequiredSinceCleared() bool {
+	_, ok := m.clearedFields[mfapolicy.FieldRequiredSince]
+	return ok
+}
+
+// ResetRequiredSince resets all changes to the "required_since" field.
+func (m *MfaPolicyMutation) ResetRequiredSince() {
+	m.required_since = nil
+	delete(m.clearedFields, mfapolicy.FieldRequiredSince)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *MfaPolicyMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *MfaPolicyMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the MfaPolicy entity.
+// If the MfaPolicy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaPolicyMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *MfaPolicyMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *MfaPolicyMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *MfaPolicyMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the MfaPolicy entity.
+// If the MfaPolicy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MfaPolicyMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *MfaPolicyMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearRealm clears the "realm" edge to the Realm entity.
+func (m *MfaPolicyMutation) ClearRealm() {
+	m.clearedrealm = true
+	m.clearedFields[mfapolicy.FieldRealmID] = struct{}{}
+}
+
+// RealmCleared reports if the "realm" edge to the Realm entity was cleared.
+func (m *MfaPolicyMutation) RealmCleared() bool {
+	return m.clearedrealm
+}
+
+// RealmIDs returns the "realm" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// RealmID instead. It exists only for internal usage by the builders.
+func (m *MfaPolicyMutation) RealmIDs() (ids []string) {
+	if id := m.realm; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRealm resets all changes to the "realm" edge.
+func (m *MfaPolicyMutation) ResetRealm() {
+	m.realm = nil
+	m.clearedrealm = false
+}
+
+// ClearRole clears the "role" edge to the Role entity.
+func (m *MfaPolicyMutation) ClearRole() {
+	m.clearedrole = true
+	m.clearedFields[mfapolicy.FieldRoleID] = struct{}{}
+}
+
+// RoleCleared reports if the "role" edge to the Role entity was cleared.
+func (m *MfaPolicyMutation) RoleCleared() bool {
+	return m.clearedrole
+}
+
+// RoleIDs returns the "role" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// RoleID instead. It exists only for internal usage by the builders.
+func (m *MfaPolicyMutation) RoleIDs() (ids []string) {
+	if id := m.role; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRole resets all changes to the "role" edge.
+func (m *MfaPolicyMutation) ResetRole() {
+	m.role = nil
+	m.clearedrole = false
+}
+
+// Where appends a list predicates to the MfaPolicyMutation builder.
+func (m *MfaPolicyMutation) Where(ps ...predicate.MfaPolicy) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the MfaPolicyMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *MfaPolicyMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.MfaPolicy, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *MfaPolicyMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *MfaPolicyMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (MfaPolicy).
+func (m *MfaPolicyMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *MfaPolicyMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.realm != nil {
+		fields = append(fields, mfapolicy.FieldRealmID)
+	}
+	if m.role != nil {
+		fields = append(fields, mfapolicy.FieldRoleID)
+	}
+	if m.managed_by != nil {
+		fields = append(fields, mfapolicy.FieldManagedBy)
+	}
+	if m.required != nil {
+		fields = append(fields, mfapolicy.FieldRequired)
+	}
+	if m.allowed_methods != nil {
+		fields = append(fields, mfapolicy.FieldAllowedMethods)
+	}
+	if m.enrollment_grace_days != nil {
+		fields = append(fields, mfapolicy.FieldEnrollmentGraceDays)
+	}
+	if m.step_up_for_sensitive_actions != nil {
+		fields = append(fields, mfapolicy.FieldStepUpForSensitiveActions)
+	}
+	if m.required_since != nil {
+		fields = append(fields, mfapolicy.FieldRequiredSince)
+	}
+	if m.created_at != nil {
+		fields = append(fields, mfapolicy.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, mfapolicy.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *MfaPolicyMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case mfapolicy.FieldRealmID:
+		return m.RealmID()
+	case mfapolicy.FieldRoleID:
+		return m.RoleID()
+	case mfapolicy.FieldManagedBy:
+		return m.ManagedBy()
+	case mfapolicy.FieldRequired:
+		return m.Required()
+	case mfapolicy.FieldAllowedMethods:
+		return m.AllowedMethods()
+	case mfapolicy.FieldEnrollmentGraceDays:
+		return m.EnrollmentGraceDays()
+	case mfapolicy.FieldStepUpForSensitiveActions:
+		return m.StepUpForSensitiveActions()
+	case mfapolicy.FieldRequiredSince:
+		return m.RequiredSince()
+	case mfapolicy.FieldCreatedAt:
+		return m.CreatedAt()
+	case mfapolicy.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *MfaPolicyMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case mfapolicy.FieldRealmID:
+		return m.OldRealmID(ctx)
+	case mfapolicy.FieldRoleID:
+		return m.OldRoleID(ctx)
+	case mfapolicy.FieldManagedBy:
+		return m.OldManagedBy(ctx)
+	case mfapolicy.FieldRequired:
+		return m.OldRequired(ctx)
+	case mfapolicy.FieldAllowedMethods:
+		return m.OldAllowedMethods(ctx)
+	case mfapolicy.FieldEnrollmentGraceDays:
+		return m.OldEnrollmentGraceDays(ctx)
+	case mfapolicy.FieldStepUpForSensitiveActions:
+		return m.OldStepUpForSensitiveActions(ctx)
+	case mfapolicy.FieldRequiredSince:
+		return m.OldRequiredSince(ctx)
+	case mfapolicy.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case mfapolicy.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown MfaPolicy field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MfaPolicyMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case mfapolicy.FieldRealmID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRealmID(v)
+		return nil
+	case mfapolicy.FieldRoleID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRoleID(v)
+		return nil
+	case mfapolicy.FieldManagedBy:
+		v, ok := value.(schema.MfaPolicyManagedBy)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetManagedBy(v)
+		return nil
+	case mfapolicy.FieldRequired:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequired(v)
+		return nil
+	case mfapolicy.FieldAllowedMethods:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAllowedMethods(v)
+		return nil
+	case mfapolicy.FieldEnrollmentGraceDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnrollmentGraceDays(v)
+		return nil
+	case mfapolicy.FieldStepUpForSensitiveActions:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStepUpForSensitiveActions(v)
+		return nil
+	case mfapolicy.FieldRequiredSince:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequiredSince(v)
+		return nil
+	case mfapolicy.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case mfapolicy.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown MfaPolicy field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *MfaPolicyMutation) AddedFields() []string {
+	var fields []string
+	if m.addenrollment_grace_days != nil {
+		fields = append(fields, mfapolicy.FieldEnrollmentGraceDays)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *MfaPolicyMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case mfapolicy.FieldEnrollmentGraceDays:
+		return m.AddedEnrollmentGraceDays()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MfaPolicyMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case mfapolicy.FieldEnrollmentGraceDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddEnrollmentGraceDays(v)
+		return nil
+	}
+	return fmt.Errorf("unknown MfaPolicy numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *MfaPolicyMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(mfapolicy.FieldAllowedMethods) {
+		fields = append(fields, mfapolicy.FieldAllowedMethods)
+	}
+	if m.FieldCleared(mfapolicy.FieldRequiredSince) {
+		fields = append(fields, mfapolicy.FieldRequiredSince)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *MfaPolicyMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *MfaPolicyMutation) ClearField(name string) error {
+	switch name {
+	case mfapolicy.FieldAllowedMethods:
+		m.ClearAllowedMethods()
+		return nil
+	case mfapolicy.FieldRequiredSince:
+		m.ClearRequiredSince()
+		return nil
+	}
+	return fmt.Errorf("unknown MfaPolicy nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *MfaPolicyMutation) ResetField(name string) error {
+	switch name {
+	case mfapolicy.FieldRealmID:
+		m.ResetRealmID()
+		return nil
+	case mfapolicy.FieldRoleID:
+		m.ResetRoleID()
+		return nil
+	case mfapolicy.FieldManagedBy:
+		m.ResetManagedBy()
+		return nil
+	case mfapolicy.FieldRequired:
+		m.ResetRequired()
+		return nil
+	case mfapolicy.FieldAllowedMethods:
+		m.ResetAllowedMethods()
+		return nil
+	case mfapolicy.FieldEnrollmentGraceDays:
+		m.ResetEnrollmentGraceDays()
+		return nil
+	case mfapolicy.FieldStepUpForSensitiveActions:
+		m.ResetStepUpForSensitiveActions()
+		return nil
+	case mfapolicy.FieldRequiredSince:
+		m.ResetRequiredSince()
+		return nil
+	case mfapolicy.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case mfapolicy.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown MfaPolicy field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *MfaPolicyMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.realm != nil {
+		edges = append(edges, mfapolicy.EdgeRealm)
+	}
+	if m.role != nil {
+		edges = append(edges, mfapolicy.EdgeRole)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *MfaPolicyMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case mfapolicy.EdgeRealm:
+		if id := m.realm; id != nil {
+			return []ent.Value{*id}
+		}
+	case mfapolicy.EdgeRole:
+		if id := m.role; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *MfaPolicyMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *MfaPolicyMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *MfaPolicyMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedrealm {
+		edges = append(edges, mfapolicy.EdgeRealm)
+	}
+	if m.clearedrole {
+		edges = append(edges, mfapolicy.EdgeRole)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *MfaPolicyMutation) EdgeCleared(name string) bool {
+	switch name {
+	case mfapolicy.EdgeRealm:
+		return m.clearedrealm
+	case mfapolicy.EdgeRole:
+		return m.clearedrole
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *MfaPolicyMutation) ClearEdge(name string) error {
+	switch name {
+	case mfapolicy.EdgeRealm:
+		m.ClearRealm()
+		return nil
+	case mfapolicy.EdgeRole:
+		m.ClearRole()
+		return nil
+	}
+	return fmt.Errorf("unknown MfaPolicy unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *MfaPolicyMutation) ResetEdge(name string) error {
+	switch name {
+	case mfapolicy.EdgeRealm:
+		m.ResetRealm()
+		return nil
+	case mfapolicy.EdgeRole:
+		m.ResetRole()
+		return nil
+	}
+	return fmt.Errorf("unknown MfaPolicy edge %s", name)
 }
 
 // PasswordResetTokenMutation represents an operation that mutates the PasswordResetToken nodes in the graph.
@@ -19394,6 +20875,9 @@ type RealmMutation struct {
 	timeouts                  map[string]struct{}
 	removedtimeouts           map[string]struct{}
 	clearedtimeouts           bool
+	mfa_policies              map[string]struct{}
+	removedmfa_policies       map[string]struct{}
+	clearedmfa_policies       bool
 	done                      bool
 	oldValue                  func(context.Context) (*Realm, error)
 	predicates                []predicate.Realm
@@ -20414,6 +21898,60 @@ func (m *RealmMutation) ResetTimeouts() {
 	m.removedtimeouts = nil
 }
 
+// AddMfaPolicyIDs adds the "mfa_policies" edge to the MfaPolicy entity by ids.
+func (m *RealmMutation) AddMfaPolicyIDs(ids ...string) {
+	if m.mfa_policies == nil {
+		m.mfa_policies = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.mfa_policies[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMfaPolicies clears the "mfa_policies" edge to the MfaPolicy entity.
+func (m *RealmMutation) ClearMfaPolicies() {
+	m.clearedmfa_policies = true
+}
+
+// MfaPoliciesCleared reports if the "mfa_policies" edge to the MfaPolicy entity was cleared.
+func (m *RealmMutation) MfaPoliciesCleared() bool {
+	return m.clearedmfa_policies
+}
+
+// RemoveMfaPolicyIDs removes the "mfa_policies" edge to the MfaPolicy entity by IDs.
+func (m *RealmMutation) RemoveMfaPolicyIDs(ids ...string) {
+	if m.removedmfa_policies == nil {
+		m.removedmfa_policies = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.mfa_policies, ids[i])
+		m.removedmfa_policies[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMfaPolicies returns the removed IDs of the "mfa_policies" edge to the MfaPolicy entity.
+func (m *RealmMutation) RemovedMfaPoliciesIDs() (ids []string) {
+	for id := range m.removedmfa_policies {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MfaPoliciesIDs returns the "mfa_policies" edge IDs in the mutation.
+func (m *RealmMutation) MfaPoliciesIDs() (ids []string) {
+	for id := range m.mfa_policies {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMfaPolicies resets all changes to the "mfa_policies" edge.
+func (m *RealmMutation) ResetMfaPolicies() {
+	m.mfa_policies = nil
+	m.clearedmfa_policies = false
+	m.removedmfa_policies = nil
+}
+
 // Where appends a list predicates to the RealmMutation builder.
 func (m *RealmMutation) Where(ps ...predicate.Realm) {
 	m.predicates = append(m.predicates, ps...)
@@ -20664,7 +22202,7 @@ func (m *RealmMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RealmMutation) AddedEdges() []string {
-	edges := make([]string, 0, 12)
+	edges := make([]string, 0, 13)
 	if m.users != nil {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -20700,6 +22238,9 @@ func (m *RealmMutation) AddedEdges() []string {
 	}
 	if m.timeouts != nil {
 		edges = append(edges, realm.EdgeTimeouts)
+	}
+	if m.mfa_policies != nil {
+		edges = append(edges, realm.EdgeMfaPolicies)
 	}
 	return edges
 }
@@ -20778,13 +22319,19 @@ func (m *RealmMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case realm.EdgeMfaPolicies:
+		ids := make([]ent.Value, 0, len(m.mfa_policies))
+		for id := range m.mfa_policies {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RealmMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 12)
+	edges := make([]string, 0, 13)
 	if m.removedusers != nil {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -20817,6 +22364,9 @@ func (m *RealmMutation) RemovedEdges() []string {
 	}
 	if m.removedtimeouts != nil {
 		edges = append(edges, realm.EdgeTimeouts)
+	}
+	if m.removedmfa_policies != nil {
+		edges = append(edges, realm.EdgeMfaPolicies)
 	}
 	return edges
 }
@@ -20891,13 +22441,19 @@ func (m *RealmMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case realm.EdgeMfaPolicies:
+		ids := make([]ent.Value, 0, len(m.removedmfa_policies))
+		for id := range m.removedmfa_policies {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RealmMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 12)
+	edges := make([]string, 0, 13)
 	if m.clearedusers {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -20934,6 +22490,9 @@ func (m *RealmMutation) ClearedEdges() []string {
 	if m.clearedtimeouts {
 		edges = append(edges, realm.EdgeTimeouts)
 	}
+	if m.clearedmfa_policies {
+		edges = append(edges, realm.EdgeMfaPolicies)
+	}
 	return edges
 }
 
@@ -20965,6 +22524,8 @@ func (m *RealmMutation) EdgeCleared(name string) bool {
 		return m.clearedinstance_settings
 	case realm.EdgeTimeouts:
 		return m.clearedtimeouts
+	case realm.EdgeMfaPolicies:
+		return m.clearedmfa_policies
 	}
 	return false
 }
@@ -21020,6 +22581,9 @@ func (m *RealmMutation) ResetEdge(name string) error {
 	case realm.EdgeTimeouts:
 		m.ResetTimeouts()
 		return nil
+	case realm.EdgeMfaPolicies:
+		m.ResetMfaPolicies()
+		return nil
 	}
 	return fmt.Errorf("unknown Realm edge %s", name)
 }
@@ -21051,6 +22615,8 @@ type RoleMutation struct {
 	client_apps               map[string]struct{}
 	removedclient_apps        map[string]struct{}
 	clearedclient_apps        bool
+	mfa_policy                *string
+	clearedmfa_policy         bool
 	role_client_scopes        map[string]struct{}
 	removedrole_client_scopes map[string]struct{}
 	clearedrole_client_scopes bool
@@ -21674,6 +23240,45 @@ func (m *RoleMutation) ResetClientApps() {
 	m.removedclient_apps = nil
 }
 
+// SetMfaPolicyID sets the "mfa_policy" edge to the MfaPolicy entity by id.
+func (m *RoleMutation) SetMfaPolicyID(id string) {
+	m.mfa_policy = &id
+}
+
+// ClearMfaPolicy clears the "mfa_policy" edge to the MfaPolicy entity.
+func (m *RoleMutation) ClearMfaPolicy() {
+	m.clearedmfa_policy = true
+}
+
+// MfaPolicyCleared reports if the "mfa_policy" edge to the MfaPolicy entity was cleared.
+func (m *RoleMutation) MfaPolicyCleared() bool {
+	return m.clearedmfa_policy
+}
+
+// MfaPolicyID returns the "mfa_policy" edge ID in the mutation.
+func (m *RoleMutation) MfaPolicyID() (id string, exists bool) {
+	if m.mfa_policy != nil {
+		return *m.mfa_policy, true
+	}
+	return
+}
+
+// MfaPolicyIDs returns the "mfa_policy" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// MfaPolicyID instead. It exists only for internal usage by the builders.
+func (m *RoleMutation) MfaPolicyIDs() (ids []string) {
+	if id := m.mfa_policy; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetMfaPolicy resets all changes to the "mfa_policy" edge.
+func (m *RoleMutation) ResetMfaPolicy() {
+	m.mfa_policy = nil
+	m.clearedmfa_policy = false
+}
+
 // AddRoleClientScopeIDs adds the "role_client_scopes" edge to the RoleClientScope entity by ids.
 func (m *RoleMutation) AddRoleClientScopeIDs(ids ...string) {
 	if m.role_client_scopes == nil {
@@ -22026,7 +23631,7 @@ func (m *RoleMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RoleMutation) AddedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
 	if m.realm != nil {
 		edges = append(edges, role.EdgeRealm)
 	}
@@ -22041,6 +23646,9 @@ func (m *RoleMutation) AddedEdges() []string {
 	}
 	if m.client_apps != nil {
 		edges = append(edges, role.EdgeClientApps)
+	}
+	if m.mfa_policy != nil {
+		edges = append(edges, role.EdgeMfaPolicy)
 	}
 	if m.role_client_scopes != nil {
 		edges = append(edges, role.EdgeRoleClientScopes)
@@ -22083,6 +23691,10 @@ func (m *RoleMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case role.EdgeMfaPolicy:
+		if id := m.mfa_policy; id != nil {
+			return []ent.Value{*id}
+		}
 	case role.EdgeRoleClientScopes:
 		ids := make([]ent.Value, 0, len(m.role_client_scopes))
 		for id := range m.role_client_scopes {
@@ -22101,7 +23713,7 @@ func (m *RoleMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RoleMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
 	if m.removedusers != nil {
 		edges = append(edges, role.EdgeUsers)
 	}
@@ -22169,7 +23781,7 @@ func (m *RoleMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RoleMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
 	if m.clearedrealm {
 		edges = append(edges, role.EdgeRealm)
 	}
@@ -22184,6 +23796,9 @@ func (m *RoleMutation) ClearedEdges() []string {
 	}
 	if m.clearedclient_apps {
 		edges = append(edges, role.EdgeClientApps)
+	}
+	if m.clearedmfa_policy {
+		edges = append(edges, role.EdgeMfaPolicy)
 	}
 	if m.clearedrole_client_scopes {
 		edges = append(edges, role.EdgeRoleClientScopes)
@@ -22208,6 +23823,8 @@ func (m *RoleMutation) EdgeCleared(name string) bool {
 		return m.clearedclient_scopes
 	case role.EdgeClientApps:
 		return m.clearedclient_apps
+	case role.EdgeMfaPolicy:
+		return m.clearedmfa_policy
 	case role.EdgeRoleClientScopes:
 		return m.clearedrole_client_scopes
 	case role.EdgeClientRoles:
@@ -22222,6 +23839,9 @@ func (m *RoleMutation) ClearEdge(name string) error {
 	switch name {
 	case role.EdgeRealm:
 		m.ClearRealm()
+		return nil
+	case role.EdgeMfaPolicy:
+		m.ClearMfaPolicy()
 		return nil
 	}
 	return fmt.Errorf("unknown Role unique edge %s", name)
@@ -22245,6 +23865,9 @@ func (m *RoleMutation) ResetEdge(name string) error {
 		return nil
 	case role.EdgeClientApps:
 		m.ResetClientApps()
+		return nil
+	case role.EdgeMfaPolicy:
+		m.ResetMfaPolicy()
 		return nil
 	case role.EdgeRoleClientScopes:
 		m.ResetRoleClientScopes()
@@ -22810,6 +24433,7 @@ type SessionMutation struct {
 	device_fingerprint *string
 	mfa_verified       *bool
 	mfa_method_type    *string
+	mfa_verified_at    *time.Time
 	auth_method        *string
 	status             *schema.SessionStatus
 	revoked_reason     *string
@@ -23343,6 +24967,55 @@ func (m *SessionMutation) ResetMfaMethodType() {
 	delete(m.clearedFields, session.FieldMfaMethodType)
 }
 
+// SetMfaVerifiedAt sets the "mfa_verified_at" field.
+func (m *SessionMutation) SetMfaVerifiedAt(t time.Time) {
+	m.mfa_verified_at = &t
+}
+
+// MfaVerifiedAt returns the value of the "mfa_verified_at" field in the mutation.
+func (m *SessionMutation) MfaVerifiedAt() (r time.Time, exists bool) {
+	v := m.mfa_verified_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMfaVerifiedAt returns the old "mfa_verified_at" field's value of the Session entity.
+// If the Session object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SessionMutation) OldMfaVerifiedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMfaVerifiedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMfaVerifiedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMfaVerifiedAt: %w", err)
+	}
+	return oldValue.MfaVerifiedAt, nil
+}
+
+// ClearMfaVerifiedAt clears the value of the "mfa_verified_at" field.
+func (m *SessionMutation) ClearMfaVerifiedAt() {
+	m.mfa_verified_at = nil
+	m.clearedFields[session.FieldMfaVerifiedAt] = struct{}{}
+}
+
+// MfaVerifiedAtCleared returns if the "mfa_verified_at" field was cleared in this mutation.
+func (m *SessionMutation) MfaVerifiedAtCleared() bool {
+	_, ok := m.clearedFields[session.FieldMfaVerifiedAt]
+	return ok
+}
+
+// ResetMfaVerifiedAt resets all changes to the "mfa_verified_at" field.
+func (m *SessionMutation) ResetMfaVerifiedAt() {
+	m.mfa_verified_at = nil
+	delete(m.clearedFields, session.FieldMfaVerifiedAt)
+}
+
 // SetAuthMethod sets the "auth_method" field.
 func (m *SessionMutation) SetAuthMethod(s string) {
 	m.auth_method = &s
@@ -23655,7 +25328,7 @@ func (m *SessionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SessionMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 15)
 	if m.realm != nil {
 		fields = append(fields, session.FieldRealmID)
 	}
@@ -23685,6 +25358,9 @@ func (m *SessionMutation) Fields() []string {
 	}
 	if m.mfa_method_type != nil {
 		fields = append(fields, session.FieldMfaMethodType)
+	}
+	if m.mfa_verified_at != nil {
+		fields = append(fields, session.FieldMfaVerifiedAt)
 	}
 	if m.auth_method != nil {
 		fields = append(fields, session.FieldAuthMethod)
@@ -23726,6 +25402,8 @@ func (m *SessionMutation) Field(name string) (ent.Value, bool) {
 		return m.MfaVerified()
 	case session.FieldMfaMethodType:
 		return m.MfaMethodType()
+	case session.FieldMfaVerifiedAt:
+		return m.MfaVerifiedAt()
 	case session.FieldAuthMethod:
 		return m.AuthMethod()
 	case session.FieldStatus:
@@ -23763,6 +25441,8 @@ func (m *SessionMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldMfaVerified(ctx)
 	case session.FieldMfaMethodType:
 		return m.OldMfaMethodType(ctx)
+	case session.FieldMfaVerifiedAt:
+		return m.OldMfaVerifiedAt(ctx)
 	case session.FieldAuthMethod:
 		return m.OldAuthMethod(ctx)
 	case session.FieldStatus:
@@ -23850,6 +25530,13 @@ func (m *SessionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetMfaMethodType(v)
 		return nil
+	case session.FieldMfaVerifiedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMfaVerifiedAt(v)
+		return nil
 	case session.FieldAuthMethod:
 		v, ok := value.(string)
 		if !ok {
@@ -23920,6 +25607,9 @@ func (m *SessionMutation) ClearedFields() []string {
 	if m.FieldCleared(session.FieldMfaMethodType) {
 		fields = append(fields, session.FieldMfaMethodType)
 	}
+	if m.FieldCleared(session.FieldMfaVerifiedAt) {
+		fields = append(fields, session.FieldMfaVerifiedAt)
+	}
 	if m.FieldCleared(session.FieldRevokedReason) {
 		fields = append(fields, session.FieldRevokedReason)
 	}
@@ -23948,6 +25638,9 @@ func (m *SessionMutation) ClearField(name string) error {
 		return nil
 	case session.FieldMfaMethodType:
 		m.ClearMfaMethodType()
+		return nil
+	case session.FieldMfaVerifiedAt:
+		m.ClearMfaVerifiedAt()
 		return nil
 	case session.FieldRevokedReason:
 		m.ClearRevokedReason()
@@ -23989,6 +25682,9 @@ func (m *SessionMutation) ResetField(name string) error {
 		return nil
 	case session.FieldMfaMethodType:
 		m.ResetMfaMethodType()
+		return nil
+	case session.FieldMfaVerifiedAt:
+		m.ResetMfaVerifiedAt()
 		return nil
 	case session.FieldAuthMethod:
 		m.ResetAuthMethod()

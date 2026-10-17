@@ -91,3 +91,29 @@ func verifySignature(t *testing.T, keyType keymanager.KeyType, publicKeyPEM stri
 		t.Fatalf("unhandled key type %q in test helper", keyType)
 	}
 }
+
+func TestVaultIntegration_EncryptDecrypt(t *testing.T) {
+	addr := os.Getenv("VAULT_ADDR")
+	token := os.Getenv("VAULT_TOKEN")
+	if addr == "" || token == "" {
+		t.Skip("VAULT_ADDR / VAULT_TOKEN not set — skipping Vault integration test")
+	}
+	km, err := vault.New(vault.Config{Address: addr, Token: token})
+	if err != nil {
+		t.Fatalf("vault.New: %v", err)
+	}
+	ctx := context.Background()
+
+	ref, err := km.GenerateEncryptionKey(ctx)
+	if err != nil {
+		t.Fatalf("GenerateEncryptionKey: %v", err)
+	}
+	ct, err := km.Encrypt(ctx, ref, []byte("32-byte data key for envelope.."))
+	if err != nil {
+		t.Fatalf("Encrypt: %v", err)
+	}
+	pt, err := km.Decrypt(ctx, ref, ct)
+	if err != nil || string(pt) != "32-byte data key for envelope.." {
+		t.Fatalf("Decrypt = %q, %v", pt, err)
+	}
+}

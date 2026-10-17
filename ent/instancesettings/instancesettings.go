@@ -39,6 +39,8 @@ const (
 	FieldNotificationEmailEnabled = "notification_email_enabled"
 	// FieldKeyRotationGraceHours holds the string denoting the key_rotation_grace_hours field in the database.
 	FieldKeyRotationGraceHours = "key_rotation_grace_hours"
+	// FieldMfaStepUpMaxAgeMinutes holds the string denoting the mfa_step_up_max_age_minutes field in the database.
+	FieldMfaStepUpMaxAgeMinutes = "mfa_step_up_max_age_minutes"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
 	// FieldUpdatedBy holds the string denoting the updated_by field in the database.
@@ -71,6 +73,7 @@ var Columns = []string{
 	FieldMfaRequiredGlobally,
 	FieldNotificationEmailEnabled,
 	FieldKeyRotationGraceHours,
+	FieldMfaStepUpMaxAgeMinutes,
 	FieldUpdatedAt,
 	FieldUpdatedBy,
 }
@@ -108,6 +111,8 @@ var (
 	DefaultNotificationEmailEnabled bool
 	// DefaultKeyRotationGraceHours holds the default value on creation for the "key_rotation_grace_hours" field.
 	DefaultKeyRotationGraceHours int
+	// DefaultMfaStepUpMaxAgeMinutes holds the default value on creation for the "mfa_step_up_max_age_minutes" field.
+	DefaultMfaStepUpMaxAgeMinutes int
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
@@ -179,6 +184,11 @@ func ByNotificationEmailEnabled(opts ...sql.OrderTermOption) OrderOption {
 // ByKeyRotationGraceHours orders the results by the key_rotation_grace_hours field.
 func ByKeyRotationGraceHours(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldKeyRotationGraceHours, opts...).ToFunc()
+}
+
+// ByMfaStepUpMaxAgeMinutes orders the results by the mfa_step_up_max_age_minutes field.
+func ByMfaStepUpMaxAgeMinutes(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMfaStepUpMaxAgeMinutes, opts...).ToFunc()
 }
 
 // ByUpdatedAt orders the results by the updated_at field.

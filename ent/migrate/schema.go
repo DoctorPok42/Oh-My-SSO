@@ -3,6 +3,7 @@
 package migrate
 
 import (
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
 )
@@ -93,6 +94,8 @@ var (
 		{Name: "sector_identifier", Type: field.TypeString, Nullable: true},
 		{Name: "session_idle_minutes", Type: field.TypeInt, Nullable: true},
 		{Name: "session_max_minutes", Type: field.TypeInt, Nullable: true},
+		{Name: "mfa_policy", Type: field.TypeString, Default: "inherit"},
+		{Name: "mfa_allowed_methods", Type: field.TypeJSON, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString},
 	}
 	// ClientAppsTable holds the schema information for the "client_apps" table.
@@ -103,7 +106,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "client_apps_realms_client_apps",
-				Columns:    []*schema.Column{ClientAppsColumns[37]},
+				Columns:    []*schema.Column{ClientAppsColumns[39]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -112,12 +115,12 @@ var (
 			{
 				Name:    "clientapp_realm_id_client_id",
 				Unique:  true,
-				Columns: []*schema.Column{ClientAppsColumns[37], ClientAppsColumns[9]},
+				Columns: []*schema.Column{ClientAppsColumns[39], ClientAppsColumns[9]},
 			},
 			{
 				Name:    "clientapp_realm_id_entity_id",
 				Unique:  true,
-				Columns: []*schema.Column{ClientAppsColumns[37], ClientAppsColumns[22]},
+				Columns: []*schema.Column{ClientAppsColumns[39], ClientAppsColumns[22]},
 			},
 		},
 	}
@@ -459,6 +462,7 @@ var (
 		{Name: "mfa_required_globally", Type: field.TypeBool, Default: false},
 		{Name: "notification_email_enabled", Type: field.TypeBool, Default: false},
 		{Name: "key_rotation_grace_hours", Type: field.TypeInt, Default: 24},
+		{Name: "mfa_step_up_max_age_minutes", Type: field.TypeInt, Default: 10},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "updated_by", Type: field.TypeString, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString, Unique: true},
@@ -471,7 +475,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instance_settings_realms_instance_settings",
-				Columns:    []*schema.Column{InstanceSettingsColumns[14]},
+				Columns:    []*schema.Column{InstanceSettingsColumns[15]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -569,14 +573,17 @@ var (
 	MfaMethodsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
 		{Name: "type", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString, Nullable: true, Size: 100},
 		{Name: "secret_encrypted", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "credential_id", Type: field.TypeString, Nullable: true},
 		{Name: "public_key", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "webauthn_credential", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "is_discoverable", Type: field.TypeBool, Default: false},
 		{Name: "status", Type: field.TypeString, Default: "active"},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "last_used_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_used_counter", Type: field.TypeInt64, Default: 0},
 		{Name: "user_id", Type: field.TypeString},
 	}
 	// MfaMethodsTable holds the schema information for the "mfa_methods" table.
@@ -587,7 +594,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "mfa_methods_users_mfa_methods",
-				Columns:    []*schema.Column{MfaMethodsColumns[10]},
+				Columns:    []*schema.Column{MfaMethodsColumns[13]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -596,7 +603,61 @@ var (
 			{
 				Name:    "mfamethod_user_id_type",
 				Unique:  false,
-				Columns: []*schema.Column{MfaMethodsColumns[10], MfaMethodsColumns[1]},
+				Columns: []*schema.Column{MfaMethodsColumns[13], MfaMethodsColumns[1]},
+			},
+			{
+				Name:    "mfamethod_credential_id",
+				Unique:  true,
+				Columns: []*schema.Column{MfaMethodsColumns[4]},
+			},
+			{
+				Name:    "mfamethod_user_id_active_totp",
+				Unique:  true,
+				Columns: []*schema.Column{MfaMethodsColumns[13]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "type = 'totp' AND status = 'active'",
+				},
+			},
+		},
+	}
+	// MfaPoliciesColumns holds the columns for the "mfa_policies" table.
+	MfaPoliciesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "managed_by", Type: field.TypeString, Default: "ui"},
+		{Name: "required", Type: field.TypeBool, Default: false},
+		{Name: "allowed_methods", Type: field.TypeJSON, Nullable: true},
+		{Name: "enrollment_grace_days", Type: field.TypeInt, Default: 0},
+		{Name: "step_up_for_sensitive_actions", Type: field.TypeBool, Default: false},
+		{Name: "required_since", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "realm_id", Type: field.TypeString},
+		{Name: "role_id", Type: field.TypeString, Unique: true},
+	}
+	// MfaPoliciesTable holds the schema information for the "mfa_policies" table.
+	MfaPoliciesTable = &schema.Table{
+		Name:       "mfa_policies",
+		Columns:    MfaPoliciesColumns,
+		PrimaryKey: []*schema.Column{MfaPoliciesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "mfa_policies_realms_mfa_policies",
+				Columns:    []*schema.Column{MfaPoliciesColumns[9]},
+				RefColumns: []*schema.Column{RealmsColumns[0]},
+				OnDelete:   schema.Restrict,
+			},
+			{
+				Symbol:     "mfa_policies_roles_mfa_policy",
+				Columns:    []*schema.Column{MfaPoliciesColumns[10]},
+				RefColumns: []*schema.Column{RolesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "mfapolicy_realm_id",
+				Unique:  false,
+				Columns: []*schema.Column{MfaPoliciesColumns[9]},
 			},
 		},
 	}
@@ -755,6 +816,7 @@ var (
 		{Name: "device_fingerprint", Type: field.TypeString, Nullable: true},
 		{Name: "mfa_verified", Type: field.TypeBool, Default: false},
 		{Name: "mfa_method_type", Type: field.TypeString, Nullable: true},
+		{Name: "mfa_verified_at", Type: field.TypeTime, Nullable: true},
 		{Name: "auth_method", Type: field.TypeString, Default: "pwd"},
 		{Name: "status", Type: field.TypeString, Default: "active"},
 		{Name: "revoked_reason", Type: field.TypeString, Nullable: true},
@@ -770,13 +832,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "sessions_realms_sessions",
-				Columns:    []*schema.Column{SessionsColumns[13]},
+				Columns:    []*schema.Column{SessionsColumns[14]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
 			{
 				Symbol:     "sessions_users_sessions",
-				Columns:    []*schema.Column{SessionsColumns[14]},
+				Columns:    []*schema.Column{SessionsColumns[15]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -785,7 +847,7 @@ var (
 			{
 				Name:    "session_user_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{SessionsColumns[14], SessionsColumns[10]},
+				Columns: []*schema.Column{SessionsColumns[15], SessionsColumns[11]},
 			},
 		},
 	}
@@ -1056,6 +1118,7 @@ var (
 		LoginAttemptsTable,
 		MfaBackupCodesTable,
 		MfaMethodsTable,
+		MfaPoliciesTable,
 		PasswordResetTokensTable,
 		PermissionsTable,
 		RealmsTable,
@@ -1095,6 +1158,8 @@ func init() {
 	KeyRotationLogsTable.ForeignKeys[0].RefTable = SigningKeysTable
 	MfaBackupCodesTable.ForeignKeys[0].RefTable = UsersTable
 	MfaMethodsTable.ForeignKeys[0].RefTable = UsersTable
+	MfaPoliciesTable.ForeignKeys[0].RefTable = RealmsTable
+	MfaPoliciesTable.ForeignKeys[1].RefTable = RolesTable
 	PasswordResetTokensTable.ForeignKeys[0].RefTable = UsersTable
 	PermissionsTable.ForeignKeys[0].RefTable = RealmsTable
 	RolesTable.ForeignKeys[0].RefTable = RealmsTable

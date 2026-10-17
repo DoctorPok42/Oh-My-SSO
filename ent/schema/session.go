@@ -60,6 +60,10 @@ func (Session) Fields() []ent.Field {
 		field.String("device_fingerprint").Optional(),
 		field.Bool("mfa_verified").Default(false),
 		field.String("mfa_method_type").Optional(),
+		// Last time a second factor was verified for this session (login or
+		// step-up). Step-up checks compare it to the realm's
+		// mfa_step_up_max_age_minutes.
+		field.Time("mfa_verified_at").Optional(),
 		field.String("auth_method").Default(string(SessionAuthPassword)),
 		field.String("status").GoType(SessionStatus("")).Default(string(SessionActive)),
 		field.String("revoked_reason").Optional(),

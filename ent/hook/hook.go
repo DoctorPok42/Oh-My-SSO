@@ -201,6 +201,18 @@ func (f MfaMethodFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, e
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MfaMethodMutation", m)
 }
 
+// The MfaPolicyFunc type is an adapter to allow the use of ordinary
+// function as MfaPolicy mutator.
+type MfaPolicyFunc func(context.Context, *ent.MfaPolicyMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MfaPolicyFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MfaPolicyMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MfaPolicyMutation", m)
+}
+
 // The PasswordResetTokenFunc type is an adapter to allow the use of ordinary
 // function as PasswordResetToken mutator.
 type PasswordResetTokenFunc func(context.Context, *ent.PasswordResetTokenMutation) (ent.Value, error)

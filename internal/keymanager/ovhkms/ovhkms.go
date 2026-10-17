@@ -35,7 +35,10 @@ type KeyManager struct {
 	signers map[string]crypto.Signer // cache of crypto.Signer by KMS key reference
 }
 
-var _ keymanager.KeyManager = (*KeyManager)(nil)
+var (
+	_ keymanager.KeyManager = (*KeyManager)(nil)
+	_ keymanager.Encrypter  = (*KeyManager)(nil)
+)
 
 func New(cfg Config) (*KeyManager, error) {
 	certFile := strings.TrimSpace(cfg.ClientCertFile)
@@ -103,6 +106,42 @@ func (k *KeyManager) Sign(ctx context.Context, kmsKeyReference string, payload [
 	}
 	hash := sha256.Sum256(payload)
 	return signer.Sign(rand.Reader, hash[:], crypto.SHA256)
+}
+
+// GenerateEncryptionKey creates an AES-256 key in OKMS, used as the key
+// encryption key (KEK) of envelope encryption.
+func (k *KeyManager) GenerateEncryptionKey(ctx context.Context) (string, error) {
+	ops := []types.CryptographicUsages{types.Encrypt, types.Decrypt}
+	resp, err := k.client.GenerateSymmetricKey(ctx, k.okmsID, types.N256, "sso-envelope-key", types.SOFTWARE, "", ops)
+	if err != nil {
+		return "", fmt.Errorf("ovhkms keymanager: generate encryption key: %w", err)
+	}
+	return resp.Id.String(), nil
+}
+
+// Encrypt returns the JWE string produced by OKMS, as bytes.
+func (k *KeyManager) Encrypt(ctx context.Context, kmsKeyReference string, plaintext []byte) ([]byte, error) {
+	keyID, err := uuid.Parse(kmsKeyReference)
+	if err != nil {
+		return nil, fmt.Errorf("ovhkms keymanager: invalid key reference %q: %w", kmsKeyReference, err)
+	}
+	jwe, err := k.client.Encrypt(ctx, k.okmsID, keyID, "", plaintext)
+	if err != nil {
+		return nil, fmt.Errorf("ovhkms keymanager: encrypt: %w", err)
+	}
+	return []byte(jwe), nil
+}
+
+func (k *KeyManager) Decrypt(ctx context.Context, kmsKeyReference string, ciphertext []byte) ([]byte, error) {
+	keyID, err := uuid.Parse(kmsKeyReference)
+	if err != nil {
+		return nil, fmt.Errorf("ovhkms keymanager: invalid key reference %q: %w", kmsKeyReference, err)
+	}
+	plain, err := k.client.Decrypt(ctx, k.okmsID, keyID, "", string(ciphertext))
+	if err != nil {
+		return nil, fmt.Errorf("ovhkms keymanager: decrypt: %w", err)
+	}
+	return plain, nil
 }
 
 // signerFor returns a crypto.Signer for the given KMS key reference, caching it for future use.

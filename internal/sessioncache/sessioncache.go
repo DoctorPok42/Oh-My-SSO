@@ -17,6 +17,7 @@ type Entry struct {
 	LastActivityAt time.Time            `json:"la"`
 	MFAVerified    bool                 `json:"mfa"`
 	MFAMethodType  string               `json:"mfat,omitempty"`
+	MFAVerifiedAt  time.Time            `json:"mfaat"`
 	AuthMethod     string               `json:"am"`
 }
 
@@ -43,6 +44,7 @@ func EntryFromSession(s *domain.Session) Entry {
 		LastActivityAt: s.LastActivityAt,
 		MFAVerified:    s.MFAVerified,
 		MFAMethodType:  s.MFAMethodType,
+		MFAVerifiedAt:  s.MFAVerifiedAt,
 		AuthMethod:     s.AuthMethod,
 	}
 }
@@ -59,6 +61,7 @@ func (e Entry) ToSession(tokenHash string) *domain.Session {
 		LastActivityAt: e.LastActivityAt,
 		MFAVerified:    e.MFAVerified,
 		MFAMethodType:  e.MFAMethodType,
+		MFAVerifiedAt:  e.MFAVerifiedAt,
 		AuthMethod:     e.AuthMethod,
 	}
 }

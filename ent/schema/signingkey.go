@@ -20,6 +20,9 @@ type SigningKeyType string
 const (
 	SigningKeyRSA SigningKeyType = "RSA"
 	SigningKeyEC  SigningKeyType = "EC"
+	// SigningKeyAES is a symmetric key, only used with the
+	// envelope_encryption purpose (it has no public part).
+	SigningKeyAES SigningKeyType = "AES"
 )
 
 type SigningKeyPurpose string

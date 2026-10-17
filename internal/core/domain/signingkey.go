@@ -7,6 +7,8 @@ type SigningKeyType string
 const (
 	SigningKeyRSA SigningKeyType = "RSA"
 	SigningKeyEC  SigningKeyType = "EC"
+	// SigningKeyAES: symmetric key, envelope_encryption purpose only.
+	SigningKeyAES SigningKeyType = "AES"
 )
 
 type SigningKeyPurpose string

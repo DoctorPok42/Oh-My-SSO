@@ -28,6 +28,7 @@ import (
 	"sso.internal/sso/ent/loginattempt"
 	"sso.internal/sso/ent/mfabackupcode"
 	"sso.internal/sso/ent/mfamethod"
+	"sso.internal/sso/ent/mfapolicy"
 	"sso.internal/sso/ent/passwordresettoken"
 	"sso.internal/sso/ent/permission"
 	"sso.internal/sso/ent/realm"
@@ -114,6 +115,7 @@ func checkColumn(t, c string) error {
 			loginattempt.Table:       loginattempt.ValidColumn,
 			mfabackupcode.Table:      mfabackupcode.ValidColumn,
 			mfamethod.Table:          mfamethod.ValidColumn,
+			mfapolicy.Table:          mfapolicy.ValidColumn,
 			passwordresettoken.Table: passwordresettoken.ValidColumn,
 			permission.Table:         permission.ValidColumn,
 			realm.Table:              realm.ValidColumn,

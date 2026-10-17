@@ -25,10 +25,24 @@ const (
 type loginRequest struct {
 	Identifier string `json:"identifier"`
 	Password   string `json:"password"`
+	// ClientID (optional): OIDC client_id of the application the user is
+	// logging in for. Its MFA policy then applies right away (Step 9).
+	ClientID string `json:"client_id,omitempty"`
 }
 
+// loginResponse. "status" tells the next step:
+//
+//	authenticated           session cookie set, done
+//	mfa_required            no session yet: POST /auth/mfa/verify with one of "methods"
+//	mfa_enrollment_required session cookie set, but a policy requires MFA and
+//	                        the user has no allowed factor: enroll one first
 type loginResponse struct {
-	UserID string `json:"user_id"`
+	Status             string   `json:"status"`
+	UserID             string   `json:"user_id,omitempty"`
+	Methods            []string `json:"methods,omitempty"`
+	AllowedMethods     []string `json:"allowed_methods,omitempty"`
+	ExpiresAt          string   `json:"expires_at,omitempty"`
+	MFAEnrollmentDueAt string   `json:"mfa_enrollment_due_at,omitempty"`
 }
 
 type errorResponse struct {
@@ -36,11 +50,13 @@ type errorResponse struct {
 }
 
 type sessionResponse struct {
-	SessionID   string    `json:"session_id"`
-	UserID      string    `json:"user_id"`
-	AuthMethod  string    `json:"auth_method"`
-	MFAVerified bool      `json:"mfa_verified"`
-	ExpiresAt   time.Time `json:"expires_at"`
+	SessionID     string     `json:"session_id"`
+	UserID        string     `json:"user_id"`
+	AuthMethod    string     `json:"auth_method"`
+	MFAVerified   bool       `json:"mfa_verified"`
+	MFAMethod     string     `json:"mfa_method,omitempty"`
+	MFAVerifiedAt *time.Time `json:"mfa_verified_at,omitempty"`
+	ExpiresAt     time.Time  `json:"expires_at"`
 }
 
 func (s *Server) mountAuth(r chi.Router) {
@@ -85,12 +101,26 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var client *domain.ClientApp
+	if req.ClientID != "" {
+		c, ok := s.lookupClient(w, r, realm.ID, req.ClientID)
+		if !ok {
+			return
+		}
+		client = c
+	}
+	clientRef := ""
+	if client != nil {
+		clientRef = client.ID
+	}
+
 	user, err := s.auth.AuthenticateLocal(r.Context(), service.AuthenticateLocalParams{
 		RealmID:    realm.ID,
 		Identifier: req.Identifier,
 		Password:   req.Password,
 		IPAddress:  ip,
 		UserAgent:  r.UserAgent(),
+		ClientRef:  clientRef,
 	})
 	if err != nil {
 		switch {
@@ -102,6 +132,38 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "internal_error")
 		}
 		return
+	}
+
+	resp := loginResponse{Status: string(service.LoginAuthenticated), UserID: user.ID}
+
+	// Step 9: is a second factor needed before any session exists?
+	if s.mfa != nil {
+		dec, err := s.mfa.BeginLogin(r.Context(), service.BeginLoginInput{
+			User:      user,
+			Client:    client,
+			IPAddress: ip,
+			UserAgent: r.UserAgent(),
+		})
+		if err != nil {
+			s.writeMFAError(w, err)
+			return
+		}
+		if !dec.Requirement.EnrollmentDueAt.IsZero() {
+			resp.MFAEnrollmentDueAt = dec.Requirement.EnrollmentDueAt.UTC().Format(time.RFC3339)
+		}
+		switch dec.Outcome {
+		case service.LoginMFARequired:
+			setMFAChallengeCookie(w, realm.Name, dec.ChallengeToken, dec.ChallengeExpiresAt)
+			writeJSON(w, http.StatusOK, loginResponse{
+				Status:    string(dec.Outcome),
+				Methods:   methodStrings(dec.Methods),
+				ExpiresAt: dec.ChallengeExpiresAt.UTC().Format(time.RFC3339),
+			})
+			return
+		case service.LoginMFAEnrollmentRequired:
+			resp.Status = string(dec.Outcome)
+			resp.AllowedMethods = methodStrings(dec.Methods)
+		}
 	}
 
 	rawToken, sess, err := s.sessions.Create(r.Context(), service.CreateSessionInput{
@@ -117,7 +179,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	setSessionCookie(w, realm.Name, rawToken, sess.ExpiresAt)
-	writeJSON(w, http.StatusOK, loginResponse{UserID: user.ID})
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
@@ -133,13 +195,19 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFromContext(r)
-	writeJSON(w, http.StatusOK, sessionResponse{
+	out := sessionResponse{
 		SessionID:   sess.ID,
 		UserID:      sess.UserID,
 		AuthMethod:  sess.AuthMethod,
 		MFAVerified: sess.MFAVerified,
+		MFAMethod:   sess.MFAMethodType,
 		ExpiresAt:   sess.ExpiresAt,
-	})
+	}
+	if !sess.MFAVerifiedAt.IsZero() {
+		t := sess.MFAVerifiedAt
+		out.MFAVerifiedAt = &t
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func clientIP(r *http.Request) string {

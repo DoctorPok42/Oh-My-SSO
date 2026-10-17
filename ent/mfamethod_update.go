@@ -29,6 +29,26 @@ func (_u *MfaMethodUpdate) Where(ps ...predicate.MfaMethod) *MfaMethodUpdate {
 	return _u
 }
 
+// SetName sets the "name" field.
+func (_u *MfaMethodUpdate) SetName(v string) *MfaMethodUpdate {
+	_u.mutation.SetName(v)
+	return _u
+}
+
+// SetNillableName sets the "name" field if the given value is not nil.
+func (_u *MfaMethodUpdate) SetNillableName(v *string) *MfaMethodUpdate {
+	if v != nil {
+		_u.SetName(*v)
+	}
+	return _u
+}
+
+// ClearName clears the value of the "name" field.
+func (_u *MfaMethodUpdate) ClearName() *MfaMethodUpdate {
+	_u.mutation.ClearName()
+	return _u
+}
+
 // SetSecretEncrypted sets the "secret_encrypted" field.
 func (_u *MfaMethodUpdate) SetSecretEncrypted(v string) *MfaMethodUpdate {
 	_u.mutation.SetSecretEncrypted(v)
@@ -89,6 +109,26 @@ func (_u *MfaMethodUpdate) ClearPublicKey() *MfaMethodUpdate {
 	return _u
 }
 
+// SetWebauthnCredential sets the "webauthn_credential" field.
+func (_u *MfaMethodUpdate) SetWebauthnCredential(v string) *MfaMethodUpdate {
+	_u.mutation.SetWebauthnCredential(v)
+	return _u
+}
+
+// SetNillableWebauthnCredential sets the "webauthn_credential" field if the given value is not nil.
+func (_u *MfaMethodUpdate) SetNillableWebauthnCredential(v *string) *MfaMethodUpdate {
+	if v != nil {
+		_u.SetWebauthnCredential(*v)
+	}
+	return _u
+}
+
+// ClearWebauthnCredential clears the value of the "webauthn_credential" field.
+func (_u *MfaMethodUpdate) ClearWebauthnCredential() *MfaMethodUpdate {
+	_u.mutation.ClearWebauthnCredential()
+	return _u
+}
+
 // SetIsDiscoverable sets the "is_discoverable" field.
 func (_u *MfaMethodUpdate) SetIsDiscoverable(v bool) *MfaMethodUpdate {
 	_u.mutation.SetIsDiscoverable(v)
@@ -143,6 +183,27 @@ func (_u *MfaMethodUpdate) ClearLastUsedAt() *MfaMethodUpdate {
 	return _u
 }
 
+// SetLastUsedCounter sets the "last_used_counter" field.
+func (_u *MfaMethodUpdate) SetLastUsedCounter(v int64) *MfaMethodUpdate {
+	_u.mutation.ResetLastUsedCounter()
+	_u.mutation.SetLastUsedCounter(v)
+	return _u
+}
+
+// SetNillableLastUsedCounter sets the "last_used_counter" field if the given value is not nil.
+func (_u *MfaMethodUpdate) SetNillableLastUsedCounter(v *int64) *MfaMethodUpdate {
+	if v != nil {
+		_u.SetLastUsedCounter(*v)
+	}
+	return _u
+}
+
+// AddLastUsedCounter adds value to the "last_used_counter" field.
+func (_u *MfaMethodUpdate) AddLastUsedCounter(v int64) *MfaMethodUpdate {
+	_u.mutation.AddLastUsedCounter(v)
+	return _u
+}
+
 // Mutation returns the MfaMethodMutation object of the builder.
 func (_u *MfaMethodUpdate) Mutation() *MfaMethodMutation {
 	return _u.mutation
@@ -186,6 +247,11 @@ func (_u *MfaMethodUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *MfaMethodUpdate) check() error {
+	if v, ok := _u.mutation.Name(); ok {
+		if err := mfamethod.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "MfaMethod.name": %w`, err)}
+		}
+	}
 	if _u.mutation.OwnerCleared() && len(_u.mutation.OwnerIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "MfaMethod.owner"`)
 	}
@@ -203,6 +269,12 @@ func (_u *MfaMethodUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.Name(); ok {
+		_spec.SetField(mfamethod.FieldName, field.TypeString, value)
+	}
+	if _u.mutation.NameCleared() {
+		_spec.ClearField(mfamethod.FieldName, field.TypeString)
 	}
 	if value, ok := _u.mutation.SecretEncrypted(); ok {
 		_spec.SetField(mfamethod.FieldSecretEncrypted, field.TypeString, value)
@@ -222,6 +294,12 @@ func (_u *MfaMethodUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.PublicKeyCleared() {
 		_spec.ClearField(mfamethod.FieldPublicKey, field.TypeString)
 	}
+	if value, ok := _u.mutation.WebauthnCredential(); ok {
+		_spec.SetField(mfamethod.FieldWebauthnCredential, field.TypeString, value)
+	}
+	if _u.mutation.WebauthnCredentialCleared() {
+		_spec.ClearField(mfamethod.FieldWebauthnCredential, field.TypeString)
+	}
 	if value, ok := _u.mutation.IsDiscoverable(); ok {
 		_spec.SetField(mfamethod.FieldIsDiscoverable, field.TypeBool, value)
 	}
@@ -236,6 +314,12 @@ func (_u *MfaMethodUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.LastUsedAtCleared() {
 		_spec.ClearField(mfamethod.FieldLastUsedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LastUsedCounter(); ok {
+		_spec.SetField(mfamethod.FieldLastUsedCounter, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedLastUsedCounter(); ok {
+		_spec.AddField(mfamethod.FieldLastUsedCounter, field.TypeInt64, value)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -255,6 +339,26 @@ type MfaMethodUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *MfaMethodMutation
+}
+
+// SetName sets the "name" field.
+func (_u *MfaMethodUpdateOne) SetName(v string) *MfaMethodUpdateOne {
+	_u.mutation.SetName(v)
+	return _u
+}
+
+// SetNillableName sets the "name" field if the given value is not nil.
+func (_u *MfaMethodUpdateOne) SetNillableName(v *string) *MfaMethodUpdateOne {
+	if v != nil {
+		_u.SetName(*v)
+	}
+	return _u
+}
+
+// ClearName clears the value of the "name" field.
+func (_u *MfaMethodUpdateOne) ClearName() *MfaMethodUpdateOne {
+	_u.mutation.ClearName()
+	return _u
 }
 
 // SetSecretEncrypted sets the "secret_encrypted" field.
@@ -317,6 +421,26 @@ func (_u *MfaMethodUpdateOne) ClearPublicKey() *MfaMethodUpdateOne {
 	return _u
 }
 
+// SetWebauthnCredential sets the "webauthn_credential" field.
+func (_u *MfaMethodUpdateOne) SetWebauthnCredential(v string) *MfaMethodUpdateOne {
+	_u.mutation.SetWebauthnCredential(v)
+	return _u
+}
+
+// SetNillableWebauthnCredential sets the "webauthn_credential" field if the given value is not nil.
+func (_u *MfaMethodUpdateOne) SetNillableWebauthnCredential(v *string) *MfaMethodUpdateOne {
+	if v != nil {
+		_u.SetWebauthnCredential(*v)
+	}
+	return _u
+}
+
+// ClearWebauthnCredential clears the value of the "webauthn_credential" field.
+func (_u *MfaMethodUpdateOne) ClearWebauthnCredential() *MfaMethodUpdateOne {
+	_u.mutation.ClearWebauthnCredential()
+	return _u
+}
+
 // SetIsDiscoverable sets the "is_discoverable" field.
 func (_u *MfaMethodUpdateOne) SetIsDiscoverable(v bool) *MfaMethodUpdateOne {
 	_u.mutation.SetIsDiscoverable(v)
@@ -368,6 +492,27 @@ func (_u *MfaMethodUpdateOne) SetNillableLastUsedAt(v *time.Time) *MfaMethodUpda
 // ClearLastUsedAt clears the value of the "last_used_at" field.
 func (_u *MfaMethodUpdateOne) ClearLastUsedAt() *MfaMethodUpdateOne {
 	_u.mutation.ClearLastUsedAt()
+	return _u
+}
+
+// SetLastUsedCounter sets the "last_used_counter" field.
+func (_u *MfaMethodUpdateOne) SetLastUsedCounter(v int64) *MfaMethodUpdateOne {
+	_u.mutation.ResetLastUsedCounter()
+	_u.mutation.SetLastUsedCounter(v)
+	return _u
+}
+
+// SetNillableLastUsedCounter sets the "last_used_counter" field if the given value is not nil.
+func (_u *MfaMethodUpdateOne) SetNillableLastUsedCounter(v *int64) *MfaMethodUpdateOne {
+	if v != nil {
+		_u.SetLastUsedCounter(*v)
+	}
+	return _u
+}
+
+// AddLastUsedCounter adds value to the "last_used_counter" field.
+func (_u *MfaMethodUpdateOne) AddLastUsedCounter(v int64) *MfaMethodUpdateOne {
+	_u.mutation.AddLastUsedCounter(v)
 	return _u
 }
 
@@ -427,6 +572,11 @@ func (_u *MfaMethodUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *MfaMethodUpdateOne) check() error {
+	if v, ok := _u.mutation.Name(); ok {
+		if err := mfamethod.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "MfaMethod.name": %w`, err)}
+		}
+	}
 	if _u.mutation.OwnerCleared() && len(_u.mutation.OwnerIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "MfaMethod.owner"`)
 	}
@@ -462,6 +612,12 @@ func (_u *MfaMethodUpdateOne) sqlSave(ctx context.Context) (_node *MfaMethod, er
 			}
 		}
 	}
+	if value, ok := _u.mutation.Name(); ok {
+		_spec.SetField(mfamethod.FieldName, field.TypeString, value)
+	}
+	if _u.mutation.NameCleared() {
+		_spec.ClearField(mfamethod.FieldName, field.TypeString)
+	}
 	if value, ok := _u.mutation.SecretEncrypted(); ok {
 		_spec.SetField(mfamethod.FieldSecretEncrypted, field.TypeString, value)
 	}
@@ -480,6 +636,12 @@ func (_u *MfaMethodUpdateOne) sqlSave(ctx context.Context) (_node *MfaMethod, er
 	if _u.mutation.PublicKeyCleared() {
 		_spec.ClearField(mfamethod.FieldPublicKey, field.TypeString)
 	}
+	if value, ok := _u.mutation.WebauthnCredential(); ok {
+		_spec.SetField(mfamethod.FieldWebauthnCredential, field.TypeString, value)
+	}
+	if _u.mutation.WebauthnCredentialCleared() {
+		_spec.ClearField(mfamethod.FieldWebauthnCredential, field.TypeString)
+	}
 	if value, ok := _u.mutation.IsDiscoverable(); ok {
 		_spec.SetField(mfamethod.FieldIsDiscoverable, field.TypeBool, value)
 	}
@@ -494,6 +656,12 @@ func (_u *MfaMethodUpdateOne) sqlSave(ctx context.Context) (_node *MfaMethod, er
 	}
 	if _u.mutation.LastUsedAtCleared() {
 		_spec.ClearField(mfamethod.FieldLastUsedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LastUsedCounter(); ok {
+		_spec.SetField(mfamethod.FieldLastUsedCounter, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedLastUsedCounter(); ok {
+		_spec.AddField(mfamethod.FieldLastUsedCounter, field.TypeInt64, value)
 	}
 	_node = &MfaMethod{config: _u.config}
 	_spec.Assign = _node.assignValues

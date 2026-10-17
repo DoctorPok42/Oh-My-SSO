@@ -43,6 +43,7 @@ type Session struct {
 	DeviceFingerprint string
 	MFAVerified       bool
 	MFAMethodType     string
+	MFAVerifiedAt     time.Time // last second-factor verification (login or step-up); zero if never
 	AuthMethod        string
 	Status            SessionStatus
 	RevokedReason     SessionRevokedReason

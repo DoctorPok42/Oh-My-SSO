@@ -129,6 +129,26 @@ keys-retire:
 	go run ./cmd/idp keys retire --realm $(realm)
 
 # ------------------------------------------------------------------------------
+# MFA (Step 9) — same code as the HTTP API. user= takes a username or an email.
+# More: go run ./cmd/idp mfa --help
+# ------------------------------------------------------------------------------
+
+user   ?=
+reason ?=
+
+## mfa-list: List the MFA factors of a user (usage: make mfa-list realm=master user=alice)
+mfa-list:
+	go run ./cmd/idp mfa list --realm $(realm) --user $(user)
+
+## mfa-reset: Delete every factor of a user and revoke their sessions (usage: make mfa-reset realm=master user=alice reason="lost phone")
+mfa-reset:
+	go run ./cmd/idp mfa reset --realm $(realm) --user $(user) --reason "$(reason)"
+
+## mfa-policy: Show the MFA policies of a realm: realm, roles, clients (usage: make mfa-policy realm=master)
+mfa-policy:
+	go run ./cmd/idp mfa policy show --realm $(realm)
+
+# ------------------------------------------------------------------------------
 # Tests
 # ------------------------------------------------------------------------------
 
@@ -240,6 +260,7 @@ clean:
 	migrate-diff migrate-apply migrate-status migrate-lint \
 	build run run-admin \
 	keys-list keys-rotate keys-retire \
+	mfa-list mfa-reset mfa-policy \
 	test test-integration test-all coverage \
 	lint fmt vuln check check-core-deps \
 	docker-up docker-down docker-reset docker-logs psql dev \

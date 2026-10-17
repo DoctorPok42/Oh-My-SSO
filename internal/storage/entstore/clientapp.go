@@ -142,6 +142,14 @@ func (r *entClientAppRepository) Update(ctx context.Context, id string, p reposi
 	}
 	builder = builder.SetNillableSectorIdentifier(p.SectorIdentifier)
 
+	// --- MFA ---
+	if p.MFAPolicy != nil {
+		builder = builder.SetMfaPolicy(entschema.ClientAppMFAPolicy(*p.MFAPolicy))
+	}
+	if p.MFAAllowedMethods != nil {
+		builder = builder.SetMfaAllowedMethods(methodsToStrings(p.MFAAllowedMethods))
+	}
+
 	e, err := builder.Save(ctx)
 	if err != nil {
 		return nil, err
@@ -196,5 +204,8 @@ func toDomainClientApp(e *ent.ClientApp) *domain.ClientApp {
 
 		SubjectType:      domain.ClientAppSubjectType(e.SubjectType),
 		SectorIdentifier: e.SectorIdentifier,
+
+		MFAPolicy:         domain.ClientAppMFAPolicy(e.MfaPolicy),
+		MFAAllowedMethods: stringsToMethods(e.MfaAllowedMethods),
 	}
 }

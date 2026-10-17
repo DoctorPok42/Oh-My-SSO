@@ -42,6 +42,10 @@ func (InstanceSettings) Fields() []ent.Field {
 		// stays in the JWKS so tokens it signed can still be verified. Must
 		// be longer than the longest token lifetime plus the JWKS cache time.
 		field.Int("key_rotation_grace_hours").Default(24),
+		// How long a second-factor verification counts as "recent" for
+		// sensitive actions (step-up), e.g. rotating a signing key or
+		// removing an MFA factor.
+		field.Int("mfa_step_up_max_age_minutes").Default(10),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.String("updated_by").Optional(),
 	}

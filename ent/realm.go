@@ -65,9 +65,11 @@ type RealmEdges struct {
 	InstanceSettings *InstanceSettings `json:"instance_settings,omitempty"`
 	// Timeouts holds the value of the timeouts edge.
 	Timeouts []*Timeout `json:"timeouts,omitempty"`
+	// MfaPolicies holds the value of the mfa_policies edge.
+	MfaPolicies []*MfaPolicy `json:"mfa_policies,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [12]bool
+	loadedTypes [13]bool
 }
 
 // UsersOrErr returns the Users value or an error if the edge
@@ -178,6 +180,15 @@ func (e RealmEdges) TimeoutsOrErr() ([]*Timeout, error) {
 		return e.Timeouts, nil
 	}
 	return nil, &NotLoadedError{edge: "timeouts"}
+}
+
+// MfaPoliciesOrErr returns the MfaPolicies value or an error if the edge
+// was not loaded in eager-loading.
+func (e RealmEdges) MfaPoliciesOrErr() ([]*MfaPolicy, error) {
+	if e.loadedTypes[12] {
+		return e.MfaPolicies, nil
+	}
+	return nil, &NotLoadedError{edge: "mfa_policies"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -325,6 +336,11 @@ func (_m *Realm) QueryInstanceSettings() *InstanceSettingsQuery {
 // QueryTimeouts queries the "timeouts" edge of the Realm entity.
 func (_m *Realm) QueryTimeouts() *TimeoutQuery {
 	return NewRealmClient(_m.config).QueryTimeouts(_m)
+}
+
+// QueryMfaPolicies queries the "mfa_policies" edge of the Realm entity.
+func (_m *Realm) QueryMfaPolicies() *MfaPolicyQuery {
+	return NewRealmClient(_m.config).QueryMfaPolicies(_m)
 }
 
 // Update returns a builder for updating this Realm.

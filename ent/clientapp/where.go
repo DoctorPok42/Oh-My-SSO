@@ -226,6 +226,12 @@ func SessionMaxMinutes(v int) predicate.ClientApp {
 	return predicate.ClientApp(sql.FieldEQ(FieldSessionMaxMinutes, v))
 }
 
+// MfaPolicy applies equality check predicate on the "mfa_policy" field. It's identical to MfaPolicyEQ.
+func MfaPolicy(v schema.ClientAppMFAPolicy) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldEQ(FieldMfaPolicy, vc))
+}
+
 // RealmIDEQ applies the EQ predicate on the "realm_id" field.
 func RealmIDEQ(v string) predicate.ClientApp {
 	return predicate.ClientApp(sql.FieldEQ(FieldRealmID, v))
@@ -2134,6 +2140,100 @@ func SessionMaxMinutesIsNil() predicate.ClientApp {
 // SessionMaxMinutesNotNil applies the NotNil predicate on the "session_max_minutes" field.
 func SessionMaxMinutesNotNil() predicate.ClientApp {
 	return predicate.ClientApp(sql.FieldNotNull(FieldSessionMaxMinutes))
+}
+
+// MfaPolicyEQ applies the EQ predicate on the "mfa_policy" field.
+func MfaPolicyEQ(v schema.ClientAppMFAPolicy) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldEQ(FieldMfaPolicy, vc))
+}
+
+// MfaPolicyNEQ applies the NEQ predicate on the "mfa_policy" field.
+func MfaPolicyNEQ(v schema.ClientAppMFAPolicy) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldNEQ(FieldMfaPolicy, vc))
+}
+
+// MfaPolicyIn applies the In predicate on the "mfa_policy" field.
+func MfaPolicyIn(vs ...schema.ClientAppMFAPolicy) predicate.ClientApp {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = string(vs[i])
+	}
+	return predicate.ClientApp(sql.FieldIn(FieldMfaPolicy, v...))
+}
+
+// MfaPolicyNotIn applies the NotIn predicate on the "mfa_policy" field.
+func MfaPolicyNotIn(vs ...schema.ClientAppMFAPolicy) predicate.ClientApp {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = string(vs[i])
+	}
+	return predicate.ClientApp(sql.FieldNotIn(FieldMfaPolicy, v...))
+}
+
+// MfaPolicyGT applies the GT predicate on the "mfa_policy" field.
+func MfaPolicyGT(v schema.ClientAppMFAPolicy) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldGT(FieldMfaPolicy, vc))
+}
+
+// MfaPolicyGTE applies the GTE predicate on the "mfa_policy" field.
+func MfaPolicyGTE(v schema.ClientAppMFAPolicy) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldGTE(FieldMfaPolicy, vc))
+}
+
+// MfaPolicyLT applies the LT predicate on the "mfa_policy" field.
+func MfaPolicyLT(v schema.ClientAppMFAPolicy) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldLT(FieldMfaPolicy, vc))
+}
+
+// MfaPolicyLTE applies the LTE predicate on the "mfa_policy" field.
+func MfaPolicyLTE(v schema.ClientAppMFAPolicy) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldLTE(FieldMfaPolicy, vc))
+}
+
+// MfaPolicyContains applies the Contains predicate on the "mfa_policy" field.
+func MfaPolicyContains(v schema.ClientAppMFAPolicy) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldContains(FieldMfaPolicy, vc))
+}
+
+// MfaPolicyHasPrefix applies the HasPrefix predicate on the "mfa_policy" field.
+func MfaPolicyHasPrefix(v schema.ClientAppMFAPolicy) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldHasPrefix(FieldMfaPolicy, vc))
+}
+
+// MfaPolicyHasSuffix applies the HasSuffix predicate on the "mfa_policy" field.
+func MfaPolicyHasSuffix(v schema.ClientAppMFAPolicy) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldHasSuffix(FieldMfaPolicy, vc))
+}
+
+// MfaPolicyEqualFold applies the EqualFold predicate on the "mfa_policy" field.
+func MfaPolicyEqualFold(v schema.ClientAppMFAPolicy) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldEqualFold(FieldMfaPolicy, vc))
+}
+
+// MfaPolicyContainsFold applies the ContainsFold predicate on the "mfa_policy" field.
+func MfaPolicyContainsFold(v schema.ClientAppMFAPolicy) predicate.ClientApp {
+	vc := string(v)
+	return predicate.ClientApp(sql.FieldContainsFold(FieldMfaPolicy, vc))
+}
+
+// MfaAllowedMethodsIsNil applies the IsNil predicate on the "mfa_allowed_methods" field.
+func MfaAllowedMethodsIsNil() predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldIsNull(FieldMfaAllowedMethods))
+}
+
+// MfaAllowedMethodsNotNil applies the NotNil predicate on the "mfa_allowed_methods" field.
+func MfaAllowedMethodsNotNil() predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNotNull(FieldMfaAllowedMethods))
 }
 
 // HasRealm applies the HasEdge predicate on the "realm" edge.

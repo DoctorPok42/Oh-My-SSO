@@ -2,6 +2,7 @@ package entstore
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"sso.internal/sso/ent"
@@ -34,7 +35,7 @@ func (r *entMfaBackupCodeRepository) Create(ctx context.Context, p repository.Cr
 func (r *entMfaBackupCodeRepository) GetByID(ctx context.Context, id string) (*domain.MfaBackupCode, error) {
 	e, err := r.client.MfaBackupCode.Get(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainMfaBackupCode(e), nil
 }
@@ -87,7 +88,59 @@ func (r *entMfaBackupCodeRepository) DeleteByBatch(ctx context.Context, userID, 
 }
 
 func (r *entMfaBackupCodeRepository) Delete(ctx context.Context, id string) error {
-	return r.client.MfaBackupCode.DeleteOneID(id).Exec(ctx)
+	return mapNotFound(r.client.MfaBackupCode.DeleteOneID(id).Exec(ctx))
+}
+
+func (r *entMfaBackupCodeRepository) ReplaceForUser(ctx context.Context, userID, batchID string, codeHashes []string) error {
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.MfaBackupCode.Delete().Where(mfabackupcode.UserID(userID)).Exec(ctx); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("replace backup codes: delete old batch: %w", err)
+	}
+	builders := make([]*ent.MfaBackupCodeCreate, 0, len(codeHashes))
+	for _, h := range codeHashes {
+		builders = append(builders, tx.MfaBackupCode.Create().
+			SetUserID(userID).
+			SetBatchID(batchID).
+			SetCodeHash(h))
+	}
+	if _, err := tx.MfaBackupCode.CreateBulk(builders...).Save(ctx); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("replace backup codes: create batch: %w", err)
+	}
+	return tx.Commit()
+}
+
+func (r *entMfaBackupCodeRepository) ListUnusedByUser(ctx context.Context, userID string) ([]*domain.MfaBackupCode, error) {
+	rows, err := r.client.MfaBackupCode.
+		Query().
+		Where(mfabackupcode.UserID(userID), mfabackupcode.Used(false)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainMfaBackupCodes(rows), nil
+}
+
+func (r *entMfaBackupCodeRepository) ConsumeIfUnused(ctx context.Context, id string) (bool, error) {
+	// Conditional UPDATE: of two concurrent requests, only one changes the row.
+	n, err := r.client.MfaBackupCode.
+		Update().
+		Where(mfabackupcode.ID(id), mfabackupcode.Used(false)).
+		SetUsed(true).
+		SetUsedAt(time.Now()).
+		Save(ctx)
+	if err != nil {
+		return false, err
+	}
+	return n == 1, nil
+}
+
+func (r *entMfaBackupCodeRepository) DeleteByUser(ctx context.Context, userID string) (int, error) {
+	return r.client.MfaBackupCode.Delete().Where(mfabackupcode.UserID(userID)).Exec(ctx)
 }
 
 func toDomainMfaBackupCodes(rows []*ent.MfaBackupCode) []*domain.MfaBackupCode {

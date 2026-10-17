@@ -40,6 +40,8 @@ type Session struct {
 	MfaVerified bool `json:"mfa_verified,omitempty"`
 	// MfaMethodType holds the value of the "mfa_method_type" field.
 	MfaMethodType string `json:"mfa_method_type,omitempty"`
+	// MfaVerifiedAt holds the value of the "mfa_verified_at" field.
+	MfaVerifiedAt time.Time `json:"mfa_verified_at,omitempty"`
 	// AuthMethod holds the value of the "auth_method" field.
 	AuthMethod string `json:"auth_method,omitempty"`
 	// Status holds the value of the "status" field.
@@ -107,7 +109,7 @@ func (*Session) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case session.FieldID, session.FieldRealmID, session.FieldUserID, session.FieldIPAddress, session.FieldUserAgent, session.FieldDeviceFingerprint, session.FieldMfaMethodType, session.FieldAuthMethod, session.FieldStatus, session.FieldRevokedReason, session.FieldTokenHash:
 			values[i] = new(sql.NullString)
-		case session.FieldCreatedAt, session.FieldExpiresAt, session.FieldLastActivityAt:
+		case session.FieldCreatedAt, session.FieldExpiresAt, session.FieldLastActivityAt, session.FieldMfaVerifiedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -189,6 +191,12 @@ func (_m *Session) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field mfa_method_type", values[i])
 			} else if value.Valid {
 				_m.MfaMethodType = value.String
+			}
+		case session.FieldMfaVerifiedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field mfa_verified_at", values[i])
+			} else if value.Valid {
+				_m.MfaVerifiedAt = value.Time
 			}
 		case session.FieldAuthMethod:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -294,6 +302,9 @@ func (_m *Session) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("mfa_method_type=")
 	builder.WriteString(_m.MfaMethodType)
+	builder.WriteString(", ")
+	builder.WriteString("mfa_verified_at=")
+	builder.WriteString(_m.MfaVerifiedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("auth_method=")
 	builder.WriteString(_m.AuthMethod)

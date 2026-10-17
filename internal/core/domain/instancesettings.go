@@ -23,6 +23,7 @@ type InstanceSettings struct {
 	MFARequiredGlobally      bool
 	NotificationEmailEnabled bool
 	KeyRotationGraceHours    int
+	MFAStepUpMaxAgeMinutes   int
 	UpdatedAt                time.Time
 	UpdatedBy                string
 }

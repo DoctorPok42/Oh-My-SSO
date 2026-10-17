@@ -1,5 +1,7 @@
-h1:7m/9VjGyEb1ui/fGSu/k7RBC1P3JIevke8KgSRujuko=
+h1:oAEQvn9E6AT+srkXWqZH5HAJZyuQ4GLM/xikXrjthVc=
 20260911235655_unnamed_migration.sql h1:T9jMdh02PzNWOEBxR23qkTvS3ASuXIdCln0XXX+ZPrI=
 20260924144340_sessions.sql h1:BaRgGUAxm3O7Z1hNUDew1IQ4fl0JLAzo0miODlR7tAw=
 20261005191224_pairwise_subject_and_amr.sql h1:qt5P4RmPSXWuYPWctJV5/qMKs1D+nXuIf577rG8Iucc=
-20261016120000_jwks_key_rotation.sql h1:VWbUcI6MdeNWsYC1qDEjp8FjJTkcdbQqDgjHas3u1Ss=
+20261016120000_jwks_key_rotation.sql h1:KeGMOBY3OFZi8xLoPUrysNPu6u9WYVySsC7miQADWQw=
+20261017092447_mfa.sql h1:cvZuAs/BFDGfpOzf4pLzCnbWpMfGloyTs5qVCCjVIMY=
+20261017100901_passkeys.sql h1:YPLJEmTc03cjcrWZ97fHGprFYdjny2HpaWjhHXHc2Cw=

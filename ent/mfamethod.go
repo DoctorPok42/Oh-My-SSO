@@ -23,12 +23,16 @@ type MfaMethod struct {
 	UserID string `json:"user_id,omitempty"`
 	// Type holds the value of the "type" field.
 	Type schema.MfaMethodType `json:"type,omitempty"`
+	// Name holds the value of the "name" field.
+	Name string `json:"name,omitempty"`
 	// SecretEncrypted holds the value of the "secret_encrypted" field.
-	SecretEncrypted string `json:"secret_encrypted,omitempty"`
+	SecretEncrypted string `json:"-"`
 	// CredentialID holds the value of the "credential_id" field.
 	CredentialID string `json:"credential_id,omitempty"`
 	// PublicKey holds the value of the "public_key" field.
 	PublicKey string `json:"public_key,omitempty"`
+	// WebauthnCredential holds the value of the "webauthn_credential" field.
+	WebauthnCredential string `json:"webauthn_credential,omitempty"`
 	// IsDiscoverable holds the value of the "is_discoverable" field.
 	IsDiscoverable bool `json:"is_discoverable,omitempty"`
 	// Status holds the value of the "status" field.
@@ -39,6 +43,8 @@ type MfaMethod struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// LastUsedAt holds the value of the "last_used_at" field.
 	LastUsedAt time.Time `json:"last_used_at,omitempty"`
+	// LastUsedCounter holds the value of the "last_used_counter" field.
+	LastUsedCounter int64 `json:"last_used_counter,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MfaMethodQuery when eager-loading is set.
 	Edges        MfaMethodEdges `json:"edges"`
@@ -72,7 +78,9 @@ func (*MfaMethod) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case mfamethod.FieldIsDiscoverable:
 			values[i] = new(sql.NullBool)
-		case mfamethod.FieldID, mfamethod.FieldUserID, mfamethod.FieldType, mfamethod.FieldSecretEncrypted, mfamethod.FieldCredentialID, mfamethod.FieldPublicKey, mfamethod.FieldStatus:
+		case mfamethod.FieldLastUsedCounter:
+			values[i] = new(sql.NullInt64)
+		case mfamethod.FieldID, mfamethod.FieldUserID, mfamethod.FieldType, mfamethod.FieldName, mfamethod.FieldSecretEncrypted, mfamethod.FieldCredentialID, mfamethod.FieldPublicKey, mfamethod.FieldWebauthnCredential, mfamethod.FieldStatus:
 			values[i] = new(sql.NullString)
 		case mfamethod.FieldCreatedAt, mfamethod.FieldUpdatedAt, mfamethod.FieldLastUsedAt:
 			values[i] = new(sql.NullTime)
@@ -109,6 +117,12 @@ func (_m *MfaMethod) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Type = schema.MfaMethodType(value.String)
 			}
+		case mfamethod.FieldName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field name", values[i])
+			} else if value.Valid {
+				_m.Name = value.String
+			}
 		case mfamethod.FieldSecretEncrypted:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field secret_encrypted", values[i])
@@ -126,6 +140,12 @@ func (_m *MfaMethod) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field public_key", values[i])
 			} else if value.Valid {
 				_m.PublicKey = value.String
+			}
+		case mfamethod.FieldWebauthnCredential:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field webauthn_credential", values[i])
+			} else if value.Valid {
+				_m.WebauthnCredential = value.String
 			}
 		case mfamethod.FieldIsDiscoverable:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -156,6 +176,12 @@ func (_m *MfaMethod) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field last_used_at", values[i])
 			} else if value.Valid {
 				_m.LastUsedAt = value.Time
+			}
+		case mfamethod.FieldLastUsedCounter:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field last_used_counter", values[i])
+			} else if value.Valid {
+				_m.LastUsedCounter = value.Int64
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -204,14 +230,19 @@ func (_m *MfaMethod) String() string {
 	builder.WriteString("type=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Type))
 	builder.WriteString(", ")
-	builder.WriteString("secret_encrypted=")
-	builder.WriteString(_m.SecretEncrypted)
+	builder.WriteString("name=")
+	builder.WriteString(_m.Name)
+	builder.WriteString(", ")
+	builder.WriteString("secret_encrypted=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("credential_id=")
 	builder.WriteString(_m.CredentialID)
 	builder.WriteString(", ")
 	builder.WriteString("public_key=")
 	builder.WriteString(_m.PublicKey)
+	builder.WriteString(", ")
+	builder.WriteString("webauthn_credential=")
+	builder.WriteString(_m.WebauthnCredential)
 	builder.WriteString(", ")
 	builder.WriteString("is_discoverable=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsDiscoverable))
@@ -227,6 +258,9 @@ func (_m *MfaMethod) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("last_used_at=")
 	builder.WriteString(_m.LastUsedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("last_used_counter=")
+	builder.WriteString(fmt.Sprintf("%v", _m.LastUsedCounter))
 	builder.WriteByte(')')
 	return builder.String()
 }

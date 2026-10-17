@@ -24,6 +24,10 @@ type Server struct {
 	// when provided, so existing callers of New keep working unchanged.
 	publicKeys PublicKeySource
 	keyRotator KeyRotator
+
+	// Step 9: MFA. nil = no second factor anywhere (earlier steps' tests).
+	mfa      *service.MFAService
+	devPages bool
 }
 
 // Option configures optional parts of the Server.
@@ -37,6 +41,18 @@ func WithJWKS(src PublicKeySource) Option {
 // WithSigningKeyAdmin mounts /r/{realm}/admin/signing-keys/... (RBAC protected).
 func WithSigningKeyAdmin(rot KeyRotator) Option {
 	return func(s *Server) { s.keyRotator = rot }
+}
+
+// WithMFA turns on the second factor: login challenge, step-up, account
+// MFA routes, and step-up on sensitive admin routes.
+func WithMFA(mfa *service.MFAService) Option {
+	return func(s *Server) { s.mfa = mfa }
+}
+
+// WithDevPages mounts /r/{realm}/dev/mfa, a bare HTML page to try the MFA
+// flows by hand. Only ever enabled when APP_ENV=development.
+func WithDevPages(enabled bool) Option {
+	return func(s *Server) { s.devPages = enabled }
 }
 
 func New(
@@ -70,6 +86,15 @@ func New(
 	s.router.Route("/r/{realmName}", func(r chi.Router) {
 		r.Use(s.realmMiddleware)
 		s.mountAuth(r)
+		if s.mfa != nil {
+			s.mountMFA(r)
+			if s.mfa.PasskeysEnabled() {
+				s.mountWebAuthn(r)
+			}
+			if s.devPages {
+				s.mountDevPages(r)
+			}
+		}
 		if s.publicKeys != nil {
 			s.mountJWKS(r)
 		}

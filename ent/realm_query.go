@@ -18,6 +18,7 @@ import (
 	"sso.internal/sso/ent/group"
 	"sso.internal/sso/ent/identityprovider"
 	"sso.internal/sso/ent/instancesettings"
+	"sso.internal/sso/ent/mfapolicy"
 	"sso.internal/sso/ent/permission"
 	"sso.internal/sso/ent/predicate"
 	"sso.internal/sso/ent/realm"
@@ -47,6 +48,7 @@ type RealmQuery struct {
 	withIdentityProviders *IdentityProviderQuery
 	withInstanceSettings  *InstanceSettingsQuery
 	withTimeouts          *TimeoutQuery
+	withMfaPolicies       *MfaPolicyQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -347,6 +349,28 @@ func (_q *RealmQuery) QueryTimeouts() *TimeoutQuery {
 	return query
 }
 
+// QueryMfaPolicies chains the current query on the "mfa_policies" edge.
+func (_q *RealmQuery) QueryMfaPolicies() *MfaPolicyQuery {
+	query := (&MfaPolicyClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(realm.Table, realm.FieldID, selector),
+			sqlgraph.To(mfapolicy.Table, mfapolicy.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, realm.MfaPoliciesTable, realm.MfaPoliciesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // First returns the first Realm entity from the query.
 // Returns a *NotFoundError when no Realm was found.
 func (_q *RealmQuery) First(ctx context.Context) (*Realm, error) {
@@ -551,6 +575,7 @@ func (_q *RealmQuery) Clone() *RealmQuery {
 		withIdentityProviders: _q.withIdentityProviders.Clone(),
 		withInstanceSettings:  _q.withInstanceSettings.Clone(),
 		withTimeouts:          _q.withTimeouts.Clone(),
+		withMfaPolicies:       _q.withMfaPolicies.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -689,6 +714,17 @@ func (_q *RealmQuery) WithTimeouts(opts ...func(*TimeoutQuery)) *RealmQuery {
 	return _q
 }
 
+// WithMfaPolicies tells the query-builder to eager-load the nodes that are connected to
+// the "mfa_policies" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *RealmQuery) WithMfaPolicies(opts ...func(*MfaPolicyQuery)) *RealmQuery {
+	query := (&MfaPolicyClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withMfaPolicies = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
@@ -767,7 +803,7 @@ func (_q *RealmQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Realm,
 	var (
 		nodes       = []*Realm{}
 		_spec       = _q.querySpec()
-		loadedTypes = [12]bool{
+		loadedTypes = [13]bool{
 			_q.withUsers != nil,
 			_q.withRoles != nil,
 			_q.withGroups != nil,
@@ -780,6 +816,7 @@ func (_q *RealmQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Realm,
 			_q.withIdentityProviders != nil,
 			_q.withInstanceSettings != nil,
 			_q.withTimeouts != nil,
+			_q.withMfaPolicies != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -880,6 +917,13 @@ func (_q *RealmQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Realm,
 		if err := _q.loadTimeouts(ctx, query, nodes,
 			func(n *Realm) { n.Edges.Timeouts = []*Timeout{} },
 			func(n *Realm, e *Timeout) { n.Edges.Timeouts = append(n.Edges.Timeouts, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withMfaPolicies; query != nil {
+		if err := _q.loadMfaPolicies(ctx, query, nodes,
+			func(n *Realm) { n.Edges.MfaPolicies = []*MfaPolicy{} },
+			func(n *Realm, e *MfaPolicy) { n.Edges.MfaPolicies = append(n.Edges.MfaPolicies, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1228,6 +1272,36 @@ func (_q *RealmQuery) loadTimeouts(ctx context.Context, query *TimeoutQuery, nod
 	}
 	query.Where(predicate.Timeout(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(realm.TimeoutsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.RealmID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "realm_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *RealmQuery) loadMfaPolicies(ctx context.Context, query *MfaPolicyQuery, nodes []*Realm, init func(*Realm), assign func(*Realm, *MfaPolicy)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*Realm)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(mfapolicy.FieldRealmID)
+	}
+	query.Where(predicate.MfaPolicy(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(realm.MfaPoliciesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

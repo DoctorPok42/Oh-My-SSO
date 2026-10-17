@@ -19,12 +19,16 @@ const (
 	FieldUserID = "user_id"
 	// FieldType holds the string denoting the type field in the database.
 	FieldType = "type"
+	// FieldName holds the string denoting the name field in the database.
+	FieldName = "name"
 	// FieldSecretEncrypted holds the string denoting the secret_encrypted field in the database.
 	FieldSecretEncrypted = "secret_encrypted"
 	// FieldCredentialID holds the string denoting the credential_id field in the database.
 	FieldCredentialID = "credential_id"
 	// FieldPublicKey holds the string denoting the public_key field in the database.
 	FieldPublicKey = "public_key"
+	// FieldWebauthnCredential holds the string denoting the webauthn_credential field in the database.
+	FieldWebauthnCredential = "webauthn_credential"
 	// FieldIsDiscoverable holds the string denoting the is_discoverable field in the database.
 	FieldIsDiscoverable = "is_discoverable"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -35,6 +39,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// FieldLastUsedAt holds the string denoting the last_used_at field in the database.
 	FieldLastUsedAt = "last_used_at"
+	// FieldLastUsedCounter holds the string denoting the last_used_counter field in the database.
+	FieldLastUsedCounter = "last_used_counter"
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
 	// Table holds the table name of the mfamethod in the database.
@@ -53,14 +59,17 @@ var Columns = []string{
 	FieldID,
 	FieldUserID,
 	FieldType,
+	FieldName,
 	FieldSecretEncrypted,
 	FieldCredentialID,
 	FieldPublicKey,
+	FieldWebauthnCredential,
 	FieldIsDiscoverable,
 	FieldStatus,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldLastUsedAt,
+	FieldLastUsedCounter,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -76,6 +85,8 @@ func ValidColumn(column string) bool {
 var (
 	// UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
 	UserIDValidator func(string) error
+	// NameValidator is a validator for the "name" field. It is called by the builders before save.
+	NameValidator func(string) error
 	// DefaultIsDiscoverable holds the default value on creation for the "is_discoverable" field.
 	DefaultIsDiscoverable bool
 	// DefaultStatus holds the default value on creation for the "status" field.
@@ -86,6 +97,8 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// DefaultLastUsedCounter holds the default value on creation for the "last_used_counter" field.
+	DefaultLastUsedCounter int64
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() string
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
@@ -110,6 +123,11 @@ func ByType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldType, opts...).ToFunc()
 }
 
+// ByName orders the results by the name field.
+func ByName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
 // BySecretEncrypted orders the results by the secret_encrypted field.
 func BySecretEncrypted(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSecretEncrypted, opts...).ToFunc()
@@ -123,6 +141,11 @@ func ByCredentialID(opts ...sql.OrderTermOption) OrderOption {
 // ByPublicKey orders the results by the public_key field.
 func ByPublicKey(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPublicKey, opts...).ToFunc()
+}
+
+// ByWebauthnCredential orders the results by the webauthn_credential field.
+func ByWebauthnCredential(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldWebauthnCredential, opts...).ToFunc()
 }
 
 // ByIsDiscoverable orders the results by the is_discoverable field.
@@ -148,6 +171,11 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByLastUsedAt orders the results by the last_used_at field.
 func ByLastUsedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastUsedAt, opts...).ToFunc()
+}
+
+// ByLastUsedCounter orders the results by the last_used_counter field.
+func ByLastUsedCounter(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastUsedCounter, opts...).ToFunc()
 }
 
 // ByOwnerField orders the results by owner field.

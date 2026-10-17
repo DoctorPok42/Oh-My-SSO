@@ -15,6 +15,9 @@ type SessionRepository interface {
 	Touch(ctx context.Context, id string, at time.Time) error
 	MarkExpired(ctx context.Context, id string) error
 	Revoke(ctx context.Context, id string, reason domain.SessionRevokedReason) error
+	// MarkMFAVerified records a successful second-factor verification on an
+	// active session. ErrNotFound if the session is not active anymore.
+	MarkMFAVerified(ctx context.Context, id string, method string, at time.Time) error
 	RevokeAllByUser(ctx context.Context, userID string, reason domain.SessionRevokedReason) ([]*domain.Session, error)
 	Delete(ctx context.Context, id string) error
 }
@@ -28,6 +31,7 @@ type CreateSessionParams struct {
 	DeviceFingerprint string
 	MFAVerified       bool
 	MFAMethodType     string
+	MFAVerifiedAt     time.Time
 	AuthMethod        string
 	TokenHash         string
 }

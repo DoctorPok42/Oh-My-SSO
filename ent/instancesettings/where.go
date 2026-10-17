@@ -122,6 +122,11 @@ func KeyRotationGraceHours(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldKeyRotationGraceHours, v))
 }
 
+// MfaStepUpMaxAgeMinutes applies equality check predicate on the "mfa_step_up_max_age_minutes" field. It's identical to MfaStepUpMaxAgeMinutesEQ.
+func MfaStepUpMaxAgeMinutes(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMfaStepUpMaxAgeMinutes, v))
+}
+
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldUpdatedAt, v))
@@ -589,6 +594,46 @@ func KeyRotationGraceHoursLT(v int) predicate.InstanceSettings {
 // KeyRotationGraceHoursLTE applies the LTE predicate on the "key_rotation_grace_hours" field.
 func KeyRotationGraceHoursLTE(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldLTE(FieldKeyRotationGraceHours, v))
+}
+
+// MfaStepUpMaxAgeMinutesEQ applies the EQ predicate on the "mfa_step_up_max_age_minutes" field.
+func MfaStepUpMaxAgeMinutesEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMfaStepUpMaxAgeMinutes, v))
+}
+
+// MfaStepUpMaxAgeMinutesNEQ applies the NEQ predicate on the "mfa_step_up_max_age_minutes" field.
+func MfaStepUpMaxAgeMinutesNEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldMfaStepUpMaxAgeMinutes, v))
+}
+
+// MfaStepUpMaxAgeMinutesIn applies the In predicate on the "mfa_step_up_max_age_minutes" field.
+func MfaStepUpMaxAgeMinutesIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldMfaStepUpMaxAgeMinutes, vs...))
+}
+
+// MfaStepUpMaxAgeMinutesNotIn applies the NotIn predicate on the "mfa_step_up_max_age_minutes" field.
+func MfaStepUpMaxAgeMinutesNotIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldMfaStepUpMaxAgeMinutes, vs...))
+}
+
+// MfaStepUpMaxAgeMinutesGT applies the GT predicate on the "mfa_step_up_max_age_minutes" field.
+func MfaStepUpMaxAgeMinutesGT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldMfaStepUpMaxAgeMinutes, v))
+}
+
+// MfaStepUpMaxAgeMinutesGTE applies the GTE predicate on the "mfa_step_up_max_age_minutes" field.
+func MfaStepUpMaxAgeMinutesGTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldMfaStepUpMaxAgeMinutes, v))
+}
+
+// MfaStepUpMaxAgeMinutesLT applies the LT predicate on the "mfa_step_up_max_age_minutes" field.
+func MfaStepUpMaxAgeMinutesLT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldMfaStepUpMaxAgeMinutes, v))
+}
+
+// MfaStepUpMaxAgeMinutesLTE applies the LTE predicate on the "mfa_step_up_max_age_minutes" field.
+func MfaStepUpMaxAgeMinutesLTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldMfaStepUpMaxAgeMinutes, v))
 }
 
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
