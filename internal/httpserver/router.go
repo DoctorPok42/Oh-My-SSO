@@ -28,6 +28,18 @@ type Server struct {
 	// Step 9: MFA. nil = no second factor anywhere (earlier steps' tests).
 	mfa      *service.MFAService
 	devPages bool
+
+	// Step 10: OpenID Connect. nil = no OIDC routes.
+	oidc OIDCProvider
+}
+
+// OIDCProvider is the OIDC adapter as the router sees it (implemented by
+// internal/adapters/oidc).
+type OIDCProvider interface {
+	// Handler serves /r/{realm}/oidc/*.
+	Handler() http.Handler
+	// DiscoveryHandler serves /r/{realm}/.well-known/openid-configuration.
+	DiscoveryHandler() http.Handler
 }
 
 // Option configures optional parts of the Server.
@@ -47,6 +59,13 @@ func WithSigningKeyAdmin(rot KeyRotator) Option {
 // MFA routes, and step-up on sensitive admin routes.
 func WithMFA(mfa *service.MFAService) Option {
 	return func(s *Server) { s.mfa = mfa }
+}
+
+// WithOIDC mounts the OpenID Connect endpoints (Step 10): discovery and
+// /r/{realm}/oidc/... (authorize, login page, token, userinfo, revoke,
+// introspect, logout).
+func WithOIDC(p OIDCProvider) Option {
+	return func(s *Server) { s.oidc = p }
 }
 
 // WithDevPages mounts /r/{realm}/dev/mfa, a bare HTML page to try the MFA
@@ -97,6 +116,9 @@ func New(
 		}
 		if s.publicKeys != nil {
 			s.mountJWKS(r)
+		}
+		if s.oidc != nil {
+			s.mountOIDC(r)
 		}
 		if s.keyRotator != nil {
 			s.mountSigningKeyAdmin(r)

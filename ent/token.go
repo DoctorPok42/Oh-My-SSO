@@ -37,6 +37,12 @@ type Token struct {
 	Revoked bool `json:"revoked,omitempty"`
 	// Scopes holds the value of the "scopes" field.
 	Scopes []string `json:"scopes,omitempty"`
+	// TokenHash holds the value of the "token_hash" field.
+	TokenHash string `json:"-"`
+	// FamilyID holds the value of the "family_id" field.
+	FamilyID string `json:"family_id,omitempty"`
+	// UsedAt holds the value of the "used_at" field.
+	UsedAt *time.Time `json:"used_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the TokenQuery when eager-loading is set.
 	Edges        TokenEdges `json:"edges"`
@@ -85,9 +91,9 @@ func (*Token) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case token.FieldRevoked:
 			values[i] = new(sql.NullBool)
-		case token.FieldID, token.FieldSessionID, token.FieldClientRefID, token.FieldType, token.FieldJti:
+		case token.FieldID, token.FieldSessionID, token.FieldClientRefID, token.FieldType, token.FieldJti, token.FieldTokenHash, token.FieldFamilyID:
 			values[i] = new(sql.NullString)
-		case token.FieldIssuedAt, token.FieldExpiresAt:
+		case token.FieldIssuedAt, token.FieldExpiresAt, token.FieldUsedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -160,6 +166,25 @@ func (_m *Token) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field scopes: %w", err)
 				}
 			}
+		case token.FieldTokenHash:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field token_hash", values[i])
+			} else if value.Valid {
+				_m.TokenHash = value.String
+			}
+		case token.FieldFamilyID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field family_id", values[i])
+			} else if value.Valid {
+				_m.FamilyID = value.String
+			}
+		case token.FieldUsedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field used_at", values[i])
+			} else if value.Valid {
+				_m.UsedAt = new(time.Time)
+				*_m.UsedAt = value.Time
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -229,6 +254,16 @@ func (_m *Token) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("scopes=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Scopes))
+	builder.WriteString(", ")
+	builder.WriteString("token_hash=<sensitive>")
+	builder.WriteString(", ")
+	builder.WriteString("family_id=")
+	builder.WriteString(_m.FamilyID)
+	builder.WriteString(", ")
+	if v := _m.UsedAt; v != nil {
+		builder.WriteString("used_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

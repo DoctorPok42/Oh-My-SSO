@@ -34,7 +34,7 @@ func (r *entGroupRepository) Create(ctx context.Context, p repository.CreateGrou
 func (r *entGroupRepository) GetByID(ctx context.Context, id string) (*domain.Group, error) {
 	e, err := r.client.Group.Get(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainGroup(e), nil
 }
@@ -45,7 +45,7 @@ func (r *entGroupRepository) GetByRealmAndName(ctx context.Context, realmID, nam
 		Where(group.RealmID(realmID), group.Name(name)).
 		Only(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainGroup(e), nil
 }

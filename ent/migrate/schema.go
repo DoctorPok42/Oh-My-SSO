@@ -75,7 +75,7 @@ var (
 		{Name: "allowed_scopes", Type: field.TypeJSON, Nullable: true},
 		{Name: "token_endpoint_auth_method", Type: field.TypeString, Nullable: true},
 		{Name: "id_token_signed_alg", Type: field.TypeString, Nullable: true},
-		{Name: "access_token_ttl", Type: field.TypeInt, Default: 3600},
+		{Name: "access_token_ttl", Type: field.TypeInt, Default: 300},
 		{Name: "refresh_token_ttl", Type: field.TypeInt, Default: 2592000},
 		{Name: "id_token_ttl", Type: field.TypeInt, Default: 3600},
 		{Name: "require_pkce", Type: field.TypeBool, Default: true},
@@ -930,6 +930,9 @@ var (
 		{Name: "expires_at", Type: field.TypeTime},
 		{Name: "revoked", Type: field.TypeBool, Default: false},
 		{Name: "scopes", Type: field.TypeJSON, Nullable: true},
+		{Name: "token_hash", Type: field.TypeString, Unique: true, Nullable: true},
+		{Name: "family_id", Type: field.TypeString, Nullable: true},
+		{Name: "used_at", Type: field.TypeTime, Nullable: true},
 		{Name: "client_ref_id", Type: field.TypeString},
 		{Name: "session_id", Type: field.TypeString},
 	}
@@ -941,13 +944,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "tokens_client_apps_tokens",
-				Columns:    []*schema.Column{TokensColumns[7]},
+				Columns:    []*schema.Column{TokensColumns[10]},
 				RefColumns: []*schema.Column{ClientAppsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 			{
 				Symbol:     "tokens_sessions_tokens",
-				Columns:    []*schema.Column{TokensColumns[8]},
+				Columns:    []*schema.Column{TokensColumns[11]},
 				RefColumns: []*schema.Column{SessionsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -956,7 +959,12 @@ var (
 			{
 				Name:    "token_session_id_revoked",
 				Unique:  false,
-				Columns: []*schema.Column{TokensColumns[8], TokensColumns[5]},
+				Columns: []*schema.Column{TokensColumns[11], TokensColumns[5]},
+			},
+			{
+				Name:    "token_family_id",
+				Unique:  false,
+				Columns: []*schema.Column{TokensColumns[8]},
 			},
 		},
 	}

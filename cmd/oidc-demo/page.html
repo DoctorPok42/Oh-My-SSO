@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OIDC demo app</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #1d2330; }
+  h1 { font-size: 1.4rem; margin-bottom: .2rem; }
+  .muted { color: #5c6577; font-size: .9rem; }
+  .card { border: 1px solid #d8dce5; border-radius: 8px; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .ok { border-color: #3c9a5f; background: #f1faf4; }
+  .ko { border-color: #c4473a; background: #fdf3f2; }
+  pre { background: #f6f7f9; padding: .8rem; border-radius: 6px; overflow-x: auto; font-size: .85rem; white-space: pre-wrap; }
+  form { display: inline; }
+  button, .button { font: inherit; padding: .45rem .9rem; margin: .2rem .3rem .2rem 0; border-radius: 6px; border: 1px solid #2f5bd3; background: #2f5bd3; color: #fff; cursor: pointer; text-decoration: none; display: inline-block; }
+  button.secondary, .button.secondary { background: #fff; color: #2f5bd3; }
+  button.danger { background: #fff; color: #c4473a; border-color: #c4473a; }
+  code { font-size: .9em; }
+</style>
+</head>
+<body>
+<h1>OIDC demo app</h1>
+<p class="muted">A relying party for Oh-My-SSO · issuer <code>{{.Issuer}}</code> · client_id <code>{{.ClientID}}</code></p>
+
+{{if .Result}}<div class="card {{if .ResultOK}}ok{{else}}ko{{end}}"><pre>{{.Result}}</pre></div>{{end}}
+
+{{if .LoggedIn}}
+<div class="card">
+  <form method="post" action="/userinfo"><button>Call UserInfo</button></form>
+  <form method="post" action="/refresh"><button class="secondary">Refresh tokens</button></form>
+  <form method="post" action="/replay"><button class="danger" title="Sends the previous refresh token again, like a thief would">Replay the old refresh token</button></form>
+  <form method="post" action="/logout"><button class="secondary">Log out (here and on the SSO)</button></form>
+</div>
+
+<div class="card">
+  <h2>id_token (verified)</h2>
+  <p class="muted">Who the user is, for this application. Checked: signature (JWKS), iss, aud, exp, nonce.</p>
+  <pre>{{.IDClaims}}</pre>
+</div>
+
+<div class="card">
+  <h2>access_token (decoded, not verified)</h2>
+  <p class="muted">For the APIs this application calls: they verify it. Expires at {{.AccessExpiry}} · scope: <code>{{.Scope}}</code></p>
+  <pre>{{.AccessClaims}}</pre>
+</div>
+
+<div class="card">
+  <h2>refresh_token</h2>
+  <p>Current: <code>{{.Refresh}}</code>{{if .OldRefresh}} · previous (used): <code>{{.OldRefresh}}</code>{{end}}</p>
+</div>
+{{else}}
+<div class="card">
+  <p>You are not logged in to this application.</p>
+  <a class="button" href="/login">Log in with Oh-My-SSO</a>
+  <a class="button secondary" href="/login?prompt=login">Log in (force the password again)</a>
+</div>
+{{end}}
+</body>
+</html>

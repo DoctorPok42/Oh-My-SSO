@@ -27746,6 +27746,9 @@ type TokenMutation struct {
 	revoked           *bool
 	scopes            *[]string
 	appendscopes      []string
+	token_hash        *string
+	family_id         *string
+	used_at           *time.Time
 	clearedFields     map[string]struct{}
 	session           *string
 	clearedsession    bool
@@ -28177,6 +28180,153 @@ func (m *TokenMutation) ResetScopes() {
 	delete(m.clearedFields, token.FieldScopes)
 }
 
+// SetTokenHash sets the "token_hash" field.
+func (m *TokenMutation) SetTokenHash(s string) {
+	m.token_hash = &s
+}
+
+// TokenHash returns the value of the "token_hash" field in the mutation.
+func (m *TokenMutation) TokenHash() (r string, exists bool) {
+	v := m.token_hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTokenHash returns the old "token_hash" field's value of the Token entity.
+// If the Token object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TokenMutation) OldTokenHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTokenHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTokenHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTokenHash: %w", err)
+	}
+	return oldValue.TokenHash, nil
+}
+
+// ClearTokenHash clears the value of the "token_hash" field.
+func (m *TokenMutation) ClearTokenHash() {
+	m.token_hash = nil
+	m.clearedFields[token.FieldTokenHash] = struct{}{}
+}
+
+// TokenHashCleared returns if the "token_hash" field was cleared in this mutation.
+func (m *TokenMutation) TokenHashCleared() bool {
+	_, ok := m.clearedFields[token.FieldTokenHash]
+	return ok
+}
+
+// ResetTokenHash resets all changes to the "token_hash" field.
+func (m *TokenMutation) ResetTokenHash() {
+	m.token_hash = nil
+	delete(m.clearedFields, token.FieldTokenHash)
+}
+
+// SetFamilyID sets the "family_id" field.
+func (m *TokenMutation) SetFamilyID(s string) {
+	m.family_id = &s
+}
+
+// FamilyID returns the value of the "family_id" field in the mutation.
+func (m *TokenMutation) FamilyID() (r string, exists bool) {
+	v := m.family_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFamilyID returns the old "family_id" field's value of the Token entity.
+// If the Token object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TokenMutation) OldFamilyID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFamilyID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFamilyID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFamilyID: %w", err)
+	}
+	return oldValue.FamilyID, nil
+}
+
+// ClearFamilyID clears the value of the "family_id" field.
+func (m *TokenMutation) ClearFamilyID() {
+	m.family_id = nil
+	m.clearedFields[token.FieldFamilyID] = struct{}{}
+}
+
+// FamilyIDCleared returns if the "family_id" field was cleared in this mutation.
+func (m *TokenMutation) FamilyIDCleared() bool {
+	_, ok := m.clearedFields[token.FieldFamilyID]
+	return ok
+}
+
+// ResetFamilyID resets all changes to the "family_id" field.
+func (m *TokenMutation) ResetFamilyID() {
+	m.family_id = nil
+	delete(m.clearedFields, token.FieldFamilyID)
+}
+
+// SetUsedAt sets the "used_at" field.
+func (m *TokenMutation) SetUsedAt(t time.Time) {
+	m.used_at = &t
+}
+
+// UsedAt returns the value of the "used_at" field in the mutation.
+func (m *TokenMutation) UsedAt() (r time.Time, exists bool) {
+	v := m.used_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUsedAt returns the old "used_at" field's value of the Token entity.
+// If the Token object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TokenMutation) OldUsedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUsedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUsedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUsedAt: %w", err)
+	}
+	return oldValue.UsedAt, nil
+}
+
+// ClearUsedAt clears the value of the "used_at" field.
+func (m *TokenMutation) ClearUsedAt() {
+	m.used_at = nil
+	m.clearedFields[token.FieldUsedAt] = struct{}{}
+}
+
+// UsedAtCleared returns if the "used_at" field was cleared in this mutation.
+func (m *TokenMutation) UsedAtCleared() bool {
+	_, ok := m.clearedFields[token.FieldUsedAt]
+	return ok
+}
+
+// ResetUsedAt resets all changes to the "used_at" field.
+func (m *TokenMutation) ResetUsedAt() {
+	m.used_at = nil
+	delete(m.clearedFields, token.FieldUsedAt)
+}
+
 // ClearSession clears the "session" edge to the Session entity.
 func (m *TokenMutation) ClearSession() {
 	m.clearedsession = true
@@ -28278,7 +28428,7 @@ func (m *TokenMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TokenMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 11)
 	if m.session != nil {
 		fields = append(fields, token.FieldSessionID)
 	}
@@ -28302,6 +28452,15 @@ func (m *TokenMutation) Fields() []string {
 	}
 	if m.scopes != nil {
 		fields = append(fields, token.FieldScopes)
+	}
+	if m.token_hash != nil {
+		fields = append(fields, token.FieldTokenHash)
+	}
+	if m.family_id != nil {
+		fields = append(fields, token.FieldFamilyID)
+	}
+	if m.used_at != nil {
+		fields = append(fields, token.FieldUsedAt)
 	}
 	return fields
 }
@@ -28327,6 +28486,12 @@ func (m *TokenMutation) Field(name string) (ent.Value, bool) {
 		return m.Revoked()
 	case token.FieldScopes:
 		return m.Scopes()
+	case token.FieldTokenHash:
+		return m.TokenHash()
+	case token.FieldFamilyID:
+		return m.FamilyID()
+	case token.FieldUsedAt:
+		return m.UsedAt()
 	}
 	return nil, false
 }
@@ -28352,6 +28517,12 @@ func (m *TokenMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldRevoked(ctx)
 	case token.FieldScopes:
 		return m.OldScopes(ctx)
+	case token.FieldTokenHash:
+		return m.OldTokenHash(ctx)
+	case token.FieldFamilyID:
+		return m.OldFamilyID(ctx)
+	case token.FieldUsedAt:
+		return m.OldUsedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Token field %s", name)
 }
@@ -28417,6 +28588,27 @@ func (m *TokenMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetScopes(v)
 		return nil
+	case token.FieldTokenHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTokenHash(v)
+		return nil
+	case token.FieldFamilyID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFamilyID(v)
+		return nil
+	case token.FieldUsedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUsedAt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Token field %s", name)
 }
@@ -28450,6 +28642,15 @@ func (m *TokenMutation) ClearedFields() []string {
 	if m.FieldCleared(token.FieldScopes) {
 		fields = append(fields, token.FieldScopes)
 	}
+	if m.FieldCleared(token.FieldTokenHash) {
+		fields = append(fields, token.FieldTokenHash)
+	}
+	if m.FieldCleared(token.FieldFamilyID) {
+		fields = append(fields, token.FieldFamilyID)
+	}
+	if m.FieldCleared(token.FieldUsedAt) {
+		fields = append(fields, token.FieldUsedAt)
+	}
 	return fields
 }
 
@@ -28466,6 +28667,15 @@ func (m *TokenMutation) ClearField(name string) error {
 	switch name {
 	case token.FieldScopes:
 		m.ClearScopes()
+		return nil
+	case token.FieldTokenHash:
+		m.ClearTokenHash()
+		return nil
+	case token.FieldFamilyID:
+		m.ClearFamilyID()
+		return nil
+	case token.FieldUsedAt:
+		m.ClearUsedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Token nullable field %s", name)
@@ -28498,6 +28708,15 @@ func (m *TokenMutation) ResetField(name string) error {
 		return nil
 	case token.FieldScopes:
 		m.ResetScopes()
+		return nil
+	case token.FieldTokenHash:
+		m.ResetTokenHash()
+		return nil
+	case token.FieldFamilyID:
+		m.ResetFamilyID()
+		return nil
+	case token.FieldUsedAt:
+		m.ResetUsedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Token field %s", name)

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Sign in · {{.RealmDisplay}}</title>
+<link rel="stylesheet" href="{{.Assets}}/login.css">
+<script src="{{.Assets}}/login.js" defer></script>
+</head>
+<body>
+<main class="card" id="app"
+      data-base="{{.Base}}" data-client-id="{{.ClientID}}" data-mode="{{.Mode}}"
+      data-methods="{{.Methods}}" data-passkeys="{{if .Passkeys}}on{{end}}">
+  <header>
+    <p class="realm">{{.RealmDisplay}}</p>
+    <h1 id="title">{{if eq .Mode "login"}}Sign in{{else if eq .Mode "stepup"}}Confirm it's you{{else}}One more step{{end}}</h1>
+    <p class="client">to continue to <strong>{{.ClientName}}</strong></p>
+  </header>
+
+  <p class="alert" id="error" role="alert" hidden></p>
+  <noscript><p class="alert">This page needs JavaScript to sign you in.</p></noscript>
+
+  <form id="password-form" {{if ne .Mode "login"}}hidden{{end}}>
+    <label for="identifier">Username or e-mail</label>
+    <input id="identifier" name="identifier" autocomplete="username webauthn" required value="{{.LoginHint}}" autofocus>
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit">Sign in</button>
+  </form>
+
+  <form id="code-form" hidden>
+    <p class="hint" id="code-hint">Enter the code from your authenticator app.</p>
+    <fieldset id="method-choice" hidden>
+      <legend>Method</legend>
+      <label><input type="radio" name="method" value="totp" checked> Authenticator app</label>
+      <label><input type="radio" name="method" value="backup_code"> Backup code</label>
+    </fieldset>
+    <label for="code">Code</label>
+    <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" required>
+    <button type="submit">Verify</button>
+  </form>
+
+  <div id="passkey" hidden>
+    <p class="or"><span>or</span></p>
+    <button type="button" class="secondary" id="passkey-btn">Use a passkey or security key</button>
+  </div>
+
+  <section id="enroll" {{if ne .Mode "enroll"}}hidden{{end}}>
+    <p>This application requires a second factor (authenticator app or passkey), and your account does not have one that it accepts yet.</p>
+    {{if .EnrollURL}}<p><a href="{{.EnrollURL}}">Add one on the development page</a>, then come back here and reload.</p>
+    {{else}}<p>Add one from your account, or ask your administrator, then sign in again.</p>{{end}}
+  </section>
+
+  <footer><a href="{{.CancelURL}}">Cancel and go back to the application</a></footer>
+</main>
+</body>
+</html>

@@ -34,7 +34,7 @@ func (r *entRoleRepository) Create(ctx context.Context, p repository.CreateRoleP
 func (r *entRoleRepository) GetByID(ctx context.Context, id string) (*domain.Role, error) {
 	e, err := r.client.Role.Get(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainRole(e), nil
 }
@@ -45,7 +45,7 @@ func (r *entRoleRepository) GetByRealmAndName(ctx context.Context, realmID, name
 		Where(role.RealmID(realmID), role.Name(name)).
 		Only(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainRole(e), nil
 }

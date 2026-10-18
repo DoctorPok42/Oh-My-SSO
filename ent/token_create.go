@@ -87,6 +87,48 @@ func (_c *TokenCreate) SetScopes(v []string) *TokenCreate {
 	return _c
 }
 
+// SetTokenHash sets the "token_hash" field.
+func (_c *TokenCreate) SetTokenHash(v string) *TokenCreate {
+	_c.mutation.SetTokenHash(v)
+	return _c
+}
+
+// SetNillableTokenHash sets the "token_hash" field if the given value is not nil.
+func (_c *TokenCreate) SetNillableTokenHash(v *string) *TokenCreate {
+	if v != nil {
+		_c.SetTokenHash(*v)
+	}
+	return _c
+}
+
+// SetFamilyID sets the "family_id" field.
+func (_c *TokenCreate) SetFamilyID(v string) *TokenCreate {
+	_c.mutation.SetFamilyID(v)
+	return _c
+}
+
+// SetNillableFamilyID sets the "family_id" field if the given value is not nil.
+func (_c *TokenCreate) SetNillableFamilyID(v *string) *TokenCreate {
+	if v != nil {
+		_c.SetFamilyID(*v)
+	}
+	return _c
+}
+
+// SetUsedAt sets the "used_at" field.
+func (_c *TokenCreate) SetUsedAt(v time.Time) *TokenCreate {
+	_c.mutation.SetUsedAt(v)
+	return _c
+}
+
+// SetNillableUsedAt sets the "used_at" field if the given value is not nil.
+func (_c *TokenCreate) SetNillableUsedAt(v *time.Time) *TokenCreate {
+	if v != nil {
+		_c.SetUsedAt(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *TokenCreate) SetID(v string) *TokenCreate {
 	_c.mutation.SetID(v)
@@ -273,6 +315,18 @@ func (_c *TokenCreate) createSpec() (*Token, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Scopes(); ok {
 		_spec.SetField(token.FieldScopes, field.TypeJSON, value)
 		_node.Scopes = value
+	}
+	if value, ok := _c.mutation.TokenHash(); ok {
+		_spec.SetField(token.FieldTokenHash, field.TypeString, value)
+		_node.TokenHash = value
+	}
+	if value, ok := _c.mutation.FamilyID(); ok {
+		_spec.SetField(token.FieldFamilyID, field.TypeString, value)
+		_node.FamilyID = value
+	}
+	if value, ok := _c.mutation.UsedAt(); ok {
+		_spec.SetField(token.FieldUsedAt, field.TypeTime, value)
+		_node.UsedAt = &value
 	}
 	if nodes := _c.mutation.SessionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

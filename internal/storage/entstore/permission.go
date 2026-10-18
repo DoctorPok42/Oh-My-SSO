@@ -40,7 +40,7 @@ func (r *entPermissionRepository) Create(ctx context.Context, p repository.Creat
 func (r *entPermissionRepository) GetByID(ctx context.Context, id string) (*domain.Permission, error) {
 	e, err := r.client.Permission.Get(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainPermission(e), nil
 }
@@ -51,7 +51,7 @@ func (r *entPermissionRepository) GetByRealmAndName(ctx context.Context, realmID
 		Where(permission.RealmID(realmID), permission.Name(name)).
 		Only(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainPermission(e), nil
 }

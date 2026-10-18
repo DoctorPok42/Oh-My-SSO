@@ -149,6 +149,29 @@ mfa-policy:
 	go run ./cmd/idp mfa policy show --realm $(realm)
 
 # ------------------------------------------------------------------------------
+# OpenID Connect (Step 10) — same code as the future admin API.
+# More: go run ./cmd/idp oidc --help
+# ------------------------------------------------------------------------------
+
+client ?=
+
+## oidc-clients: List the OIDC clients of a realm (usage: make oidc-clients realm=demo)
+oidc-clients:
+	go run ./cmd/idp oidc clients list --realm $(realm)
+
+## oidc-rotate-secret: Give an OIDC client a new secret (usage: make oidc-rotate-secret realm=demo client=payroll)
+oidc-rotate-secret:
+	go run ./cmd/idp oidc clients rotate-secret --realm $(realm) --client-id $(client)
+
+## dev-seed: Development only: realm "demo", user alice, role and demo OIDC client (prints the password and secret)
+dev-seed:
+	go run ./cmd/idp dev seed
+
+## oidc-demo: Run the demo application (relying party) on http://localhost:9000 (reads DEMO_* from .env)
+oidc-demo:
+	go run ./cmd/oidc-demo
+
+# ------------------------------------------------------------------------------
 # Tests
 # ------------------------------------------------------------------------------
 
@@ -195,12 +218,20 @@ check-core-deps:
 	fi; \
 	echo "OK: internal/core does not depend on HTTP, Ent or chi"
 
+## check-adapter-deps: Verify protocol adapters only talk to the core, never to storage (Step 10 guard)
+check-adapter-deps:
+	@deps=$$(go list -deps ./internal/adapters/...); \
+	if echo "$$deps" | grep -E '^(entgo\.io|sso\.internal/sso/ent(/|$$)|github\.com/valkey-io|sso\.internal/sso/internal/(storage|cache|keymanager|httpserver)(/|$$))'; then \
+		echo "ERROR: internal/adapters must only use internal/core (and internal/oidcstore), not the packages listed above"; exit 1; \
+	fi; \
+	echo "OK: internal/adapters only depend on the core"
+
 ## vuln: Scan dependencies for known vulnerabilities
 vuln:
 	govulncheck ./...
 
-## check: fmt + lint + check-core-deps + vuln + test — run before every commit/PR
-check: fmt lint check-core-deps vuln test
+## check: fmt + lint + check-core-deps + check-adapter-deps + vuln + test — run before every commit/PR
+check: fmt lint check-core-deps check-adapter-deps vuln test
 
 # ------------------------------------------------------------------------------
 # Development environment (Docker Compose: postgres + valkey + vault)
@@ -261,8 +292,9 @@ clean:
 	build run run-admin \
 	keys-list keys-rotate keys-retire \
 	mfa-list mfa-reset mfa-policy \
+	oidc-clients oidc-rotate-secret dev-seed oidc-demo \
 	test test-integration test-all coverage \
-	lint fmt vuln check check-core-deps \
+	lint fmt vuln check check-core-deps check-adapter-deps \
 	docker-up docker-down docker-reset docker-logs psql dev \
 	admin-dev admin-build \
 	clean
