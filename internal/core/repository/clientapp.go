@@ -14,6 +14,17 @@ type ClientRepository interface {
 	ListByRealm(ctx context.Context, realmID string) ([]*domain.ClientApp, error)
 	Update(ctx context.Context, id string, p UpdateClientAppParams) (*domain.ClientApp, error)
 	Delete(ctx context.Context, id string) error
+
+	// ListScopes returns the ClientScopes mapped to the client
+	// (ClientScopeMapping): the custom scopes it may ask for.
+	ListScopes(ctx context.Context, clientRef string) ([]*domain.ClientScope, error)
+	// GrantRole and GrantGroup let the members of a role or group use the
+	// client (ClientRole / ClientGroup). Granting twice is not an error.
+	GrantRole(ctx context.Context, clientRef, roleID, grantedBy string) error
+	GrantGroup(ctx context.Context, clientRef, groupID, grantedBy string) error
+	// MapScope lets the client ask for a ClientScope (ClientScopeMapping).
+	// Mapping twice is not an error.
+	MapScope(ctx context.Context, clientRef, clientScopeID string) error
 }
 
 type CreateClientAppParams struct {

@@ -34,7 +34,7 @@ func (r *entClientScopeRepository) Create(ctx context.Context, p repository.Crea
 func (r *entClientScopeRepository) GetByID(ctx context.Context, id string) (*domain.ClientScope, error) {
 	e, err := r.client.ClientScope.Get(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainClientScope(e), nil
 }
@@ -45,7 +45,7 @@ func (r *entClientScopeRepository) GetByRealmAndName(ctx context.Context, realmI
 		Where(clientscope.RealmID(realmID), clientscope.Name(name)).
 		Only(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainClientScope(e), nil
 }

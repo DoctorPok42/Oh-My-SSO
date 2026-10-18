@@ -5,7 +5,11 @@ import (
 	"time"
 )
 
-const sessionCookieName = "sso_session"
+// SessionCookieName is the SSO session cookie. Exported for the protocol
+// adapters (Step 10), which read it on their login pages.
+const SessionCookieName = "sso_session"
+
+const sessionCookieName = SessionCookieName
 
 func sessionCookiePath(realmName string) string {
 	return "/r/" + realmName

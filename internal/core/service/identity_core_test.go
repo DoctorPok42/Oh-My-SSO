@@ -217,10 +217,13 @@ func (f *fakeClientAppRepo) GetByID(_ context.Context, id string) (*domain.Clien
 
 type fakeTokenRepo struct {
 	repository.TokenRepository
+	mu    sync.Mutex // Step 10 tests rotate refresh tokens concurrently
 	byJTI map[string]*domain.Token
 }
 
 func (f *fakeTokenRepo) GetByJTI(_ context.Context, jti string) (*domain.Token, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if t, ok := f.byJTI[jti]; ok {
 		cp := *t
 		return &cp, nil
@@ -229,6 +232,8 @@ func (f *fakeTokenRepo) GetByJTI(_ context.Context, jti string) (*domain.Token, 
 }
 
 func (f *fakeTokenRepo) ListBySession(_ context.Context, sessionID string) ([]*domain.Token, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	var out []*domain.Token
 	for _, t := range f.byJTI {
 		if t.SessionID == sessionID {
@@ -240,6 +245,8 @@ func (f *fakeTokenRepo) ListBySession(_ context.Context, sessionID string) ([]*d
 }
 
 func (f *fakeTokenRepo) Revoke(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	for _, t := range f.byJTI {
 		if t.ID == id {
 			t.Revoked = true
@@ -335,6 +342,7 @@ type coreFixture struct {
 	realms     *fakeRealmRepo
 	audit      *fakeAuditRepo
 	tokens     *fakeTokenRepo
+	clients    *fakeClientAppRepo
 	keys       *fakeSigningKeyRepo
 	km         *localdev.KeyManager
 	timeouts   *fakeTimeouts
@@ -417,6 +425,7 @@ func newCoreFixture(t *testing.T) *coreFixture {
 
 	rbac, audit := newRBAC(access)
 	f.audit = audit
+	f.clients = clients
 
 	f.sessionSvc = service.NewSessionService(f.sessions, fakeSettingsRepo{}, f.tokens, fakeSessionCache{}, service.WithClock(clock))
 	f.core = service.NewIdentityCore(service.IdentityCoreDeps{
@@ -430,6 +439,7 @@ func newCoreFixture(t *testing.T) *coreFixture {
 		SigningKeys: f.keys,
 		KeyManager:  f.km,
 		Timeouts:    f.timeouts,
+		Audit:       f.audit,
 	}, service.WithIdentityCoreClock(clock))
 	return f
 }

@@ -230,6 +230,22 @@ func (s *SessionService) GetActive(ctx context.Context, sessionID string) (*doma
 	return sess, nil
 }
 
+// TouchActive records activity on a session found by its id, for
+// back-channel calls that DO prove the user is still using an application:
+// a refresh token exchange (Step 10, refresh tokens are bound to the SSO
+// session, like Keycloak). Same validity rules as GetActive; the activity
+// timestamp moves at most once per touchInterval.
+func (s *SessionService) TouchActive(ctx context.Context, sessionID string) (*domain.Session, error) {
+	sess, err := s.GetActive(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if now := s.now(); now.Sub(sess.LastActivityAt) >= touchInterval {
+		s.touch(ctx, sess, now)
+	}
+	return sess, nil
+}
+
 // MarkMFAVerified upgrades an active session after a successful second
 // factor (step-up, or first enrollment). The session keeps its id and its
 // tokens; only mfa_verified, mfa_method_type and mfa_verified_at change.

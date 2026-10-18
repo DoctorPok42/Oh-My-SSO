@@ -6,6 +6,9 @@ import (
 
 	"sso.internal/sso/ent"
 	"sso.internal/sso/ent/clientapp"
+	"sso.internal/sso/ent/clientgroup"
+	"sso.internal/sso/ent/clientrole"
+	"sso.internal/sso/ent/clientscopemapping"
 	entschema "sso.internal/sso/ent/schema"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
@@ -155,6 +158,66 @@ func (r *entClientAppRepository) Update(ctx context.Context, id string, p reposi
 		return nil, err
 	}
 	return toDomainClientApp(e), nil
+}
+
+func (r *entClientAppRepository) ListScopes(ctx context.Context, clientRef string) ([]*domain.ClientScope, error) {
+	rows, err := r.client.ClientApp.Query().
+		Where(clientapp.ID(clientRef)).
+		QueryClientScopes().
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.ClientScope, 0, len(rows))
+	for _, e := range rows {
+		out = append(out, toDomainClientScope(e))
+	}
+	return out, nil
+}
+
+// The three grants below check before inserting: the unique index on each
+// junction table still refuses a duplicate created by a concurrent call, in
+// which case the caller gets that error and can retry (CLI / admin use only).
+
+func (r *entClientAppRepository) GrantRole(ctx context.Context, clientRef, roleID, grantedBy string) error {
+	exists, err := r.client.ClientRole.Query().
+		Where(clientrole.ClientAppID(clientRef), clientrole.RoleID(roleID)).
+		Exist(ctx)
+	if err != nil || exists {
+		return err
+	}
+	return r.client.ClientRole.Create().
+		SetClientAppID(clientRef).
+		SetRoleID(roleID).
+		SetNillableGrantedBy(nonEmpty(grantedBy)).
+		Exec(ctx)
+}
+
+func (r *entClientAppRepository) GrantGroup(ctx context.Context, clientRef, groupID, grantedBy string) error {
+	exists, err := r.client.ClientGroup.Query().
+		Where(clientgroup.ClientAppID(clientRef), clientgroup.GroupID(groupID)).
+		Exist(ctx)
+	if err != nil || exists {
+		return err
+	}
+	return r.client.ClientGroup.Create().
+		SetClientAppID(clientRef).
+		SetGroupID(groupID).
+		SetNillableGrantedBy(nonEmpty(grantedBy)).
+		Exec(ctx)
+}
+
+func (r *entClientAppRepository) MapScope(ctx context.Context, clientRef, clientScopeID string) error {
+	exists, err := r.client.ClientScopeMapping.Query().
+		Where(clientscopemapping.ClientAppID(clientRef), clientscopemapping.ClientScopeID(clientScopeID)).
+		Exist(ctx)
+	if err != nil || exists {
+		return err
+	}
+	return r.client.ClientScopeMapping.Create().
+		SetClientAppID(clientRef).
+		SetClientScopeID(clientScopeID).
+		Exec(ctx)
 }
 
 func (r *entClientAppRepository) Delete(ctx context.Context, id string) error {

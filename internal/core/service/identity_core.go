@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"sync"
 	"time"
@@ -40,7 +41,9 @@ type IdentityCoreService struct {
 	keys     repository.SigningKeyRepository
 	km       keymanager.KeyManager
 	timeouts TimeoutChecker
-	mfa      *MFAService // nil: MFA not configured (no policy enforced)
+	mfa      *MFAService                   // nil: MFA not configured (no policy enforced)
+	audit    repository.AuditLogRepository // nil: refresh token replays are only logged
+	logger   *slog.Logger
 	now      func() time.Time
 
 	// Pairwise salts never change once written, so they are cached forever.
@@ -66,6 +69,8 @@ type IdentityCoreDeps struct {
 	// MFA enforces the MFA policies in IssueIdentityAssertion and backs
 	// VerifyMFA (Step 9). nil: no MFA (tests of earlier steps).
 	MFA *MFAService
+	// Audit records refresh token replays (Step 10). nil: logged only.
+	Audit repository.AuditLogRepository
 }
 
 type IdentityCoreOption func(*IdentityCoreService)
@@ -73,6 +78,11 @@ type IdentityCoreOption func(*IdentityCoreService)
 // WithIdentityCoreClock injects a fake clock (tests).
 func WithIdentityCoreClock(now func() time.Time) IdentityCoreOption {
 	return func(s *IdentityCoreService) { s.now = now }
+}
+
+// WithIdentityCoreLogger sets the logger (default: slog.Default()).
+func WithIdentityCoreLogger(l *slog.Logger) IdentityCoreOption {
+	return func(s *IdentityCoreService) { s.logger = l }
 }
 
 func NewIdentityCore(d IdentityCoreDeps, opts ...IdentityCoreOption) *IdentityCoreService {
@@ -88,6 +98,8 @@ func NewIdentityCore(d IdentityCoreDeps, opts ...IdentityCoreOption) *IdentityCo
 		km:       d.KeyManager,
 		timeouts: d.Timeouts,
 		mfa:      d.MFA,
+		audit:    d.Audit,
+		logger:   slog.Default(),
 		now:      time.Now,
 		salts:    make(map[string]string),
 	}
@@ -209,6 +221,13 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 		return nil, err
 	}
 
+	// Names of the user's groups and roles: claim sources ("groups" scope),
+	// never emitted unless a claim mapper asks for them.
+	groups, roles, err := s.rbac.UserAccessNames(ctx, sess.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("issue identity assertion: user groups and roles: %w", err)
+	}
+
 	// 5. Effective scopes, narrowed to what the client asked for.
 	//    (This resolves RBAC a second time; fine for now, can be merged
 	//    into a single call later if it shows up in profiling.)
@@ -237,7 +256,7 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 		SessionID:      sess.ID,
 		ClientRef:      client.ID,
 		UserID:         user.ID,
-		UserAttributes: userAttributes(user),
+		UserAttributes: userAttributes(user, groups, roles),
 		Scopes:         scopes,
 	}, nil
 }
@@ -352,27 +371,45 @@ func assertionTTL(c *domain.ClientApp) time.Duration {
 	return defaultAssertionTTL
 }
 
-// filterRequestedScopes keeps the effective scopes whose name was requested.
+// filterRequestedScopes keeps the effective scopes whose name was requested,
+// plus the "is_default" ones, which are included without being asked for.
 // An empty request means "everything the user is entitled to". A requested
-// scope the user does not have is silently dropped: requesting never grants.
+// scope the user does not have is silently dropped: requesting never grants,
+// and is_default never grants either (the scope must be effective first).
 func filterRequestedScopes(effective []*domain.ClientScope, requested []string) []*domain.ClientScope {
 	if len(requested) == 0 {
 		return effective
 	}
 	out := make([]*domain.ClientScope, 0, len(effective))
 	for _, cs := range effective {
-		if slices.Contains(requested, cs.Name) {
+		if cs.IsDefault || slices.Contains(requested, cs.Name) {
 			out = append(out, cs)
 		}
 	}
 	return out
 }
 
-func userAttributes(u *domain.User) map[string]any {
+// userAttributes lists what claim mappers may read. See
+// core.IdentityAssertion.UserAttributes for the keys.
+func userAttributes(u *domain.User, groups, roles []string) map[string]any {
 	attrs := map[string]any{"username": u.Username}
 	if u.Email != "" {
 		attrs["email"] = u.Email
 	}
+	if !u.UpdatedAt.IsZero() {
+		attrs["updated_at"] = u.UpdatedAt.Unix()
+	}
+	for k, v := range u.Profile {
+		attrs["profile."+k] = v
+	}
+	if groups == nil {
+		groups = []string{}
+	}
+	if roles == nil {
+		roles = []string{}
+	}
+	attrs["groups"] = groups
+	attrs["roles"] = roles
 	return attrs
 }
 

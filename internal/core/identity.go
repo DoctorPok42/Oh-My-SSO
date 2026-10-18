@@ -27,6 +27,14 @@ var (
 	ErrMFARequired         = errors.New("core: multi-factor authentication required")
 	ErrNoActiveSigningKey  = errors.New("core: no active signing key")
 	ErrClientMisconfigured = errors.New("core: client misconfigured")
+
+	// Step 10 (protocol clients and tokens).
+	ErrClientNotFound      = errors.New("core: client not found")
+	ErrInvalidClientSecret = errors.New("core: invalid client credentials")
+	ErrTokenInvalid        = errors.New("core: token invalid")
+	// ErrTokenReused: a refresh token that was already exchanged came back.
+	// Somebody holds a copy: every token of its family has been revoked.
+	ErrTokenReused = errors.New("core: refresh token reused, token family revoked")
 )
 
 // About the two MFA errors:
@@ -125,15 +133,53 @@ type IdentityAssertion struct {
 	// (tokens, consents). NEVER emit it: use Subject.
 	UserID string
 
-	// UserAttributes are the raw user attributes (username, email, ...).
-	// NEVER emit them as-is: only what the ClaimMappers of the effective
-	// Scopes select may leave the IdP (minimal disclosure, OIDC Core §5.4).
+	// UserAttributes are the raw user attributes. NEVER emit them as-is:
+	// only what the adapter's claim mapping selects may leave the IdP
+	// (minimal disclosure, OIDC Core §5.4). Keys:
+	//
+	//	username, email   string
+	//	updated_at        int64 (Unix seconds)
+	//	groups, roles     []string, names of the user's active groups / roles
+	//	profile.<key>     every key of User.Profile, e.g. "profile.given_name"
 	UserAttributes map[string]any
 
 	// Scopes are the effective client scopes, already filtered by what the
-	// client requested. Adapters apply each scope's ClaimMappers, which are
-	// protocol-specific.
+	// client requested (plus the realm's is_default scopes, always kept).
+	// Adapters apply each scope's ClaimMappers, which are protocol-specific.
 	Scopes []*domain.ClientScope
+}
+
+// ProtocolClient is a client app as a protocol adapter sees it.
+type ProtocolClient struct {
+	App *domain.ClientApp
+	// Scopes are the ClientScopes mapped to the client (ClientScopeMapping):
+	// the custom scopes it may request. The standard OIDC scopes ("openid",
+	// "profile", "email"...) are listed in App.AllowedScopes instead.
+	Scopes []*domain.ClientScope
+}
+
+// TokenRequest describes the tokens to issue for one session and one client.
+type TokenRequest struct {
+	SessionID string
+	ClientRef string // ClientApp.ID
+	Scopes    []string
+	// WithRefreshToken also issues a refresh token, the first of a new
+	// token family.
+	WithRefreshToken bool
+}
+
+// IssuedTokens is returned once, when tokens are created.
+//
+// RefreshToken only exists in memory: the database stores its SHA-256. The
+// adapter hands it to the client right away; it can never be recovered.
+type IssuedTokens struct {
+	FamilyID string
+	// Access is the access token record: its JTI goes into the JWT "jti"
+	// claim and its ExpiresAt into "exp".
+	Access *domain.Token
+	// RefreshToken is empty when no refresh token was issued.
+	RefreshToken string
+	Refresh      *domain.Token
 }
 
 // Signer signs payloads with one specific key.
@@ -192,6 +238,39 @@ type IdentityCore interface {
 	RevokeToken(ctx context.Context, jti string) error
 	// IsTokenRevoked fails closed: an unknown jti is reported as revoked.
 	IsTokenRevoked(ctx context.Context, jti string) (bool, error)
+
+	// IssueTokens records a new access token, and a refresh token when
+	// asked, for an active session. The client must be allowed for the user
+	// (RBAC, timeouts). Lifetimes come from the client and never go past the
+	// session's own expiry. Call it right after IssueIdentityAssertion, which
+	// also enforces the MFA policy.
+	IssueTokens(ctx context.Context, req TokenRequest) (*IssuedTokens, error)
+	// InspectRefreshToken returns the record of a raw refresh token without
+	// consuming it. Unknown, expired, revoked or not a refresh token:
+	// ErrTokenInvalid. Already exchanged: it is a replay, the whole family
+	// is revoked and ErrTokenReused returned.
+	InspectRefreshToken(ctx context.Context, rawToken string) (*domain.Token, error)
+	// RotateRefreshToken exchanges a refresh token exactly once (two
+	// concurrent calls: one wins, the other gets ErrTokenReused). It counts
+	// as activity on the session, then issues a new access + refresh token
+	// pair in the same family. nil scopes: the same scopes as before.
+	RotateRefreshToken(ctx context.Context, rawToken, clientRef string, scopes []string) (*IssuedTokens, error)
+	// LookupToken returns a token record by its jti. Unknown jti:
+	// ErrTokenInvalid. It does NOT check revocation or expiry: callers do.
+	LookupToken(ctx context.Context, jti string) (*domain.Token, error)
+	// RevokeTokenFamily revokes every token of a family. Idempotent.
+	RevokeTokenFamily(ctx context.Context, familyID string) error
+
+	// --- Protocol clients (Step 10) ---
+
+	// LookupClient finds an active client of the realm by its protocol
+	// identifier: the OIDC client_id or the SAML entity_id. A deleted,
+	// inactive or unknown client is ErrClientNotFound.
+	LookupClient(ctx context.Context, realmID string, protocol domain.ClientAppProtocol, protocolID string) (*ProtocolClient, error)
+	// AuthenticateClient checks the secret of a confidential client, in
+	// constant time. Wrong secret, or a client without a secret (public):
+	// ErrInvalidClientSecret.
+	AuthenticateClient(ctx context.Context, clientRef, secret string) error
 
 	// --- Keys ---
 

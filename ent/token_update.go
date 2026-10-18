@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -57,6 +58,26 @@ func (_u *TokenUpdate) AppendScopes(v []string) *TokenUpdate {
 // ClearScopes clears the value of the "scopes" field.
 func (_u *TokenUpdate) ClearScopes() *TokenUpdate {
 	_u.mutation.ClearScopes()
+	return _u
+}
+
+// SetUsedAt sets the "used_at" field.
+func (_u *TokenUpdate) SetUsedAt(v time.Time) *TokenUpdate {
+	_u.mutation.SetUsedAt(v)
+	return _u
+}
+
+// SetNillableUsedAt sets the "used_at" field if the given value is not nil.
+func (_u *TokenUpdate) SetNillableUsedAt(v *time.Time) *TokenUpdate {
+	if v != nil {
+		_u.SetUsedAt(*v)
+	}
+	return _u
+}
+
+// ClearUsedAt clears the value of the "used_at" field.
+func (_u *TokenUpdate) ClearUsedAt() *TokenUpdate {
+	_u.mutation.ClearUsedAt()
 	return _u
 }
 
@@ -129,6 +150,18 @@ func (_u *TokenUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.ScopesCleared() {
 		_spec.ClearField(token.FieldScopes, field.TypeJSON)
 	}
+	if _u.mutation.TokenHashCleared() {
+		_spec.ClearField(token.FieldTokenHash, field.TypeString)
+	}
+	if _u.mutation.FamilyIDCleared() {
+		_spec.ClearField(token.FieldFamilyID, field.TypeString)
+	}
+	if value, ok := _u.mutation.UsedAt(); ok {
+		_spec.SetField(token.FieldUsedAt, field.TypeTime, value)
+	}
+	if _u.mutation.UsedAtCleared() {
+		_spec.ClearField(token.FieldUsedAt, field.TypeTime)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{token.Label}
@@ -178,6 +211,26 @@ func (_u *TokenUpdateOne) AppendScopes(v []string) *TokenUpdateOne {
 // ClearScopes clears the value of the "scopes" field.
 func (_u *TokenUpdateOne) ClearScopes() *TokenUpdateOne {
 	_u.mutation.ClearScopes()
+	return _u
+}
+
+// SetUsedAt sets the "used_at" field.
+func (_u *TokenUpdateOne) SetUsedAt(v time.Time) *TokenUpdateOne {
+	_u.mutation.SetUsedAt(v)
+	return _u
+}
+
+// SetNillableUsedAt sets the "used_at" field if the given value is not nil.
+func (_u *TokenUpdateOne) SetNillableUsedAt(v *time.Time) *TokenUpdateOne {
+	if v != nil {
+		_u.SetUsedAt(*v)
+	}
+	return _u
+}
+
+// ClearUsedAt clears the value of the "used_at" field.
+func (_u *TokenUpdateOne) ClearUsedAt() *TokenUpdateOne {
+	_u.mutation.ClearUsedAt()
 	return _u
 }
 
@@ -279,6 +332,18 @@ func (_u *TokenUpdateOne) sqlSave(ctx context.Context) (_node *Token, err error)
 	}
 	if _u.mutation.ScopesCleared() {
 		_spec.ClearField(token.FieldScopes, field.TypeJSON)
+	}
+	if _u.mutation.TokenHashCleared() {
+		_spec.ClearField(token.FieldTokenHash, field.TypeString)
+	}
+	if _u.mutation.FamilyIDCleared() {
+		_spec.ClearField(token.FieldFamilyID, field.TypeString)
+	}
+	if value, ok := _u.mutation.UsedAt(); ok {
+		_spec.SetField(token.FieldUsedAt, field.TypeTime, value)
+	}
+	if _u.mutation.UsedAtCleared() {
+		_spec.ClearField(token.FieldUsedAt, field.TypeTime)
 	}
 	_node = &Token{config: _u.config}
 	_spec.Assign = _node.assignValues

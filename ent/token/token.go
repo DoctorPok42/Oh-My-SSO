@@ -30,6 +30,12 @@ const (
 	FieldRevoked = "revoked"
 	// FieldScopes holds the string denoting the scopes field in the database.
 	FieldScopes = "scopes"
+	// FieldTokenHash holds the string denoting the token_hash field in the database.
+	FieldTokenHash = "token_hash"
+	// FieldFamilyID holds the string denoting the family_id field in the database.
+	FieldFamilyID = "family_id"
+	// FieldUsedAt holds the string denoting the used_at field in the database.
+	FieldUsedAt = "used_at"
 	// EdgeSession holds the string denoting the session edge name in mutations.
 	EdgeSession = "session"
 	// EdgeClientApp holds the string denoting the client_app edge name in mutations.
@@ -63,6 +69,9 @@ var Columns = []string{
 	FieldExpiresAt,
 	FieldRevoked,
 	FieldScopes,
+	FieldTokenHash,
+	FieldFamilyID,
+	FieldUsedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -133,6 +142,21 @@ func ByExpiresAt(opts ...sql.OrderTermOption) OrderOption {
 // ByRevoked orders the results by the revoked field.
 func ByRevoked(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRevoked, opts...).ToFunc()
+}
+
+// ByTokenHash orders the results by the token_hash field.
+func ByTokenHash(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTokenHash, opts...).ToFunc()
+}
+
+// ByFamilyID orders the results by the family_id field.
+func ByFamilyID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFamilyID, opts...).ToFunc()
+}
+
+// ByUsedAt orders the results by the used_at field.
+func ByUsedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUsedAt, opts...).ToFunc()
 }
 
 // BySessionField orders the results by session field.

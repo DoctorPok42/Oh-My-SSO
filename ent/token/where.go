@@ -102,6 +102,21 @@ func Revoked(v bool) predicate.Token {
 	return predicate.Token(sql.FieldEQ(FieldRevoked, v))
 }
 
+// TokenHash applies equality check predicate on the "token_hash" field. It's identical to TokenHashEQ.
+func TokenHash(v string) predicate.Token {
+	return predicate.Token(sql.FieldEQ(FieldTokenHash, v))
+}
+
+// FamilyID applies equality check predicate on the "family_id" field. It's identical to FamilyIDEQ.
+func FamilyID(v string) predicate.Token {
+	return predicate.Token(sql.FieldEQ(FieldFamilyID, v))
+}
+
+// UsedAt applies equality check predicate on the "used_at" field. It's identical to UsedAtEQ.
+func UsedAt(v time.Time) predicate.Token {
+	return predicate.Token(sql.FieldEQ(FieldUsedAt, v))
+}
+
 // SessionIDEQ applies the EQ predicate on the "session_id" field.
 func SessionIDEQ(v string) predicate.Token {
 	return predicate.Token(sql.FieldEQ(FieldSessionID, v))
@@ -479,6 +494,206 @@ func ScopesIsNil() predicate.Token {
 // ScopesNotNil applies the NotNil predicate on the "scopes" field.
 func ScopesNotNil() predicate.Token {
 	return predicate.Token(sql.FieldNotNull(FieldScopes))
+}
+
+// TokenHashEQ applies the EQ predicate on the "token_hash" field.
+func TokenHashEQ(v string) predicate.Token {
+	return predicate.Token(sql.FieldEQ(FieldTokenHash, v))
+}
+
+// TokenHashNEQ applies the NEQ predicate on the "token_hash" field.
+func TokenHashNEQ(v string) predicate.Token {
+	return predicate.Token(sql.FieldNEQ(FieldTokenHash, v))
+}
+
+// TokenHashIn applies the In predicate on the "token_hash" field.
+func TokenHashIn(vs ...string) predicate.Token {
+	return predicate.Token(sql.FieldIn(FieldTokenHash, vs...))
+}
+
+// TokenHashNotIn applies the NotIn predicate on the "token_hash" field.
+func TokenHashNotIn(vs ...string) predicate.Token {
+	return predicate.Token(sql.FieldNotIn(FieldTokenHash, vs...))
+}
+
+// TokenHashGT applies the GT predicate on the "token_hash" field.
+func TokenHashGT(v string) predicate.Token {
+	return predicate.Token(sql.FieldGT(FieldTokenHash, v))
+}
+
+// TokenHashGTE applies the GTE predicate on the "token_hash" field.
+func TokenHashGTE(v string) predicate.Token {
+	return predicate.Token(sql.FieldGTE(FieldTokenHash, v))
+}
+
+// TokenHashLT applies the LT predicate on the "token_hash" field.
+func TokenHashLT(v string) predicate.Token {
+	return predicate.Token(sql.FieldLT(FieldTokenHash, v))
+}
+
+// TokenHashLTE applies the LTE predicate on the "token_hash" field.
+func TokenHashLTE(v string) predicate.Token {
+	return predicate.Token(sql.FieldLTE(FieldTokenHash, v))
+}
+
+// TokenHashContains applies the Contains predicate on the "token_hash" field.
+func TokenHashContains(v string) predicate.Token {
+	return predicate.Token(sql.FieldContains(FieldTokenHash, v))
+}
+
+// TokenHashHasPrefix applies the HasPrefix predicate on the "token_hash" field.
+func TokenHashHasPrefix(v string) predicate.Token {
+	return predicate.Token(sql.FieldHasPrefix(FieldTokenHash, v))
+}
+
+// TokenHashHasSuffix applies the HasSuffix predicate on the "token_hash" field.
+func TokenHashHasSuffix(v string) predicate.Token {
+	return predicate.Token(sql.FieldHasSuffix(FieldTokenHash, v))
+}
+
+// TokenHashIsNil applies the IsNil predicate on the "token_hash" field.
+func TokenHashIsNil() predicate.Token {
+	return predicate.Token(sql.FieldIsNull(FieldTokenHash))
+}
+
+// TokenHashNotNil applies the NotNil predicate on the "token_hash" field.
+func TokenHashNotNil() predicate.Token {
+	return predicate.Token(sql.FieldNotNull(FieldTokenHash))
+}
+
+// TokenHashEqualFold applies the EqualFold predicate on the "token_hash" field.
+func TokenHashEqualFold(v string) predicate.Token {
+	return predicate.Token(sql.FieldEqualFold(FieldTokenHash, v))
+}
+
+// TokenHashContainsFold applies the ContainsFold predicate on the "token_hash" field.
+func TokenHashContainsFold(v string) predicate.Token {
+	return predicate.Token(sql.FieldContainsFold(FieldTokenHash, v))
+}
+
+// FamilyIDEQ applies the EQ predicate on the "family_id" field.
+func FamilyIDEQ(v string) predicate.Token {
+	return predicate.Token(sql.FieldEQ(FieldFamilyID, v))
+}
+
+// FamilyIDNEQ applies the NEQ predicate on the "family_id" field.
+func FamilyIDNEQ(v string) predicate.Token {
+	return predicate.Token(sql.FieldNEQ(FieldFamilyID, v))
+}
+
+// FamilyIDIn applies the In predicate on the "family_id" field.
+func FamilyIDIn(vs ...string) predicate.Token {
+	return predicate.Token(sql.FieldIn(FieldFamilyID, vs...))
+}
+
+// FamilyIDNotIn applies the NotIn predicate on the "family_id" field.
+func FamilyIDNotIn(vs ...string) predicate.Token {
+	return predicate.Token(sql.FieldNotIn(FieldFamilyID, vs...))
+}
+
+// FamilyIDGT applies the GT predicate on the "family_id" field.
+func FamilyIDGT(v string) predicate.Token {
+	return predicate.Token(sql.FieldGT(FieldFamilyID, v))
+}
+
+// FamilyIDGTE applies the GTE predicate on the "family_id" field.
+func FamilyIDGTE(v string) predicate.Token {
+	return predicate.Token(sql.FieldGTE(FieldFamilyID, v))
+}
+
+// FamilyIDLT applies the LT predicate on the "family_id" field.
+func FamilyIDLT(v string) predicate.Token {
+	return predicate.Token(sql.FieldLT(FieldFamilyID, v))
+}
+
+// FamilyIDLTE applies the LTE predicate on the "family_id" field.
+func FamilyIDLTE(v string) predicate.Token {
+	return predicate.Token(sql.FieldLTE(FieldFamilyID, v))
+}
+
+// FamilyIDContains applies the Contains predicate on the "family_id" field.
+func FamilyIDContains(v string) predicate.Token {
+	return predicate.Token(sql.FieldContains(FieldFamilyID, v))
+}
+
+// FamilyIDHasPrefix applies the HasPrefix predicate on the "family_id" field.
+func FamilyIDHasPrefix(v string) predicate.Token {
+	return predicate.Token(sql.FieldHasPrefix(FieldFamilyID, v))
+}
+
+// FamilyIDHasSuffix applies the HasSuffix predicate on the "family_id" field.
+func FamilyIDHasSuffix(v string) predicate.Token {
+	return predicate.Token(sql.FieldHasSuffix(FieldFamilyID, v))
+}
+
+// FamilyIDIsNil applies the IsNil predicate on the "family_id" field.
+func FamilyIDIsNil() predicate.Token {
+	return predicate.Token(sql.FieldIsNull(FieldFamilyID))
+}
+
+// FamilyIDNotNil applies the NotNil predicate on the "family_id" field.
+func FamilyIDNotNil() predicate.Token {
+	return predicate.Token(sql.FieldNotNull(FieldFamilyID))
+}
+
+// FamilyIDEqualFold applies the EqualFold predicate on the "family_id" field.
+func FamilyIDEqualFold(v string) predicate.Token {
+	return predicate.Token(sql.FieldEqualFold(FieldFamilyID, v))
+}
+
+// FamilyIDContainsFold applies the ContainsFold predicate on the "family_id" field.
+func FamilyIDContainsFold(v string) predicate.Token {
+	return predicate.Token(sql.FieldContainsFold(FieldFamilyID, v))
+}
+
+// UsedAtEQ applies the EQ predicate on the "used_at" field.
+func UsedAtEQ(v time.Time) predicate.Token {
+	return predicate.Token(sql.FieldEQ(FieldUsedAt, v))
+}
+
+// UsedAtNEQ applies the NEQ predicate on the "used_at" field.
+func UsedAtNEQ(v time.Time) predicate.Token {
+	return predicate.Token(sql.FieldNEQ(FieldUsedAt, v))
+}
+
+// UsedAtIn applies the In predicate on the "used_at" field.
+func UsedAtIn(vs ...time.Time) predicate.Token {
+	return predicate.Token(sql.FieldIn(FieldUsedAt, vs...))
+}
+
+// UsedAtNotIn applies the NotIn predicate on the "used_at" field.
+func UsedAtNotIn(vs ...time.Time) predicate.Token {
+	return predicate.Token(sql.FieldNotIn(FieldUsedAt, vs...))
+}
+
+// UsedAtGT applies the GT predicate on the "used_at" field.
+func UsedAtGT(v time.Time) predicate.Token {
+	return predicate.Token(sql.FieldGT(FieldUsedAt, v))
+}
+
+// UsedAtGTE applies the GTE predicate on the "used_at" field.
+func UsedAtGTE(v time.Time) predicate.Token {
+	return predicate.Token(sql.FieldGTE(FieldUsedAt, v))
+}
+
+// UsedAtLT applies the LT predicate on the "used_at" field.
+func UsedAtLT(v time.Time) predicate.Token {
+	return predicate.Token(sql.FieldLT(FieldUsedAt, v))
+}
+
+// UsedAtLTE applies the LTE predicate on the "used_at" field.
+func UsedAtLTE(v time.Time) predicate.Token {
+	return predicate.Token(sql.FieldLTE(FieldUsedAt, v))
+}
+
+// UsedAtIsNil applies the IsNil predicate on the "used_at" field.
+func UsedAtIsNil() predicate.Token {
+	return predicate.Token(sql.FieldIsNull(FieldUsedAt))
+}
+
+// UsedAtNotNil applies the NotNil predicate on the "used_at" field.
+func UsedAtNotNil() predicate.Token {
+	return predicate.Token(sql.FieldNotNull(FieldUsedAt))
 }
 
 // HasSession applies the HasEdge predicate on the "session" edge.

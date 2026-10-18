@@ -188,6 +188,30 @@ type AuthorizeInput struct {
 	UserAgent string
 }
 
+// UserAccessNames returns the names of the user's active groups and roles in
+// their realm, sorted. They are claim sources for protocol adapters (a
+// "groups" claim), not an authorization decision.
+func (s *RBACService) UserAccessNames(ctx context.Context, userID string) (groups, roles []string, err error) {
+	user, err := s.access.GetUserAccess(ctx, userID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return []string{}, []string{}, nil
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("rbac: load user access: %w", err)
+	}
+	names := func(srcs []domain.AccessSource) []string {
+		out := make([]string, 0, len(srcs))
+		for _, src := range srcs {
+			if src.Active && src.RealmID == user.RealmID && src.Name != "" && !slices.Contains(out, src.Name) {
+				out = append(out, src.Name)
+			}
+		}
+		slices.Sort(out)
+		return out
+	}
+	return names(user.Groups), names(user.Roles), nil
+}
+
 func (s *RBACService) Authorize(ctx context.Context, in AuthorizeInput) error {
 	res, err := s.resolve(ctx, in.UserID, in.ClientRef)
 	if err != nil {
