@@ -36,6 +36,10 @@ const (
 	FieldFamilyID = "family_id"
 	// FieldUsedAt holds the string denoting the used_at field in the database.
 	FieldUsedAt = "used_at"
+	// FieldSubject holds the string denoting the subject field in the database.
+	FieldSubject = "subject"
+	// FieldSubjectFormat holds the string denoting the subject_format field in the database.
+	FieldSubjectFormat = "subject_format"
 	// EdgeSession holds the string denoting the session edge name in mutations.
 	EdgeSession = "session"
 	// EdgeClientApp holds the string denoting the client_app edge name in mutations.
@@ -72,6 +76,8 @@ var Columns = []string{
 	FieldTokenHash,
 	FieldFamilyID,
 	FieldUsedAt,
+	FieldSubject,
+	FieldSubjectFormat,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -157,6 +163,16 @@ func ByFamilyID(opts ...sql.OrderTermOption) OrderOption {
 // ByUsedAt orders the results by the used_at field.
 func ByUsedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUsedAt, opts...).ToFunc()
+}
+
+// BySubject orders the results by the subject field.
+func BySubject(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSubject, opts...).ToFunc()
+}
+
+// BySubjectFormat orders the results by the subject_format field.
+func BySubjectFormat(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSubjectFormat, opts...).ToFunc()
 }
 
 // BySessionField orders the results by session field.

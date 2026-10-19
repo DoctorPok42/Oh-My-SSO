@@ -172,6 +172,49 @@ oidc-demo:
 	go run ./cmd/oidc-demo
 
 # ------------------------------------------------------------------------------
+# SAML 2.0 (Step 11) — same code as the future admin API.
+# More: go run ./cmd/idp saml --help
+# The test service provider (SimpleSAMLphp, dev/saml-sp/) runs in Docker and
+# defaults to the realm created by `make dev-seed` (demo).
+# ------------------------------------------------------------------------------
+
+sp_port       ?= 8081
+SAML_SP_IMAGE ?= oh-my-sso-test-sp
+# What the server uses as PUBLIC_URL (see .env.example).
+SAML_IDP_URL  ?= $(if $(PUBLIC_URL),$(patsubst %/,%,$(PUBLIC_URL)),http://localhost:$(PORT))
+
+## saml-clients: List the SAML service providers of a realm (usage: make saml-clients realm=demo)
+saml-clients:
+	go run ./cmd/idp saml clients list --realm $(realm)
+
+## keys-rotate-saml: SAML key rotation, step 1: new key published, not signing yet (usage: make keys-rotate-saml realm=demo)
+keys-rotate-saml:
+	go run ./cmd/idp keys rotate --realm $(realm) --purpose saml_signing --reason "$(reason)"
+
+## keys-activate-saml: SAML key rotation, step 2: the pending key starts signing (usage: make keys-activate-saml realm=demo)
+keys-activate-saml:
+	go run ./cmd/idp keys activate --realm $(realm) --purpose saml_signing --reason "$(reason)"
+
+## saml-sp: Run the SimpleSAMLphp test service provider on http://localhost:8081 (Docker, dev only; usage: make saml-sp [sp_port=8082])
+saml-sp: realm = demo
+saml-sp:
+	docker build -t $(SAML_SP_IMAGE) dev/saml-sp
+	docker run --rm --init --name $(SAML_SP_IMAGE)-$(sp_port) -p $(sp_port):$(sp_port) \
+		--add-host=host.docker.internal:host-gateway \
+		-v $(SAML_SP_IMAGE)-$(sp_port):/var/simplesamlphp/cert \
+		-e SP_PORT=$(sp_port) \
+		-e IDP_METADATA_URL=http://host.docker.internal:$(PORT)/r/$(realm)/saml/metadata \
+		-e IDP_ENTITY_ID=$(SAML_IDP_URL)/r/$(realm)/saml/metadata \
+		$(SAML_SP_IMAGE)
+
+## saml-sp-register: Register the running test service provider, from its metadata (usage: make saml-sp-register [sp_port=8082])
+saml-sp-register: realm = demo
+saml-sp-register:
+	go run ./cmd/idp saml clients create --realm $(realm) \
+		--metadata-url http://localhost:$(sp_port)/module.php/saml/sp/metadata/default-sp \
+		--name "Test SP $(sp_port)" --allow-role employees --scope saml_profile
+
+# ------------------------------------------------------------------------------
 # Tests
 # ------------------------------------------------------------------------------
 
@@ -293,6 +336,7 @@ clean:
 	keys-list keys-rotate keys-retire \
 	mfa-list mfa-reset mfa-policy \
 	oidc-clients oidc-rotate-secret dev-seed oidc-demo \
+	saml-clients keys-rotate-saml keys-activate-saml saml-sp saml-sp-register \
 	test test-integration test-all coverage \
 	lint fmt vuln check check-core-deps check-adapter-deps \
 	docker-up docker-down docker-reset docker-logs psql dev \

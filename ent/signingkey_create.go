@@ -143,6 +143,20 @@ func (_c *SigningKeyCreate) SetNillableRetireAfter(v *time.Time) *SigningKeyCrea
 	return _c
 }
 
+// SetCertificate sets the "certificate" field.
+func (_c *SigningKeyCreate) SetCertificate(v string) *SigningKeyCreate {
+	_c.mutation.SetCertificate(v)
+	return _c
+}
+
+// SetNillableCertificate sets the "certificate" field if the given value is not nil.
+func (_c *SigningKeyCreate) SetNillableCertificate(v *string) *SigningKeyCreate {
+	if v != nil {
+		_c.SetCertificate(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *SigningKeyCreate) SetID(v string) *SigningKeyCreate {
 	_c.mutation.SetID(v)
@@ -365,6 +379,10 @@ func (_c *SigningKeyCreate) createSpec() (*SigningKey, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RetireAfter(); ok {
 		_spec.SetField(signingkey.FieldRetireAfter, field.TypeTime, value)
 		_node.RetireAfter = value
+	}
+	if value, ok := _c.mutation.Certificate(); ok {
+		_spec.SetField(signingkey.FieldCertificate, field.TypeString, value)
+		_node.Certificate = value
 	}
 	if nodes := _c.mutation.RealmIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

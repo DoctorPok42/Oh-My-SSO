@@ -1,7 +1,6 @@
 package oidc
 
 import (
-	"bytes"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
@@ -14,8 +13,6 @@ import (
 	"io"
 	"log/slog"
 	"math/big"
-	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -335,32 +332,5 @@ func TestReauthRequired(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			require.Equal(t, tc.want, a.reauthRequired(&tc.ar, tc.sess))
 		})
-	}
-}
-
-func TestLoginPageRenders(t *testing.T) {
-	a := &Adapter{logger: quiet}
-	var err error
-	a.pages, err = parsePages()
-	require.NoError(t, err)
-
-	w := httptest.NewRecorder()
-	a.render(w, 200, "login.html", loginPage{
-		RealmDisplay: "Acme <Corp>", ClientName: `Pay"roll`, ClientID: "payroll", Base: "/r/acme",
-		Assets: "/r/acme/oidc/assets", Mode: "stepup", Methods: "totp", CancelURL: "/r/acme/oidc/login?id=x&cancel=1",
-	})
-	body := w.Body.String()
-	require.Contains(t, body, "Acme &lt;Corp&gt;", "html/template escapes")
-	require.Contains(t, body, `data-mode="stepup"`)
-	require.Contains(t, body, "Confirm it")
-	require.Contains(t, w.Header().Get("Content-Security-Policy"), "script-src 'self'")
-	require.Equal(t, "DENY", w.Header().Get("X-Frame-Options"))
-	require.Equal(t, "no-store", w.Header().Get("Cache-Control"))
-	require.False(t, strings.Contains(body, "<script>"), "no inline script: the CSP would block it")
-
-	for _, f := range []string{"login.js", "login.css"} {
-		data, err := webFS.ReadFile("web/" + f)
-		require.NoError(t, err)
-		require.True(t, bytes.Contains(data, []byte{'\n'}))
 	}
 }

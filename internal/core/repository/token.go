@@ -34,4 +34,7 @@ type CreateTokenParams struct {
 	Scopes      []string
 	TokenHash   string // opaque tokens only
 	FamilyID    string
+	// Subject / SubjectFormat: session participants only (Step 11).
+	Subject       string
+	SubjectFormat string
 }

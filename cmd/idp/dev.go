@@ -12,14 +12,17 @@ import (
 	"strings"
 	"time"
 
+	entclientscope "sso.internal/sso/ent/clientscope"
+	entrole "sso.internal/sso/ent/role"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// "idp dev seed" prepares a database to try the OIDC flow by hand, until the
-// admin panel (Step 14) can create realms and users. Development only.
+// "idp dev seed" prepares a database to try the OIDC and SAML flows by
+// hand, until the admin panel (Step 14) can create realms and users.
+// Development only.
 //
 //	idp dev seed [--realm demo] [--user alice] [--password ...] [--redirect-uri http://localhost:9000/callback]
 //
@@ -35,7 +38,22 @@ const devUsage = `usage:
 const (
 	demoClientID = "demo"
 	demoRole     = "employees"
+	// demoSAMLScope (Step 11) turns the user's profile into the usual SAML
+	// attributes. SAML clients list it with --scope.
+	demoSAMLScope = "saml_profile"
 )
+
+// demoSAMLMappers: uid, mail, givenName, sn, plus the user's groups and
+// roles as multi-valued attributes. Basic attribute names, the simplest for
+// a service provider to read.
+var demoSAMLMappers = []map[string]interface{}{
+	{"source_attribute": "username", "claim_name": "uid", "token_location": "saml_attribute"},
+	{"source_attribute": "email", "claim_name": "mail", "token_location": "saml_attribute"},
+	{"source_attribute": "profile.given_name", "claim_name": "givenName", "token_location": "saml_attribute"},
+	{"source_attribute": "profile.family_name", "claim_name": "sn", "token_location": "saml_attribute"},
+	{"source_attribute": "groups", "claim_name": "groups", "token_location": "saml_attribute"},
+	{"source_attribute": "roles", "claim_name": "roles", "token_location": "saml_attribute"},
+}
 
 func runDevCommand(args []string) int {
 	if len(args) == 0 || args[0] != "seed" {
@@ -205,6 +223,62 @@ func devSeed(ctx context.Context, args []string, out io.Writer) error {
 		fmt.Fprintf(out, "client %q: exists, new secret generated (the previous one stops working)\n", demoClientID)
 	}
 
+	// 6. SAML (Step 11): the realm's SAML signing key, and a ClientScope
+	// producing the attributes, granted to the demo role.
+	hasSAMLKey := slices.ContainsFunc(keys, func(k *domain.SigningKey) bool {
+		return k.Purpose == domain.SigningKeyPurposeSAMLSigning &&
+			(k.Status == domain.SigningKeyActive || k.Status == domain.SigningKeyPending)
+	})
+	switch {
+	case hasSAMLKey:
+		fmt.Fprintln(out, "SAML signing key: exists")
+	case backend == backendLocalDev:
+		fmt.Fprintln(out, "SAML signing key: NOT created (local_dev, see above). Or create it through the running server:")
+		fmt.Fprintf(out, "             POST /r/%s/admin/signing-keys/rotate {\"purpose\":\"saml_signing\"}\n", realm.Name)
+	default:
+		res, err := rotation.Rotate(ctx, service.RotateInput{RealmID: realm.ID, Purpose: domain.SigningKeyPurposeSAMLSigning,
+			TriggeredBy: cliActor(), Reason: "idp dev seed"})
+		if err != nil {
+			return fmt.Errorf("create SAML signing key: %w", err)
+		}
+		fmt.Fprintf(out, "SAML signing key: created (%s)\n", res.NewKey.Kid)
+	}
+	scopes := entstore.NewClientScopeRepository(client)
+	samlScope, err := scopes.GetByRealmAndName(ctx, realm.ID, demoSAMLScope)
+	if errors.Is(err, repository.ErrNotFound) {
+		samlScope, err = scopes.Create(ctx, repository.CreateClientScopeParams{RealmID: realm.ID, Name: demoSAMLScope,
+			Description: "usual SAML attributes (uid, mail, givenName, sn, groups, roles)"})
+		if err == nil {
+			protocol := domain.ClientScopeProtocolSAML2
+			samlScope, err = scopes.Update(ctx, samlScope.ID, repository.UpdateClientScopeParams{
+				Protocol: &protocol, ClaimMappers: demoSAMLMappers,
+			})
+		}
+		if err == nil {
+			fmt.Fprintf(out, "client scope %q: created\n", demoSAMLScope)
+		}
+	} else if err == nil {
+		fmt.Fprintf(out, "client scope %q: exists\n", demoSAMLScope)
+	}
+	if err != nil {
+		return fmt.Errorf("client scope %q: %w", demoSAMLScope, err)
+	}
+	granted, err := client.Role.Query().Where(entrole.ID(role.ID)).QueryClientScopes().
+		Where(entclientscope.ID(samlScope.ID)).Exist(ctx)
+	if err != nil {
+		return fmt.Errorf("client scope %q: %w", demoSAMLScope, err)
+	}
+	if !granted {
+		if err := client.Role.UpdateOneID(role.ID).AddClientScopeIDs(samlScope.ID).Exec(ctx); err != nil {
+			return fmt.Errorf("grant client scope %q: %w", demoSAMLScope, err)
+		}
+	}
+	fmt.Fprintf(out, "client scope %q: granted to role %q\n", demoSAMLScope, demoRole)
+
+	fmt.Fprintf(out, "\nSAML IdP metadata (give it to a service provider): %s/r/%s/saml/metadata\n", devPublicURL(), realm.Name)
+	fmt.Fprintf(out, "Register a service provider: idp saml clients create --realm %s --metadata-url <its metadata URL> --allow-role %s --scope %s\n",
+		realm.Name, demoRole, demoSAMLScope)
+
 	fmt.Fprintf(out, "\nFor cmd/oidc-demo (put these in .env, then `make oidc-demo`):\n")
 	fmt.Fprintf(out, "  DEMO_ISSUER=%s/r/%s\n", devPublicURL(), realm.Name)
 	fmt.Fprintf(out, "  DEMO_CLIENT_ID=%s\n", demoClientID)
@@ -212,7 +286,7 @@ func devSeed(ctx context.Context, args []string, out io.Writer) error {
 	return nil
 }
 
-// devPublicURL: what the server uses as PUBLIC_URL (see buildOIDC).
+// devPublicURL: what the server uses as PUBLIC_URL (see buildPublicURL).
 func devPublicURL() string {
 	if u := os.Getenv("PUBLIC_URL"); u != "" {
 		return strings.TrimRight(u, "/")

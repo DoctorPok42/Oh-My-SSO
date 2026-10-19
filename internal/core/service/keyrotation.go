@@ -22,6 +22,8 @@ import (
 //	   └───────────────────────────────────────────────────────┘
 //	        Rotate with Compromised = true (no grace at all)
 //
+//   - pending:  (saml_signing only, Step 11) published, does not sign yet.
+//     See "SAML keys" below.
 //   - active:   signs new tokens AND is published in the JWKS.
 //   - rotating: no longer signs, still published so tokens it signed before
 //     the rotation stay verifiable until they expire.
@@ -30,6 +32,21 @@ import (
 //
 // OIDC Core §10.1.1 describes the same idea:
 // https://openid.net/specs/openid-connect-core-1_0.html#RotateSigKeys
+//
+// SAML keys (Step 11) rotate in two steps. A JWT client fetches the JWKS and
+// picks the key by its kid, but a SAML service provider is often configured
+// by hand with ONE certificate of the IdP. Switching right away would break
+// it. So:
+//
+//	Rotate    new key "pending": published in the metadata next to the
+//	          current one, which keeps signing. Admins of the SPs add the
+//	          new certificate (or their SP refreshes our metadata).
+//	Activate  the pending key signs; the previous one goes "rotating" with
+//	          the usual grace period, then "retired".
+//
+// The first SAML key of a realm is active at once (nothing to replace), and
+// a compromised rotation still switches immediately: in an emergency a
+// broken SP is better than a leaked key.
 
 const (
 	// DefaultKeyRotationGrace is used when the realm has no InstanceSettings
@@ -51,18 +68,31 @@ var (
 	ErrUnsupportedRotationPurpose  = errors.New("service: rotation is not supported for this key purpose")
 	ErrRotationTriggeredByRequired = errors.New("service: key rotation needs a triggered_by value")
 	ErrCompromisedReasonRequired   = errors.New("service: a compromised-key rotation needs a reason")
+	// ErrPendingKeyExists: a staged rotation already waits for Activate.
+	ErrPendingKeyExists = errors.New("service: a pending key already exists: activate it first (or rotate with compromised)")
+	// ErrNoPendingKey: Activate found no "pending" key to activate.
+	ErrNoPendingKey = errors.New("service: no pending key to activate")
+	// ErrActivationNotSupported: this purpose rotates in one step, it never
+	// has pending keys.
+	ErrActivationNotSupported = errors.New("service: this key purpose rotates in one step, there is nothing to activate")
 )
 
 // rotatablePurposes lists the purposes Rotate accepts today.
 //
-//   - jwt_signing: yes, this step.
-//   - saml_signing: later (Step 11) - SAML clients pin a certificate, so a
-//     rotation needs the client_certificates transition window first.
+//   - jwt_signing: yes (Step 8).
+//   - saml_signing: yes (Step 11), in two steps: Rotate then Activate.
 //   - envelope_encryption: never this way. Retiring it would make every
 //     secret it encrypted (TOTP secrets...) impossible to decrypt: it needs
 //     re-encryption, not rotation.
 var rotatablePurposes = map[domain.SigningKeyPurpose]bool{
-	domain.SigningKeyPurposeJWT: true,
+	domain.SigningKeyPurposeJWT:         true,
+	domain.SigningKeyPurposeSAMLSigning: true,
+}
+
+// stagedPurposes rotate in two steps (Rotate creates a "pending" key,
+// Activate makes it sign).
+var stagedPurposes = map[domain.SigningKeyPurpose]bool{
+	domain.SigningKeyPurposeSAMLSigning: true,
 }
 
 // KeyRotationService creates, rotates and retires signing keys.
@@ -132,6 +162,8 @@ type RotateInput struct {
 
 // RotateResult tells what happened, for the HTTP response / CLI output.
 type RotateResult struct {
+	// NewKey is the key created (Rotate) or activated (Activate). After a
+	// staged rotation its status is "pending".
 	NewKey *domain.SigningKey
 	// Rotating are the previous active keys, now in their grace period.
 	Rotating []*domain.SigningKey
@@ -192,10 +224,24 @@ func (s *KeyRotationService) Rotate(ctx context.Context, in RotateInput) (*Rotat
 		}
 	}
 
+	// Two-step purposes (SAML): the new key only signs after Activate, unless
+	// there is no key to replace yet or the old one is compromised.
+	staged := stagedPurposes[in.Purpose] && !in.Compromised &&
+		newestWithStatus(current, domain.SigningKeyActive) != nil
+	status := domain.SigningKeyActive
+	if staged {
+		if newestWithStatus(current, domain.SigningKeyPending) != nil {
+			return nil, ErrPendingKeyExists
+		}
+		status = domain.SigningKeyPending
+	}
+
 	newKey, err := GenerateSigningKey(ctx, s.km, s.keys, s.kmsBackend, GenerateSigningKeyParams{
 		RealmID: in.RealmID,
 		KeyType: keyType,
 		Purpose: in.Purpose,
+		Status:  status,
+		Now:     s.now,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("key rotation: %w", err)
@@ -205,8 +251,21 @@ func (s *KeyRotationService) Rotate(ctx context.Context, in RotateInput) (*Rotat
 	// From here on, keep going on errors: every step left undone is safe and
 	// is redone by the next rotation; errors are returned together.
 	var errs []error
-	if err := s.log(ctx, newKey.ID, domain.KeyRotationCreated, in.TriggeredBy, in.Reason); err != nil {
+	reason := in.Reason
+	if staged {
+		reason = joinReason(in.Reason, "staged: published, signs after activation")
+	}
+	if err := s.log(ctx, newKey.ID, domain.KeyRotationCreated, in.TriggeredBy, reason); err != nil {
 		errs = append(errs, err)
+	}
+	if staged {
+		// Nothing else changes now: the current key keeps signing. Activate
+		// demotes it later, with the grace period known at that moment.
+		res.Grace = 0
+		if len(errs) > 0 {
+			return res, fmt.Errorf("key rotation: new key %s is pending, but: %w", newKey.Kid, errors.Join(errs...))
+		}
+		return res, nil
 	}
 
 	retireAfter := s.now().Add(grace)
@@ -237,22 +296,12 @@ func (s *KeyRotationService) Rotate(ctx context.Context, in RotateInput) (*Rotat
 		if old.Status != domain.SigningKeyActive {
 			continue // already rotating: keep its original deadline
 		}
-		err := s.keys.MarkRotating(ctx, old.ID, retireAfter)
-		if errors.Is(err, repository.ErrNotFound) {
-			continue // demoted by a concurrent rotation
-		}
+		rotated, err := s.demote(ctx, old, newKey, retireAfter, in.TriggeredBy, in.Reason)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("mark key %s rotating: %w", old.Kid, err))
-			continue
-		}
-		old.Status, old.RetireAfter = domain.SigningKeyRotating, retireAfter
-		res.Rotating = append(res.Rotating, old)
-		reason := fmt.Sprintf("superseded by kid %s", newKey.Kid)
-		if in.Reason != "" {
-			reason = in.Reason + " (" + reason + ")"
-		}
-		if err := s.log(ctx, old.ID, domain.KeyRotationRotated, in.TriggeredBy, reason); err != nil {
 			errs = append(errs, err)
+		}
+		if rotated {
+			res.Rotating = append(res.Rotating, old)
 		}
 	}
 
@@ -261,6 +310,108 @@ func (s *KeyRotationService) Rotate(ctx context.Context, in RotateInput) (*Rotat
 	}
 	if len(errs) > 0 {
 		return res, fmt.Errorf("key rotation: new key %s is active, but: %w", newKey.Kid, errors.Join(errs...))
+	}
+	return res, nil
+}
+
+// demote moves one active key to "rotating" because newKey replaces it. It
+// reports whether it did (false, nil: a concurrent rotation already did).
+func (s *KeyRotationService) demote(ctx context.Context, old, newKey *domain.SigningKey, retireAfter time.Time, by, reason string) (bool, error) {
+	err := s.keys.MarkRotating(ctx, old.ID, retireAfter)
+	if errors.Is(err, repository.ErrNotFound) {
+		return false, nil // demoted by a concurrent rotation
+	}
+	if err != nil {
+		return false, fmt.Errorf("mark key %s rotating: %w", old.Kid, err)
+	}
+	old.Status, old.RetireAfter = domain.SigningKeyRotating, retireAfter
+	if err := s.log(ctx, old.ID, domain.KeyRotationRotated, by, joinReason(reason, "superseded by kid "+newKey.Kid)); err != nil {
+		return true, err
+	}
+	return true, nil
+}
+
+func joinReason(reason, detail string) string {
+	if reason == "" {
+		return detail
+	}
+	return reason + " (" + detail + ")"
+}
+
+// ActivateInput describes the second step of a two-step rotation.
+type ActivateInput struct {
+	RealmID string
+	// Purpose defaults to saml_signing, the only two-step purpose.
+	Purpose domain.SigningKeyPurpose
+	// Grace of the previous key, which stops signing now. 0: the realm's
+	// key_rotation_grace_hours. Assertions it signed only live minutes, but
+	// the usual minimum still applies.
+	Grace       time.Duration
+	TriggeredBy string
+	Reason      string
+}
+
+// Activate makes the "pending" key of a purpose the signing key (Step 11)
+// and moves the previous active keys to "rotating".
+//
+// The order is the same as in Rotate: the pending key is activated FIRST, so
+// the realm is never left without a key that signs. Two active keys for a
+// moment is harmless: Signer picks the newest.
+func (s *KeyRotationService) Activate(ctx context.Context, in ActivateInput) (*RotateResult, error) {
+	if in.Purpose == "" {
+		in.Purpose = domain.SigningKeyPurposeSAMLSigning
+	}
+	if in.RealmID == "" {
+		return nil, errors.New("service: key activation needs a realm")
+	}
+	if in.TriggeredBy == "" {
+		return nil, ErrRotationTriggeredByRequired
+	}
+	if !stagedPurposes[in.Purpose] {
+		return nil, fmt.Errorf("%w: %q", ErrActivationNotSupported, in.Purpose)
+	}
+	grace, err := s.gracePeriod(ctx, RotateInput{RealmID: in.RealmID, Grace: in.Grace})
+	if err != nil {
+		return nil, err
+	}
+
+	keys, err := s.keys.ListActiveByRealm(ctx, in.RealmID)
+	if err != nil {
+		return nil, fmt.Errorf("key activation: list keys: %w", err)
+	}
+	keys = filterPurpose(keys, in.Purpose)
+	pending := newestWithStatus(keys, domain.SigningKeyPending)
+	if pending == nil {
+		return nil, ErrNoPendingKey
+	}
+	if err := s.keys.Activate(ctx, pending.ID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, ErrNoPendingKey // activated or retired concurrently
+		}
+		return nil, fmt.Errorf("key activation: %w", err)
+	}
+	pending.Status = domain.SigningKeyActive
+	res := &RotateResult{NewKey: pending, Grace: grace}
+
+	var errs []error
+	if err := s.log(ctx, pending.ID, domain.KeyRotationActivated, in.TriggeredBy, in.Reason); err != nil {
+		errs = append(errs, err)
+	}
+	retireAfter := s.now().Add(grace)
+	for _, old := range keys {
+		if old.ID == pending.ID || old.Status != domain.SigningKeyActive || !old.CreatedAt.Before(pending.CreatedAt) {
+			continue
+		}
+		rotated, err := s.demote(ctx, old, pending, retireAfter, in.TriggeredBy, in.Reason)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		if rotated {
+			res.Rotating = append(res.Rotating, old)
+		}
+	}
+	if len(errs) > 0 {
+		return res, fmt.Errorf("key activation: key %s signs now, but: %w", pending.Kid, errors.Join(errs...))
 	}
 	return res, nil
 }
@@ -364,6 +515,9 @@ func (s *KeyRotationService) validate(in RotateInput) error {
 	if in.KeyType != "" {
 		if _, err := toKeyManagerType(in.KeyType); err != nil {
 			return err
+		}
+		if in.Purpose == domain.SigningKeyPurposeSAMLSigning && in.KeyType != domain.SigningKeyRSA {
+			return ErrSAMLKeyMustBeRSA
 		}
 	}
 	return nil

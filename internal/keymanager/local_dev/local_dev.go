@@ -43,6 +43,8 @@ type KeyManager struct {
 var (
 	_ keymanager.KeyManager = (*KeyManager)(nil)
 	_ keymanager.Encrypter  = (*KeyManager)(nil)
+	// Step 11: XML-DSig and X.509 certificates hand over a digest.
+	_ keymanager.DigestSigner = (*KeyManager)(nil)
 )
 
 // Option configures a local_dev KeyManager.
@@ -165,11 +167,29 @@ func (k *KeyManager) Sign(ctx context.Context, kmsKeyReference string, payload [
 	}
 
 	hash := sha256.Sum256(payload)
+	return signDigest(sk, kmsKeyReference, hash[:])
+}
+
+// SignDigest implements keymanager.DigestSigner (Step 11).
+func (k *KeyManager) SignDigest(ctx context.Context, kmsKeyReference string, digest []byte) ([]byte, error) {
+	if len(digest) != sha256.Size {
+		return nil, fmt.Errorf("local_dev keymanager: digest must be %d bytes (SHA-256), got %d", sha256.Size, len(digest))
+	}
+	k.mu.RLock()
+	sk, ok := k.keys[kmsKeyReference]
+	k.mu.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("local_dev keymanager: unknown key %q", kmsKeyReference)
+	}
+	return signDigest(sk, kmsKeyReference, digest)
+}
+
+func signDigest(sk storedKey, kmsKeyReference string, digest []byte) ([]byte, error) {
 	switch {
 	case sk.rsaKey != nil:
-		return rsa.SignPKCS1v15(rand.Reader, sk.rsaKey, crypto.SHA256, hash[:])
+		return rsa.SignPKCS1v15(rand.Reader, sk.rsaKey, crypto.SHA256, digest)
 	case sk.ecKey != nil:
-		return ecdsa.SignASN1(rand.Reader, sk.ecKey, hash[:])
+		return ecdsa.SignASN1(rand.Reader, sk.ecKey, digest)
 	default:
 		return nil, fmt.Errorf("local_dev keymanager: key %q has no material", kmsKeyReference)
 	}

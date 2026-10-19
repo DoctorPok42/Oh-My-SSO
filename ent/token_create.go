@@ -129,6 +129,34 @@ func (_c *TokenCreate) SetNillableUsedAt(v *time.Time) *TokenCreate {
 	return _c
 }
 
+// SetSubject sets the "subject" field.
+func (_c *TokenCreate) SetSubject(v string) *TokenCreate {
+	_c.mutation.SetSubject(v)
+	return _c
+}
+
+// SetNillableSubject sets the "subject" field if the given value is not nil.
+func (_c *TokenCreate) SetNillableSubject(v *string) *TokenCreate {
+	if v != nil {
+		_c.SetSubject(*v)
+	}
+	return _c
+}
+
+// SetSubjectFormat sets the "subject_format" field.
+func (_c *TokenCreate) SetSubjectFormat(v string) *TokenCreate {
+	_c.mutation.SetSubjectFormat(v)
+	return _c
+}
+
+// SetNillableSubjectFormat sets the "subject_format" field if the given value is not nil.
+func (_c *TokenCreate) SetNillableSubjectFormat(v *string) *TokenCreate {
+	if v != nil {
+		_c.SetSubjectFormat(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *TokenCreate) SetID(v string) *TokenCreate {
 	_c.mutation.SetID(v)
@@ -327,6 +355,14 @@ func (_c *TokenCreate) createSpec() (*Token, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UsedAt(); ok {
 		_spec.SetField(token.FieldUsedAt, field.TypeTime, value)
 		_node.UsedAt = &value
+	}
+	if value, ok := _c.mutation.Subject(); ok {
+		_spec.SetField(token.FieldSubject, field.TypeString, value)
+		_node.Subject = value
+	}
+	if value, ok := _c.mutation.SubjectFormat(); ok {
+		_spec.SetField(token.FieldSubjectFormat, field.TypeString, value)
+		_node.SubjectFormat = value
 	}
 	if nodes := _c.mutation.SessionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

@@ -117,6 +117,16 @@ func UsedAt(v time.Time) predicate.Token {
 	return predicate.Token(sql.FieldEQ(FieldUsedAt, v))
 }
 
+// Subject applies equality check predicate on the "subject" field. It's identical to SubjectEQ.
+func Subject(v string) predicate.Token {
+	return predicate.Token(sql.FieldEQ(FieldSubject, v))
+}
+
+// SubjectFormat applies equality check predicate on the "subject_format" field. It's identical to SubjectFormatEQ.
+func SubjectFormat(v string) predicate.Token {
+	return predicate.Token(sql.FieldEQ(FieldSubjectFormat, v))
+}
+
 // SessionIDEQ applies the EQ predicate on the "session_id" field.
 func SessionIDEQ(v string) predicate.Token {
 	return predicate.Token(sql.FieldEQ(FieldSessionID, v))
@@ -694,6 +704,156 @@ func UsedAtIsNil() predicate.Token {
 // UsedAtNotNil applies the NotNil predicate on the "used_at" field.
 func UsedAtNotNil() predicate.Token {
 	return predicate.Token(sql.FieldNotNull(FieldUsedAt))
+}
+
+// SubjectEQ applies the EQ predicate on the "subject" field.
+func SubjectEQ(v string) predicate.Token {
+	return predicate.Token(sql.FieldEQ(FieldSubject, v))
+}
+
+// SubjectNEQ applies the NEQ predicate on the "subject" field.
+func SubjectNEQ(v string) predicate.Token {
+	return predicate.Token(sql.FieldNEQ(FieldSubject, v))
+}
+
+// SubjectIn applies the In predicate on the "subject" field.
+func SubjectIn(vs ...string) predicate.Token {
+	return predicate.Token(sql.FieldIn(FieldSubject, vs...))
+}
+
+// SubjectNotIn applies the NotIn predicate on the "subject" field.
+func SubjectNotIn(vs ...string) predicate.Token {
+	return predicate.Token(sql.FieldNotIn(FieldSubject, vs...))
+}
+
+// SubjectGT applies the GT predicate on the "subject" field.
+func SubjectGT(v string) predicate.Token {
+	return predicate.Token(sql.FieldGT(FieldSubject, v))
+}
+
+// SubjectGTE applies the GTE predicate on the "subject" field.
+func SubjectGTE(v string) predicate.Token {
+	return predicate.Token(sql.FieldGTE(FieldSubject, v))
+}
+
+// SubjectLT applies the LT predicate on the "subject" field.
+func SubjectLT(v string) predicate.Token {
+	return predicate.Token(sql.FieldLT(FieldSubject, v))
+}
+
+// SubjectLTE applies the LTE predicate on the "subject" field.
+func SubjectLTE(v string) predicate.Token {
+	return predicate.Token(sql.FieldLTE(FieldSubject, v))
+}
+
+// SubjectContains applies the Contains predicate on the "subject" field.
+func SubjectContains(v string) predicate.Token {
+	return predicate.Token(sql.FieldContains(FieldSubject, v))
+}
+
+// SubjectHasPrefix applies the HasPrefix predicate on the "subject" field.
+func SubjectHasPrefix(v string) predicate.Token {
+	return predicate.Token(sql.FieldHasPrefix(FieldSubject, v))
+}
+
+// SubjectHasSuffix applies the HasSuffix predicate on the "subject" field.
+func SubjectHasSuffix(v string) predicate.Token {
+	return predicate.Token(sql.FieldHasSuffix(FieldSubject, v))
+}
+
+// SubjectIsNil applies the IsNil predicate on the "subject" field.
+func SubjectIsNil() predicate.Token {
+	return predicate.Token(sql.FieldIsNull(FieldSubject))
+}
+
+// SubjectNotNil applies the NotNil predicate on the "subject" field.
+func SubjectNotNil() predicate.Token {
+	return predicate.Token(sql.FieldNotNull(FieldSubject))
+}
+
+// SubjectEqualFold applies the EqualFold predicate on the "subject" field.
+func SubjectEqualFold(v string) predicate.Token {
+	return predicate.Token(sql.FieldEqualFold(FieldSubject, v))
+}
+
+// SubjectContainsFold applies the ContainsFold predicate on the "subject" field.
+func SubjectContainsFold(v string) predicate.Token {
+	return predicate.Token(sql.FieldContainsFold(FieldSubject, v))
+}
+
+// SubjectFormatEQ applies the EQ predicate on the "subject_format" field.
+func SubjectFormatEQ(v string) predicate.Token {
+	return predicate.Token(sql.FieldEQ(FieldSubjectFormat, v))
+}
+
+// SubjectFormatNEQ applies the NEQ predicate on the "subject_format" field.
+func SubjectFormatNEQ(v string) predicate.Token {
+	return predicate.Token(sql.FieldNEQ(FieldSubjectFormat, v))
+}
+
+// SubjectFormatIn applies the In predicate on the "subject_format" field.
+func SubjectFormatIn(vs ...string) predicate.Token {
+	return predicate.Token(sql.FieldIn(FieldSubjectFormat, vs...))
+}
+
+// SubjectFormatNotIn applies the NotIn predicate on the "subject_format" field.
+func SubjectFormatNotIn(vs ...string) predicate.Token {
+	return predicate.Token(sql.FieldNotIn(FieldSubjectFormat, vs...))
+}
+
+// SubjectFormatGT applies the GT predicate on the "subject_format" field.
+func SubjectFormatGT(v string) predicate.Token {
+	return predicate.Token(sql.FieldGT(FieldSubjectFormat, v))
+}
+
+// SubjectFormatGTE applies the GTE predicate on the "subject_format" field.
+func SubjectFormatGTE(v string) predicate.Token {
+	return predicate.Token(sql.FieldGTE(FieldSubjectFormat, v))
+}
+
+// SubjectFormatLT applies the LT predicate on the "subject_format" field.
+func SubjectFormatLT(v string) predicate.Token {
+	return predicate.Token(sql.FieldLT(FieldSubjectFormat, v))
+}
+
+// SubjectFormatLTE applies the LTE predicate on the "subject_format" field.
+func SubjectFormatLTE(v string) predicate.Token {
+	return predicate.Token(sql.FieldLTE(FieldSubjectFormat, v))
+}
+
+// SubjectFormatContains applies the Contains predicate on the "subject_format" field.
+func SubjectFormatContains(v string) predicate.Token {
+	return predicate.Token(sql.FieldContains(FieldSubjectFormat, v))
+}
+
+// SubjectFormatHasPrefix applies the HasPrefix predicate on the "subject_format" field.
+func SubjectFormatHasPrefix(v string) predicate.Token {
+	return predicate.Token(sql.FieldHasPrefix(FieldSubjectFormat, v))
+}
+
+// SubjectFormatHasSuffix applies the HasSuffix predicate on the "subject_format" field.
+func SubjectFormatHasSuffix(v string) predicate.Token {
+	return predicate.Token(sql.FieldHasSuffix(FieldSubjectFormat, v))
+}
+
+// SubjectFormatIsNil applies the IsNil predicate on the "subject_format" field.
+func SubjectFormatIsNil() predicate.Token {
+	return predicate.Token(sql.FieldIsNull(FieldSubjectFormat))
+}
+
+// SubjectFormatNotNil applies the NotNil predicate on the "subject_format" field.
+func SubjectFormatNotNil() predicate.Token {
+	return predicate.Token(sql.FieldNotNull(FieldSubjectFormat))
+}
+
+// SubjectFormatEqualFold applies the EqualFold predicate on the "subject_format" field.
+func SubjectFormatEqualFold(v string) predicate.Token {
+	return predicate.Token(sql.FieldEqualFold(FieldSubjectFormat, v))
+}
+
+// SubjectFormatContainsFold applies the ContainsFold predicate on the "subject_format" field.
+func SubjectFormatContainsFold(v string) predicate.Token {
+	return predicate.Token(sql.FieldContainsFold(FieldSubjectFormat, v))
 }
 
 // HasSession applies the HasEdge predicate on the "session" edge.

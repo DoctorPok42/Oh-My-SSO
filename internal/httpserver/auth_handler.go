@@ -28,6 +28,9 @@ type loginRequest struct {
 	// ClientID (optional): OIDC client_id of the application the user is
 	// logging in for. Its MFA policy then applies right away (Step 9).
 	ClientID string `json:"client_id,omitempty"`
+	// EntityID (optional): the same for a SAML application (Step 11). At
+	// most one of ClientID and EntityID.
+	EntityID string `json:"entity_id,omitempty"`
 }
 
 // loginResponse. "status" tells the next step:
@@ -101,13 +104,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var client *domain.ClientApp
-	if req.ClientID != "" {
-		c, ok := s.lookupClient(w, r, realm.ID, req.ClientID)
-		if !ok {
-			return
-		}
-		client = c
+	client, ok := s.lookupAnyClient(w, r, realm.ID, req.ClientID, req.EntityID)
+	if !ok {
+		return
 	}
 	clientRef := ""
 	if client != nil {

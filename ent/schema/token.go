@@ -20,6 +20,11 @@ const (
 	TokenAccessToken  TokenType = "access_token"
 	TokenRefreshToken TokenType = "refresh_token"
 	TokenIDToken      TokenType = "id_token"
+	// TokenSAMLSession (Step 11): "this SAML client received an assertion
+	// for this session". It is the client's session at the IdP: its jti is
+	// the SessionIndex the client knows, its subject the NameID it got.
+	// Single Logout reads these rows to know who else must be logged out.
+	TokenSAMLSession TokenType = "saml_session"
 )
 
 func (Token) Fields() []ent.Field {
@@ -51,6 +56,14 @@ func (Token) Fields() []ent.Field {
 		// UsedAt is set when a refresh token is exchanged for a new one
 		// (rotation). Presenting it again is a replay.
 		field.Time("used_at").Optional().Nillable(),
+
+		// --- Session participants (Step 11) ---
+		// Subject is the identifier the client received for the user (SAML
+		// NameID; later the OIDC "sub" for back-channel logout), and
+		// SubjectFormat its format (SAML NameID Format URI). A logout message
+		// sent to the client must repeat them exactly.
+		field.String("subject").Optional().Immutable(),
+		field.String("subject_format").Optional().Immutable(),
 	}
 }
 

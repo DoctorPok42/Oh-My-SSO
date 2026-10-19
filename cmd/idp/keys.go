@@ -26,14 +26,20 @@ import (
 //	idp keys rotate  --realm master --compromised --reason "key leaked in CI logs"
 //	idp keys retire  --realm master
 //
+// SAML keys (Step 11) rotate in two steps:
+//
+//	idp keys rotate   --realm master --purpose saml_signing   new key "pending": published, not signing
+//	idp keys activate --realm master [--grace 24h]            the pending key signs, the old one rotates
+//
 // It reads the same environment variables as the server (DATABASE_URL,
 // KEYMANAGER_BACKEND, VAULT_ADDR, ...): run it where the server runs, e.g.
 // `go run ./cmd/idp keys list --realm master`.
 
 const keysUsage = `usage:
-  idp keys list   --realm <name>
-  idp keys rotate --realm <name> [--type RSA|EC] [--grace <duration>] [--reason <text>] [--compromised]
-  idp keys retire --realm <name>
+  idp keys list     --realm <name>
+  idp keys rotate   --realm <name> [--purpose jwt_signing|saml_signing] [--type RSA|EC] [--grace <duration>] [--reason <text>] [--compromised]
+  idp keys activate --realm <name> [--purpose saml_signing] [--grace <duration>] [--reason <text>]
+  idp keys retire   --realm <name>
 `
 
 func runKeysCommand(args []string) int {
@@ -50,6 +56,8 @@ func runKeysCommand(args []string) int {
 		err = keysList(ctx, args[1:], os.Stdout)
 	case "rotate":
 		err = keysRotate(ctx, args[1:], os.Stdout)
+	case "activate":
+		err = keysActivate(ctx, args[1:], os.Stdout)
 	case "retire":
 		err = keysRetire(ctx, args[1:], os.Stdout)
 	case "-h", "--help", "help":
@@ -147,6 +155,7 @@ func keysList(ctx context.Context, args []string, out io.Writer) error {
 func keysRotate(ctx context.Context, args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("keys rotate", flag.ContinueOnError)
 	realmName := fs.String("realm", "", "realm name (required)")
+	purpose := fs.String("purpose", string(domain.SigningKeyPurposeJWT), "jwt_signing (OIDC) or saml_signing (SAML, two-step rotation)")
 	keyType := fs.String("type", "", "type of the new key: RSA or EC (default: same as the current key, RSA if none)")
 	grace := fs.Duration("grace", 0, "grace period of the old key, e.g. 48h (default: the realm's key_rotation_grace_hours)")
 	reason := fs.String("reason", "", "free text written to KeyRotationLog (required with --compromised)")
@@ -158,6 +167,11 @@ func keysRotate(ctx context.Context, args []string, out io.Writer) error {
 	case "", domain.SigningKeyRSA, domain.SigningKeyEC:
 	default:
 		return usageError{fmt.Sprintf("--type must be RSA or EC, got %q", *keyType)}
+	}
+	switch domain.SigningKeyPurpose(*purpose) {
+	case domain.SigningKeyPurposeJWT, domain.SigningKeyPurposeSAMLSigning:
+	default:
+		return usageError{fmt.Sprintf("--purpose must be jwt_signing or saml_signing, got %q", *purpose)}
 	}
 
 	env, err := openKeysEnv(ctx, *realmName)
@@ -177,7 +191,7 @@ func keysRotate(ctx context.Context, args []string, out io.Writer) error {
 
 	res, err := env.rotation.Rotate(ctx, service.RotateInput{
 		RealmID:     env.realm.ID,
-		Purpose:     domain.SigningKeyPurposeJWT,
+		Purpose:     domain.SigningKeyPurpose(*purpose),
 		KeyType:     domain.SigningKeyType(*keyType),
 		Grace:       *grace,
 		Compromised: *compromised,
@@ -188,6 +202,14 @@ func keysRotate(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	}
 
+	if res.NewKey.Status == domain.SigningKeyPending {
+		fmt.Fprintf(out, "new PENDING key: %s (%s, %s)\n", res.NewKey.Kid, res.NewKey.KeyType, res.NewKey.Purpose)
+		fmt.Fprintln(out, "It is published in the SAML metadata now, but does not sign yet.")
+		fmt.Fprintln(out, "1. Give its certificate to the service providers that pinned ours (or let them reload our metadata).")
+		fmt.Fprintf(out, "2. Then: idp keys activate --realm %s\n", env.realm.Name)
+		printKeys(out, []*domain.SigningKey{res.NewKey})
+		return err
+	}
 	fmt.Fprintf(out, "new active key: %s (%s)\n", res.NewKey.Kid, res.NewKey.KeyType)
 	if *compromised {
 		fmt.Fprintln(out, "compromised mode: previous keys retired immediately, tokens they signed no longer verify")
@@ -206,6 +228,45 @@ func keysRotate(ctx context.Context, args []string, out io.Writer) error {
 		// The new key is active; something after it failed. Report it but
 		// make it clear there is no need to rotate again.
 		return fmt.Errorf("rotation done, but some follow-up steps failed (re-run `idp keys retire` later): %w", err)
+	}
+	return nil
+}
+
+// keysActivate is the second step of a SAML key rotation (Step 11). It only
+// changes statuses in the database, so it also works with local_dev (the
+// pending key was created by the running server).
+func keysActivate(ctx context.Context, args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("keys activate", flag.ContinueOnError)
+	realmName := fs.String("realm", "", "realm name (required)")
+	purpose := fs.String("purpose", string(domain.SigningKeyPurposeSAMLSigning), "purpose of the pending key (saml_signing)")
+	grace := fs.Duration("grace", 0, "grace period of the previous key, e.g. 24h (default: the realm's key_rotation_grace_hours)")
+	reason := fs.String("reason", "", "free text written to KeyRotationLog")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	env, err := openKeysEnv(ctx, *realmName)
+	if err != nil {
+		return err
+	}
+	defer env.close()
+
+	res, err := env.rotation.Activate(ctx, service.ActivateInput{
+		RealmID:     env.realm.ID,
+		Purpose:     domain.SigningKeyPurpose(*purpose),
+		Grace:       *grace,
+		TriggeredBy: cliActor(),
+		Reason:      *reason,
+	})
+	if res == nil || res.NewKey == nil {
+		return err
+	}
+	fmt.Fprintf(out, "key %s now signs (%s), grace period of the previous key: %s\n", res.NewKey.Kid, res.NewKey.Purpose, res.Grace)
+	if len(res.Rotating) > 0 {
+		fmt.Fprintln(out, "\nnow rotating:")
+		printKeys(out, res.Rotating)
+	}
+	if err != nil {
+		return fmt.Errorf("activation done, but some follow-up steps failed: %w", err)
 	}
 	return nil
 }

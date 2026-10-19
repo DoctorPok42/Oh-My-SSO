@@ -4,12 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
-	"embed"
 	"errors"
-	"html/template"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 	"time"
 
@@ -17,34 +14,23 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
 
+	"sso.internal/sso/internal/adapters/loginui"
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
 )
 
-// The login page of the OIDC flow (Step 10). It is deliberately small: the
-// page only calls the JSON API that already exists (/auth/login,
+// The login page of the OIDC flow (Step 10). The page itself lives in
+// internal/adapters/loginui since Step 11, shared with the SAML adapter: it
+// only calls the JSON API that already exists (/auth/login,
 // /auth/mfa/verify, passkeys, /auth/step-up), then reloads itself; the
-// server decides everything on reload. No login logic is duplicated here,
-// and Step 14 can restyle it (Go templates + HTMX) without changing the flow.
-
-//go:embed web/*.html web/*.js web/*.css
-var webFS embed.FS
+// server decides everything on reload.
 
 const (
 	// browserCookieName binds a login to the browser that started it (see
 	// bindBrowser).
 	browserCookieName = "sso_oidc_browser"
 	browserCookieTTL  = 24 * time.Hour
-
-	// Content-Security-Policy of the pages: only our own script and style,
-	// requests only to ourselves, no framing (clickjacking).
-	pageCSP = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; " +
-		"img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
 )
-
-func parsePages() (*template.Template, error) {
-	return template.ParseFS(webFS, "web/*.html")
-}
 
 // --- browser binding -------------------------------------------------------------
 
@@ -245,20 +231,6 @@ func (a *Adapter) authError(w http.ResponseWriter, r *http.Request, ar *authRequ
 	op.AuthRequestError(w, r, ar, e, a.provider)
 }
 
-type loginPage struct {
-	RealmDisplay string
-	ClientName   string
-	ClientID     string
-	Base         string // "/r/<realm>", prefix of the JSON API
-	Assets       string
-	Mode         string // login | stepup | enroll
-	Methods      string // stepup: allowed methods, comma separated ("" = any)
-	Passkeys     bool
-	LoginHint    string
-	CancelURL    string
-	EnrollURL    string // dev pages only
-}
-
 func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, ar *authRequest, pc *core.ProtocolClient, mode string, allowed []domain.MfaMethodType) {
 	realm, _ := realmFrom(r.Context())
 	base := "/r/" + realm.Name
@@ -266,9 +238,10 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, ar *authRe
 	for _, m := range allowed {
 		methods = append(methods, string(m))
 	}
-	page := loginPage{
+	page := loginui.Login{
 		RealmDisplay: firstNonEmpty(realm.DisplayName, realm.Name),
 		ClientName:   firstNonEmpty(pc.App.Name, pc.App.ClientID),
+		ClientParam:  "client_id",
 		ClientID:     pc.App.ClientID,
 		Base:         base,
 		Assets:       base + "/oidc/assets",
@@ -281,22 +254,19 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, ar *authRe
 	if a.cfg.DevPages {
 		page.EnrollURL = base + "/dev/mfa"
 	}
-	a.render(w, http.StatusOK, "login.html", page)
+	a.pages.RenderLogin(w, http.StatusOK, page)
 }
 
 // --- other pages -------------------------------------------------------------------
 
-type message struct {
-	Title string
-	Text  string
-}
+type message = loginui.Message
 
 var (
-	msgExpired = message{"This sign-in link has expired",
-		"Go back to the application and start the sign-in again."}
-	msgOtherBrowser = message{"Sign-in started in another browser",
-		"For your security, a sign-in must be finished in the browser that started it. Go back to the application and start again here."}
-	msgLoggedOut = message{"You are signed out", "You can close this window."}
+	msgExpired = message{Title: "This sign-in link has expired",
+		Text: "Go back to the application and start the sign-in again."}
+	msgOtherBrowser = message{Title: "Sign-in started in another browser",
+		Text: "For your security, a sign-in must be finished in the browser that started it. Go back to the application and start again here."}
+	msgLoggedOut = message{Title: "You are signed out", Text: "You can close this window."}
 )
 
 func (a *Adapter) handleLoggedOut(w http.ResponseWriter, r *http.Request) {
@@ -305,44 +275,11 @@ func (a *Adapter) handleLoggedOut(w http.ResponseWriter, r *http.Request) {
 
 func (a *Adapter) renderMessage(w http.ResponseWriter, r *http.Request, status int, m message) {
 	realm, _ := realmFrom(r.Context())
-	a.render(w, status, "message.html", struct {
-		message
-		Assets string
-	}{m, "/r/" + realm.Name + "/oidc/assets"})
-}
-
-func (a *Adapter) render(w http.ResponseWriter, status int, name string, data any) {
-	h := w.Header()
-	h.Set("Content-Type", "text/html; charset=utf-8")
-	h.Set("Cache-Control", "no-store")
-	h.Set("Content-Security-Policy", pageCSP)
-	h.Set("X-Frame-Options", "DENY")
-	w.WriteHeader(status)
-	if err := a.pages.ExecuteTemplate(w, name, data); err != nil {
-		a.logger.Error("oidc: render page", "page", name, "error", err)
-	}
+	a.pages.RenderMessage(w, status, m, "/r/"+realm.Name+"/oidc/assets")
 }
 
 func handleAsset(w http.ResponseWriter, r *http.Request) {
-	name := chi.URLParam(r, "file")
-	var ctype string
-	switch path.Ext(name) {
-	case ".js":
-		ctype = "text/javascript; charset=utf-8"
-	case ".css":
-		ctype = "text/css; charset=utf-8"
-	default:
-		http.NotFound(w, r)
-		return
-	}
-	data, err := webFS.ReadFile("web/" + path.Base(name))
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	w.Header().Set("Content-Type", ctype)
-	w.Header().Set("Cache-Control", "public, max-age=300")
-	_, _ = w.Write(data)
+	loginui.Asset(w, r, chi.URLParam(r, "file"))
 }
 
 func firstNonEmpty(v ...string) string {

@@ -129,6 +129,11 @@ func RetireAfter(v time.Time) predicate.SigningKey {
 	return predicate.SigningKey(sql.FieldEQ(FieldRetireAfter, v))
 }
 
+// Certificate applies equality check predicate on the "certificate" field. It's identical to CertificateEQ.
+func Certificate(v string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldEQ(FieldCertificate, v))
+}
+
 // RealmIDEQ applies the EQ predicate on the "realm_id" field.
 func RealmIDEQ(v string) predicate.SigningKey {
 	return predicate.SigningKey(sql.FieldEQ(FieldRealmID, v))
@@ -894,6 +899,81 @@ func RetireAfterIsNil() predicate.SigningKey {
 // RetireAfterNotNil applies the NotNil predicate on the "retire_after" field.
 func RetireAfterNotNil() predicate.SigningKey {
 	return predicate.SigningKey(sql.FieldNotNull(FieldRetireAfter))
+}
+
+// CertificateEQ applies the EQ predicate on the "certificate" field.
+func CertificateEQ(v string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldEQ(FieldCertificate, v))
+}
+
+// CertificateNEQ applies the NEQ predicate on the "certificate" field.
+func CertificateNEQ(v string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldNEQ(FieldCertificate, v))
+}
+
+// CertificateIn applies the In predicate on the "certificate" field.
+func CertificateIn(vs ...string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldIn(FieldCertificate, vs...))
+}
+
+// CertificateNotIn applies the NotIn predicate on the "certificate" field.
+func CertificateNotIn(vs ...string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldNotIn(FieldCertificate, vs...))
+}
+
+// CertificateGT applies the GT predicate on the "certificate" field.
+func CertificateGT(v string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldGT(FieldCertificate, v))
+}
+
+// CertificateGTE applies the GTE predicate on the "certificate" field.
+func CertificateGTE(v string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldGTE(FieldCertificate, v))
+}
+
+// CertificateLT applies the LT predicate on the "certificate" field.
+func CertificateLT(v string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldLT(FieldCertificate, v))
+}
+
+// CertificateLTE applies the LTE predicate on the "certificate" field.
+func CertificateLTE(v string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldLTE(FieldCertificate, v))
+}
+
+// CertificateContains applies the Contains predicate on the "certificate" field.
+func CertificateContains(v string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldContains(FieldCertificate, v))
+}
+
+// CertificateHasPrefix applies the HasPrefix predicate on the "certificate" field.
+func CertificateHasPrefix(v string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldHasPrefix(FieldCertificate, v))
+}
+
+// CertificateHasSuffix applies the HasSuffix predicate on the "certificate" field.
+func CertificateHasSuffix(v string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldHasSuffix(FieldCertificate, v))
+}
+
+// CertificateIsNil applies the IsNil predicate on the "certificate" field.
+func CertificateIsNil() predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldIsNull(FieldCertificate))
+}
+
+// CertificateNotNil applies the NotNil predicate on the "certificate" field.
+func CertificateNotNil() predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldNotNull(FieldCertificate))
+}
+
+// CertificateEqualFold applies the EqualFold predicate on the "certificate" field.
+func CertificateEqualFold(v string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldEqualFold(FieldCertificate, v))
+}
+
+// CertificateContainsFold applies the ContainsFold predicate on the "certificate" field.
+func CertificateContainsFold(v string) predicate.SigningKey {
+	return predicate.SigningKey(sql.FieldContainsFold(FieldCertificate, v))
 }
 
 // HasRealm applies the HasEdge predicate on the "realm" edge.

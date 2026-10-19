@@ -43,6 +43,10 @@ type Token struct {
 	FamilyID string `json:"family_id,omitempty"`
 	// UsedAt holds the value of the "used_at" field.
 	UsedAt *time.Time `json:"used_at,omitempty"`
+	// Subject holds the value of the "subject" field.
+	Subject string `json:"subject,omitempty"`
+	// SubjectFormat holds the value of the "subject_format" field.
+	SubjectFormat string `json:"subject_format,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the TokenQuery when eager-loading is set.
 	Edges        TokenEdges `json:"edges"`
@@ -91,7 +95,7 @@ func (*Token) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case token.FieldRevoked:
 			values[i] = new(sql.NullBool)
-		case token.FieldID, token.FieldSessionID, token.FieldClientRefID, token.FieldType, token.FieldJti, token.FieldTokenHash, token.FieldFamilyID:
+		case token.FieldID, token.FieldSessionID, token.FieldClientRefID, token.FieldType, token.FieldJti, token.FieldTokenHash, token.FieldFamilyID, token.FieldSubject, token.FieldSubjectFormat:
 			values[i] = new(sql.NullString)
 		case token.FieldIssuedAt, token.FieldExpiresAt, token.FieldUsedAt:
 			values[i] = new(sql.NullTime)
@@ -185,6 +189,18 @@ func (_m *Token) assignValues(columns []string, values []any) error {
 				_m.UsedAt = new(time.Time)
 				*_m.UsedAt = value.Time
 			}
+		case token.FieldSubject:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field subject", values[i])
+			} else if value.Valid {
+				_m.Subject = value.String
+			}
+		case token.FieldSubjectFormat:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field subject_format", values[i])
+			} else if value.Valid {
+				_m.SubjectFormat = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -264,6 +280,12 @@ func (_m *Token) String() string {
 		builder.WriteString("used_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("subject=")
+	builder.WriteString(_m.Subject)
+	builder.WriteString(", ")
+	builder.WriteString("subject_format=")
+	builder.WriteString(_m.SubjectFormat)
 	builder.WriteByte(')')
 	return builder.String()
 }

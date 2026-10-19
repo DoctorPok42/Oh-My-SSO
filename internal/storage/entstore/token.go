@@ -36,6 +36,12 @@ func (r *entTokenRepository) Create(ctx context.Context, p repository.CreateToke
 	if p.FamilyID != "" {
 		builder = builder.SetFamilyID(p.FamilyID)
 	}
+	if p.Subject != "" {
+		builder = builder.SetSubject(p.Subject)
+	}
+	if p.SubjectFormat != "" {
+		builder = builder.SetSubjectFormat(p.SubjectFormat)
+	}
 	e, err := builder.Save(ctx)
 	if err != nil {
 		return nil, err
@@ -136,6 +142,9 @@ func toDomainToken(e *ent.Token) *domain.Token {
 		Scopes:      e.Scopes,
 		TokenHash:   e.TokenHash,
 		FamilyID:    e.FamilyID,
+
+		Subject:       e.Subject,
+		SubjectFormat: e.SubjectFormat,
 	}
 	if e.UsedAt != nil {
 		t.UsedAt = *e.UsedAt

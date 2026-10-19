@@ -25,6 +25,10 @@ type fakeKeyRotator struct {
 	retired    []*domain.SigningKey
 	retireErr  error
 	listResult []*domain.SigningKey
+
+	activateIn  *service.ActivateInput
+	activateRes *service.RotateResult
+	activateErr error
 }
 
 type fakeRealmByName struct {
@@ -42,6 +46,11 @@ func (f *fakeRealmByName) GetByName(_ context.Context, name string) (*domain.Rea
 func (f *fakeKeyRotator) Rotate(_ context.Context, in service.RotateInput) (*service.RotateResult, error) {
 	f.rotateIn = &in
 	return f.rotateRes, f.rotateErr
+}
+
+func (f *fakeKeyRotator) Activate(_ context.Context, in service.ActivateInput) (*service.RotateResult, error) {
+	f.activateIn = &in
+	return f.activateRes, f.activateErr
 }
 
 func (f *fakeKeyRotator) RetireExpired(_ context.Context, _ string, by string) ([]*domain.SigningKey, error) {
@@ -92,6 +101,11 @@ func TestHandleRotateSigningKey(t *testing.T) {
 		{"compromised without reason", `{"compromised":true}`, nil, service.ErrCompromisedReasonRequired, http.StatusBadRequest, "reason_required"},
 		{"technical error", `{}`, nil, errors.New("vault down"), http.StatusInternalServerError, "internal_error"},
 		{"partial failure still reports the new key", `{}`, ok, errors.New("log write failed"), http.StatusOK, `"warning"`},
+		// Step 11
+		{"saml purpose", `{"purpose":"saml_signing"}`, ok, nil, http.StatusOK, `"kid":"kid-new"`},
+		{"other purposes are refused", `{"purpose":"envelope_encryption"}`, nil, nil, http.StatusBadRequest, "unsupported_purpose"},
+		{"saml key must be RSA", `{"purpose":"saml_signing","key_type":"EC"}`, nil, service.ErrSAMLKeyMustBeRSA, http.StatusBadRequest, "unsupported_key_type"},
+		{"a pending key already waits", `{"purpose":"saml_signing"}`, nil, service.ErrPendingKeyExists, http.StatusConflict, "pending_key_exists"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -123,6 +137,48 @@ func TestHandleRotateSigningKey(t *testing.T) {
 			TriggeredBy: "user:user-1",
 			Reason:      "leak",
 		}, *rot.rotateIn)
+	})
+}
+
+func TestHandleActivateSigningKey(t *testing.T) {
+	ok := &service.RotateResult{NewKey: testNewKey, Grace: 24 * time.Hour}
+	tests := []struct {
+		name       string
+		body       string
+		res        *service.RotateResult
+		err        error
+		wantStatus int
+		wantBody   string
+	}{
+		{"defaults", "", ok, nil, http.StatusOK, `"kid":"kid-new"`},
+		{"no pending key", `{}`, nil, service.ErrNoPendingKey, http.StatusConflict, "no_pending_key"},
+		{"one-step purpose", `{"purpose":"jwt_signing"}`, nil, service.ErrActivationNotSupported, http.StatusBadRequest, "unsupported_purpose"},
+		{"unknown field", `{"force":true}`, nil, nil, http.StatusBadRequest, "invalid_request"},
+		{"technical error", `{}`, nil, errors.New("db down"), http.StatusInternalServerError, "internal_error"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rot := &fakeKeyRotator{activateRes: tt.res, activateErr: tt.err}
+			s := &Server{keyRotator: rot}
+			rec := httptest.NewRecorder()
+			s.handleActivateSigningKey(rec, adminRequest(http.MethodPost, tt.body, "application/json"))
+			require.Equal(t, tt.wantStatus, rec.Code, rec.Body.String())
+			require.Contains(t, rec.Body.String(), tt.wantBody)
+		})
+	}
+
+	t.Run("input passed to the service", func(t *testing.T) {
+		rot := &fakeKeyRotator{activateRes: ok}
+		s := &Server{keyRotator: rot}
+		s.handleActivateSigningKey(httptest.NewRecorder(),
+			adminRequest(http.MethodPost, `{"grace_hours":30,"reason":"planned"}`, "application/json"))
+		require.Equal(t, service.ActivateInput{
+			RealmID:     "realm-1",
+			Purpose:     domain.SigningKeyPurposeSAMLSigning,
+			Grace:       30 * time.Hour,
+			TriggeredBy: "user:user-1",
+			Reason:      "planned",
+		}, *rot.activateIn)
 	})
 }
 

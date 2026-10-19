@@ -20,7 +20,7 @@ func NewSigningKeyRepository(client *ent.Client) repository.SigningKeyRepository
 }
 
 func (r *entSigningKeyRepository) Create(ctx context.Context, p repository.CreateSigningKeyParams) (*domain.SigningKey, error) {
-	e, err := r.client.SigningKey.
+	builder := r.client.SigningKey.
 		Create().
 		SetRealmID(p.RealmID).
 		SetKeyType(entschema.SigningKeyType(p.KeyType)).
@@ -28,8 +28,12 @@ func (r *entSigningKeyRepository) Create(ctx context.Context, p repository.Creat
 		SetKmsKeyReference(p.KMSKeyReference).
 		SetKmsBackend(p.KMSBackend).
 		SetNillablePublicKey(nonEmpty(p.PublicKey)).
-		SetKid(p.Kid).
-		Save(ctx)
+		SetNillableCertificate(nonEmpty(p.Certificate)).
+		SetKid(p.Kid)
+	if p.Status != "" {
+		builder = builder.SetStatus(entschema.SigningKeyStatus(p.Status))
+	}
+	e, err := builder.Save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +65,7 @@ func (r *entSigningKeyRepository) ListActiveByRealm(ctx context.Context, realmID
 		Where(
 			signingkey.RealmID(realmID),
 			signingkey.StatusIn(
+				entschema.SigningKeyStatus(domain.SigningKeyPending),
 				entschema.SigningKeyStatus(domain.SigningKeyActive),
 				entschema.SigningKeyStatus(domain.SigningKeyRotating),
 			),
@@ -104,6 +109,26 @@ func (r *entSigningKeyRepository) MarkRotating(ctx context.Context, id string, r
 		).
 		SetStatus(entschema.SigningKeyStatus(domain.SigningKeyRotating)).
 		SetRetireAfter(retireAfter).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return repository.ErrNotFound
+	}
+	return nil
+}
+
+func (r *entSigningKeyRepository) Activate(ctx context.Context, id string) error {
+	// Same conditional UPDATE as MarkRotating: only a key that is still
+	// "pending" can become "active".
+	n, err := r.client.SigningKey.
+		Update().
+		Where(
+			signingkey.ID(id),
+			signingkey.StatusEQ(entschema.SigningKeyStatus(domain.SigningKeyPending)),
+		).
+		SetStatus(entschema.SigningKeyStatus(domain.SigningKeyActive)).
 		Save(ctx)
 	if err != nil {
 		return err
@@ -160,5 +185,6 @@ func toDomainSigningKey(e *ent.SigningKey) *domain.SigningKey {
 		UpdatedAt:       e.UpdatedAt,
 		RetiredAt:       e.RetiredAt,
 		RetireAfter:     e.RetireAfter,
+		Certificate:     e.Certificate,
 	}
 }
