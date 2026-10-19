@@ -61,6 +61,27 @@ func (s *IdentityCoreService) LookupClient(ctx context.Context, realmID string, 
 	return &core.ProtocolClient{App: app, Scopes: scopes}, nil
 }
 
+func (s *IdentityCoreService) ClientByRef(ctx context.Context, clientRef string) (*core.ProtocolClient, error) {
+	if clientRef == "" {
+		return nil, core.ErrClientNotFound
+	}
+	app, err := s.clients.GetByID(ctx, clientRef)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, core.ErrClientNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("client by ref: %w", err)
+	}
+	if app.IsDeleted() || app.Status != domain.ClientAppActive {
+		return nil, core.ErrClientNotFound
+	}
+	scopes, err := s.clients.ListScopes(ctx, app.ID)
+	if err != nil {
+		return nil, fmt.Errorf("client by ref: scopes: %w", err)
+	}
+	return &core.ProtocolClient{App: app, Scopes: scopes}, nil
+}
+
 func (s *IdentityCoreService) AuthenticateClient(ctx context.Context, clientRef, secret string) error {
 	app, err := s.clients.GetByID(ctx, clientRef)
 	if errors.Is(err, repository.ErrNotFound) {

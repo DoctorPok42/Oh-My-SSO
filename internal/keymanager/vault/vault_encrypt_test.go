@@ -2,6 +2,7 @@ package vault_test
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -17,8 +18,9 @@ import (
 // encryption, enough to check the requests we send and how we read the
 // answers. The real thing is covered by TestVaultIntegration_EncryptDecrypt.
 type fakeTransit struct {
-	mu   sync.Mutex
-	keys map[string]string // name -> type
+	mu       sync.Mutex
+	keys     map[string]string // name -> type
+	lastSign map[string]any    // body of the last /sign request (Step 11)
 }
 
 func (f *fakeTransit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -52,6 +54,10 @@ func (f *fakeTransit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		reply(map[string]any{"plaintext": strings.TrimPrefix(ct, prefix)})
+	case "sign":
+		// Step 11: remember the request, answer a recognizable signature.
+		f.lastSign = body
+		reply(map[string]any{"signature": "vault:v1:" + base64.StdEncoding.EncodeToString([]byte("sig-of-"+name))})
 	default:
 		http.Error(w, `{"errors":["unsupported"]}`, http.StatusNotFound)
 	}
@@ -91,5 +97,36 @@ func TestVault_EncryptDecrypt_Requests(t *testing.T) {
 
 	if _, err := km.Decrypt(ctx, "other-key", ct); err == nil {
 		t.Fatal("decrypt with the wrong key must fail")
+	}
+}
+
+// Step 11: SignDigest asks Transit to sign our digest as it is ("prehashed").
+func TestVault_SignDigest_Request(t *testing.T) {
+	ft := &fakeTransit{keys: map[string]string{}}
+	srv := httptest.NewServer(ft)
+	defer srv.Close()
+	km, err := vault.New(vault.Config{Address: srv.URL, Token: "test-token"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256([]byte("payload"))
+	sig, err := km.SignDigest(context.Background(), "saml-key", digest[:])
+	if err != nil {
+		t.Fatalf("SignDigest: %v", err)
+	}
+	if string(sig) != "sig-of-saml-key" {
+		t.Fatalf("signature %q", sig)
+	}
+	want := map[string]any{
+		"input": base64.StdEncoding.EncodeToString(digest[:]), "prehashed": true,
+		"hash_algorithm": "sha2-256", "signature_algorithm": "pkcs1v15",
+	}
+	for k, v := range want {
+		if ft.lastSign[k] != v {
+			t.Fatalf("request field %s = %v, want %v", k, ft.lastSign[k], v)
+		}
+	}
+	if _, err := km.SignDigest(context.Background(), "saml-key", []byte("short")); err == nil {
+		t.Fatal("a digest that is not SHA-256 sized must be refused")
 	}
 }

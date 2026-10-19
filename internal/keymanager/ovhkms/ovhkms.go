@@ -38,6 +38,8 @@ type KeyManager struct {
 var (
 	_ keymanager.KeyManager = (*KeyManager)(nil)
 	_ keymanager.Encrypter  = (*KeyManager)(nil)
+	// Step 11: XML-DSig and X.509 certificates hand over a digest.
+	_ keymanager.DigestSigner = (*KeyManager)(nil)
 )
 
 func New(cfg Config) (*KeyManager, error) {
@@ -106,6 +108,19 @@ func (k *KeyManager) Sign(ctx context.Context, kmsKeyReference string, payload [
 	}
 	hash := sha256.Sum256(payload)
 	return signer.Sign(rand.Reader, hash[:], crypto.SHA256)
+}
+
+// SignDigest implements keymanager.DigestSigner (Step 11). The OKMS signer
+// is a crypto.Signer: it already takes a digest.
+func (k *KeyManager) SignDigest(ctx context.Context, kmsKeyReference string, digest []byte) ([]byte, error) {
+	if len(digest) != sha256.Size {
+		return nil, fmt.Errorf("ovhkms keymanager: digest must be %d bytes (SHA-256), got %d", sha256.Size, len(digest))
+	}
+	signer, err := k.signerFor(ctx, kmsKeyReference)
+	if err != nil {
+		return nil, err
+	}
+	return signer.Sign(rand.Reader, digest, crypto.SHA256)
 }
 
 // GenerateEncryptionKey creates an AES-256 key in OKMS, used as the key

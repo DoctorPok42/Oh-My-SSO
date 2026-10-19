@@ -1,10 +1,11 @@
-// Login page of the OIDC flow (Step 10).
+// Login page of the OIDC (Step 10) and SAML (Step 11) flows.
 //
 // It only calls the JSON API of the IdP, then reloads the page: on reload
 // the server looks at the session cookie and either asks for more, or sends
 // the browser back to the application. Nothing here decides who gets in.
+// The application is named "client_id" (OIDC) or "entity_id" (SAML).
 //
-//   password      POST {base}/auth/login                 {identifier, password, client_id}
+//   password      POST {base}/auth/login                 {identifier, password, client_id | entity_id}
 //   second factor POST {base}/auth/mfa/verify            {method, code}   (cookie sso_mfa)
 //                 POST {base}/auth/mfa/webauthn/options|verify            (passkey)
 //   step-up       POST {base}/auth/step-up               {method, code}   (session)
@@ -15,6 +16,7 @@
   if (!app) return;
   const $ = (id) => document.getElementById(id);
   const base = app.dataset.base;
+  const clientParam = app.dataset.clientParam === "entity_id" ? "entity_id" : "client_id";
   const clientId = app.dataset.clientId;
   const passkeysOn = app.dataset.passkeys === "on";
   let stage = app.dataset.mode === "stepup" ? "stepup" : "password"; // password | mfa | stepup
@@ -84,7 +86,7 @@
     const { status, data } = await post("/auth/login", {
       identifier: $("identifier").value,
       password: $("password").value,
-      client_id: clientId,
+      [clientParam]: clientId,
     });
     busy(form, false);
     if (status !== 200) return showError(data.error);
@@ -161,7 +163,7 @@
     (async () => {
       let methods = ["totp", "backup_codes", "passkey", "webauthn"];
       try {
-        const res = await fetch(`${base}/auth/mfa/status?client_id=${encodeURIComponent(clientId)}`,
+        const res = await fetch(`${base}/auth/mfa/status?${clientParam}=${encodeURIComponent(clientId)}`,
           { credentials: "same-origin", headers: { Accept: "application/json" } });
         if (res.ok) {
           const st = await res.json();

@@ -508,7 +508,9 @@ func VerificationKeys(keys []*domain.SigningKey, purpose domain.SigningKeyPurpos
 			continue
 		}
 		switch k.Status {
-		case domain.SigningKeyActive:
+		case domain.SigningKeyActive, domain.SigningKeyPending:
+			// pending (Step 11, SAML): published before it signs, so that
+			// clients which copy the certificate by hand can add it first.
 			out = append(out, k)
 		case domain.SigningKeyRotating:
 			// A zero RetireAfter only exists on rows created before the
@@ -543,3 +545,20 @@ func (k *kmsSigner) Sign(ctx context.Context, payload []byte) ([]byte, error) {
 	}
 	return sig, nil
 }
+
+// kmsSigner is also a core.DigestSigner (Step 11, XML-DSig).
+var _ core.DigestSigner = (*kmsSigner)(nil)
+
+func (k *kmsSigner) SignDigest(ctx context.Context, digest []byte) ([]byte, error) {
+	ds, ok := k.km.(keymanager.DigestSigner)
+	if !ok {
+		return nil, fmt.Errorf("sign digest with key %s: %w", k.key.Kid, ErrDigestSigningUnsupported)
+	}
+	sig, err := ds.SignDigest(ctx, k.key.KMSKeyReference, digest)
+	if err != nil {
+		return nil, fmt.Errorf("sign digest with key %s: %w", k.key.Kid, err)
+	}
+	return sig, nil
+}
+
+func (k *kmsSigner) CertificatePEM() string { return k.key.Certificate }

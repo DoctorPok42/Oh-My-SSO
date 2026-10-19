@@ -309,8 +309,8 @@ func TestRotate_RefusedInputs(t *testing.T) {
 
 	for _, purpose := range []domain.SigningKeyPurpose{
 		domain.SigningKeyPurposeEnvelopeEncrypt, // would make encrypted secrets unreadable
-		domain.SigningKeyPurposeSAMLSigning,     // Step 11
 		domain.SigningKeyPurposeSAMLEncryption,
+		// saml_signing rotates since Step 11 (two steps: keyrotation_saml_test.go)
 	} {
 		_, err := f.rot.Rotate(ctx, service.RotateInput{RealmID: rotRealm, TriggeredBy: rotBy, Purpose: purpose})
 		require.ErrorIs(t, err, service.ErrUnsupportedRotationPurpose, purpose)

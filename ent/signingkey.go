@@ -43,6 +43,8 @@ type SigningKey struct {
 	RetiredAt time.Time `json:"retired_at,omitempty"`
 	// RetireAfter holds the value of the "retire_after" field.
 	RetireAfter time.Time `json:"retire_after,omitempty"`
+	// Certificate holds the value of the "certificate" field.
+	Certificate string `json:"certificate,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the SigningKeyQuery when eager-loading is set.
 	Edges        SigningKeyEdges `json:"edges"`
@@ -85,7 +87,7 @@ func (*SigningKey) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case signingkey.FieldID, signingkey.FieldRealmID, signingkey.FieldKeyType, signingkey.FieldPurpose, signingkey.FieldKmsKeyReference, signingkey.FieldKmsBackend, signingkey.FieldPublicKey, signingkey.FieldKid, signingkey.FieldStatus:
+		case signingkey.FieldID, signingkey.FieldRealmID, signingkey.FieldKeyType, signingkey.FieldPurpose, signingkey.FieldKmsKeyReference, signingkey.FieldKmsBackend, signingkey.FieldPublicKey, signingkey.FieldKid, signingkey.FieldStatus, signingkey.FieldCertificate:
 			values[i] = new(sql.NullString)
 		case signingkey.FieldCreatedAt, signingkey.FieldUpdatedAt, signingkey.FieldRetiredAt, signingkey.FieldRetireAfter:
 			values[i] = new(sql.NullTime)
@@ -182,6 +184,12 @@ func (_m *SigningKey) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.RetireAfter = value.Time
 			}
+		case signingkey.FieldCertificate:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field certificate", values[i])
+			} else if value.Valid {
+				_m.Certificate = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -263,6 +271,9 @@ func (_m *SigningKey) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("retire_after=")
 	builder.WriteString(_m.RetireAfter.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("certificate=")
+	builder.WriteString(_m.Certificate)
 	builder.WriteByte(')')
 	return builder.String()
 }

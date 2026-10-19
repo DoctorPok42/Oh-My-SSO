@@ -17,6 +17,7 @@ import (
 
 	"sso.internal/sso/ent"
 	oidcadapter "sso.internal/sso/internal/adapters/oidc"
+	samladapter "sso.internal/sso/internal/adapters/saml"
 	valkeycache "sso.internal/sso/internal/cache/valkey"
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/service"
@@ -114,23 +115,30 @@ func buildEntClient() *ent.Client {
 	return ent.NewClient(ent.Driver(drv))
 }
 
-// buildOIDC returns the OpenID Connect adapter.
+// buildPublicURL returns the external URL of this server, used by the OIDC
+// and SAML adapters.
 //
 //	PUBLIC_URL=https://sso.example.com   external URL of this server; the issuer
 //	                                     of a realm is PUBLIC_URL/r/<realm>
 //
 // Without PUBLIC_URL (development only) the server uses http://localhost:<PORT>.
-// http:// is refused when APP_ENV=production: OIDC requires https issuers.
-func buildOIDC(port string, idp core.IdentityCore, store oidcstore.Store, passkeys bool) *oidcadapter.Adapter {
-	appEnv := os.Getenv("APP_ENV")
+// http:// is refused when APP_ENV=production: OIDC requires https issuers,
+// and SAML messages carrying assertions must not travel in clear.
+func buildPublicURL(port string) string {
 	publicURL := os.Getenv("PUBLIC_URL")
 	if publicURL == "" {
-		if appEnv == "production" {
-			log.Fatalf("oidc: PUBLIC_URL is required when APP_ENV=production")
+		if os.Getenv("APP_ENV") == "production" {
+			log.Fatalf("PUBLIC_URL is required when APP_ENV=production")
 		}
 		publicURL = "http://localhost:" + port
-		log.Printf("oidc: PUBLIC_URL is not set, using %s (development only)", publicURL)
+		log.Printf("PUBLIC_URL is not set, using %s (development only)", publicURL)
 	}
+	return publicURL
+}
+
+// buildOIDC returns the OpenID Connect adapter (Step 10).
+func buildOIDC(publicURL string, idp core.IdentityCore, store oidcstore.Store, passkeys bool) *oidcadapter.Adapter {
+	appEnv := os.Getenv("APP_ENV")
 	a, err := oidcadapter.New(oidcadapter.Config{
 		PublicURL:         publicURL,
 		AllowInsecureHTTP: appEnv != "production",
@@ -145,6 +153,24 @@ func buildOIDC(port string, idp core.IdentityCore, store oidcstore.Store, passke
 	return a
 }
 
+// buildSAML returns the SAML 2.0 adapter (Step 11). It reuses the OIDC
+// short-lived store (a generic key/value store; SAML keys start with "saml:").
+func buildSAML(publicURL string, idp core.IdentityCore, store oidcstore.Store, passkeys bool) *samladapter.Adapter {
+	appEnv := os.Getenv("APP_ENV")
+	a, err := samladapter.New(samladapter.Config{
+		PublicURL:         publicURL,
+		AllowInsecureHTTP: appEnv != "production",
+		SessionCookieName: httpserver.SessionCookieName,
+		PasskeysEnabled:   passkeys,
+		DevPages:          appEnv == "development",
+	}, idp, store)
+	if err != nil {
+		log.Fatalf("saml: %v", err)
+	}
+	log.Printf("saml: IdP metadata of realm <name> is %s/r/<name>/saml/metadata", strings.TrimRight(publicURL, "/"))
+	return a
+}
+
 const backendLocalDev = "local_dev"
 
 // main dispatches between the two modes of the binary:
@@ -153,6 +179,7 @@ const backendLocalDev = "local_dev"
 //	idp keys ...   manage signing keys from the command line (see keys.go)
 //	idp mfa ...    manage second factors and MFA policies (see mfa.go)
 //	idp oidc ...   manage OIDC clients (see oidc.go)
+//	idp saml ...   manage SAML clients (see saml.go)
 //	idp dev seed   demo realm, user and OIDC client (development only, see dev.go)
 func main() {
 	if len(os.Args) > 1 {
@@ -164,10 +191,12 @@ func main() {
 			os.Exit(runMFACommand(os.Args[2:]))
 		case "oidc":
 			os.Exit(runOIDCCommand(os.Args[2:]))
+		case "saml":
+			os.Exit(runSAMLCommand(os.Args[2:]))
 		case "dev":
 			os.Exit(runDevCommand(os.Args[2:]))
 		default:
-			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n  idp oidc clients <create|list|rotate-secret> [flags]\n  idp dev seed [flags]\n", os.Args[1])
+			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|activate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n  idp oidc clients <create|list|rotate-secret> [flags]\n  idp saml clients <create|list|add-cert|remove-cert> [flags]\n  idp dev seed [flags]\n", os.Args[1])
 			os.Exit(2)
 		}
 	}
@@ -271,8 +300,11 @@ func serve() {
 		Audit:       auditRepo,
 	})
 
-	// --- OpenID Connect (Step 10) ---
-	oidcProvider := buildOIDC(port, identityCore, valkeycache.NewOIDCStore(valkeyClient), mfaService.PasskeysEnabled())
+	// --- OpenID Connect (Step 10) and SAML 2.0 (Step 11) ---
+	publicURL := buildPublicURL(port)
+	flowStore := valkeycache.NewOIDCStore(valkeyClient)
+	oidcProvider := buildOIDC(publicURL, identityCore, flowStore, mfaService.PasskeysEnabled())
+	samlProvider := buildSAML(publicURL, identityCore, flowStore, mfaService.PasskeysEnabled())
 
 	srv := httpserver.New(
 		authService,
@@ -286,6 +318,7 @@ func serve() {
 		httpserver.WithMFA(mfaService),
 		httpserver.WithDevPages(os.Getenv("APP_ENV") == "development"),
 		httpserver.WithOIDC(oidcProvider),
+		httpserver.WithSAML(samlProvider),
 	)
 
 	log.Printf("Starting server on port %s...", port)

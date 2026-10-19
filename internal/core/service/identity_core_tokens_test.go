@@ -30,6 +30,8 @@ func (f *fakeTokenRepo) Create(_ context.Context, p repository.CreateTokenParams
 	t := &domain.Token{
 		ID: "tok-" + p.JTI, SessionID: p.SessionID, ClientRefID: p.ClientRefID, Type: p.Type,
 		JTI: p.JTI, ExpiresAt: p.ExpiresAt, Scopes: p.Scopes, TokenHash: p.TokenHash, FamilyID: p.FamilyID,
+		Subject: p.Subject, SubjectFormat: p.SubjectFormat, // Step 11
+		IssuedAt: time.Now(),
 	}
 	f.byJTI[p.JTI] = t
 	cp := *t

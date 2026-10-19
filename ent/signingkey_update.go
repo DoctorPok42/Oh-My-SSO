@@ -231,6 +231,9 @@ func (_u *SigningKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if _u.mutation.RetireAfterCleared() {
 		_spec.ClearField(signingkey.FieldRetireAfter, field.TypeTime)
 	}
+	if _u.mutation.CertificateCleared() {
+		_spec.ClearField(signingkey.FieldCertificate, field.TypeString)
+	}
 	if _u.mutation.RotationLogsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -526,6 +529,9 @@ func (_u *SigningKeyUpdateOne) sqlSave(ctx context.Context) (_node *SigningKey, 
 	}
 	if _u.mutation.RetireAfterCleared() {
 		_spec.ClearField(signingkey.FieldRetireAfter, field.TypeTime)
+	}
+	if _u.mutation.CertificateCleared() {
+		_spec.ClearField(signingkey.FieldCertificate, field.TypeString)
 	}
 	if _u.mutation.RotationLogsCleared() {
 		edge := &sqlgraph.EdgeSpec{

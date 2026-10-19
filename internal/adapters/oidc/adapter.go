@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -17,6 +16,7 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
 
+	"sso.internal/sso/internal/adapters/loginui"
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/oidcstore"
 )
@@ -57,7 +57,7 @@ type Adapter struct {
 	storage  *storage
 	provider *op.Provider
 	handler  http.Handler
-	pages    *template.Template
+	pages    *loginui.Pages
 }
 
 // Scopes and claims announced by discovery.
@@ -87,7 +87,7 @@ func New(cfg Config, idp core.IdentityCore, store oidcstore.Store) (*Adapter, er
 	if a.now == nil {
 		a.now = time.Now
 	}
-	if a.pages, err = parsePages(); err != nil {
+	if a.pages, err = loginui.New(a.logger); err != nil {
 		return nil, err
 	}
 	a.storage = &storage{a: a}

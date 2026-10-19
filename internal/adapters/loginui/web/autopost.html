@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>{{.Title}}</title>
+<link rel="stylesheet" href="{{.Assets}}/login.css">
+<script src="{{.Assets}}/autopost.js" defer></script>
+</head>
+<body>
+<main class="card">
+  <h1>{{.Title}}</h1>
+  <p>{{.Text}}</p>
+  <form id="autopost" method="post" action="{{.Action}}">
+    {{- range .Fields}}
+    <input type="hidden" name="{{.Name}}" value="{{.Value}}">
+    {{- end}}
+    <button type="submit">Continue</button>
+  </form>
+</main>
+</body>
+</html>

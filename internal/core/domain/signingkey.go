@@ -23,6 +23,9 @@ const (
 type SigningKeyStatus string
 
 const (
+	// SigningKeyPending (Step 11, saml_signing only): published in the SAML
+	// metadata, but does not sign yet. See KeyRotationService.Activate.
+	SigningKeyPending  SigningKeyStatus = "pending"
 	SigningKeyActive   SigningKeyStatus = "active"
 	SigningKeyRotating SigningKeyStatus = "rotating"
 	SigningKeyRetired  SigningKeyStatus = "retired"
@@ -44,4 +47,7 @@ type SigningKey struct {
 	// RetireAfter is the end of the grace period of a "rotating" key (zero
 	// for an "active" key). After it, the key leaves the JWKS.
 	RetireAfter time.Time
+	// Certificate is the self-signed X.509 certificate of the key, PEM
+	// encoded (saml_signing keys, Step 11). Empty for JWT keys.
+	Certificate string
 }

@@ -162,6 +162,12 @@ func (_u *TokenUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.UsedAtCleared() {
 		_spec.ClearField(token.FieldUsedAt, field.TypeTime)
 	}
+	if _u.mutation.SubjectCleared() {
+		_spec.ClearField(token.FieldSubject, field.TypeString)
+	}
+	if _u.mutation.SubjectFormatCleared() {
+		_spec.ClearField(token.FieldSubjectFormat, field.TypeString)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{token.Label}
@@ -344,6 +350,12 @@ func (_u *TokenUpdateOne) sqlSave(ctx context.Context) (_node *Token, err error)
 	}
 	if _u.mutation.UsedAtCleared() {
 		_spec.ClearField(token.FieldUsedAt, field.TypeTime)
+	}
+	if _u.mutation.SubjectCleared() {
+		_spec.ClearField(token.FieldSubject, field.TypeString)
+	}
+	if _u.mutation.SubjectFormatCleared() {
+		_spec.ClearField(token.FieldSubjectFormat, field.TypeString)
 	}
 	_node = &Token{config: _u.config}
 	_spec.Assign = _node.assignValues

@@ -31,6 +31,9 @@ type Server struct {
 
 	// Step 10: OpenID Connect. nil = no OIDC routes.
 	oidc OIDCProvider
+
+	// Step 11: SAML 2.0. nil = no SAML routes.
+	saml SAMLProvider
 }
 
 // OIDCProvider is the OIDC adapter as the router sees it (implemented by
@@ -40,6 +43,13 @@ type OIDCProvider interface {
 	Handler() http.Handler
 	// DiscoveryHandler serves /r/{realm}/.well-known/openid-configuration.
 	DiscoveryHandler() http.Handler
+}
+
+// SAMLProvider is the SAML adapter as the router sees it (implemented by
+// internal/adapters/saml).
+type SAMLProvider interface {
+	// Handler serves /r/{realm}/saml/*.
+	Handler() http.Handler
 }
 
 // Option configures optional parts of the Server.
@@ -66,6 +76,12 @@ func WithMFA(mfa *service.MFAService) Option {
 // introspect, logout).
 func WithOIDC(p OIDCProvider) Option {
 	return func(s *Server) { s.oidc = p }
+}
+
+// WithSAML mounts the SAML 2.0 endpoints (Step 11): /r/{realm}/saml/...
+// (metadata, sso, login page, slo).
+func WithSAML(p SAMLProvider) Option {
+	return func(s *Server) { s.saml = p }
 }
 
 // WithDevPages mounts /r/{realm}/dev/mfa, a bare HTML page to try the MFA
@@ -119,6 +135,9 @@ func New(
 		}
 		if s.oidc != nil {
 			s.mountOIDC(r)
+		}
+		if s.saml != nil {
+			s.mountSAML(r)
 		}
 		if s.keyRotator != nil {
 			s.mountSigningKeyAdmin(r)

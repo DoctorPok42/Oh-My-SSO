@@ -195,6 +195,31 @@ type Signer interface {
 	Sign(ctx context.Context, payload []byte) ([]byte, error)
 }
 
+// DigestSigner is a Signer that can also sign a SHA-256 digest computed by
+// the caller (Step 11). XML-DSig computes the digest of the canonical
+// <SignedInfo> itself and only then asks for a signature, so the SAML adapter
+// needs this form. Signers returned for saml_signing keys implement it; use a
+// type assertion.
+type DigestSigner interface {
+	Signer
+	// SignDigest signs a 32-byte SHA-256 digest (RSA PKCS#1 v1.5 for RSA).
+	SignDigest(ctx context.Context, digest []byte) ([]byte, error)
+	// CertificatePEM is the X.509 certificate of the key, PEM encoded
+	// (saml_signing keys). Empty when the key has none (jwt_signing).
+	CertificatePEM() string
+}
+
+// SessionParticipant describes a client that received an identity
+// assertion for a session (Step 11, SAML Single Logout).
+type SessionParticipant struct {
+	SessionID string
+	ClientRef string // ClientApp.ID
+	// Subject / SubjectFormat are what the client received (SAML NameID and
+	// its Format URI): a logout message must repeat them exactly.
+	Subject       string
+	SubjectFormat string
+}
+
 // IdentityCore is the only entry point adapters use.
 type IdentityCore interface {
 	// --- Authentication ---
@@ -261,12 +286,30 @@ type IdentityCore interface {
 	// RevokeTokenFamily revokes every token of a family. Idempotent.
 	RevokeTokenFamily(ctx context.Context, familyID string) error
 
+	// --- Session participants (Step 11) ---
+
+	// RegisterSessionParticipant records that a client received an identity
+	// assertion for an active session. If the client already has a record
+	// for this session with the same SubjectFormat (and Subject, except for
+	// transient identifiers), that record is returned unchanged: the client
+	// keeps one SessionIndex (the record's JTI) and one NameID for the whole
+	// session. The record expires with the session and is revoked with it.
+	RegisterSessionParticipant(ctx context.Context, p SessionParticipant) (*domain.Token, error)
+	// SessionParticipants returns the participant records of a session that
+	// are not revoked yet, oldest first. Call it BEFORE RevokeSession, which
+	// revokes them.
+	SessionParticipants(ctx context.Context, sessionID string) ([]*domain.Token, error)
+
 	// --- Protocol clients (Step 10) ---
 
 	// LookupClient finds an active client of the realm by its protocol
 	// identifier: the OIDC client_id or the SAML entity_id. A deleted,
 	// inactive or unknown client is ErrClientNotFound.
 	LookupClient(ctx context.Context, realmID string, protocol domain.ClientAppProtocol, protocolID string) (*ProtocolClient, error)
+	// ClientByRef finds an active client by its ClientApp.ID, any protocol
+	// (Step 11: Single Logout knows participants by reference). A deleted,
+	// inactive or unknown client is ErrClientNotFound.
+	ClientByRef(ctx context.Context, clientRef string) (*ProtocolClient, error)
 	// AuthenticateClient checks the secret of a confidential client, in
 	// constant time. Wrong secret, or a client without a secret (public):
 	// ErrInvalidClientSecret.
@@ -275,10 +318,12 @@ type IdentityCore interface {
 	// --- Keys ---
 
 	// Signer returns the newest active key of the realm for that purpose.
+	// For saml_signing it is also a DigestSigner.
 	Signer(ctx context.Context, realmID string, purpose domain.SigningKeyPurpose) (Signer, error)
 	// PublicKeys returns the keys whose public part must be published so
-	// that clients can verify signatures: the "active" keys plus the
-	// "rotating" keys still inside their grace period. Newest first.
+	// that clients can verify signatures: the "active" keys, the "rotating"
+	// keys still inside their grace period, and the "pending" keys (Step 11:
+	// published before they sign). Newest first.
 	// The OIDC adapter publishes the jwt_signing ones as a JWKS, the SAML
 	// adapter the saml_signing ones in its metadata.
 	PublicKeys(ctx context.Context, realmID string, purpose domain.SigningKeyPurpose) ([]*domain.SigningKey, error)

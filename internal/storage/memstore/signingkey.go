@@ -53,10 +53,14 @@ func (s *SigningKeys) Create(_ context.Context, p repository.CreateSigningKeyPar
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := s.Now()
+	status := p.Status
+	if status == "" {
+		status = domain.SigningKeyActive
+	}
 	k := &domain.SigningKey{
 		ID: uuid.NewString(), RealmID: p.RealmID, KeyType: p.KeyType, Purpose: p.Purpose,
 		KMSKeyReference: p.KMSKeyReference, KMSBackend: p.KMSBackend, PublicKey: p.PublicKey,
-		Kid: p.Kid, Status: domain.SigningKeyActive, CreatedAt: now, UpdatedAt: now,
+		Kid: p.Kid, Status: status, CreatedAt: now, UpdatedAt: now, Certificate: p.Certificate,
 	}
 	s.keys = append(s.keys, k)
 	cp := *k
@@ -73,7 +77,8 @@ func (s *SigningKeys) GetByKid(_ context.Context, kid string) (*domain.SigningKe
 
 func (s *SigningKeys) ListActiveByRealm(_ context.Context, realmID string) ([]*domain.SigningKey, error) {
 	return s.list(func(k *domain.SigningKey) bool {
-		return k.RealmID == realmID && (k.Status == domain.SigningKeyActive || k.Status == domain.SigningKeyRotating)
+		return k.RealmID == realmID && (k.Status == domain.SigningKeyPending ||
+			k.Status == domain.SigningKeyActive || k.Status == domain.SigningKeyRotating)
 	}), nil
 }
 
@@ -93,6 +98,12 @@ func (s *SigningKeys) MarkRotating(_ context.Context, id string, retireAfter tim
 	return s.update(id,
 		func(k *domain.SigningKey) bool { return k.Status == domain.SigningKeyActive },
 		func(k *domain.SigningKey) { k.Status, k.RetireAfter = domain.SigningKeyRotating, retireAfter })
+}
+
+func (s *SigningKeys) Activate(_ context.Context, id string) error {
+	return s.update(id,
+		func(k *domain.SigningKey) bool { return k.Status == domain.SigningKeyPending },
+		func(k *domain.SigningKey) { k.Status = domain.SigningKeyActive })
 }
 
 func (s *SigningKeys) Retire(_ context.Context, id string) error {

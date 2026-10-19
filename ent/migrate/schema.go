@@ -865,6 +865,7 @@ var (
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "retired_at", Type: field.TypeTime, Nullable: true},
 		{Name: "retire_after", Type: field.TypeTime, Nullable: true},
+		{Name: "certificate", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "realm_id", Type: field.TypeString},
 	}
 	// SigningKeysTable holds the schema information for the "signing_keys" table.
@@ -875,7 +876,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "signing_keys_realms_signing_keys",
-				Columns:    []*schema.Column{SigningKeysColumns[12]},
+				Columns:    []*schema.Column{SigningKeysColumns[13]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -884,7 +885,7 @@ var (
 			{
 				Name:    "signingkey_realm_id_purpose_status",
 				Unique:  false,
-				Columns: []*schema.Column{SigningKeysColumns[12], SigningKeysColumns[2], SigningKeysColumns[7]},
+				Columns: []*schema.Column{SigningKeysColumns[13], SigningKeysColumns[2], SigningKeysColumns[7]},
 			},
 		},
 	}
@@ -933,6 +934,8 @@ var (
 		{Name: "token_hash", Type: field.TypeString, Unique: true, Nullable: true},
 		{Name: "family_id", Type: field.TypeString, Nullable: true},
 		{Name: "used_at", Type: field.TypeTime, Nullable: true},
+		{Name: "subject", Type: field.TypeString, Nullable: true},
+		{Name: "subject_format", Type: field.TypeString, Nullable: true},
 		{Name: "client_ref_id", Type: field.TypeString},
 		{Name: "session_id", Type: field.TypeString},
 	}
@@ -944,13 +947,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "tokens_client_apps_tokens",
-				Columns:    []*schema.Column{TokensColumns[10]},
+				Columns:    []*schema.Column{TokensColumns[12]},
 				RefColumns: []*schema.Column{ClientAppsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 			{
 				Symbol:     "tokens_sessions_tokens",
-				Columns:    []*schema.Column{TokensColumns[11]},
+				Columns:    []*schema.Column{TokensColumns[13]},
 				RefColumns: []*schema.Column{SessionsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -959,7 +962,7 @@ var (
 			{
 				Name:    "token_session_id_revoked",
 				Unique:  false,
-				Columns: []*schema.Column{TokensColumns[11], TokensColumns[5]},
+				Columns: []*schema.Column{TokensColumns[13], TokensColumns[5]},
 			},
 			{
 				Name:    "token_family_id",

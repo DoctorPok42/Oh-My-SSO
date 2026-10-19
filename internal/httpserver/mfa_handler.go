@@ -19,6 +19,7 @@ import (
 //
 //	POST   /r/{realm}/auth/mfa/verify               second step of the login (cookie sso_mfa)
 //	GET    /r/{realm}/auth/mfa/status?client_id=    what the session satisfies
+//	                                  (or ?entity_id= for a SAML client, Step 11)
 //	POST   /r/{realm}/auth/step-up                  verify a factor again (session)
 //
 //	GET    /r/{realm}/account/mfa                   my factors
@@ -405,17 +406,37 @@ func (s *Server) sessionUser(w http.ResponseWriter, r *http.Request) (*domain.Us
 	return user, true
 }
 
-// clientFromQuery resolves ?client_id= (OIDC client_id). Absent: nil.
+// clientFromQuery resolves ?client_id= (OIDC client_id) or ?entity_id=
+// (SAML entity ID, Step 11). Absent: nil. Both: invalid request.
 func (s *Server) clientFromQuery(w http.ResponseWriter, r *http.Request, realmID string) (*domain.ClientApp, bool) {
-	clientID := r.URL.Query().Get("client_id")
-	if clientID == "" {
+	return s.lookupAnyClient(w, r, realmID, r.URL.Query().Get("client_id"), r.URL.Query().Get("entity_id"))
+}
+
+// lookupAnyClient resolves the application a login is for, named by its
+// OIDC client_id or its SAML entity_id (at most one of them). Neither: nil.
+func (s *Server) lookupAnyClient(w http.ResponseWriter, r *http.Request, realmID, clientID, entityID string) (*domain.ClientApp, bool) {
+	switch {
+	case clientID != "" && entityID != "":
+		writeError(w, http.StatusBadRequest, "invalid_request")
+		return nil, false
+	case clientID != "":
+		return s.lookupClient(w, r, realmID, clientID)
+	case entityID != "":
+		c, err := s.clients.GetByRealmAndEntityID(r.Context(), realmID, entityID)
+		return s.checkClient(w, c, err)
+	default:
 		return nil, true
 	}
-	return s.lookupClient(w, r, realmID, clientID)
 }
 
 func (s *Server) lookupClient(w http.ResponseWriter, r *http.Request, realmID, clientID string) (*domain.ClientApp, bool) {
 	c, err := s.clients.GetByRealmAndClientID(r.Context(), realmID, clientID)
+	return s.checkClient(w, c, err)
+}
+
+// checkClient turns a repository lookup into "an active client, or an error
+// response already written".
+func (s *Server) checkClient(w http.ResponseWriter, c *domain.ClientApp, err error) (*domain.ClientApp, bool) {
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			writeError(w, http.StatusBadRequest, "unknown_client")

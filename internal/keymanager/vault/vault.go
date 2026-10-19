@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"strconv"
@@ -27,6 +28,8 @@ type KeyManager struct {
 var (
 	_ keymanager.KeyManager = (*KeyManager)(nil)
 	_ keymanager.Encrypter  = (*KeyManager)(nil)
+	// Step 11: XML-DSig and X.509 certificates hand over a digest.
+	_ keymanager.DigestSigner = (*KeyManager)(nil)
 )
 
 func New(cfg Config) (*KeyManager, error) {
@@ -107,6 +110,30 @@ func (k *KeyManager) Sign(ctx context.Context, kmsKeyReference string, payload [
 	})
 	if err != nil {
 		return nil, fmt.Errorf("vault keymanager: sign: %w", err)
+	}
+	raw, _ := secret.Data["signature"].(string)
+	parts := strings.SplitN(raw, ":", 3)
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("vault keymanager: unexpected signature format %q", raw)
+	}
+	return base64.StdEncoding.DecodeString(parts[2])
+}
+
+// SignDigest implements keymanager.DigestSigner (Step 11): the same Transit
+// sign call, with "prehashed" so Vault signs our SHA-256 digest as it is.
+// https://developer.hashicorp.com/vault/api-docs/secret/transit#sign-data
+func (k *KeyManager) SignDigest(ctx context.Context, kmsKeyReference string, digest []byte) ([]byte, error) {
+	if len(digest) != sha256.Size {
+		return nil, fmt.Errorf("vault keymanager: digest must be %d bytes (SHA-256), got %d", sha256.Size, len(digest))
+	}
+	secret, err := k.client.Logical().WriteWithContext(ctx, k.path("sign", kmsKeyReference), map[string]interface{}{
+		"input":               base64.StdEncoding.EncodeToString(digest),
+		"prehashed":           true,
+		"hash_algorithm":      "sha2-256",
+		"signature_algorithm": "pkcs1v15",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("vault keymanager: sign digest: %w", err)
 	}
 	raw, _ := secret.Data["signature"].(string)
 	parts := strings.SplitN(raw, ":", 3)

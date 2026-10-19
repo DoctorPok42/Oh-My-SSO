@@ -25839,6 +25839,7 @@ type SigningKeyMutation struct {
 	updated_at           *time.Time
 	retired_at           *time.Time
 	retire_after         *time.Time
+	certificate          *string
 	clearedFields        map[string]struct{}
 	realm                *string
 	clearedrealm         bool
@@ -26425,6 +26426,55 @@ func (m *SigningKeyMutation) ResetRetireAfter() {
 	delete(m.clearedFields, signingkey.FieldRetireAfter)
 }
 
+// SetCertificate sets the "certificate" field.
+func (m *SigningKeyMutation) SetCertificate(s string) {
+	m.certificate = &s
+}
+
+// Certificate returns the value of the "certificate" field in the mutation.
+func (m *SigningKeyMutation) Certificate() (r string, exists bool) {
+	v := m.certificate
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCertificate returns the old "certificate" field's value of the SigningKey entity.
+// If the SigningKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SigningKeyMutation) OldCertificate(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCertificate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCertificate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCertificate: %w", err)
+	}
+	return oldValue.Certificate, nil
+}
+
+// ClearCertificate clears the value of the "certificate" field.
+func (m *SigningKeyMutation) ClearCertificate() {
+	m.certificate = nil
+	m.clearedFields[signingkey.FieldCertificate] = struct{}{}
+}
+
+// CertificateCleared returns if the "certificate" field was cleared in this mutation.
+func (m *SigningKeyMutation) CertificateCleared() bool {
+	_, ok := m.clearedFields[signingkey.FieldCertificate]
+	return ok
+}
+
+// ResetCertificate resets all changes to the "certificate" field.
+func (m *SigningKeyMutation) ResetCertificate() {
+	m.certificate = nil
+	delete(m.clearedFields, signingkey.FieldCertificate)
+}
+
 // ClearRealm clears the "realm" edge to the Realm entity.
 func (m *SigningKeyMutation) ClearRealm() {
 	m.clearedrealm = true
@@ -26540,7 +26590,7 @@ func (m *SigningKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SigningKeyMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.realm != nil {
 		fields = append(fields, signingkey.FieldRealmID)
 	}
@@ -26577,6 +26627,9 @@ func (m *SigningKeyMutation) Fields() []string {
 	if m.retire_after != nil {
 		fields = append(fields, signingkey.FieldRetireAfter)
 	}
+	if m.certificate != nil {
+		fields = append(fields, signingkey.FieldCertificate)
+	}
 	return fields
 }
 
@@ -26609,6 +26662,8 @@ func (m *SigningKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.RetiredAt()
 	case signingkey.FieldRetireAfter:
 		return m.RetireAfter()
+	case signingkey.FieldCertificate:
+		return m.Certificate()
 	}
 	return nil, false
 }
@@ -26642,6 +26697,8 @@ func (m *SigningKeyMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldRetiredAt(ctx)
 	case signingkey.FieldRetireAfter:
 		return m.OldRetireAfter(ctx)
+	case signingkey.FieldCertificate:
+		return m.OldCertificate(ctx)
 	}
 	return nil, fmt.Errorf("unknown SigningKey field %s", name)
 }
@@ -26735,6 +26792,13 @@ func (m *SigningKeyMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetRetireAfter(v)
 		return nil
+	case signingkey.FieldCertificate:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCertificate(v)
+		return nil
 	}
 	return fmt.Errorf("unknown SigningKey field %s", name)
 }
@@ -26774,6 +26838,9 @@ func (m *SigningKeyMutation) ClearedFields() []string {
 	if m.FieldCleared(signingkey.FieldRetireAfter) {
 		fields = append(fields, signingkey.FieldRetireAfter)
 	}
+	if m.FieldCleared(signingkey.FieldCertificate) {
+		fields = append(fields, signingkey.FieldCertificate)
+	}
 	return fields
 }
 
@@ -26796,6 +26863,9 @@ func (m *SigningKeyMutation) ClearField(name string) error {
 		return nil
 	case signingkey.FieldRetireAfter:
 		m.ClearRetireAfter()
+		return nil
+	case signingkey.FieldCertificate:
+		m.ClearCertificate()
 		return nil
 	}
 	return fmt.Errorf("unknown SigningKey nullable field %s", name)
@@ -26840,6 +26910,9 @@ func (m *SigningKeyMutation) ResetField(name string) error {
 		return nil
 	case signingkey.FieldRetireAfter:
 		m.ResetRetireAfter()
+		return nil
+	case signingkey.FieldCertificate:
+		m.ResetCertificate()
 		return nil
 	}
 	return fmt.Errorf("unknown SigningKey field %s", name)
@@ -27749,6 +27822,8 @@ type TokenMutation struct {
 	token_hash        *string
 	family_id         *string
 	used_at           *time.Time
+	subject           *string
+	subject_format    *string
 	clearedFields     map[string]struct{}
 	session           *string
 	clearedsession    bool
@@ -28327,6 +28402,104 @@ func (m *TokenMutation) ResetUsedAt() {
 	delete(m.clearedFields, token.FieldUsedAt)
 }
 
+// SetSubject sets the "subject" field.
+func (m *TokenMutation) SetSubject(s string) {
+	m.subject = &s
+}
+
+// Subject returns the value of the "subject" field in the mutation.
+func (m *TokenMutation) Subject() (r string, exists bool) {
+	v := m.subject
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSubject returns the old "subject" field's value of the Token entity.
+// If the Token object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TokenMutation) OldSubject(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSubject is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSubject requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSubject: %w", err)
+	}
+	return oldValue.Subject, nil
+}
+
+// ClearSubject clears the value of the "subject" field.
+func (m *TokenMutation) ClearSubject() {
+	m.subject = nil
+	m.clearedFields[token.FieldSubject] = struct{}{}
+}
+
+// SubjectCleared returns if the "subject" field was cleared in this mutation.
+func (m *TokenMutation) SubjectCleared() bool {
+	_, ok := m.clearedFields[token.FieldSubject]
+	return ok
+}
+
+// ResetSubject resets all changes to the "subject" field.
+func (m *TokenMutation) ResetSubject() {
+	m.subject = nil
+	delete(m.clearedFields, token.FieldSubject)
+}
+
+// SetSubjectFormat sets the "subject_format" field.
+func (m *TokenMutation) SetSubjectFormat(s string) {
+	m.subject_format = &s
+}
+
+// SubjectFormat returns the value of the "subject_format" field in the mutation.
+func (m *TokenMutation) SubjectFormat() (r string, exists bool) {
+	v := m.subject_format
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSubjectFormat returns the old "subject_format" field's value of the Token entity.
+// If the Token object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TokenMutation) OldSubjectFormat(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSubjectFormat is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSubjectFormat requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSubjectFormat: %w", err)
+	}
+	return oldValue.SubjectFormat, nil
+}
+
+// ClearSubjectFormat clears the value of the "subject_format" field.
+func (m *TokenMutation) ClearSubjectFormat() {
+	m.subject_format = nil
+	m.clearedFields[token.FieldSubjectFormat] = struct{}{}
+}
+
+// SubjectFormatCleared returns if the "subject_format" field was cleared in this mutation.
+func (m *TokenMutation) SubjectFormatCleared() bool {
+	_, ok := m.clearedFields[token.FieldSubjectFormat]
+	return ok
+}
+
+// ResetSubjectFormat resets all changes to the "subject_format" field.
+func (m *TokenMutation) ResetSubjectFormat() {
+	m.subject_format = nil
+	delete(m.clearedFields, token.FieldSubjectFormat)
+}
+
 // ClearSession clears the "session" edge to the Session entity.
 func (m *TokenMutation) ClearSession() {
 	m.clearedsession = true
@@ -28428,7 +28601,7 @@ func (m *TokenMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TokenMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 13)
 	if m.session != nil {
 		fields = append(fields, token.FieldSessionID)
 	}
@@ -28462,6 +28635,12 @@ func (m *TokenMutation) Fields() []string {
 	if m.used_at != nil {
 		fields = append(fields, token.FieldUsedAt)
 	}
+	if m.subject != nil {
+		fields = append(fields, token.FieldSubject)
+	}
+	if m.subject_format != nil {
+		fields = append(fields, token.FieldSubjectFormat)
+	}
 	return fields
 }
 
@@ -28492,6 +28671,10 @@ func (m *TokenMutation) Field(name string) (ent.Value, bool) {
 		return m.FamilyID()
 	case token.FieldUsedAt:
 		return m.UsedAt()
+	case token.FieldSubject:
+		return m.Subject()
+	case token.FieldSubjectFormat:
+		return m.SubjectFormat()
 	}
 	return nil, false
 }
@@ -28523,6 +28706,10 @@ func (m *TokenMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldFamilyID(ctx)
 	case token.FieldUsedAt:
 		return m.OldUsedAt(ctx)
+	case token.FieldSubject:
+		return m.OldSubject(ctx)
+	case token.FieldSubjectFormat:
+		return m.OldSubjectFormat(ctx)
 	}
 	return nil, fmt.Errorf("unknown Token field %s", name)
 }
@@ -28609,6 +28796,20 @@ func (m *TokenMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUsedAt(v)
 		return nil
+	case token.FieldSubject:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSubject(v)
+		return nil
+	case token.FieldSubjectFormat:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSubjectFormat(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Token field %s", name)
 }
@@ -28651,6 +28852,12 @@ func (m *TokenMutation) ClearedFields() []string {
 	if m.FieldCleared(token.FieldUsedAt) {
 		fields = append(fields, token.FieldUsedAt)
 	}
+	if m.FieldCleared(token.FieldSubject) {
+		fields = append(fields, token.FieldSubject)
+	}
+	if m.FieldCleared(token.FieldSubjectFormat) {
+		fields = append(fields, token.FieldSubjectFormat)
+	}
 	return fields
 }
 
@@ -28676,6 +28883,12 @@ func (m *TokenMutation) ClearField(name string) error {
 		return nil
 	case token.FieldUsedAt:
 		m.ClearUsedAt()
+		return nil
+	case token.FieldSubject:
+		m.ClearSubject()
+		return nil
+	case token.FieldSubjectFormat:
+		m.ClearSubjectFormat()
 		return nil
 	}
 	return fmt.Errorf("unknown Token nullable field %s", name)
@@ -28717,6 +28930,12 @@ func (m *TokenMutation) ResetField(name string) error {
 		return nil
 	case token.FieldUsedAt:
 		m.ResetUsedAt()
+		return nil
+	case token.FieldSubject:
+		m.ResetSubject()
+		return nil
+	case token.FieldSubjectFormat:
+		m.ResetSubjectFormat()
 		return nil
 	}
 	return fmt.Errorf("unknown Token field %s", name)
