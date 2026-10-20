@@ -22,7 +22,8 @@ type LoginChallenge struct {
 	ClientRef string    `json:"cref,omitempty"` // ClientApp.ID the login is for, if any
 	IPAddress string    `json:"ip,omitempty"`
 	UserAgent string    `json:"ua,omitempty"`
-	Methods   []string  `json:"m"` // methods that may answer this challenge
+	Device    string    `json:"dev,omitempty"` // Step 12: device fingerprint (hash) for the session
+	Methods   []string  `json:"m"`             // methods that may answer this challenge
 	CreatedAt time.Time `json:"cat"`
 	ExpiresAt time.Time `json:"exp"`
 }

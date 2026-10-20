@@ -26,6 +26,7 @@
     <input id="identifier" name="identifier" autocomplete="username webauthn" required value="{{.LoginHint}}" autofocus>
     <label for="password">Password</label>
     <input id="password" name="password" type="password" autocomplete="current-password" required>
+    {{if .ForgotPasswordURL}}<p class="aside"><a href="{{.ForgotPasswordURL}}">Forgot password?</a></p>{{end}}
     <button type="submit">Sign in</button>
   </form>
 

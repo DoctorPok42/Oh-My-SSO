@@ -34,6 +34,9 @@ type Server struct {
 
 	// Step 11: SAML 2.0. nil = no SAML routes.
 	saml SAMLProvider
+
+	// Step 12: password reset. nil = no forgot/reset routes.
+	passwordReset *service.PasswordResetService
 }
 
 // OIDCProvider is the OIDC adapter as the router sees it (implemented by
@@ -84,6 +87,12 @@ func WithSAML(p SAMLProvider) Option {
 	return func(s *Server) { s.saml = p }
 }
 
+// WithPasswordReset mounts the "forgot password" flow (Step 12): the
+// forgot-password and reset-password pages and their JSON endpoints.
+func WithPasswordReset(p *service.PasswordResetService) Option {
+	return func(s *Server) { s.passwordReset = p }
+}
+
 // WithDevPages mounts /r/{realm}/dev/mfa, a bare HTML page to try the MFA
 // flows by hand. Only ever enabled when APP_ENV=development.
 func WithDevPages(enabled bool) Option {
@@ -121,6 +130,9 @@ func New(
 	s.router.Route("/r/{realmName}", func(r chi.Router) {
 		r.Use(s.realmMiddleware)
 		s.mountAuth(r)
+		if s.passwordReset != nil {
+			s.mountPasswordReset(r)
+		}
 		if s.mfa != nil {
 			s.mountMFA(r)
 			if s.mfa.PasskeysEnabled() {

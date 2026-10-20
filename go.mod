@@ -12,6 +12,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/mattermost/xml-roundtrip-validator v0.1.0
+	github.com/oschwald/maxminddb-golang/v2 v2.8.0
 	github.com/ovh/okms-sdk-go v0.5.4
 	github.com/pquerna/otp v1.5.0
 	github.com/rs/cors v1.11.1

@@ -445,8 +445,16 @@ func init() {
 	instancesettingsDescMfaStepUpMaxAgeMinutes := instancesettingsFields[13].Descriptor()
 	// instancesettings.DefaultMfaStepUpMaxAgeMinutes holds the default value on creation for the mfa_step_up_max_age_minutes field.
 	instancesettings.DefaultMfaStepUpMaxAgeMinutes = instancesettingsDescMfaStepUpMaxAgeMinutes.Default.(int)
+	// instancesettingsDescPasswordResetTTLMinutes is the schema descriptor for password_reset_ttl_minutes field.
+	instancesettingsDescPasswordResetTTLMinutes := instancesettingsFields[14].Descriptor()
+	// instancesettings.DefaultPasswordResetTTLMinutes holds the default value on creation for the password_reset_ttl_minutes field.
+	instancesettings.DefaultPasswordResetTTLMinutes = instancesettingsDescPasswordResetTTLMinutes.Default.(int)
+	// instancesettingsDescSuspiciousLoginEmailEnabled is the schema descriptor for suspicious_login_email_enabled field.
+	instancesettingsDescSuspiciousLoginEmailEnabled := instancesettingsFields[15].Descriptor()
+	// instancesettings.DefaultSuspiciousLoginEmailEnabled holds the default value on creation for the suspicious_login_email_enabled field.
+	instancesettings.DefaultSuspiciousLoginEmailEnabled = instancesettingsDescSuspiciousLoginEmailEnabled.Default.(bool)
 	// instancesettingsDescUpdatedAt is the schema descriptor for updated_at field.
-	instancesettingsDescUpdatedAt := instancesettingsFields[14].Descriptor()
+	instancesettingsDescUpdatedAt := instancesettingsFields[16].Descriptor()
 	// instancesettings.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	instancesettings.DefaultUpdatedAt = instancesettingsDescUpdatedAt.Default.(func() time.Time)
 	// instancesettings.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -927,6 +935,14 @@ func init() {
 	userDescStatus := userFields[8].Descriptor()
 	// user.DefaultStatus holds the default value on creation for the status field.
 	user.DefaultStatus = schema.UserStatus(userDescStatus.Default.(string))
+	// userDescFailedLoginCount is the schema descriptor for failed_login_count field.
+	userDescFailedLoginCount := userFields[11].Descriptor()
+	// user.DefaultFailedLoginCount holds the default value on creation for the failed_login_count field.
+	user.DefaultFailedLoginCount = userDescFailedLoginCount.Default.(int)
+	// userDescLockoutCount is the schema descriptor for lockout_count field.
+	userDescLockoutCount := userFields[14].Descriptor()
+	// user.DefaultLockoutCount holds the default value on creation for the lockout_count field.
+	user.DefaultLockoutCount = userDescLockoutCount.Default.(int)
 	// userDescID is the schema descriptor for id field.
 	userDescID := userFields[0].Descriptor()
 	// user.DefaultID holds the default value on creation for the id field.

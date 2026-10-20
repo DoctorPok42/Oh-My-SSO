@@ -1,0 +1,25 @@
+{{define "subject"}}Unusual sign-in to your account{{end}}
+
+{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+
+Someone signed in to your {{.Realm}} account, and it does not look like
+your usual sign-ins:
+{{range .Reasons}}  - {{.}}
+{{end}}
+{{template "details.txt" .}}
+If this was you (a trip, a new phone...), there is nothing to do.
+
+If it was not you, change your password now (this signs out every
+session) and check the sign-in methods of your account:
+{{.ForgotPasswordURL}}
+{{end}}
+
+{{define "html"}}{{template "title" "Unusual sign-in to your account"}}
+<p style="margin:0 0 12px 0;">Hello{{if .Username}} {{.Username}}{{end}},</p>
+<p style="margin:0 0 8px 0;">Someone signed in to your {{.Realm}} account, and it does not look like your usual sign-ins:</p>
+<ul style="margin:0 0 12px 0;padding-left:20px;">{{range .Reasons}}<li>{{.}}</li>{{end}}</ul>
+{{template "details" .}}
+<p style="margin:0 0 12px 0;">If this was you (a trip, a new phone...), there is nothing to do.</p>
+<p style="margin:0 0 12px 0;"><strong>Not you?</strong> Change your password now (it signs out every session) and check the sign-in methods of your account.</p>
+{{template "button" (button .ForgotPasswordURL "Change my password")}}
+{{end}}

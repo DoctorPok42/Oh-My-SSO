@@ -254,6 +254,9 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, ar *authRe
 	if a.cfg.DevPages {
 		page.EnrollURL = base + "/dev/mfa"
 	}
+	if a.cfg.PasswordReset {
+		page.ForgotPasswordURL = base + "/auth/forgot-password"
+	}
 	a.pages.RenderLogin(w, http.StatusOK, page)
 }
 

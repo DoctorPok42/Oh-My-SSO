@@ -157,6 +157,108 @@ func (_u *UserUpdate) ClearProfile() *UserUpdate {
 	return _u
 }
 
+// SetFailedLoginCount sets the "failed_login_count" field.
+func (_u *UserUpdate) SetFailedLoginCount(v int) *UserUpdate {
+	_u.mutation.ResetFailedLoginCount()
+	_u.mutation.SetFailedLoginCount(v)
+	return _u
+}
+
+// SetNillableFailedLoginCount sets the "failed_login_count" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableFailedLoginCount(v *int) *UserUpdate {
+	if v != nil {
+		_u.SetFailedLoginCount(*v)
+	}
+	return _u
+}
+
+// AddFailedLoginCount adds value to the "failed_login_count" field.
+func (_u *UserUpdate) AddFailedLoginCount(v int) *UserUpdate {
+	_u.mutation.AddFailedLoginCount(v)
+	return _u
+}
+
+// SetLastFailedLoginAt sets the "last_failed_login_at" field.
+func (_u *UserUpdate) SetLastFailedLoginAt(v time.Time) *UserUpdate {
+	_u.mutation.SetLastFailedLoginAt(v)
+	return _u
+}
+
+// SetNillableLastFailedLoginAt sets the "last_failed_login_at" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableLastFailedLoginAt(v *time.Time) *UserUpdate {
+	if v != nil {
+		_u.SetLastFailedLoginAt(*v)
+	}
+	return _u
+}
+
+// ClearLastFailedLoginAt clears the value of the "last_failed_login_at" field.
+func (_u *UserUpdate) ClearLastFailedLoginAt() *UserUpdate {
+	_u.mutation.ClearLastFailedLoginAt()
+	return _u
+}
+
+// SetLockedUntil sets the "locked_until" field.
+func (_u *UserUpdate) SetLockedUntil(v time.Time) *UserUpdate {
+	_u.mutation.SetLockedUntil(v)
+	return _u
+}
+
+// SetNillableLockedUntil sets the "locked_until" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableLockedUntil(v *time.Time) *UserUpdate {
+	if v != nil {
+		_u.SetLockedUntil(*v)
+	}
+	return _u
+}
+
+// ClearLockedUntil clears the value of the "locked_until" field.
+func (_u *UserUpdate) ClearLockedUntil() *UserUpdate {
+	_u.mutation.ClearLockedUntil()
+	return _u
+}
+
+// SetLockoutCount sets the "lockout_count" field.
+func (_u *UserUpdate) SetLockoutCount(v int) *UserUpdate {
+	_u.mutation.ResetLockoutCount()
+	_u.mutation.SetLockoutCount(v)
+	return _u
+}
+
+// SetNillableLockoutCount sets the "lockout_count" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableLockoutCount(v *int) *UserUpdate {
+	if v != nil {
+		_u.SetLockoutCount(*v)
+	}
+	return _u
+}
+
+// AddLockoutCount adds value to the "lockout_count" field.
+func (_u *UserUpdate) AddLockoutCount(v int) *UserUpdate {
+	_u.mutation.AddLockoutCount(v)
+	return _u
+}
+
+// SetLastLockedAt sets the "last_locked_at" field.
+func (_u *UserUpdate) SetLastLockedAt(v time.Time) *UserUpdate {
+	_u.mutation.SetLastLockedAt(v)
+	return _u
+}
+
+// SetNillableLastLockedAt sets the "last_locked_at" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableLastLockedAt(v *time.Time) *UserUpdate {
+	if v != nil {
+		_u.SetLastLockedAt(*v)
+	}
+	return _u
+}
+
+// ClearLastLockedAt clears the value of the "last_locked_at" field.
+func (_u *UserUpdate) ClearLastLockedAt() *UserUpdate {
+	_u.mutation.ClearLastLockedAt()
+	return _u
+}
+
 // AddRoleIDs adds the "roles" edge to the Role entity by IDs.
 func (_u *UserUpdate) AddRoleIDs(ids ...string) *UserUpdate {
 	_u.mutation.AddRoleIDs(ids...)
@@ -551,6 +653,36 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ProfileCleared() {
 		_spec.ClearField(user.FieldProfile, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.FailedLoginCount(); ok {
+		_spec.SetField(user.FieldFailedLoginCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedFailedLoginCount(); ok {
+		_spec.AddField(user.FieldFailedLoginCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.LastFailedLoginAt(); ok {
+		_spec.SetField(user.FieldLastFailedLoginAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastFailedLoginAtCleared() {
+		_spec.ClearField(user.FieldLastFailedLoginAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LockedUntil(); ok {
+		_spec.SetField(user.FieldLockedUntil, field.TypeTime, value)
+	}
+	if _u.mutation.LockedUntilCleared() {
+		_spec.ClearField(user.FieldLockedUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LockoutCount(); ok {
+		_spec.SetField(user.FieldLockoutCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedLockoutCount(); ok {
+		_spec.AddField(user.FieldLockoutCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.LastLockedAt(); ok {
+		_spec.SetField(user.FieldLastLockedAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastLockedAtCleared() {
+		_spec.ClearField(user.FieldLastLockedAt, field.TypeTime)
 	}
 	if _u.mutation.RolesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1052,6 +1184,108 @@ func (_u *UserUpdateOne) ClearProfile() *UserUpdateOne {
 	return _u
 }
 
+// SetFailedLoginCount sets the "failed_login_count" field.
+func (_u *UserUpdateOne) SetFailedLoginCount(v int) *UserUpdateOne {
+	_u.mutation.ResetFailedLoginCount()
+	_u.mutation.SetFailedLoginCount(v)
+	return _u
+}
+
+// SetNillableFailedLoginCount sets the "failed_login_count" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableFailedLoginCount(v *int) *UserUpdateOne {
+	if v != nil {
+		_u.SetFailedLoginCount(*v)
+	}
+	return _u
+}
+
+// AddFailedLoginCount adds value to the "failed_login_count" field.
+func (_u *UserUpdateOne) AddFailedLoginCount(v int) *UserUpdateOne {
+	_u.mutation.AddFailedLoginCount(v)
+	return _u
+}
+
+// SetLastFailedLoginAt sets the "last_failed_login_at" field.
+func (_u *UserUpdateOne) SetLastFailedLoginAt(v time.Time) *UserUpdateOne {
+	_u.mutation.SetLastFailedLoginAt(v)
+	return _u
+}
+
+// SetNillableLastFailedLoginAt sets the "last_failed_login_at" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableLastFailedLoginAt(v *time.Time) *UserUpdateOne {
+	if v != nil {
+		_u.SetLastFailedLoginAt(*v)
+	}
+	return _u
+}
+
+// ClearLastFailedLoginAt clears the value of the "last_failed_login_at" field.
+func (_u *UserUpdateOne) ClearLastFailedLoginAt() *UserUpdateOne {
+	_u.mutation.ClearLastFailedLoginAt()
+	return _u
+}
+
+// SetLockedUntil sets the "locked_until" field.
+func (_u *UserUpdateOne) SetLockedUntil(v time.Time) *UserUpdateOne {
+	_u.mutation.SetLockedUntil(v)
+	return _u
+}
+
+// SetNillableLockedUntil sets the "locked_until" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableLockedUntil(v *time.Time) *UserUpdateOne {
+	if v != nil {
+		_u.SetLockedUntil(*v)
+	}
+	return _u
+}
+
+// ClearLockedUntil clears the value of the "locked_until" field.
+func (_u *UserUpdateOne) ClearLockedUntil() *UserUpdateOne {
+	_u.mutation.ClearLockedUntil()
+	return _u
+}
+
+// SetLockoutCount sets the "lockout_count" field.
+func (_u *UserUpdateOne) SetLockoutCount(v int) *UserUpdateOne {
+	_u.mutation.ResetLockoutCount()
+	_u.mutation.SetLockoutCount(v)
+	return _u
+}
+
+// SetNillableLockoutCount sets the "lockout_count" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableLockoutCount(v *int) *UserUpdateOne {
+	if v != nil {
+		_u.SetLockoutCount(*v)
+	}
+	return _u
+}
+
+// AddLockoutCount adds value to the "lockout_count" field.
+func (_u *UserUpdateOne) AddLockoutCount(v int) *UserUpdateOne {
+	_u.mutation.AddLockoutCount(v)
+	return _u
+}
+
+// SetLastLockedAt sets the "last_locked_at" field.
+func (_u *UserUpdateOne) SetLastLockedAt(v time.Time) *UserUpdateOne {
+	_u.mutation.SetLastLockedAt(v)
+	return _u
+}
+
+// SetNillableLastLockedAt sets the "last_locked_at" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableLastLockedAt(v *time.Time) *UserUpdateOne {
+	if v != nil {
+		_u.SetLastLockedAt(*v)
+	}
+	return _u
+}
+
+// ClearLastLockedAt clears the value of the "last_locked_at" field.
+func (_u *UserUpdateOne) ClearLastLockedAt() *UserUpdateOne {
+	_u.mutation.ClearLastLockedAt()
+	return _u
+}
+
 // AddRoleIDs adds the "roles" edge to the Role entity by IDs.
 func (_u *UserUpdateOne) AddRoleIDs(ids ...string) *UserUpdateOne {
 	_u.mutation.AddRoleIDs(ids...)
@@ -1476,6 +1710,36 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if _u.mutation.ProfileCleared() {
 		_spec.ClearField(user.FieldProfile, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.FailedLoginCount(); ok {
+		_spec.SetField(user.FieldFailedLoginCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedFailedLoginCount(); ok {
+		_spec.AddField(user.FieldFailedLoginCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.LastFailedLoginAt(); ok {
+		_spec.SetField(user.FieldLastFailedLoginAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastFailedLoginAtCleared() {
+		_spec.ClearField(user.FieldLastFailedLoginAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LockedUntil(); ok {
+		_spec.SetField(user.FieldLockedUntil, field.TypeTime, value)
+	}
+	if _u.mutation.LockedUntilCleared() {
+		_spec.ClearField(user.FieldLockedUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LockoutCount(); ok {
+		_spec.SetField(user.FieldLockoutCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedLockoutCount(); ok {
+		_spec.AddField(user.FieldLockoutCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.LastLockedAt(); ok {
+		_spec.SetField(user.FieldLastLockedAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastLockedAtCleared() {
+		_spec.ClearField(user.FieldLastLockedAt, field.TypeTime)
 	}
 	if _u.mutation.RolesCleared() {
 		edge := &sqlgraph.EdgeSpec{

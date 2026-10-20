@@ -149,6 +149,37 @@ mfa-policy:
 	go run ./cmd/idp mfa policy show --realm $(realm)
 
 # ------------------------------------------------------------------------------
+# Accounts, realm settings and e-mail (Step 12).
+# More: go run ./cmd/idp users --help, settings --help, mail --help
+# ------------------------------------------------------------------------------
+
+to ?=
+
+## users-status: Failed sign-ins and lock of a user (usage: make users-status realm=demo user=alice)
+users-status:
+	go run ./cmd/idp users status --realm $(realm) --user $(user)
+
+## users-unlock: Clear the lockout of a user (usage: make users-unlock realm=demo user=alice)
+users-unlock:
+	go run ./cmd/idp users unlock --realm $(realm) --user $(user)
+
+## settings-show: Realm settings used by Step 12: e-mails, lockout, passwords (usage: make settings-show realm=demo)
+settings-show:
+	go run ./cmd/idp settings show --realm $(realm)
+
+## alerts-on: Turn on every security e-mail of a realm, suspicious sign-ins included (usage: make alerts-on realm=demo)
+alerts-on:
+	go run ./cmd/idp settings set --realm $(realm) --notification-email=true --suspicious-login-email=true
+
+## mail-test: Send a test e-mail with the SMTP_* settings (usage: make mail-test to=you@example.com)
+mail-test:
+	go run ./cmd/idp mail test --to $(to)
+
+## mailpit: Address of the Mailpit inbox (every e-mail sent in development lands there)
+mailpit:
+	@echo "Mailpit inbox: http://localhost:8025"
+
+# ------------------------------------------------------------------------------
 # OpenID Connect (Step 10) — same code as the future admin API.
 # More: go run ./cmd/idp oidc --help
 # ------------------------------------------------------------------------------
@@ -227,7 +258,7 @@ test:
 test-integration:
 	@echo "Running integration tests..."
 	go test -tags=integration ./internal/storage/entstore/...
-	go test ./... -run Integration -race -count=1 -timeout 5m
+	go test ./... -run Integration -race -count=1 -timeout 10m
 	go test ./internal/keymanager/... -run Integration -race -count=1 -timeout 5m
 
 ## test-all: Unit + integration tests
@@ -280,10 +311,10 @@ check: fmt lint check-core-deps check-adapter-deps vuln test
 # Development environment (Docker Compose: postgres + valkey + vault)
 # ------------------------------------------------------------------------------
 
-## docker-up: Start postgres/valkey/vault in the background
+## docker-up: Start postgres/valkey/vault/mailpit in the background
 docker-up:
 	$(COMPOSE) up -d --wait
-	@echo "postgres:$(POSTGRES_PORT)  valkey:6379  vault:8200 (dev mode — never in production)"
+	@echo "postgres:$(POSTGRES_PORT)  valkey:6379  vault:8200 (dev mode — never in production)  mailpit: http://localhost:8025"
 
 ## docker-down: Stop the development environment (preserve volumes)
 docker-down:

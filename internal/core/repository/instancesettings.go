@@ -18,17 +18,19 @@ type CreateInstanceSettingsParams struct {
 }
 
 type UpdateInstanceSettingsParams struct {
-	ManagedBy                *domain.InstanceSettingsManagedBy
-	MinPasswordLength        *int
-	PasswordExpiryDays       *int
-	SessionIdleMinutes       *int
-	SessionMaxHours          *int
-	LockoutThreshold         *int
-	LockoutDurationMinutes   *int
-	IPAllowlist              []string
-	MFARequiredGlobally      *bool
-	NotificationEmailEnabled *bool
-	KeyRotationGraceHours    *int
-	MFAStepUpMaxAgeMinutes   *int
-	UpdatedBy                *string
+	ManagedBy                   *domain.InstanceSettingsManagedBy
+	MinPasswordLength           *int
+	PasswordExpiryDays          *int
+	SessionIdleMinutes          *int
+	SessionMaxHours             *int
+	LockoutThreshold            *int
+	LockoutDurationMinutes      *int
+	IPAllowlist                 []string
+	MFARequiredGlobally         *bool
+	NotificationEmailEnabled    *bool
+	KeyRotationGraceHours       *int
+	MFAStepUpMaxAgeMinutes      *int
+	PasswordResetTTLMinutes     *int
+	SuspiciousLoginEmailEnabled *bool
+	UpdatedBy                   *string
 }

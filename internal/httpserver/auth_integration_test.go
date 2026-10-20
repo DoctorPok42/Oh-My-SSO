@@ -15,9 +15,6 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/valkey-io/valkey-go"
 
 	"sso.internal/sso/ent"
@@ -69,44 +66,27 @@ func setupTestEnv(t *testing.T) *testEnv {
 
 	ctx := context.Background()
 
-	pgContainer, err := postgres.Run(ctx, "postgres:16",
-		postgres.WithDatabase("sso_test"),
-		postgres.WithUsername("sso"),
-		postgres.WithPassword("sso"),
-		postgres.BasicWaitStrategies(),
-	)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = pgContainer.Terminate(context.Background()) })
-
-	dsn, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	require.NoError(t, err)
-
-	db, err := sql.Open("pgx", dsn)
+	db, err := sql.Open("pgx", startTestPostgres(t, ctx))
 	require.NoError(t, err)
 	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 	t.Cleanup(func() { _ = client.Close() })
 
 	require.NoError(t, client.Schema.Create(ctx))
 
-	valkeyContainer, err := testcontainers.Run(ctx, "valkey/valkey:latest",
-		testcontainers.WithExposedPorts("6379/tcp"),
-		testcontainers.WithWaitStrategy(wait.ForListeningPort("6379/tcp")),
-	)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = valkeyContainer.Terminate(context.Background()) })
-
-	valkeyHost, err := valkeyContainer.Host(ctx)
-	require.NoError(t, err)
-	valkeyPort, err := valkeyContainer.MappedPort(ctx, "6379/tcp")
-	require.NoError(t, err)
-
-	valkeyClient, err := valkeycache.New(valkeyHost + ":" + valkeyPort.Port())
+	valkeyClient, err := valkeycache.New(startTestValkey(t, ctx))
 	require.NoError(t, err)
 	t.Cleanup(valkeyClient.Close)
 
 	realms := entstore.NewRealmRepository(client)
 	users := entstore.NewUserRepository(client)
-	authService := service.NewAuthService(users, entstore.NewLoginAttemptRepository(client))
+	// Step 12: the per-account limit is the account lockout (5 wrong
+	// passwords by default), for real and unknown accounts alike.
+	lockout := service.NewLockoutService(service.LockoutDeps{
+		Users:    users,
+		Unknown:  valkeycache.NewLockoutStore(valkeyClient),
+		Settings: entstore.NewInstanceSettingsRepository(client),
+	})
+	authService := service.NewAuthService(users, entstore.NewLoginAttemptRepository(client), service.WithLockout(lockout))
 
 	clock := &fakeClock{}
 	sessionService := service.NewSessionService(
@@ -239,5 +219,33 @@ func TestAuthLogin_Integration(t *testing.T) {
 
 		require.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
 		require.Equal(t, "rate_limited", decodeError(t, resp))
+		require.NotEmpty(t, resp.Header.Get("Retry-After"), "Step 12: the client knows when to come back")
+	})
+
+	t.Run("compte verrouillé : même le bon mot de passe est refusé (Step 12)", func(t *testing.T) {
+		realm := env.createRealm(t, "lockout-realm")
+		env.createUser(t, realm.ID, "erin", "the-real-password", domain.UserActive)
+		for i := 0; i < 5; i++ {
+			resp := env.doLogin(t, realm.Name, "erin", "wrong-password")
+			resp.Body.Close()
+		}
+		resp := env.doLogin(t, realm.Name, "erin", "the-real-password")
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
+
+		u, err := env.users.GetByRealmAndUsername(context.Background(), realm.ID, "erin")
+		require.NoError(t, err)
+		require.True(t, u.Lockout.LockedAt(time.Now()), "the lock is stored on the user row")
+	})
+
+	t.Run("compte inexistant : même réponse qu'un vrai compte (Step 12)", func(t *testing.T) {
+		realm := env.createRealm(t, "ghost-realm")
+		var statuses []int
+		for i := 0; i < 6; i++ {
+			resp := env.doLogin(t, realm.Name, "ghost", "wrong-password")
+			statuses = append(statuses, resp.StatusCode)
+			resp.Body.Close()
+		}
+		require.Equal(t, []int{401, 401, 401, 401, 401, 429}, statuses)
 	})
 }

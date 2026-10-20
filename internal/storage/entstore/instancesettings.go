@@ -57,6 +57,8 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 		SetNillableNotificationEmailEnabled(p.NotificationEmailEnabled).
 		SetNillableKeyRotationGraceHours(p.KeyRotationGraceHours).
 		SetNillableMfaStepUpMaxAgeMinutes(p.MFAStepUpMaxAgeMinutes).
+		SetNillablePasswordResetTTLMinutes(p.PasswordResetTTLMinutes).
+		SetNillableSuspiciousLoginEmailEnabled(p.SuspiciousLoginEmailEnabled).
 		SetNillableUpdatedBy(p.UpdatedBy)
 	if p.IPAllowlist != nil {
 		builder = builder.SetIPAllowlist(p.IPAllowlist)
@@ -75,21 +77,23 @@ func (r *entInstanceSettingsRepository) Delete(ctx context.Context, id string) e
 
 func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings {
 	return &domain.InstanceSettings{
-		ID:                       e.ID,
-		RealmID:                  e.RealmID,
-		ManagedBy:                domain.InstanceSettingsManagedBy(e.ManagedBy),
-		MinPasswordLength:        e.MinPasswordLength,
-		PasswordExpiryDays:       e.PasswordExpiryDays,
-		SessionIdleMinutes:       e.SessionIdleMinutes,
-		SessionMaxHours:          e.SessionMaxHours,
-		LockoutThreshold:         e.LockoutThreshold,
-		LockoutDurationMinutes:   e.LockoutDurationMinutes,
-		IPAllowlist:              e.IPAllowlist,
-		MFARequiredGlobally:      e.MfaRequiredGlobally,
-		NotificationEmailEnabled: e.NotificationEmailEnabled,
-		KeyRotationGraceHours:    e.KeyRotationGraceHours,
-		MFAStepUpMaxAgeMinutes:   e.MfaStepUpMaxAgeMinutes,
-		UpdatedAt:                e.UpdatedAt,
-		UpdatedBy:                e.UpdatedBy,
+		ID:                          e.ID,
+		RealmID:                     e.RealmID,
+		ManagedBy:                   domain.InstanceSettingsManagedBy(e.ManagedBy),
+		MinPasswordLength:           e.MinPasswordLength,
+		PasswordExpiryDays:          e.PasswordExpiryDays,
+		SessionIdleMinutes:          e.SessionIdleMinutes,
+		SessionMaxHours:             e.SessionMaxHours,
+		LockoutThreshold:            e.LockoutThreshold,
+		LockoutDurationMinutes:      e.LockoutDurationMinutes,
+		IPAllowlist:                 e.IPAllowlist,
+		MFARequiredGlobally:         e.MfaRequiredGlobally,
+		NotificationEmailEnabled:    e.NotificationEmailEnabled,
+		KeyRotationGraceHours:       e.KeyRotationGraceHours,
+		MFAStepUpMaxAgeMinutes:      e.MfaStepUpMaxAgeMinutes,
+		PasswordResetTTLMinutes:     e.PasswordResetTTLMinutes,
+		SuspiciousLoginEmailEnabled: e.SuspiciousLoginEmailEnabled,
+		UpdatedAt:                   e.UpdatedAt,
+		UpdatedBy:                   e.UpdatedBy,
 	}
 }

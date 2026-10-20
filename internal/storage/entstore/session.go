@@ -79,6 +79,26 @@ func (r *entSessionRepository) ListActiveByUser(ctx context.Context, userID stri
 	return out, nil
 }
 
+func (r *entSessionRepository) ListRecentByUser(ctx context.Context, userID string, since time.Time, limit int) ([]*domain.Session, error) {
+	rows, err := r.client.Session.
+		Query().
+		Where(
+			session.UserID(userID),
+			session.CreatedAtGTE(since),
+		).
+		Order(ent.Desc(session.FieldCreatedAt)).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.Session, 0, len(rows))
+	for _, e := range rows {
+		out = append(out, toDomainSession(e))
+	}
+	return out, nil
+}
+
 func (r *entSessionRepository) Touch(ctx context.Context, id string, at time.Time) error {
 	_, err := r.client.Session.
 		UpdateOneID(id).

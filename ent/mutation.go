@@ -13244,6 +13244,9 @@ type InstanceSettingsMutation struct {
 	addkey_rotation_grace_hours    *int
 	mfa_step_up_max_age_minutes    *int
 	addmfa_step_up_max_age_minutes *int
+	password_reset_ttl_minutes     *int
+	addpassword_reset_ttl_minutes  *int
+	suspicious_login_email_enabled *bool
 	updated_at                     *time.Time
 	updated_by                     *string
 	clearedFields                  map[string]struct{}
@@ -14015,6 +14018,98 @@ func (m *InstanceSettingsMutation) ResetMfaStepUpMaxAgeMinutes() {
 	m.addmfa_step_up_max_age_minutes = nil
 }
 
+// SetPasswordResetTTLMinutes sets the "password_reset_ttl_minutes" field.
+func (m *InstanceSettingsMutation) SetPasswordResetTTLMinutes(i int) {
+	m.password_reset_ttl_minutes = &i
+	m.addpassword_reset_ttl_minutes = nil
+}
+
+// PasswordResetTTLMinutes returns the value of the "password_reset_ttl_minutes" field in the mutation.
+func (m *InstanceSettingsMutation) PasswordResetTTLMinutes() (r int, exists bool) {
+	v := m.password_reset_ttl_minutes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPasswordResetTTLMinutes returns the old "password_reset_ttl_minutes" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldPasswordResetTTLMinutes(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPasswordResetTTLMinutes is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPasswordResetTTLMinutes requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPasswordResetTTLMinutes: %w", err)
+	}
+	return oldValue.PasswordResetTTLMinutes, nil
+}
+
+// AddPasswordResetTTLMinutes adds i to the "password_reset_ttl_minutes" field.
+func (m *InstanceSettingsMutation) AddPasswordResetTTLMinutes(i int) {
+	if m.addpassword_reset_ttl_minutes != nil {
+		*m.addpassword_reset_ttl_minutes += i
+	} else {
+		m.addpassword_reset_ttl_minutes = &i
+	}
+}
+
+// AddedPasswordResetTTLMinutes returns the value that was added to the "password_reset_ttl_minutes" field in this mutation.
+func (m *InstanceSettingsMutation) AddedPasswordResetTTLMinutes() (r int, exists bool) {
+	v := m.addpassword_reset_ttl_minutes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPasswordResetTTLMinutes resets all changes to the "password_reset_ttl_minutes" field.
+func (m *InstanceSettingsMutation) ResetPasswordResetTTLMinutes() {
+	m.password_reset_ttl_minutes = nil
+	m.addpassword_reset_ttl_minutes = nil
+}
+
+// SetSuspiciousLoginEmailEnabled sets the "suspicious_login_email_enabled" field.
+func (m *InstanceSettingsMutation) SetSuspiciousLoginEmailEnabled(b bool) {
+	m.suspicious_login_email_enabled = &b
+}
+
+// SuspiciousLoginEmailEnabled returns the value of the "suspicious_login_email_enabled" field in the mutation.
+func (m *InstanceSettingsMutation) SuspiciousLoginEmailEnabled() (r bool, exists bool) {
+	v := m.suspicious_login_email_enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSuspiciousLoginEmailEnabled returns the old "suspicious_login_email_enabled" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldSuspiciousLoginEmailEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSuspiciousLoginEmailEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSuspiciousLoginEmailEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSuspiciousLoginEmailEnabled: %w", err)
+	}
+	return oldValue.SuspiciousLoginEmailEnabled, nil
+}
+
+// ResetSuspiciousLoginEmailEnabled resets all changes to the "suspicious_login_email_enabled" field.
+func (m *InstanceSettingsMutation) ResetSuspiciousLoginEmailEnabled() {
+	m.suspicious_login_email_enabled = nil
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (m *InstanceSettingsMutation) SetUpdatedAt(t time.Time) {
 	m.updated_at = &t
@@ -14161,7 +14256,7 @@ func (m *InstanceSettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstanceSettingsMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 17)
 	if m.realm != nil {
 		fields = append(fields, instancesettings.FieldRealmID)
 	}
@@ -14200,6 +14295,12 @@ func (m *InstanceSettingsMutation) Fields() []string {
 	}
 	if m.mfa_step_up_max_age_minutes != nil {
 		fields = append(fields, instancesettings.FieldMfaStepUpMaxAgeMinutes)
+	}
+	if m.password_reset_ttl_minutes != nil {
+		fields = append(fields, instancesettings.FieldPasswordResetTTLMinutes)
+	}
+	if m.suspicious_login_email_enabled != nil {
+		fields = append(fields, instancesettings.FieldSuspiciousLoginEmailEnabled)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, instancesettings.FieldUpdatedAt)
@@ -14241,6 +14342,10 @@ func (m *InstanceSettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.KeyRotationGraceHours()
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		return m.MfaStepUpMaxAgeMinutes()
+	case instancesettings.FieldPasswordResetTTLMinutes:
+		return m.PasswordResetTTLMinutes()
+	case instancesettings.FieldSuspiciousLoginEmailEnabled:
+		return m.SuspiciousLoginEmailEnabled()
 	case instancesettings.FieldUpdatedAt:
 		return m.UpdatedAt()
 	case instancesettings.FieldUpdatedBy:
@@ -14280,6 +14385,10 @@ func (m *InstanceSettingsMutation) OldField(ctx context.Context, name string) (e
 		return m.OldKeyRotationGraceHours(ctx)
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		return m.OldMfaStepUpMaxAgeMinutes(ctx)
+	case instancesettings.FieldPasswordResetTTLMinutes:
+		return m.OldPasswordResetTTLMinutes(ctx)
+	case instancesettings.FieldSuspiciousLoginEmailEnabled:
+		return m.OldSuspiciousLoginEmailEnabled(ctx)
 	case instancesettings.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
 	case instancesettings.FieldUpdatedBy:
@@ -14384,6 +14493,20 @@ func (m *InstanceSettingsMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetMfaStepUpMaxAgeMinutes(v)
 		return nil
+	case instancesettings.FieldPasswordResetTTLMinutes:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPasswordResetTTLMinutes(v)
+		return nil
+	case instancesettings.FieldSuspiciousLoginEmailEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSuspiciousLoginEmailEnabled(v)
+		return nil
 	case instancesettings.FieldUpdatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -14430,6 +14553,9 @@ func (m *InstanceSettingsMutation) AddedFields() []string {
 	if m.addmfa_step_up_max_age_minutes != nil {
 		fields = append(fields, instancesettings.FieldMfaStepUpMaxAgeMinutes)
 	}
+	if m.addpassword_reset_ttl_minutes != nil {
+		fields = append(fields, instancesettings.FieldPasswordResetTTLMinutes)
+	}
 	return fields
 }
 
@@ -14454,6 +14580,8 @@ func (m *InstanceSettingsMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedKeyRotationGraceHours()
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		return m.AddedMfaStepUpMaxAgeMinutes()
+	case instancesettings.FieldPasswordResetTTLMinutes:
+		return m.AddedPasswordResetTTLMinutes()
 	}
 	return nil, false
 }
@@ -14518,6 +14646,13 @@ func (m *InstanceSettingsMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddMfaStepUpMaxAgeMinutes(v)
+		return nil
+	case instancesettings.FieldPasswordResetTTLMinutes:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPasswordResetTTLMinutes(v)
 		return nil
 	}
 	return fmt.Errorf("unknown InstanceSettings numeric field %s", name)
@@ -14599,6 +14734,12 @@ func (m *InstanceSettingsMutation) ResetField(name string) error {
 		return nil
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		m.ResetMfaStepUpMaxAgeMinutes()
+		return nil
+	case instancesettings.FieldPasswordResetTTLMinutes:
+		m.ResetPasswordResetTTLMinutes()
+		return nil
+	case instancesettings.FieldSuspiciousLoginEmailEnabled:
+		m.ResetSuspiciousLoginEmailEnabled()
 		return nil
 	case instancesettings.FieldUpdatedAt:
 		m.ResetUpdatedAt()
@@ -29048,6 +29189,13 @@ type UserMutation struct {
 	status                       *schema.UserStatus
 	last_login_at                *time.Time
 	profile                      *map[string]interface{}
+	failed_login_count           *int
+	addfailed_login_count        *int
+	last_failed_login_at         *time.Time
+	locked_until                 *time.Time
+	lockout_count                *int
+	addlockout_count             *int
+	last_locked_at               *time.Time
 	clearedFields                map[string]struct{}
 	realm                        *string
 	clearedrealm                 bool
@@ -29596,6 +29744,265 @@ func (m *UserMutation) ResetProfile() {
 	delete(m.clearedFields, user.FieldProfile)
 }
 
+// SetFailedLoginCount sets the "failed_login_count" field.
+func (m *UserMutation) SetFailedLoginCount(i int) {
+	m.failed_login_count = &i
+	m.addfailed_login_count = nil
+}
+
+// FailedLoginCount returns the value of the "failed_login_count" field in the mutation.
+func (m *UserMutation) FailedLoginCount() (r int, exists bool) {
+	v := m.failed_login_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFailedLoginCount returns the old "failed_login_count" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldFailedLoginCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFailedLoginCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFailedLoginCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFailedLoginCount: %w", err)
+	}
+	return oldValue.FailedLoginCount, nil
+}
+
+// AddFailedLoginCount adds i to the "failed_login_count" field.
+func (m *UserMutation) AddFailedLoginCount(i int) {
+	if m.addfailed_login_count != nil {
+		*m.addfailed_login_count += i
+	} else {
+		m.addfailed_login_count = &i
+	}
+}
+
+// AddedFailedLoginCount returns the value that was added to the "failed_login_count" field in this mutation.
+func (m *UserMutation) AddedFailedLoginCount() (r int, exists bool) {
+	v := m.addfailed_login_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetFailedLoginCount resets all changes to the "failed_login_count" field.
+func (m *UserMutation) ResetFailedLoginCount() {
+	m.failed_login_count = nil
+	m.addfailed_login_count = nil
+}
+
+// SetLastFailedLoginAt sets the "last_failed_login_at" field.
+func (m *UserMutation) SetLastFailedLoginAt(t time.Time) {
+	m.last_failed_login_at = &t
+}
+
+// LastFailedLoginAt returns the value of the "last_failed_login_at" field in the mutation.
+func (m *UserMutation) LastFailedLoginAt() (r time.Time, exists bool) {
+	v := m.last_failed_login_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastFailedLoginAt returns the old "last_failed_login_at" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldLastFailedLoginAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastFailedLoginAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastFailedLoginAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastFailedLoginAt: %w", err)
+	}
+	return oldValue.LastFailedLoginAt, nil
+}
+
+// ClearLastFailedLoginAt clears the value of the "last_failed_login_at" field.
+func (m *UserMutation) ClearLastFailedLoginAt() {
+	m.last_failed_login_at = nil
+	m.clearedFields[user.FieldLastFailedLoginAt] = struct{}{}
+}
+
+// LastFailedLoginAtCleared returns if the "last_failed_login_at" field was cleared in this mutation.
+func (m *UserMutation) LastFailedLoginAtCleared() bool {
+	_, ok := m.clearedFields[user.FieldLastFailedLoginAt]
+	return ok
+}
+
+// ResetLastFailedLoginAt resets all changes to the "last_failed_login_at" field.
+func (m *UserMutation) ResetLastFailedLoginAt() {
+	m.last_failed_login_at = nil
+	delete(m.clearedFields, user.FieldLastFailedLoginAt)
+}
+
+// SetLockedUntil sets the "locked_until" field.
+func (m *UserMutation) SetLockedUntil(t time.Time) {
+	m.locked_until = &t
+}
+
+// LockedUntil returns the value of the "locked_until" field in the mutation.
+func (m *UserMutation) LockedUntil() (r time.Time, exists bool) {
+	v := m.locked_until
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLockedUntil returns the old "locked_until" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldLockedUntil(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLockedUntil is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLockedUntil requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLockedUntil: %w", err)
+	}
+	return oldValue.LockedUntil, nil
+}
+
+// ClearLockedUntil clears the value of the "locked_until" field.
+func (m *UserMutation) ClearLockedUntil() {
+	m.locked_until = nil
+	m.clearedFields[user.FieldLockedUntil] = struct{}{}
+}
+
+// LockedUntilCleared returns if the "locked_until" field was cleared in this mutation.
+func (m *UserMutation) LockedUntilCleared() bool {
+	_, ok := m.clearedFields[user.FieldLockedUntil]
+	return ok
+}
+
+// ResetLockedUntil resets all changes to the "locked_until" field.
+func (m *UserMutation) ResetLockedUntil() {
+	m.locked_until = nil
+	delete(m.clearedFields, user.FieldLockedUntil)
+}
+
+// SetLockoutCount sets the "lockout_count" field.
+func (m *UserMutation) SetLockoutCount(i int) {
+	m.lockout_count = &i
+	m.addlockout_count = nil
+}
+
+// LockoutCount returns the value of the "lockout_count" field in the mutation.
+func (m *UserMutation) LockoutCount() (r int, exists bool) {
+	v := m.lockout_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLockoutCount returns the old "lockout_count" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldLockoutCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLockoutCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLockoutCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLockoutCount: %w", err)
+	}
+	return oldValue.LockoutCount, nil
+}
+
+// AddLockoutCount adds i to the "lockout_count" field.
+func (m *UserMutation) AddLockoutCount(i int) {
+	if m.addlockout_count != nil {
+		*m.addlockout_count += i
+	} else {
+		m.addlockout_count = &i
+	}
+}
+
+// AddedLockoutCount returns the value that was added to the "lockout_count" field in this mutation.
+func (m *UserMutation) AddedLockoutCount() (r int, exists bool) {
+	v := m.addlockout_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLockoutCount resets all changes to the "lockout_count" field.
+func (m *UserMutation) ResetLockoutCount() {
+	m.lockout_count = nil
+	m.addlockout_count = nil
+}
+
+// SetLastLockedAt sets the "last_locked_at" field.
+func (m *UserMutation) SetLastLockedAt(t time.Time) {
+	m.last_locked_at = &t
+}
+
+// LastLockedAt returns the value of the "last_locked_at" field in the mutation.
+func (m *UserMutation) LastLockedAt() (r time.Time, exists bool) {
+	v := m.last_locked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastLockedAt returns the old "last_locked_at" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldLastLockedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastLockedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastLockedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastLockedAt: %w", err)
+	}
+	return oldValue.LastLockedAt, nil
+}
+
+// ClearLastLockedAt clears the value of the "last_locked_at" field.
+func (m *UserMutation) ClearLastLockedAt() {
+	m.last_locked_at = nil
+	m.clearedFields[user.FieldLastLockedAt] = struct{}{}
+}
+
+// LastLockedAtCleared returns if the "last_locked_at" field was cleared in this mutation.
+func (m *UserMutation) LastLockedAtCleared() bool {
+	_, ok := m.clearedFields[user.FieldLastLockedAt]
+	return ok
+}
+
+// ResetLastLockedAt resets all changes to the "last_locked_at" field.
+func (m *UserMutation) ResetLastLockedAt() {
+	m.last_locked_at = nil
+	delete(m.clearedFields, user.FieldLastLockedAt)
+}
+
 // ClearRealm clears the "realm" edge to the Realm entity.
 func (m *UserMutation) ClearRealm() {
 	m.clearedrealm = true
@@ -30089,7 +30496,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 15)
 	if m.realm != nil {
 		fields = append(fields, user.FieldRealmID)
 	}
@@ -30120,6 +30527,21 @@ func (m *UserMutation) Fields() []string {
 	if m.profile != nil {
 		fields = append(fields, user.FieldProfile)
 	}
+	if m.failed_login_count != nil {
+		fields = append(fields, user.FieldFailedLoginCount)
+	}
+	if m.last_failed_login_at != nil {
+		fields = append(fields, user.FieldLastFailedLoginAt)
+	}
+	if m.locked_until != nil {
+		fields = append(fields, user.FieldLockedUntil)
+	}
+	if m.lockout_count != nil {
+		fields = append(fields, user.FieldLockoutCount)
+	}
+	if m.last_locked_at != nil {
+		fields = append(fields, user.FieldLastLockedAt)
+	}
 	return fields
 }
 
@@ -30148,6 +30570,16 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.LastLoginAt()
 	case user.FieldProfile:
 		return m.Profile()
+	case user.FieldFailedLoginCount:
+		return m.FailedLoginCount()
+	case user.FieldLastFailedLoginAt:
+		return m.LastFailedLoginAt()
+	case user.FieldLockedUntil:
+		return m.LockedUntil()
+	case user.FieldLockoutCount:
+		return m.LockoutCount()
+	case user.FieldLastLockedAt:
+		return m.LastLockedAt()
 	}
 	return nil, false
 }
@@ -30177,6 +30609,16 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldLastLoginAt(ctx)
 	case user.FieldProfile:
 		return m.OldProfile(ctx)
+	case user.FieldFailedLoginCount:
+		return m.OldFailedLoginCount(ctx)
+	case user.FieldLastFailedLoginAt:
+		return m.OldLastFailedLoginAt(ctx)
+	case user.FieldLockedUntil:
+		return m.OldLockedUntil(ctx)
+	case user.FieldLockoutCount:
+		return m.OldLockoutCount(ctx)
+	case user.FieldLastLockedAt:
+		return m.OldLastLockedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown User field %s", name)
 }
@@ -30256,6 +30698,41 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetProfile(v)
 		return nil
+	case user.FieldFailedLoginCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFailedLoginCount(v)
+		return nil
+	case user.FieldLastFailedLoginAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastFailedLoginAt(v)
+		return nil
+	case user.FieldLockedUntil:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLockedUntil(v)
+		return nil
+	case user.FieldLockoutCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLockoutCount(v)
+		return nil
+	case user.FieldLastLockedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastLockedAt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)
 }
@@ -30263,13 +30740,26 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *UserMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addfailed_login_count != nil {
+		fields = append(fields, user.FieldFailedLoginCount)
+	}
+	if m.addlockout_count != nil {
+		fields = append(fields, user.FieldLockoutCount)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *UserMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case user.FieldFailedLoginCount:
+		return m.AddedFailedLoginCount()
+	case user.FieldLockoutCount:
+		return m.AddedLockoutCount()
+	}
 	return nil, false
 }
 
@@ -30278,6 +30768,20 @@ func (m *UserMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *UserMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case user.FieldFailedLoginCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFailedLoginCount(v)
+		return nil
+	case user.FieldLockoutCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLockoutCount(v)
+		return nil
 	}
 	return fmt.Errorf("unknown User numeric field %s", name)
 }
@@ -30297,6 +30801,15 @@ func (m *UserMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(user.FieldProfile) {
 		fields = append(fields, user.FieldProfile)
+	}
+	if m.FieldCleared(user.FieldLastFailedLoginAt) {
+		fields = append(fields, user.FieldLastFailedLoginAt)
+	}
+	if m.FieldCleared(user.FieldLockedUntil) {
+		fields = append(fields, user.FieldLockedUntil)
+	}
+	if m.FieldCleared(user.FieldLastLockedAt) {
+		fields = append(fields, user.FieldLastLockedAt)
 	}
 	return fields
 }
@@ -30323,6 +30836,15 @@ func (m *UserMutation) ClearField(name string) error {
 		return nil
 	case user.FieldProfile:
 		m.ClearProfile()
+		return nil
+	case user.FieldLastFailedLoginAt:
+		m.ClearLastFailedLoginAt()
+		return nil
+	case user.FieldLockedUntil:
+		m.ClearLockedUntil()
+		return nil
+	case user.FieldLastLockedAt:
+		m.ClearLastLockedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown User nullable field %s", name)
@@ -30361,6 +30883,21 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldProfile:
 		m.ResetProfile()
+		return nil
+	case user.FieldFailedLoginCount:
+		m.ResetFailedLoginCount()
+		return nil
+	case user.FieldLastFailedLoginAt:
+		m.ResetLastFailedLoginAt()
+		return nil
+	case user.FieldLockedUntil:
+		m.ResetLockedUntil()
+		return nil
+	case user.FieldLockoutCount:
+		m.ResetLockoutCount()
+		return nil
+	case user.FieldLastLockedAt:
+		m.ResetLastLockedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)

@@ -207,6 +207,7 @@ func (s *MFAService) FinishPasskeyRegistration(ctx context.Context, user *domain
 		"requested":       string(kind),
 		"backup_eligible": np.BackupEligible,
 	})
+	s.notify(ctx, user, domain.NotificationMfaMethodAdded, m)
 	return res, nil
 }
 

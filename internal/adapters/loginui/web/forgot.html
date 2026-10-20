@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Forgot password · {{.RealmDisplay}}</title>
+<link rel="stylesheet" href="{{.Assets}}/login.css">
+<script src="{{.Assets}}/password.js" defer></script>
+</head>
+<body>
+<main class="card" id="forgot" data-base="{{.Base}}">
+  <header>
+    <p class="realm">{{.RealmDisplay}}</p>
+    <h1>Forgot your password?</h1>
+    <p class="hint">Enter your username or e-mail. If an account matches, we send a link to choose a new password.</p>
+  </header>
+
+  <p class="alert" id="error" role="alert" hidden></p>
+  <p class="notice" id="sent" role="status" hidden>If an account matches, an e-mail is on its way. The link works once and expires soon. Check your spam folder if you do not see it.</p>
+  <noscript><p class="alert">This page needs JavaScript.</p></noscript>
+
+  <form id="forgot-form">
+    <label for="identifier">Username or e-mail</label>
+    <input id="identifier" name="identifier" autocomplete="username" required autofocus>
+    <button type="submit">Send the link</button>
+  </form>
+
+  <p class="links"><button type="button" id="back">Back</button></p>
+</main>
+</body>
+</html>

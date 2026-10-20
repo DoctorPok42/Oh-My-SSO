@@ -1,0 +1,21 @@
+{{define "subject"}}New sign-in to your account{{end}}
+
+{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+
+Your {{.Realm}} account was just used to sign in from a device we have not seen before.
+
+{{template "details.txt" .}}
+If this was you, there is nothing to do.
+
+If it was not you, change your password now (this signs out every session):
+{{.ForgotPasswordURL}}
+{{end}}
+
+{{define "html"}}{{template "title" "New sign-in to your account"}}
+<p style="margin:0 0 12px 0;">Hello{{if .Username}} {{.Username}}{{end}},</p>
+<p style="margin:0 0 12px 0;">Your {{.Realm}} account was just used to sign in from a device we have not seen before.</p>
+{{template "details" .}}
+<p style="margin:0 0 12px 0;">If this was you, there is nothing to do.</p>
+<p style="margin:0 0 12px 0;"><strong>Not you?</strong> Change your password now: it signs out every session.</p>
+{{template "button" (button .ForgotPasswordURL "Change my password")}}
+{{end}}

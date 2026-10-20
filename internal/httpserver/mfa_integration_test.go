@@ -19,9 +19,6 @@ import (
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"sso.internal/sso/ent"
 	valkeycache "sso.internal/sso/internal/cache/valkey"
@@ -119,34 +116,6 @@ func setupMFATestEnv(t *testing.T) *mfaTestEnv {
 	t.Cleanup(ts.Close)
 
 	return &mfaTestEnv{ts: ts, realms: realms, users: users, clients: clients, mfaPol: policy, clock: clock}
-}
-
-func startTestPostgres(t *testing.T, ctx context.Context) string {
-	t.Helper()
-	c, err := postgres.Run(ctx, "postgres:16",
-		postgres.WithDatabase("sso_test"), postgres.WithUsername("sso"), postgres.WithPassword("sso"),
-		postgres.BasicWaitStrategies(),
-	)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = c.Terminate(context.Background()) })
-	dsn, err := c.ConnectionString(ctx, "sslmode=disable")
-	require.NoError(t, err)
-	return dsn
-}
-
-func startTestValkey(t *testing.T, ctx context.Context) string {
-	t.Helper()
-	c, err := testcontainers.Run(ctx, "valkey/valkey:latest",
-		testcontainers.WithExposedPorts("6379/tcp"),
-		testcontainers.WithWaitStrategy(wait.ForListeningPort("6379/tcp")),
-	)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = c.Terminate(context.Background()) })
-	host, err := c.Host(ctx)
-	require.NoError(t, err)
-	port, err := c.MappedPort(ctx, "6379/tcp")
-	require.NoError(t, err)
-	return host + ":" + port.Port()
 }
 
 const passkeyTestOrigin = "https://sso.test"

@@ -1,0 +1,21 @@
+{{define "subject"}}Your two-step verification was reset{{end}}
+
+{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+
+An administrator removed every second step for signing in from your
+{{.Realm}} account (authenticator apps, passkeys, security keys and backup
+codes) and signed you out everywhere.
+
+{{template "details.txt" .}}
+Next time you sign in, you may be asked to set up a second step again.
+
+If you did not ask for this, contact your administrator.
+{{end}}
+
+{{define "html"}}{{template "title" "Your two-step verification was reset"}}
+<p style="margin:0 0 12px 0;">Hello{{if .Username}} {{.Username}}{{end}},</p>
+<p style="margin:0 0 12px 0;">An administrator removed every second step for signing in from your {{.Realm}} account (authenticator apps, passkeys, security keys and backup codes) and signed you out everywhere.</p>
+{{template "details" .}}
+<p style="margin:0 0 12px 0;">Next time you sign in, you may be asked to set up a second step again.</p>
+{{template "muted" "If you did not ask for this, contact your administrator."}}
+{{end}}

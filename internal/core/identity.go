@@ -18,9 +18,12 @@ import (
 
 // Errors adapters are expected to recognise with errors.Is.
 var (
-	ErrInvalidCredentials  = errors.New("core: invalid credentials")
-	ErrAccountNotActive    = errors.New("core: account not active")
-	ErrTimeoutActive       = errors.New("core: an active timeout blocks this user or client")
+	ErrInvalidCredentials = errors.New("core: invalid credentials")
+	ErrAccountNotActive   = errors.New("core: account not active")
+	ErrTimeoutActive      = errors.New("core: an active timeout blocks this user or client")
+	// ErrAccountLocked (Step 12): too many wrong passwords, sign-in refused
+	// for a while. Also returned for identifiers that match no account.
+	ErrAccountLocked       = errors.New("core: too many failed sign-ins, try again later")
 	ErrSessionInvalid      = errors.New("core: session invalid")
 	ErrForbidden           = errors.New("core: forbidden")
 	ErrMFANotImplemented   = errors.New("core: mfa verification not configured")

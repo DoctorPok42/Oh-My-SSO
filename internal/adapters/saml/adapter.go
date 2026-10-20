@@ -33,6 +33,9 @@ type Config struct {
 	// DevPages links to /r/{realm}/dev/mfa when a factor must be enrolled
 	// first (APP_ENV=development).
 	DevPages bool
+	// PasswordReset shows the "Forgot password?" link on the sign-in page
+	// (Step 12: /r/{realm}/auth/forgot-password is mounted).
+	PasswordReset bool
 	// Now is the clock (tests). nil: time.Now.
 	Now func() time.Time
 	// Logger: nil means slog.Default().

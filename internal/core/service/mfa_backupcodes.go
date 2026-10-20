@@ -147,6 +147,7 @@ func (s *MFAService) RegenerateBackupCodes(ctx context.Context, user *domain.Use
 		return nil, err
 	}
 	s.auditEvent(ctx, user, "mfa_backup_codes_regenerated", "MfaBackupCode", user.ID, domain.AuditLogWarning, nil)
+	s.notify(ctx, user, domain.NotificationBackupCodesRegenerated, nil)
 	return codes, nil
 }
 

@@ -11,15 +11,16 @@ const (
 )
 
 type User struct {
-	ID					 string
-	RealmID				 string
-	Username			 string
-	PasswordHash		 string
-	Email				 string
-	CreatedAt			 time.Time
-	UpdatedAt			 time.Time
-	DeletedAt			 *time.Time
-	Status				 UserStatus
-	LastLoginAt		 *time.Time
-	Profile				 map[string]interface{}
+	ID           string
+	RealmID      string
+	Username     string
+	PasswordHash string
+	Email        string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeletedAt    *time.Time
+	Status       UserStatus
+	LastLoginAt  *time.Time
+	Profile      map[string]interface{}
+	Lockout      LockoutState // Step 12: failed passwords and temporary lock
 }
