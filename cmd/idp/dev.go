@@ -165,6 +165,11 @@ func devSeed(ctx context.Context, args []string, out io.Writer) error {
 		if pw == "" {
 			pw = rand.Text()[:16]
 		}
+		// Step 12: the realm's password policy applies here too.
+		policy := service.NewPasswordPolicyService(entstore.NewInstanceSettingsRepository(client))
+		if err := policy.Validate(ctx, realm.ID, pw, &domain.User{Username: *username, Email: *username + "@example.test"}); err != nil {
+			return fmt.Errorf("--password: %w", err)
+		}
 		hash, err := service.HashPassword(pw)
 		if err != nil {
 			return err

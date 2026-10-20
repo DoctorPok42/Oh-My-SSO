@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"crypto/rand"
 	"net/http"
 	"time"
 )
@@ -99,4 +100,51 @@ func mfaChallengeTokenFromRequest(r *http.Request) string {
 		return ""
 	}
 	return c.Value
+}
+
+// --- device cookie (Step 12) --------------------------------------------------
+
+// deviceCookieName holds a random id that stays in the browser for a year.
+// Sessions store its hash (Session.device_fingerprint): a sign-in whose id
+// was never seen on the account comes from a new device. It grants nothing
+// by itself, it is only a "have we seen this browser before?" marker.
+const deviceCookieName = "sso_device"
+
+// deviceCookieMaxAge: one year (browsers cap cookie lifetimes at 400 days).
+const deviceCookieMaxAge = 365 * 24 * time.Hour
+
+// deviceIDFromRequest returns the id of the device cookie, or "" when
+// absent or not in the format we generate (crypto/rand.Text: 26 characters
+// of base32), so a crafted cookie cannot inject anything.
+func deviceIDFromRequest(r *http.Request) string {
+	c, err := r.Cookie(deviceCookieName)
+	if err != nil || len(c.Value) != 26 {
+		return ""
+	}
+	for _, ch := range c.Value {
+		if !(ch >= 'A' && ch <= 'Z') && !(ch >= '2' && ch <= '7') {
+			return ""
+		}
+	}
+	return c.Value
+}
+
+// ensureDeviceCookie returns the device id of the browser, creating it if
+// needed, and (re)sets the cookie so its year starts again.
+func ensureDeviceCookie(w http.ResponseWriter, r *http.Request, realmName string) string {
+	id := deviceIDFromRequest(r)
+	if id == "" {
+		id = rand.Text()
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     deviceCookieName,
+		Value:    id,
+		Path:     sessionCookiePath(realmName),
+		MaxAge:   int(deviceCookieMaxAge.Seconds()),
+		Expires:  time.Now().Add(deviceCookieMaxAge),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	return id
 }

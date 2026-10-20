@@ -1,0 +1,11 @@
+{{define "layout.txt"}}{{template "text" .}}
+{{/* "-- " (with its space) starts a signature, RFC 3676 §4.3 */}}{{"-- "}}
+This is an automatic message from {{.Product}} about your account{{if .Username}} "{{.Username}}"{{end}}{{if .Realm}} ({{.Realm}}){{end}}.
+Replies are not read.
+{{end}}
+
+{{define "details.txt"}}{{if .When}}  When:       {{.When}}
+{{end}}{{if .Device}}  Device:     {{.Device}}
+{{end}}{{if .IPAddress}}  IP address: {{.IPAddress}}
+{{end}}{{if .Location}}  Location:   {{.Location}} (approximate)
+{{end}}{{end}}

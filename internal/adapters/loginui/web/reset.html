@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Choose a new password · {{.RealmDisplay}}</title>
+<link rel="stylesheet" href="{{.Assets}}/login.css">
+<script src="{{.Assets}}/password.js" defer></script>
+</head>
+<body>
+<main class="card" id="reset" data-base="{{.Base}}" data-min="{{.MinLength}}" data-max="{{.MaxLength}}">
+  <header>
+    <p class="realm">{{.RealmDisplay}}</p>
+    <h1>Choose a new password</h1>
+    <p class="hint">At least {{.MinLength}} characters. A few unrelated words make a strong password that is easy to remember.</p>
+  </header>
+
+  <p class="alert" id="error" role="alert" hidden></p>
+  <p class="notice" id="done" role="status" hidden>Your password was changed and you were signed out everywhere. Go back to your application and sign in with the new password. You can close this page.</p>
+  <noscript><p class="alert">This page needs JavaScript.</p></noscript>
+
+  <form id="reset-form">
+    <p class="warn">⚠️ Changing your password signs you out of every device and application.</p>
+    <label for="password">New password</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" minlength="{{.MinLength}}" maxlength="{{.MaxLength}}" required autofocus>
+    <label for="confirm">Type it again</label>
+    <input id="confirm" name="confirm" type="password" autocomplete="new-password" required>
+    <button type="submit">Change my password</button>
+  </form>
+
+  <p class="links" id="new-link" hidden><a href="{{.Base}}/auth/forgot-password">Ask for a new link</a></p>
+</main>
+</body>
+</html>

@@ -113,6 +113,7 @@ type MFAService struct {
 	realms        repository.RealmRepository        // optional: TOTP issuer name
 	clients       repository.ClientRepository       // optional: client of a challenge
 	passkeys      PasskeyProvider                   // optional: WebAuthn (Step 9b)
+	notifier      Notifier                          // optional: e-mails on factor changes (Step 12)
 	issuerName    string                            // optional override
 	now           func() time.Time
 	logger        *slog.Logger
@@ -135,6 +136,9 @@ type MFADeps struct {
 	// Passkeys is the WebAuthn engine (internal/passkey). nil: passkeys and
 	// security keys are disabled.
 	Passkeys PasskeyProvider
+	// Notifier (Step 12, optional) is told when a factor is added or
+	// removed, backup codes are regenerated or an admin resets MFA.
+	Notifier Notifier
 	// IssuerName overrides the name shown in authenticator apps
 	// (default: the realm display name, or "Oh-My-SSO (<realm>)").
 	IssuerName string
@@ -157,6 +161,7 @@ func NewMFAService(d MFADeps) *MFAService {
 		realms:        d.Realms,
 		clients:       d.Clients,
 		passkeys:      d.Passkeys,
+		notifier:      d.Notifier,
 		issuerName:    d.IssuerName,
 		now:           d.Now,
 		logger:        d.Logger,
@@ -166,6 +171,9 @@ func NewMFAService(d MFADeps) *MFAService {
 	}
 	if s.logger == nil {
 		s.logger = slog.Default()
+	}
+	if s.notifier == nil {
+		s.notifier = NopNotifier{}
 	}
 	return s
 }
@@ -193,6 +201,9 @@ type BeginLoginInput struct {
 	Client    *domain.ClientApp // optional: the client the login is for
 	IPAddress string
 	UserAgent string
+	// DeviceFingerprint (Step 12) is kept in the challenge and given to the
+	// session created after the second factor.
+	DeviceFingerprint string
 }
 
 // LoginDecision tells the caller what to do after a correct password.
@@ -273,6 +284,7 @@ func (s *MFAService) saveChallenge(ctx context.Context, in BeginLoginInput, meth
 		UserID:    in.User.ID,
 		IPAddress: in.IPAddress,
 		UserAgent: in.UserAgent,
+		Device:    in.DeviceFingerprint,
 		Methods:   methodNames(methods),
 		CreatedAt: now,
 		ExpiresAt: now.Add(loginChallengeTTL),
@@ -396,13 +408,14 @@ func (s *MFAService) finishLogin(ctx context.Context, lc *openedChallenge, user 
 	}
 
 	raw, sess, err := s.sessions.Create(ctx, CreateSessionInput{
-		RealmID:       user.RealmID,
-		UserID:        user.ID,
-		IPAddress:     ip,
-		UserAgent:     ua,
-		AuthMethod:    domain.AuthMethodPassword,
-		MFAVerified:   true,
-		MFAMethodType: string(method),
+		RealmID:           user.RealmID,
+		UserID:            user.ID,
+		IPAddress:         ip,
+		UserAgent:         ua,
+		AuthMethod:        domain.AuthMethodPassword,
+		MFAVerified:       true,
+		MFAMethodType:     string(method),
+		DeviceFingerprint: lc.c.Device,
 	})
 	if err != nil {
 		return nil, err
@@ -653,6 +666,9 @@ func (s *MFAService) DeleteFactor(ctx context.Context, user *domain.User, method
 	s.auditEvent(ctx, user, "mfa_method_removed", "MfaMethod", m.ID, domain.AuditLogWarning, map[string]interface{}{
 		"type": string(m.Type),
 	})
+	if m.Status == domain.MfaMethodActive {
+		s.notify(ctx, user, domain.NotificationMfaMethodRemoved, m)
+	}
 	return nil
 }
 
@@ -694,6 +710,9 @@ func (s *MFAService) ResetUser(ctx context.Context, user *domain.User, triggered
 				"backup_codes_deleted": c,
 			},
 		})
+	}
+	if n > 0 {
+		s.notify(ctx, user, domain.NotificationMfaReset, nil)
 	}
 	return &ResetResult{MethodsDeleted: n, BackupCodesDeleted: c}, nil
 }
@@ -855,6 +874,22 @@ func (s *MFAService) auditEvent(ctx context.Context, user *domain.User, action, 
 		Status:       domain.AuditLogSuccess,
 		Details:      details,
 	})
+}
+
+// notify tells the notifier about a change of the user's factors (Step 12).
+// m: the factor concerned, if any.
+func (s *MFAService) notify(ctx context.Context, user *domain.User, kind domain.NotificationKind, m *domain.MfaMethod) {
+	e := domain.NotificationEvent{
+		Kind:       kind,
+		RealmID:    user.RealmID,
+		UserID:     user.ID,
+		OccurredAt: s.now(),
+	}
+	if m != nil {
+		e.MfaMethodType = m.Type
+		e.MfaMethodName = m.Name
+	}
+	s.notifier.Notify(ctx, e)
 }
 
 // issuer is the account label shown in authenticator apps. ":" is the

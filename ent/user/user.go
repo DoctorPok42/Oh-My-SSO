@@ -35,6 +35,16 @@ const (
 	FieldLastLoginAt = "last_login_at"
 	// FieldProfile holds the string denoting the profile field in the database.
 	FieldProfile = "profile"
+	// FieldFailedLoginCount holds the string denoting the failed_login_count field in the database.
+	FieldFailedLoginCount = "failed_login_count"
+	// FieldLastFailedLoginAt holds the string denoting the last_failed_login_at field in the database.
+	FieldLastFailedLoginAt = "last_failed_login_at"
+	// FieldLockedUntil holds the string denoting the locked_until field in the database.
+	FieldLockedUntil = "locked_until"
+	// FieldLockoutCount holds the string denoting the lockout_count field in the database.
+	FieldLockoutCount = "lockout_count"
+	// FieldLastLockedAt holds the string denoting the last_locked_at field in the database.
+	FieldLastLockedAt = "last_locked_at"
 	// EdgeRealm holds the string denoting the realm edge name in mutations.
 	EdgeRealm = "realm"
 	// EdgeRoles holds the string denoting the roles edge name in mutations.
@@ -129,6 +139,11 @@ var Columns = []string{
 	FieldStatus,
 	FieldLastLoginAt,
 	FieldProfile,
+	FieldFailedLoginCount,
+	FieldLastFailedLoginAt,
+	FieldLockedUntil,
+	FieldLockoutCount,
+	FieldLastLockedAt,
 }
 
 var (
@@ -165,6 +180,10 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultStatus holds the default value on creation for the "status" field.
 	DefaultStatus schema.UserStatus
+	// DefaultFailedLoginCount holds the default value on creation for the "failed_login_count" field.
+	DefaultFailedLoginCount int
+	// DefaultLockoutCount holds the default value on creation for the "lockout_count" field.
+	DefaultLockoutCount int
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() string
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
@@ -222,6 +241,31 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 // ByLastLoginAt orders the results by the last_login_at field.
 func ByLastLoginAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastLoginAt, opts...).ToFunc()
+}
+
+// ByFailedLoginCount orders the results by the failed_login_count field.
+func ByFailedLoginCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFailedLoginCount, opts...).ToFunc()
+}
+
+// ByLastFailedLoginAt orders the results by the last_failed_login_at field.
+func ByLastFailedLoginAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastFailedLoginAt, opts...).ToFunc()
+}
+
+// ByLockedUntil orders the results by the locked_until field.
+func ByLockedUntil(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLockedUntil, opts...).ToFunc()
+}
+
+// ByLockoutCount orders the results by the lockout_count field.
+func ByLockoutCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLockoutCount, opts...).ToFunc()
+}
+
+// ByLastLockedAt orders the results by the last_locked_at field.
+func ByLastLockedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastLockedAt, opts...).ToFunc()
 }
 
 // ByRealmField orders the results by realm field.

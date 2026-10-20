@@ -1,0 +1,22 @@
+{{define "subject"}}New backup codes were created{{end}}
+
+{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+
+A new set of backup codes was created for your {{.Realm}} account.
+The previous codes no longer work.
+
+{{template "details.txt" .}}
+If this was you, keep the new codes somewhere safe.
+
+If it was not you, change your password now and tell your administrator:
+{{.ForgotPasswordURL}}
+{{end}}
+
+{{define "html"}}{{template "title" "New backup codes were created"}}
+<p style="margin:0 0 12px 0;">Hello{{if .Username}} {{.Username}}{{end}},</p>
+<p style="margin:0 0 12px 0;">A new set of backup codes was created for your {{.Realm}} account. The previous codes no longer work.</p>
+{{template "details" .}}
+<p style="margin:0 0 12px 0;">If this was you, keep the new codes somewhere safe.</p>
+<p style="margin:0 0 12px 0;"><strong>Not you?</strong> Change your password now and tell your administrator.</p>
+{{template "button" (button .ForgotPasswordURL "Change my password")}}
+{{end}}

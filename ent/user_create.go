@@ -138,6 +138,76 @@ func (_c *UserCreate) SetProfile(v map[string]interface{}) *UserCreate {
 	return _c
 }
 
+// SetFailedLoginCount sets the "failed_login_count" field.
+func (_c *UserCreate) SetFailedLoginCount(v int) *UserCreate {
+	_c.mutation.SetFailedLoginCount(v)
+	return _c
+}
+
+// SetNillableFailedLoginCount sets the "failed_login_count" field if the given value is not nil.
+func (_c *UserCreate) SetNillableFailedLoginCount(v *int) *UserCreate {
+	if v != nil {
+		_c.SetFailedLoginCount(*v)
+	}
+	return _c
+}
+
+// SetLastFailedLoginAt sets the "last_failed_login_at" field.
+func (_c *UserCreate) SetLastFailedLoginAt(v time.Time) *UserCreate {
+	_c.mutation.SetLastFailedLoginAt(v)
+	return _c
+}
+
+// SetNillableLastFailedLoginAt sets the "last_failed_login_at" field if the given value is not nil.
+func (_c *UserCreate) SetNillableLastFailedLoginAt(v *time.Time) *UserCreate {
+	if v != nil {
+		_c.SetLastFailedLoginAt(*v)
+	}
+	return _c
+}
+
+// SetLockedUntil sets the "locked_until" field.
+func (_c *UserCreate) SetLockedUntil(v time.Time) *UserCreate {
+	_c.mutation.SetLockedUntil(v)
+	return _c
+}
+
+// SetNillableLockedUntil sets the "locked_until" field if the given value is not nil.
+func (_c *UserCreate) SetNillableLockedUntil(v *time.Time) *UserCreate {
+	if v != nil {
+		_c.SetLockedUntil(*v)
+	}
+	return _c
+}
+
+// SetLockoutCount sets the "lockout_count" field.
+func (_c *UserCreate) SetLockoutCount(v int) *UserCreate {
+	_c.mutation.SetLockoutCount(v)
+	return _c
+}
+
+// SetNillableLockoutCount sets the "lockout_count" field if the given value is not nil.
+func (_c *UserCreate) SetNillableLockoutCount(v *int) *UserCreate {
+	if v != nil {
+		_c.SetLockoutCount(*v)
+	}
+	return _c
+}
+
+// SetLastLockedAt sets the "last_locked_at" field.
+func (_c *UserCreate) SetLastLockedAt(v time.Time) *UserCreate {
+	_c.mutation.SetLastLockedAt(v)
+	return _c
+}
+
+// SetNillableLastLockedAt sets the "last_locked_at" field if the given value is not nil.
+func (_c *UserCreate) SetNillableLastLockedAt(v *time.Time) *UserCreate {
+	if v != nil {
+		_c.SetLastLockedAt(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *UserCreate) SetID(v string) *UserCreate {
 	_c.mutation.SetID(v)
@@ -324,6 +394,14 @@ func (_c *UserCreate) defaults() {
 		v := user.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.FailedLoginCount(); !ok {
+		v := user.DefaultFailedLoginCount
+		_c.mutation.SetFailedLoginCount(v)
+	}
+	if _, ok := _c.mutation.LockoutCount(); !ok {
+		v := user.DefaultLockoutCount
+		_c.mutation.SetLockoutCount(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := user.DefaultID()
 		_c.mutation.SetID(v)
@@ -364,6 +442,12 @@ func (_c *UserCreate) check() error {
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "User.status"`)}
+	}
+	if _, ok := _c.mutation.FailedLoginCount(); !ok {
+		return &ValidationError{Name: "failed_login_count", err: errors.New(`ent: missing required field "User.failed_login_count"`)}
+	}
+	if _, ok := _c.mutation.LockoutCount(); !ok {
+		return &ValidationError{Name: "lockout_count", err: errors.New(`ent: missing required field "User.lockout_count"`)}
 	}
 	if v, ok := _c.mutation.ID(); ok {
 		if err := user.IDValidator(v); err != nil {
@@ -443,6 +527,26 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Profile(); ok {
 		_spec.SetField(user.FieldProfile, field.TypeJSON, value)
 		_node.Profile = value
+	}
+	if value, ok := _c.mutation.FailedLoginCount(); ok {
+		_spec.SetField(user.FieldFailedLoginCount, field.TypeInt, value)
+		_node.FailedLoginCount = value
+	}
+	if value, ok := _c.mutation.LastFailedLoginAt(); ok {
+		_spec.SetField(user.FieldLastFailedLoginAt, field.TypeTime, value)
+		_node.LastFailedLoginAt = &value
+	}
+	if value, ok := _c.mutation.LockedUntil(); ok {
+		_spec.SetField(user.FieldLockedUntil, field.TypeTime, value)
+		_node.LockedUntil = &value
+	}
+	if value, ok := _c.mutation.LockoutCount(); ok {
+		_spec.SetField(user.FieldLockoutCount, field.TypeInt, value)
+		_node.LockoutCount = value
+	}
+	if value, ok := _c.mutation.LastLockedAt(); ok {
+		_spec.SetField(user.FieldLastLockedAt, field.TypeTime, value)
+		_node.LastLockedAt = &value
 	}
 	if nodes := _c.mutation.RealmIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

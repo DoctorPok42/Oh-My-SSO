@@ -40,6 +40,19 @@ func (User) Fields() []ent.Field {
 		field.String("status").GoType(UserStatus("")).Default(string(UserActive)),
 		field.Time("last_login_at").Optional().Nillable(),
 		field.JSON("profile", map[string]interface{}{}).Optional(),
+
+		// Account lockout (Step 12). failed_login_count counts the wrong
+		// passwords in a row inside the observation window (the realm's
+		// lockout_duration_minutes, measured from last_failed_login_at).
+		// Reaching lockout_threshold sets locked_until.
+		field.Int("failed_login_count").Default(0),
+		field.Time("last_failed_login_at").Optional().Nillable(),
+		field.Time("locked_until").Optional().Nillable(),
+		// Locks in a row, for the progressive lockout: each new lock within
+		// 24 h of the previous one lasts twice as long (capped at 24 h).
+		// Back to 0 after a successful login, an unlock or a password reset.
+		field.Int("lockout_count").Default(0),
+		field.Time("last_locked_at").Optional().Nillable(),
 	}
 }
 

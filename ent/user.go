@@ -40,6 +40,16 @@ type User struct {
 	LastLoginAt *time.Time `json:"last_login_at,omitempty"`
 	// Profile holds the value of the "profile" field.
 	Profile map[string]interface{} `json:"profile,omitempty"`
+	// FailedLoginCount holds the value of the "failed_login_count" field.
+	FailedLoginCount int `json:"failed_login_count,omitempty"`
+	// LastFailedLoginAt holds the value of the "last_failed_login_at" field.
+	LastFailedLoginAt *time.Time `json:"last_failed_login_at,omitempty"`
+	// LockedUntil holds the value of the "locked_until" field.
+	LockedUntil *time.Time `json:"locked_until,omitempty"`
+	// LockoutCount holds the value of the "lockout_count" field.
+	LockoutCount int `json:"lockout_count,omitempty"`
+	// LastLockedAt holds the value of the "last_locked_at" field.
+	LastLockedAt *time.Time `json:"last_locked_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserQuery when eager-loading is set.
 	Edges        UserEdges `json:"edges"`
@@ -161,9 +171,11 @@ func (*User) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case user.FieldProfile:
 			values[i] = new([]byte)
+		case user.FieldFailedLoginCount, user.FieldLockoutCount:
+			values[i] = new(sql.NullInt64)
 		case user.FieldID, user.FieldRealmID, user.FieldUsername, user.FieldPasswordHash, user.FieldEmail, user.FieldStatus:
 			values[i] = new(sql.NullString)
-		case user.FieldCreatedAt, user.FieldUpdatedAt, user.FieldDeletedAt, user.FieldLastLoginAt:
+		case user.FieldCreatedAt, user.FieldUpdatedAt, user.FieldDeletedAt, user.FieldLastLoginAt, user.FieldLastFailedLoginAt, user.FieldLockedUntil, user.FieldLastLockedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -249,6 +261,39 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				if err := json.Unmarshal(*value, &_m.Profile); err != nil {
 					return fmt.Errorf("unmarshal field profile: %w", err)
 				}
+			}
+		case user.FieldFailedLoginCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field failed_login_count", values[i])
+			} else if value.Valid {
+				_m.FailedLoginCount = int(value.Int64)
+			}
+		case user.FieldLastFailedLoginAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field last_failed_login_at", values[i])
+			} else if value.Valid {
+				_m.LastFailedLoginAt = new(time.Time)
+				*_m.LastFailedLoginAt = value.Time
+			}
+		case user.FieldLockedUntil:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field locked_until", values[i])
+			} else if value.Valid {
+				_m.LockedUntil = new(time.Time)
+				*_m.LockedUntil = value.Time
+			}
+		case user.FieldLockoutCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field lockout_count", values[i])
+			} else if value.Valid {
+				_m.LockoutCount = int(value.Int64)
+			}
+		case user.FieldLastLockedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field last_locked_at", values[i])
+			} else if value.Valid {
+				_m.LastLockedAt = new(time.Time)
+				*_m.LastLockedAt = value.Time
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -364,6 +409,27 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("profile=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Profile))
+	builder.WriteString(", ")
+	builder.WriteString("failed_login_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.FailedLoginCount))
+	builder.WriteString(", ")
+	if v := _m.LastFailedLoginAt; v != nil {
+		builder.WriteString("last_failed_login_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.LockedUntil; v != nil {
+		builder.WriteString("locked_until=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("lockout_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.LockoutCount))
+	builder.WriteString(", ")
+	if v := _m.LastLockedAt; v != nil {
+		builder.WriteString("last_locked_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

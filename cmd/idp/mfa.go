@@ -153,6 +153,8 @@ func (e *mfaEnv) mfaService(needSessions bool) (*service.MFAService, error) {
 			entstore.NewTokenRepository(e.client),
 			valkeycache.NewSessionCache(vc),
 		)
+		// Step 12: "your two-step verification was reset" e-mail.
+		deps.Notifier = cliNotifier(e.client)
 	}
 	return service.NewMFAService(deps), nil
 }

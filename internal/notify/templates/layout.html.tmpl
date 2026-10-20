@@ -1,0 +1,43 @@
+{{/*
+  HTML layout of every e-mail. E-mail clients are not browsers: no external
+  CSS, no JavaScript, styles inline, layout with tables (Outlook still
+  renders HTML with Word). https://www.caniemail.com/ tells what works where.
+*/}}
+{{define "layout.html"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>{{.Subject}}</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2328;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f5f7;">
+<tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:#ffffff;border:1px solid #e4e6ea;border-radius:8px;">
+<tr><td style="padding:28px 32px 4px 32px;font-size:13px;color:#59636e;">{{.Realm}}</td></tr>
+<tr><td style="padding:0 32px 28px 32px;font-size:15px;line-height:1.55;">
+{{template "html" .}}
+</td></tr>
+</table>
+<p style="max-width:560px;margin:16px auto 0 auto;font-size:12px;line-height:1.5;color:#7d8590;">
+This is an automatic message from {{.Product}} about your account{{if .Username}} <strong>{{.Username}}</strong>{{end}}. Replies are not read.
+</p>
+</td></tr>
+</table>
+</body>
+</html>
+{{end}}
+
+{{define "title"}}<h1 style="margin:8px 0 16px 0;font-size:20px;line-height:1.3;color:#1f2328;">{{.}}</h1>{{end}}
+
+{{define "button"}}<p style="margin:24px 0;"><a href="{{.URL}}" style="display:inline-block;background:#1f6feb;color:#ffffff;text-decoration:none;font-weight:600;padding:11px 20px;border-radius:6px;">{{.Label}}</a></p>{{end}}
+
+{{define "details"}}<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;font-size:14px;color:#59636e;">
+{{if .When}}<tr><td style="padding:2px 16px 2px 0;">When</td><td style="color:#1f2328;">{{.When}}</td></tr>{{end}}
+{{if .Device}}<tr><td style="padding:2px 16px 2px 0;">Device</td><td style="color:#1f2328;">{{.Device}}</td></tr>{{end}}
+{{if .IPAddress}}<tr><td style="padding:2px 16px 2px 0;">IP address</td><td style="color:#1f2328;">{{.IPAddress}}</td></tr>{{end}}
+{{if .Location}}<tr><td style="padding:2px 16px 2px 0;">Location</td><td style="color:#1f2328;">{{.Location}} (approximate)</td></tr>{{end}}
+</table>{{end}}
+
+{{define "muted"}}<p style="margin:16px 0 0 0;font-size:13px;color:#59636e;">{{.}}</p>{{end}}

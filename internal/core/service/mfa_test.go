@@ -187,6 +187,7 @@ type mfaFixture struct {
 	users      *fakeUserRepo
 	core       *service.IdentityCoreService
 	passkeys   service.PasskeyProvider
+	notifier   *recordingNotifier // Step 12
 }
 
 // Relying party used by the passkey tests (the software authenticator of
@@ -219,6 +220,7 @@ func newMFAFixture(t *testing.T) *mfaFixture {
 	f.attempts = &fakeLoginAttemptRepo{}
 	f.audit = &fakeAuditRepo{}
 	f.limiter = &countingLimiter{limit: 1000, seen: map[string]int64{}}
+	f.notifier = &recordingNotifier{}
 
 	appRole := role("role-app", nil, nil)
 	f.access = &fakeAccessRepo{
@@ -269,6 +271,7 @@ func newMFAFixture(t *testing.T) *mfaFixture {
 		Audit:         f.audit,
 		Clients:       f.clients,
 		Passkeys:      f.passkeys,
+		Notifier:      f.notifier,
 		IssuerName:    "Oh-My-SSO test",
 		Now:           clock,
 	})
@@ -793,6 +796,62 @@ func TestMFA_FactorManagement(t *testing.T) {
 		require.Equal(t, "mfa_reset", last.Action)
 		require.Equal(t, "lost phone", last.Details["reason"])
 	})
+}
+
+// Step 12: every change of the user's factors is told to the notifier
+// (the dispatcher turns it into an e-mail when the realm wants alerts).
+func TestMFA_Notifications(t *testing.T) {
+	ctx := context.Background()
+	f := newMFAFixture(t)
+
+	f.enrollTOTP(t, aliceID)
+	e := f.notifier.last()
+	require.Equal(t, domain.NotificationMfaMethodAdded, e.Kind)
+	require.Equal(t, domain.MfaMethodTOTP, e.MfaMethodType)
+	require.Equal(t, "phone", e.MfaMethodName)
+	require.Equal(t, aliceID, e.UserID)
+	require.Equal(t, realmA, e.RealmID)
+
+	_, err := f.mfa.RegenerateBackupCodes(ctx, f.user(aliceID))
+	require.NoError(t, err)
+	require.Equal(t, domain.NotificationBackupCodesRegenerated, f.notifier.last().Kind)
+
+	list, err := f.mfa.ListFactors(ctx, aliceID)
+	require.NoError(t, err)
+	require.NoError(t, f.mfa.DeleteFactor(ctx, f.user(aliceID), list.Methods[0].ID))
+	require.Equal(t, domain.NotificationMfaMethodRemoved, f.notifier.last().Kind)
+
+	f.enrollTOTP(t, aliceID)
+	_, err = f.mfa.ResetUser(ctx, f.user(aliceID), "cli:root", "lost phone")
+	require.NoError(t, err)
+	require.Equal(t, []domain.NotificationKind{
+		domain.NotificationMfaMethodAdded,
+		domain.NotificationBackupCodesRegenerated,
+		domain.NotificationMfaMethodRemoved,
+		domain.NotificationMfaMethodAdded,
+		domain.NotificationMfaReset,
+	}, f.notifier.kinds())
+
+	// A pending (never confirmed) factor is not worth an e-mail.
+	enr, err := f.mfa.StartTOTPEnrollment(ctx, f.user(bobID), "tablet")
+	require.NoError(t, err)
+	require.NoError(t, f.mfa.DeleteFactor(ctx, f.user(bobID), enr.MethodID))
+	require.Len(t, f.notifier.kinds(), 5)
+}
+
+// Step 12: the device fingerprint given at the password step ends up on the
+// session created after the second factor.
+func TestMFA_DeviceFingerprintKept(t *testing.T) {
+	f := newMFAFixture(t)
+	secret, _ := f.enrollTOTP(t, aliceID)
+	dec, err := f.mfa.BeginLogin(context.Background(), service.BeginLoginInput{
+		User: f.user(aliceID), IPAddress: "203.0.113.9", DeviceFingerprint: "device-hash",
+	})
+	require.NoError(t, err)
+	require.Equal(t, service.LoginMFARequired, dec.Outcome)
+	res, err := f.verify(dec, "totp", totpAt(t, secret, f.now))
+	require.NoError(t, err)
+	require.Equal(t, "device-hash", f.sessions.byID[res.Session.ID].DeviceFingerprint)
 }
 
 func TestMFA_RateLimit(t *testing.T) {

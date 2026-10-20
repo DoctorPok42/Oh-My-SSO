@@ -1,0 +1,12 @@
+{{define "subject"}}Test e-mail from {{.Product}}{{end}}
+
+{{define "text"}}It works!
+
+If you can read this, the SMTP settings of {{.Product}} are right.
+Sent {{.When}}.
+{{end}}
+
+{{define "html"}}{{template "title" "It works!"}}
+<p style="margin:0 0 12px 0;">If you can read this, the SMTP settings of {{.Product}} are right.</p>
+{{template "muted" (printf "Sent %s." .When)}}
+{{end}}

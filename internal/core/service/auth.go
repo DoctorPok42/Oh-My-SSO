@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"log/slog"
+	"sync"
 
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
@@ -21,6 +24,8 @@ type AuthService struct {
 	users         repository.UserRepository
 	loginAttempts repository.LoginAttemptRepository
 	timeouts      TimeoutChecker
+	lockout       *LockoutService // Step 12, optional: nil = no account lockout
+	logger        *slog.Logger
 }
 
 type AuthOption func(*AuthService)
@@ -35,8 +40,15 @@ func WithTimeoutChecker(tc TimeoutChecker) AuthOption {
 	}
 }
 
+// WithLockout turns on the account lockout (Step 12): wrong passwords are
+// counted and, past the realm's lockout_threshold, sign-in is refused with
+// an *AccountLockedError until the lock ends.
+func WithLockout(l *LockoutService) AuthOption {
+	return func(s *AuthService) { s.lockout = l }
+}
+
 func NewAuthService(users repository.UserRepository, loginAttempts repository.LoginAttemptRepository, opts ...AuthOption) *AuthService {
-	s := &AuthService{users: users, loginAttempts: loginAttempts, timeouts: NoActiveTimeouts{}}
+	s := &AuthService{users: users, loginAttempts: loginAttempts, timeouts: NoActiveTimeouts{}, logger: slog.Default()}
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -57,14 +69,36 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return nil, fmt.Errorf("authenticate local: lookup user: %w", err)
 	}
+	subj := LockoutSubject{RealmID: p.RealmID, User: user, Identifier: p.Identifier, IPAddress: p.IPAddress, UserAgent: p.UserAgent}
 
-	if user == nil {
-		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, domain.LoginFailureUnknownAccount)
-		return nil, ErrInvalidCredentials
+	// Step 12: a locked identity is refused BEFORE the password is checked,
+	// so guessing stops completely during the lock. Unknown identifiers
+	// lock the same way: the answer never tells whether an account exists.
+	if s.lockout != nil {
+		until, err := s.lockout.Check(ctx, subj)
+		if err != nil {
+			return nil, fmt.Errorf("authenticate local: %w", err)
+		}
+		if !until.IsZero() {
+			reason := domain.LoginFailureAccountLocked
+			if user == nil {
+				reason = domain.LoginFailureUnknownAccount
+			}
+			s.recordAttempt(ctx, p, domain.LoginAttemptFailure, reason)
+			return nil, &AccountLockedError{Until: until}
+		}
 	}
 
-	if user.PasswordHash == "" {
-		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, domain.LoginFailureInvalidCredentials)
+	if user == nil || user.PasswordHash == "" {
+		// Same work as a real check, so the response time does not tell
+		// whether the account exists (timing attack).
+		burnPasswordCheck(p.Password)
+		reason := domain.LoginFailureInvalidCredentials
+		if user == nil {
+			reason = domain.LoginFailureUnknownAccount
+		}
+		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, reason)
+		s.recordFailure(ctx, subj)
 		return nil, ErrInvalidCredentials
 	}
 
@@ -74,7 +108,16 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 	}
 	if !ok {
 		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, domain.LoginFailureInvalidCredentials)
+		s.recordFailure(ctx, subj)
 		return nil, ErrInvalidCredentials
+	}
+
+	// The password is right: whatever happens next, earlier failures were
+	// not an attack that succeeded, forget them.
+	if s.lockout != nil {
+		if err := s.lockout.RecordSuccess(ctx, user); err != nil {
+			s.logger.WarnContext(ctx, "lockout: cannot clear failed sign-ins", "user_id", user.ID, "error", err)
+		}
 	}
 
 	if user.Status != domain.UserActive {
@@ -95,6 +138,31 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 
 	s.recordAttempt(ctx, p, domain.LoginAttemptSuccess, "")
 	return user, nil
+}
+
+// recordFailure counts a wrong password for the lockout. An error here must
+// not turn a wrong password into a server error: it is logged.
+func (s *AuthService) recordFailure(ctx context.Context, subj LockoutSubject) {
+	if s.lockout == nil {
+		return
+	}
+	if _, err := s.lockout.RecordFailure(ctx, subj); err != nil {
+		s.logger.WarnContext(ctx, "lockout: cannot count failed sign-in", "realm_id", subj.RealmID, "error", err)
+	}
+}
+
+// dummyPasswordHash is checked when there is no real hash to check, so that
+// "no such account" costs as much time as "wrong password".
+var dummyPasswordHash = sync.OnceValue(func() string {
+	h, err := HashPassword(rand.Text())
+	if err != nil {
+		panic(err) // crypto/rand cannot fail since Go 1.24
+	}
+	return h
+})
+
+func burnPasswordCheck(password string) {
+	_, _ = verifyPassword(password, dummyPasswordHash())
 }
 
 func (s *AuthService) findUserByIdentifier(ctx context.Context, realmID, identifier string) (*domain.User, error) {

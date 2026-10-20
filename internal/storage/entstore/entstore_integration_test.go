@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
 
 	"sso.internal/sso/ent"
 	"sso.internal/sso/internal/core/domain"
@@ -28,7 +31,14 @@ func TestMain(m *testing.M) {
 		postgres.WithDatabase("sso_test"),
 		postgres.WithUsername("sso"),
 		postgres.WithPassword("sso"),
-		postgres.BasicWaitStrategies(),
+		// Ready = pg_isready answers over TCP (not the "ready to accept
+		// connections" log lines, which Docker Desktop can fail to stream),
+		// then the mapped port answers from the host.
+		testcontainers.WithWaitStrategy(
+			wait.ForExec([]string{"pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", "sso", "-d", "sso_test"}).
+				WithStartupTimeout(2*time.Minute).WithPollInterval(250*time.Millisecond),
+			wait.ForListeningPort("5432/tcp").WithStartupTimeout(time.Minute),
+		),
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to start postgres container: %v\n", err)

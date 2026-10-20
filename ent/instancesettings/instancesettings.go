@@ -41,6 +41,10 @@ const (
 	FieldKeyRotationGraceHours = "key_rotation_grace_hours"
 	// FieldMfaStepUpMaxAgeMinutes holds the string denoting the mfa_step_up_max_age_minutes field in the database.
 	FieldMfaStepUpMaxAgeMinutes = "mfa_step_up_max_age_minutes"
+	// FieldPasswordResetTTLMinutes holds the string denoting the password_reset_ttl_minutes field in the database.
+	FieldPasswordResetTTLMinutes = "password_reset_ttl_minutes"
+	// FieldSuspiciousLoginEmailEnabled holds the string denoting the suspicious_login_email_enabled field in the database.
+	FieldSuspiciousLoginEmailEnabled = "suspicious_login_email_enabled"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
 	// FieldUpdatedBy holds the string denoting the updated_by field in the database.
@@ -74,6 +78,8 @@ var Columns = []string{
 	FieldNotificationEmailEnabled,
 	FieldKeyRotationGraceHours,
 	FieldMfaStepUpMaxAgeMinutes,
+	FieldPasswordResetTTLMinutes,
+	FieldSuspiciousLoginEmailEnabled,
 	FieldUpdatedAt,
 	FieldUpdatedBy,
 }
@@ -113,6 +119,10 @@ var (
 	DefaultKeyRotationGraceHours int
 	// DefaultMfaStepUpMaxAgeMinutes holds the default value on creation for the "mfa_step_up_max_age_minutes" field.
 	DefaultMfaStepUpMaxAgeMinutes int
+	// DefaultPasswordResetTTLMinutes holds the default value on creation for the "password_reset_ttl_minutes" field.
+	DefaultPasswordResetTTLMinutes int
+	// DefaultSuspiciousLoginEmailEnabled holds the default value on creation for the "suspicious_login_email_enabled" field.
+	DefaultSuspiciousLoginEmailEnabled bool
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
@@ -189,6 +199,16 @@ func ByKeyRotationGraceHours(opts ...sql.OrderTermOption) OrderOption {
 // ByMfaStepUpMaxAgeMinutes orders the results by the mfa_step_up_max_age_minutes field.
 func ByMfaStepUpMaxAgeMinutes(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMfaStepUpMaxAgeMinutes, opts...).ToFunc()
+}
+
+// ByPasswordResetTTLMinutes orders the results by the password_reset_ttl_minutes field.
+func ByPasswordResetTTLMinutes(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPasswordResetTTLMinutes, opts...).ToFunc()
+}
+
+// BySuspiciousLoginEmailEnabled orders the results by the suspicious_login_email_enabled field.
+func BySuspiciousLoginEmailEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSuspiciousLoginEmailEnabled, opts...).ToFunc()
 }
 
 // ByUpdatedAt orders the results by the updated_at field.

@@ -26,7 +26,7 @@ const (
 	defaultSessionMaxLifetime = 8 * time.Hour
 	defaultSessionIdleTimeout = 10 * time.Minute
 
-	touchInterval = time.Minute
+	touchInterval  = time.Minute
 	policyCacheTTL = time.Minute
 )
 
@@ -40,6 +40,20 @@ type SessionService struct {
 
 	policyMu    sync.Mutex
 	policyCache map[string]cachedPolicy
+
+	observer LoginObserver // Step 12, optional
+}
+
+// LoginObserver is told about every new session, i.e. every completed
+// sign-in (Step 12: new device and unusual sign-in detection). It must not
+// block: LoginSecurityService does its work in the background.
+type LoginObserver interface {
+	SessionCreated(ctx context.Context, sess *domain.Session)
+}
+
+// WithLoginObserver plugs a LoginObserver into Create.
+func WithLoginObserver(o LoginObserver) SessionOption {
+	return func(s *SessionService) { s.observer = o }
 }
 
 type cachedPolicy struct {
@@ -89,6 +103,20 @@ type CreateSessionInput struct {
 	MFAMethodType string
 	// MFAVerifiedAt defaults to "now" when MFAVerified is true.
 	MFAVerifiedAt time.Time
+	// DeviceFingerprint (Step 12) is DeviceFingerprint(<id from the
+	// sso_device cookie>): the same browser gives the same value, which is
+	// how a sign-in from a new device is spotted.
+	DeviceFingerprint string
+}
+
+// DeviceFingerprint turns the random id of the sso_device cookie into what
+// sessions store: its SHA-256, like every other token we keep. "" stays "".
+func DeviceFingerprint(deviceID string) string {
+	if deviceID == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte("device:" + deviceID))
+	return hex.EncodeToString(sum[:])
 }
 
 func (s *SessionService) Create(ctx context.Context, in CreateSessionInput) (rawToken string, sess *domain.Session, err error) {
@@ -105,21 +133,25 @@ func (s *SessionService) Create(ctx context.Context, in CreateSessionInput) (raw
 	}
 
 	sess, err = s.sessions.Create(ctx, repository.CreateSessionParams{
-		TokenHash:     HashSessionToken(rawToken),
-		RealmID:       in.RealmID,
-		UserID:        in.UserID,
-		ExpiresAt:     s.now().Add(policy.maxLifetime),
-		IPAddress:     in.IPAddress,
-		UserAgent:     in.UserAgent,
-		MFAVerified:   in.MFAVerified,
-		MFAMethodType: in.MFAMethodType,
-		MFAVerifiedAt: mfaAt,
-		AuthMethod:    authMethod,
+		TokenHash:         HashSessionToken(rawToken),
+		RealmID:           in.RealmID,
+		UserID:            in.UserID,
+		ExpiresAt:         s.now().Add(policy.maxLifetime),
+		IPAddress:         in.IPAddress,
+		UserAgent:         in.UserAgent,
+		MFAVerified:       in.MFAVerified,
+		MFAMethodType:     in.MFAMethodType,
+		MFAVerifiedAt:     mfaAt,
+		AuthMethod:        authMethod,
+		DeviceFingerprint: in.DeviceFingerprint,
 	})
 	if err != nil {
 		return "", nil, fmt.Errorf("create session: %w", err)
 	}
 
+	if s.observer != nil {
+		s.observer.SessionCreated(ctx, sess)
+	}
 	return rawToken, sess, nil
 }
 

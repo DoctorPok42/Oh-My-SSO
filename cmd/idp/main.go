@@ -1,13 +1,18 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -21,11 +26,13 @@ import (
 	valkeycache "sso.internal/sso/internal/cache/valkey"
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/geoip"
 	"sso.internal/sso/internal/httpserver"
 	"sso.internal/sso/internal/keymanager"
 	localdev "sso.internal/sso/internal/keymanager/local_dev"
 	"sso.internal/sso/internal/keymanager/ovhkms"
 	"sso.internal/sso/internal/keymanager/vault"
+	"sso.internal/sso/internal/notify"
 	"sso.internal/sso/internal/oidcstore"
 	"sso.internal/sso/internal/passkey"
 	"sso.internal/sso/internal/storage/entstore"
@@ -137,7 +144,7 @@ func buildPublicURL(port string) string {
 }
 
 // buildOIDC returns the OpenID Connect adapter (Step 10).
-func buildOIDC(publicURL string, idp core.IdentityCore, store oidcstore.Store, passkeys bool) *oidcadapter.Adapter {
+func buildOIDC(publicURL string, idp core.IdentityCore, store oidcstore.Store, passkeys, passwordReset bool) *oidcadapter.Adapter {
 	appEnv := os.Getenv("APP_ENV")
 	a, err := oidcadapter.New(oidcadapter.Config{
 		PublicURL:         publicURL,
@@ -145,6 +152,7 @@ func buildOIDC(publicURL string, idp core.IdentityCore, store oidcstore.Store, p
 		SessionCookieName: httpserver.SessionCookieName,
 		PasskeysEnabled:   passkeys,
 		DevPages:          appEnv == "development",
+		PasswordReset:     passwordReset,
 	}, idp, store)
 	if err != nil {
 		log.Fatalf("oidc: %v", err)
@@ -155,7 +163,7 @@ func buildOIDC(publicURL string, idp core.IdentityCore, store oidcstore.Store, p
 
 // buildSAML returns the SAML 2.0 adapter (Step 11). It reuses the OIDC
 // short-lived store (a generic key/value store; SAML keys start with "saml:").
-func buildSAML(publicURL string, idp core.IdentityCore, store oidcstore.Store, passkeys bool) *samladapter.Adapter {
+func buildSAML(publicURL string, idp core.IdentityCore, store oidcstore.Store, passkeys, passwordReset bool) *samladapter.Adapter {
 	appEnv := os.Getenv("APP_ENV")
 	a, err := samladapter.New(samladapter.Config{
 		PublicURL:         publicURL,
@@ -163,6 +171,7 @@ func buildSAML(publicURL string, idp core.IdentityCore, store oidcstore.Store, p
 		SessionCookieName: httpserver.SessionCookieName,
 		PasskeysEnabled:   passkeys,
 		DevPages:          appEnv == "development",
+		PasswordReset:     passwordReset,
 	}, idp, store)
 	if err != nil {
 		log.Fatalf("saml: %v", err)
@@ -180,6 +189,9 @@ const backendLocalDev = "local_dev"
 //	idp mfa ...    manage second factors and MFA policies (see mfa.go)
 //	idp oidc ...   manage OIDC clients (see oidc.go)
 //	idp saml ...   manage SAML clients (see saml.go)
+//	idp users ...  account lockout: status, unlock (see users.go)
+//	idp settings . realm settings: e-mails, lockout, passwords (see settings.go)
+//	idp mail test  send a test e-mail with the SMTP_* settings (see mail.go)
 //	idp dev seed   demo realm, user and OIDC client (development only, see dev.go)
 func main() {
 	if len(os.Args) > 1 {
@@ -193,10 +205,16 @@ func main() {
 			os.Exit(runOIDCCommand(os.Args[2:]))
 		case "saml":
 			os.Exit(runSAMLCommand(os.Args[2:]))
+		case "users":
+			os.Exit(runUsersCommand(os.Args[2:]))
+		case "settings":
+			os.Exit(runSettingsCommand(os.Args[2:]))
+		case "mail":
+			os.Exit(runMailCommand(os.Args[2:]))
 		case "dev":
 			os.Exit(runDevCommand(os.Args[2:]))
 		default:
-			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|activate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n  idp oidc clients <create|list|rotate-secret> [flags]\n  idp saml clients <create|list|add-cert|remove-cert> [flags]\n  idp dev seed [flags]\n", os.Args[1])
+			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|activate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n  idp oidc clients <create|list|rotate-secret> [flags]\n  idp saml clients <create|list|add-cert|remove-cert> [flags]\n  idp users <status|unlock> [flags]\n  idp settings <show|set> [flags]\n  idp mail test --to <address>\n  idp dev seed [flags]\n", os.Args[1])
 			os.Exit(2)
 		}
 	}
@@ -222,28 +240,61 @@ func serve() {
 	tokenRepo := entstore.NewTokenRepository(client)
 	signingKeyRepo := entstore.NewSigningKeyRepository(client)
 	settingsRepo := entstore.NewInstanceSettingsRepository(client)
-
-	authService := service.NewAuthService(
-		userRepo,
-		entstore.NewLoginAttemptRepository(client),
-		service.WithTimeoutChecker(timeouts),
-	)
+	sessionRepo := entstore.NewSessionRepository(client)
+	auditRepo := entstore.NewAuditLogRepository(client)
+	publicURL := buildPublicURL(port)
 
 	valkeyClient, err := valkeycache.New(os.Getenv("VALKEY_ADDR"))
 	if err != nil {
 		log.Fatalf("valkey: %v", err)
 	}
 
+	// --- E-mail notifications (Step 12) ---
+	// The dispatcher sends in the background; every core service only
+	// calls Notify(event). Without SMTP (production), no e-mail at all.
+	var notifier service.Notifier = service.NopNotifier{}
+	var dispatcher *notify.Dispatcher
+	if sender := buildEmailSender(loadTemplates()); sender != nil {
+		dispatcher = newDispatcher(client, publicURL, sender)
+		dispatcher.Start()
+		notifier = dispatcher
+	}
+
+	// --- Account lockout (Step 12) ---
+	lockout := service.NewLockoutService(service.LockoutDeps{
+		Users:    userRepo,
+		Unknown:  valkeycache.NewLockoutStore(valkeyClient),
+		Settings: settingsRepo,
+		Notifier: notifier,
+		Audit:    auditRepo,
+	})
+
+	authService := service.NewAuthService(
+		userRepo,
+		entstore.NewLoginAttemptRepository(client),
+		service.WithTimeoutChecker(timeouts),
+		service.WithLockout(lockout),
+	)
+
+	// --- Sign-in analysis: new device, suspicious sign-in (Step 12) ---
+	loginSecurity := service.NewLoginSecurityService(service.LoginSecurityDeps{
+		Sessions: sessionRepo,
+		Audit:    auditRepo,
+		Notifier: notifier,
+		GeoIP:    buildGeoIP(),
+	})
+
 	sessionService := service.NewSessionService(
-		entstore.NewSessionRepository(client),
+		sessionRepo,
 		settingsRepo,
 		tokenRepo,
 		valkeycache.NewSessionCache(valkeyClient),
+		service.WithLoginObserver(loginSecurity),
 	)
 
 	rbacService := service.NewRBACService(
 		entstore.NewAccessRepository(client),
-		entstore.NewAuditLogRepository(client),
+		auditRepo,
 	)
 
 	keyRotation := service.NewKeyRotationService(
@@ -259,7 +310,6 @@ func serve() {
 	if !ok {
 		log.Fatalf("keymanager: backend %q cannot encrypt (needed for TOTP secrets)", kmsBackend)
 	}
-	auditRepo := entstore.NewAuditLogRepository(client)
 	mfaPolicy := service.NewMFAPolicyService(service.MFAPolicyDeps{
 		Settings: settingsRepo,
 		Clients:  clientRepo,
@@ -282,8 +332,24 @@ func serve() {
 		Realms:        realmRepo,
 		Clients:       clientRepo,
 		Passkeys:      buildPasskeys(),
+		Notifier:      notifier,
 		IssuerName:    os.Getenv("MFA_TOTP_ISSUER"),
 	})
+
+	// --- Password reset (Step 12): only when e-mails can be sent ---
+	var passwordReset *service.PasswordResetService
+	if dispatcher != nil {
+		passwordReset = service.NewPasswordResetService(service.PasswordResetDeps{
+			Users:    userRepo,
+			Tokens:   entstore.NewPasswordResetTokenRepository(client),
+			Sessions: sessionService,
+			Policy:   service.NewPasswordPolicyService(settingsRepo),
+			Settings: settingsRepo,
+			Lockout:  lockout,
+			Notifier: notifier,
+			Audit:    auditRepo,
+		})
+	}
 
 	identityCore := service.NewIdentityCore(service.IdentityCoreDeps{
 		Auth:        authService,
@@ -301,11 +367,21 @@ func serve() {
 	})
 
 	// --- OpenID Connect (Step 10) and SAML 2.0 (Step 11) ---
-	publicURL := buildPublicURL(port)
 	flowStore := valkeycache.NewOIDCStore(valkeyClient)
-	oidcProvider := buildOIDC(publicURL, identityCore, flowStore, mfaService.PasskeysEnabled())
-	samlProvider := buildSAML(publicURL, identityCore, flowStore, mfaService.PasskeysEnabled())
+	oidcProvider := buildOIDC(publicURL, identityCore, flowStore, mfaService.PasskeysEnabled(), passwordReset != nil)
+	samlProvider := buildSAML(publicURL, identityCore, flowStore, mfaService.PasskeysEnabled(), passwordReset != nil)
 
+	opts := []httpserver.Option{
+		httpserver.WithJWKS(identityCore),
+		httpserver.WithSigningKeyAdmin(keyRotation),
+		httpserver.WithMFA(mfaService),
+		httpserver.WithDevPages(os.Getenv("APP_ENV") == "development"),
+		httpserver.WithOIDC(oidcProvider),
+		httpserver.WithSAML(samlProvider),
+	}
+	if passwordReset != nil {
+		opts = append(opts, httpserver.WithPasswordReset(passwordReset))
+	}
 	srv := httpserver.New(
 		authService,
 		sessionService,
@@ -313,14 +389,48 @@ func serve() {
 		realmRepo,
 		clientRepo,
 		valkeycache.NewRateLimiter(valkeyClient),
-		httpserver.WithJWKS(identityCore),
-		httpserver.WithSigningKeyAdmin(keyRotation),
-		httpserver.WithMFA(mfaService),
-		httpserver.WithDevPages(os.Getenv("APP_ENV") == "development"),
-		httpserver.WithOIDC(oidcProvider),
-		httpserver.WithSAML(samlProvider),
+		opts...,
 	)
 
+	// Graceful stop (Step 12): on Ctrl+C or `docker stop` (SIGTERM), stop
+	// accepting connections, let running requests finish, then give the
+	// e-mails still in the queue a few seconds to leave.
+	httpSrv := &http.Server{Addr: ":" + port, Handler: srv.Router(), ReadHeaderTimeout: 10 * time.Second}
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-stop
+		log.Printf("shutting down...")
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		_ = httpSrv.Shutdown(ctx)
+	}()
+
 	log.Printf("Starting server on port %s...", port)
-	log.Fatal(http.ListenAndServe(":"+port, srv.Router()))
+	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatal(err)
+	}
+	if dispatcher != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		dispatcher.Close(ctx)
+		cancel()
+	}
+	valkeyClient.Close()
+}
+
+// buildGeoIP opens the country database for the "new country" signal
+// (Step 12). GEOIP_DB_PATH=/path/to/dbip-country-lite.mmdb; unset = off.
+// It returns a nil interface (not a typed nil pointer) when off.
+func buildGeoIP() service.GeoIPResolver {
+	path := os.Getenv("GEOIP_DB_PATH")
+	if path == "" {
+		log.Printf("geoip: GEOIP_DB_PATH is not set: no \"new country\" signal on sign-ins")
+		return nil
+	}
+	r, err := geoip.Open(path)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	log.Printf("geoip: %s", r.Description())
+	return r
 }

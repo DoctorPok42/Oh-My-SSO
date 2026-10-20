@@ -188,6 +188,34 @@ func (_c *InstanceSettingsCreate) SetNillableMfaStepUpMaxAgeMinutes(v *int) *Ins
 	return _c
 }
 
+// SetPasswordResetTTLMinutes sets the "password_reset_ttl_minutes" field.
+func (_c *InstanceSettingsCreate) SetPasswordResetTTLMinutes(v int) *InstanceSettingsCreate {
+	_c.mutation.SetPasswordResetTTLMinutes(v)
+	return _c
+}
+
+// SetNillablePasswordResetTTLMinutes sets the "password_reset_ttl_minutes" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillablePasswordResetTTLMinutes(v *int) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetPasswordResetTTLMinutes(*v)
+	}
+	return _c
+}
+
+// SetSuspiciousLoginEmailEnabled sets the "suspicious_login_email_enabled" field.
+func (_c *InstanceSettingsCreate) SetSuspiciousLoginEmailEnabled(v bool) *InstanceSettingsCreate {
+	_c.mutation.SetSuspiciousLoginEmailEnabled(v)
+	return _c
+}
+
+// SetNillableSuspiciousLoginEmailEnabled sets the "suspicious_login_email_enabled" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableSuspiciousLoginEmailEnabled(v *bool) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetSuspiciousLoginEmailEnabled(*v)
+	}
+	return _c
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_c *InstanceSettingsCreate) SetUpdatedAt(v time.Time) *InstanceSettingsCreate {
 	_c.mutation.SetUpdatedAt(v)
@@ -314,6 +342,14 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultMfaStepUpMaxAgeMinutes
 		_c.mutation.SetMfaStepUpMaxAgeMinutes(v)
 	}
+	if _, ok := _c.mutation.PasswordResetTTLMinutes(); !ok {
+		v := instancesettings.DefaultPasswordResetTTLMinutes
+		_c.mutation.SetPasswordResetTTLMinutes(v)
+	}
+	if _, ok := _c.mutation.SuspiciousLoginEmailEnabled(); !ok {
+		v := instancesettings.DefaultSuspiciousLoginEmailEnabled
+		_c.mutation.SetSuspiciousLoginEmailEnabled(v)
+	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := instancesettings.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
@@ -366,6 +402,12 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.MfaStepUpMaxAgeMinutes(); !ok {
 		return &ValidationError{Name: "mfa_step_up_max_age_minutes", err: errors.New(`ent: missing required field "InstanceSettings.mfa_step_up_max_age_minutes"`)}
+	}
+	if _, ok := _c.mutation.PasswordResetTTLMinutes(); !ok {
+		return &ValidationError{Name: "password_reset_ttl_minutes", err: errors.New(`ent: missing required field "InstanceSettings.password_reset_ttl_minutes"`)}
+	}
+	if _, ok := _c.mutation.SuspiciousLoginEmailEnabled(); !ok {
+		return &ValidationError{Name: "suspicious_login_email_enabled", err: errors.New(`ent: missing required field "InstanceSettings.suspicious_login_email_enabled"`)}
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "InstanceSettings.updated_at"`)}
@@ -460,6 +502,14 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.MfaStepUpMaxAgeMinutes(); ok {
 		_spec.SetField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)
 		_node.MfaStepUpMaxAgeMinutes = value
+	}
+	if value, ok := _c.mutation.PasswordResetTTLMinutes(); ok {
+		_spec.SetField(instancesettings.FieldPasswordResetTTLMinutes, field.TypeInt, value)
+		_node.PasswordResetTTLMinutes = value
+	}
+	if value, ok := _c.mutation.SuspiciousLoginEmailEnabled(); ok {
+		_spec.SetField(instancesettings.FieldSuspiciousLoginEmailEnabled, field.TypeBool, value)
+		_node.SuspiciousLoginEmailEnabled = value
 	}
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

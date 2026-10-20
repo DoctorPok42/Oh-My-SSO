@@ -35,7 +35,7 @@ func (r *entPasswordResetTokenRepository) Create(ctx context.Context, p reposito
 func (r *entPasswordResetTokenRepository) GetByID(ctx context.Context, id string) (*domain.PasswordResetToken, error) {
 	e, err := r.client.PasswordResetToken.Get(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainPasswordResetToken(e), nil
 }
@@ -46,7 +46,7 @@ func (r *entPasswordResetTokenRepository) GetByTokenHash(ctx context.Context, to
 		Where(passwordresettoken.TokenHash(tokenHash)).
 		Only(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainPasswordResetToken(e), nil
 }
@@ -58,6 +58,26 @@ func (r *entPasswordResetTokenRepository) MarkUsed(ctx context.Context, id strin
 		SetUsedAt(time.Now()).
 		Save(ctx)
 	return err
+}
+
+func (r *entPasswordResetTokenRepository) ConsumeIfUnused(ctx context.Context, id string, at time.Time) (bool, error) {
+	n, err := r.client.PasswordResetToken.
+		Update().
+		Where(passwordresettoken.ID(id), passwordresettoken.Used(false)).
+		SetUsed(true).
+		SetUsedAt(at).
+		Save(ctx)
+	if err != nil {
+		return false, err
+	}
+	return n == 1, nil
+}
+
+func (r *entPasswordResetTokenRepository) DeleteUnusedByUser(ctx context.Context, userID string) (int, error) {
+	return r.client.PasswordResetToken.
+		Delete().
+		Where(passwordresettoken.UserID(userID), passwordresettoken.Used(false)).
+		Exec(ctx)
 }
 
 func (r *entPasswordResetTokenRepository) Delete(ctx context.Context, id string) error {

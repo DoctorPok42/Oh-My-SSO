@@ -67,6 +67,24 @@ type Login struct {
 	LoginHint   string
 	CancelURL   string
 	EnrollURL   string // dev pages only
+	// ForgotPasswordURL (Step 12): "Forgot password?" link, "" = hidden.
+	ForgotPasswordURL string
+}
+
+// ForgotPassword is the data of the "forgot password" page (Step 12).
+type ForgotPassword struct {
+	RealmDisplay string
+	Base         string // "/r/<realm>", prefix of the JSON API
+	Assets       string
+}
+
+// ResetPassword is the data of the "choose a new password" page (Step 12).
+type ResetPassword struct {
+	RealmDisplay string
+	Base         string
+	Assets       string
+	MinLength    int // the realm's min_password_length, shown and checked in the browser
+	MaxLength    int
 }
 
 // Message is a short page with a title and one sentence.
@@ -99,6 +117,18 @@ func (p *Pages) RenderLogin(w http.ResponseWriter, status int, data Login) {
 		data.ClientParam = "client_id"
 	}
 	p.render(w, status, "login.html", PageCSP, data)
+}
+
+// RenderForgotPassword writes the "forgot password" page.
+func (p *Pages) RenderForgotPassword(w http.ResponseWriter, data ForgotPassword) {
+	p.render(w, http.StatusOK, "forgot.html", PageCSP, data)
+}
+
+// RenderResetPassword writes the "choose a new password" page. The token is
+// not in the data: it stays in the URL fragment (#token=...), which the
+// browser never sends to the server; password.js reads it.
+func (p *Pages) RenderResetPassword(w http.ResponseWriter, data ResetPassword) {
+	p.render(w, http.StatusOK, "reset.html", PageCSP, data)
 }
 
 // RenderMessage writes a message page. assets: where Asset is mounted.
@@ -140,7 +170,7 @@ func (p *Pages) render(w http.ResponseWriter, status int, name, csp string, data
 	}
 }
 
-// Asset serves login.js, login.css and autopost.js. name is the file name
+// Asset serves login.js, login.css, autopost.js and password.js. name is the file name
 // (the last path segment of the request).
 func Asset(w http.ResponseWriter, r *http.Request, name string) {
 	var ctype string

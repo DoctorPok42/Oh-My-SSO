@@ -463,6 +463,8 @@ var (
 		{Name: "notification_email_enabled", Type: field.TypeBool, Default: false},
 		{Name: "key_rotation_grace_hours", Type: field.TypeInt, Default: 24},
 		{Name: "mfa_step_up_max_age_minutes", Type: field.TypeInt, Default: 10},
+		{Name: "password_reset_ttl_minutes", Type: field.TypeInt, Default: 30},
+		{Name: "suspicious_login_email_enabled", Type: field.TypeBool, Default: false},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "updated_by", Type: field.TypeString, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString, Unique: true},
@@ -475,7 +477,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instance_settings_realms_instance_settings",
-				Columns:    []*schema.Column{InstanceSettingsColumns[15]},
+				Columns:    []*schema.Column{InstanceSettingsColumns[17]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -983,6 +985,11 @@ var (
 		{Name: "status", Type: field.TypeString, Default: "active"},
 		{Name: "last_login_at", Type: field.TypeTime, Nullable: true},
 		{Name: "profile", Type: field.TypeJSON, Nullable: true},
+		{Name: "failed_login_count", Type: field.TypeInt, Default: 0},
+		{Name: "last_failed_login_at", Type: field.TypeTime, Nullable: true},
+		{Name: "locked_until", Type: field.TypeTime, Nullable: true},
+		{Name: "lockout_count", Type: field.TypeInt, Default: 0},
+		{Name: "last_locked_at", Type: field.TypeTime, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString},
 	}
 	// UsersTable holds the schema information for the "users" table.
@@ -993,7 +1000,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "users_realms_users",
-				Columns:    []*schema.Column{UsersColumns[10]},
+				Columns:    []*schema.Column{UsersColumns[15]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -1002,12 +1009,12 @@ var (
 			{
 				Name:    "user_realm_id_username",
 				Unique:  true,
-				Columns: []*schema.Column{UsersColumns[10], UsersColumns[1]},
+				Columns: []*schema.Column{UsersColumns[15], UsersColumns[1]},
 			},
 			{
 				Name:    "user_realm_id_email",
 				Unique:  true,
-				Columns: []*schema.Column{UsersColumns[10], UsersColumns[3]},
+				Columns: []*schema.Column{UsersColumns[15], UsersColumns[3]},
 			},
 		},
 	}

@@ -127,6 +127,16 @@ func MfaStepUpMaxAgeMinutes(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldMfaStepUpMaxAgeMinutes, v))
 }
 
+// PasswordResetTTLMinutes applies equality check predicate on the "password_reset_ttl_minutes" field. It's identical to PasswordResetTTLMinutesEQ.
+func PasswordResetTTLMinutes(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldPasswordResetTTLMinutes, v))
+}
+
+// SuspiciousLoginEmailEnabled applies equality check predicate on the "suspicious_login_email_enabled" field. It's identical to SuspiciousLoginEmailEnabledEQ.
+func SuspiciousLoginEmailEnabled(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldSuspiciousLoginEmailEnabled, v))
+}
+
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldUpdatedAt, v))
@@ -634,6 +644,56 @@ func MfaStepUpMaxAgeMinutesLT(v int) predicate.InstanceSettings {
 // MfaStepUpMaxAgeMinutesLTE applies the LTE predicate on the "mfa_step_up_max_age_minutes" field.
 func MfaStepUpMaxAgeMinutesLTE(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldLTE(FieldMfaStepUpMaxAgeMinutes, v))
+}
+
+// PasswordResetTTLMinutesEQ applies the EQ predicate on the "password_reset_ttl_minutes" field.
+func PasswordResetTTLMinutesEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldPasswordResetTTLMinutes, v))
+}
+
+// PasswordResetTTLMinutesNEQ applies the NEQ predicate on the "password_reset_ttl_minutes" field.
+func PasswordResetTTLMinutesNEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldPasswordResetTTLMinutes, v))
+}
+
+// PasswordResetTTLMinutesIn applies the In predicate on the "password_reset_ttl_minutes" field.
+func PasswordResetTTLMinutesIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldPasswordResetTTLMinutes, vs...))
+}
+
+// PasswordResetTTLMinutesNotIn applies the NotIn predicate on the "password_reset_ttl_minutes" field.
+func PasswordResetTTLMinutesNotIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldPasswordResetTTLMinutes, vs...))
+}
+
+// PasswordResetTTLMinutesGT applies the GT predicate on the "password_reset_ttl_minutes" field.
+func PasswordResetTTLMinutesGT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldPasswordResetTTLMinutes, v))
+}
+
+// PasswordResetTTLMinutesGTE applies the GTE predicate on the "password_reset_ttl_minutes" field.
+func PasswordResetTTLMinutesGTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldPasswordResetTTLMinutes, v))
+}
+
+// PasswordResetTTLMinutesLT applies the LT predicate on the "password_reset_ttl_minutes" field.
+func PasswordResetTTLMinutesLT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldPasswordResetTTLMinutes, v))
+}
+
+// PasswordResetTTLMinutesLTE applies the LTE predicate on the "password_reset_ttl_minutes" field.
+func PasswordResetTTLMinutesLTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldPasswordResetTTLMinutes, v))
+}
+
+// SuspiciousLoginEmailEnabledEQ applies the EQ predicate on the "suspicious_login_email_enabled" field.
+func SuspiciousLoginEmailEnabledEQ(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldSuspiciousLoginEmailEnabled, v))
+}
+
+// SuspiciousLoginEmailEnabledNEQ applies the NEQ predicate on the "suspicious_login_email_enabled" field.
+func SuspiciousLoginEmailEnabledNEQ(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldSuspiciousLoginEmailEnabled, v))
 }
 
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.

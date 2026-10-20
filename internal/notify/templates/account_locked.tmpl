@@ -1,0 +1,27 @@
+{{define "subject"}}Sign-in to your account is temporarily blocked{{end}}
+
+{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+
+After {{.FailedAttempts}} wrong passwords in a row, sign-in to your {{.Realm}}
+account is blocked for {{.LockDuration}}, until {{.LockedUntil}}.
+
+Last attempt:
+{{template "details.txt" .}}
+Was it you? Wait and try again, or reset your password, which also
+unblocks your account right away:
+{{.ForgotPasswordURL}}
+
+Not you? Someone is probably trying to guess your password. They cannot
+sign in without it. If your password is short, or used on other sites,
+choose a new long one with the link above.
+{{end}}
+
+{{define "html"}}{{template "title" "Sign-in is temporarily blocked"}}
+<p style="margin:0 0 12px 0;">Hello{{if .Username}} {{.Username}}{{end}},</p>
+<p style="margin:0 0 12px 0;">After <strong>{{.FailedAttempts}} wrong passwords</strong> in a row, sign-in to your {{.Realm}} account is blocked for {{.LockDuration}}, until {{.LockedUntil}}.</p>
+<p style="margin:0;font-size:14px;color:#59636e;">Last attempt:</p>
+{{template "details" .}}
+<p style="margin:0 0 12px 0;"><strong>Was it you?</strong> Wait and try again, or reset your password, which also unblocks your account right away.</p>
+{{template "button" (button .ForgotPasswordURL "Reset my password")}}
+<p style="margin:0 0 12px 0;"><strong>Not you?</strong> Someone is probably trying to guess your password. They cannot sign in without it. If your password is short, or used on other sites, choose a new long one with the button above.</p>
+{{end}}

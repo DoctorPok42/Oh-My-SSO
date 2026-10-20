@@ -3,8 +3,10 @@ package httpserver
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -17,9 +19,10 @@ import (
 const (
 	routeAuthLogin = "auth.login"
 
-	loginAttemptsPerIdentifier = 5
-	loginAttemptsPerIP         = 20
-	loginRateLimitWindow       = 15 * time.Minute
+	// Per IP, against one machine trying many accounts. Per account, the
+	// realm's lockout policy applies instead (Step 12, LockoutService).
+	loginAttemptsPerIP   = 20
+	loginRateLimitWindow = 15 * time.Minute
 )
 
 type loginRequest struct {
@@ -85,13 +88,6 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	ip := clientIP(r)
 
-	byIdentifier, err := s.rateLimiter.Allow(r.Context(),
-		ratelimit.Key(routeAuthLogin, realm.ID, "identifier", req.Identifier),
-		loginAttemptsPerIdentifier, loginRateLimitWindow)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error")
-		return
-	}
 	byIP, err := s.rateLimiter.Allow(r.Context(),
 		ratelimit.Key(routeAuthLogin, realm.ID, "ip", ip),
 		loginAttemptsPerIP, loginRateLimitWindow)
@@ -99,7 +95,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal_error")
 		return
 	}
-	if !byIdentifier || !byIP {
+	if !byIP {
 		writeError(w, http.StatusTooManyRequests, "rate_limited")
 		return
 	}
@@ -122,7 +118,11 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		ClientRef:  clientRef,
 	})
 	if err != nil {
+		var locked *service.AccountLockedError
 		switch {
+		case errors.As(err, &locked):
+			// Same answer whether the account exists or not (Step 12).
+			writeRetryAfter(w, locked.Until)
 		case errors.Is(err, service.ErrInvalidCredentials),
 			errors.Is(err, service.ErrAccountNotActive),
 			errors.Is(err, service.ErrTimeoutActive):
@@ -134,14 +134,18 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := loginResponse{Status: string(service.LoginAuthenticated), UserID: user.ID}
+	// Step 12: the browser's device id (cookie created if missing). Its hash
+	// goes into the session, so the next sign-in can tell a known device.
+	device := service.DeviceFingerprint(ensureDeviceCookie(w, r, realm.Name))
 
 	// Step 9: is a second factor needed before any session exists?
 	if s.mfa != nil {
 		dec, err := s.mfa.BeginLogin(r.Context(), service.BeginLoginInput{
-			User:      user,
-			Client:    client,
-			IPAddress: ip,
-			UserAgent: r.UserAgent(),
+			User:              user,
+			Client:            client,
+			IPAddress:         ip,
+			UserAgent:         r.UserAgent(),
+			DeviceFingerprint: device,
 		})
 		if err != nil {
 			s.writeMFAError(w, err)
@@ -166,11 +170,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rawToken, sess, err := s.sessions.Create(r.Context(), service.CreateSessionInput{
-		RealmID:    realm.ID,
-		UserID:     user.ID,
-		IPAddress:  ip,
-		UserAgent:  r.UserAgent(),
-		AuthMethod: domain.AuthMethodPassword,
+		RealmID:           realm.ID,
+		UserID:            user.ID,
+		IPAddress:         ip,
+		UserAgent:         r.UserAgent(),
+		AuthMethod:        domain.AuthMethodPassword,
+		DeviceFingerprint: device,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error")
@@ -225,4 +230,16 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 
 func writeError(w http.ResponseWriter, status int, code string) {
 	writeJSON(w, status, errorResponse{Error: code})
+}
+
+// writeRetryAfter answers 429 "rate_limited" with the seconds left in the
+// Retry-After header (RFC 9110 §10.2.3). The body stays the usual
+// {"error": ...}, so clients need nothing new.
+func writeRetryAfter(w http.ResponseWriter, until time.Time) {
+	secs := int(math.Ceil(time.Until(until).Seconds()))
+	if secs < 1 {
+		secs = 1
+	}
+	w.Header().Set("Retry-After", strconv.Itoa(secs))
+	writeError(w, http.StatusTooManyRequests, "rate_limited")
 }

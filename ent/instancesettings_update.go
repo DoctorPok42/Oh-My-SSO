@@ -258,6 +258,41 @@ func (_u *InstanceSettingsUpdate) AddMfaStepUpMaxAgeMinutes(v int) *InstanceSett
 	return _u
 }
 
+// SetPasswordResetTTLMinutes sets the "password_reset_ttl_minutes" field.
+func (_u *InstanceSettingsUpdate) SetPasswordResetTTLMinutes(v int) *InstanceSettingsUpdate {
+	_u.mutation.ResetPasswordResetTTLMinutes()
+	_u.mutation.SetPasswordResetTTLMinutes(v)
+	return _u
+}
+
+// SetNillablePasswordResetTTLMinutes sets the "password_reset_ttl_minutes" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillablePasswordResetTTLMinutes(v *int) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetPasswordResetTTLMinutes(*v)
+	}
+	return _u
+}
+
+// AddPasswordResetTTLMinutes adds value to the "password_reset_ttl_minutes" field.
+func (_u *InstanceSettingsUpdate) AddPasswordResetTTLMinutes(v int) *InstanceSettingsUpdate {
+	_u.mutation.AddPasswordResetTTLMinutes(v)
+	return _u
+}
+
+// SetSuspiciousLoginEmailEnabled sets the "suspicious_login_email_enabled" field.
+func (_u *InstanceSettingsUpdate) SetSuspiciousLoginEmailEnabled(v bool) *InstanceSettingsUpdate {
+	_u.mutation.SetSuspiciousLoginEmailEnabled(v)
+	return _u
+}
+
+// SetNillableSuspiciousLoginEmailEnabled sets the "suspicious_login_email_enabled" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableSuspiciousLoginEmailEnabled(v *bool) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetSuspiciousLoginEmailEnabled(*v)
+	}
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdate) SetUpdatedAt(v time.Time) *InstanceSettingsUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -412,6 +447,15 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.AddedMfaStepUpMaxAgeMinutes(); ok {
 		_spec.AddField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.PasswordResetTTLMinutes(); ok {
+		_spec.SetField(instancesettings.FieldPasswordResetTTLMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedPasswordResetTTLMinutes(); ok {
+		_spec.AddField(instancesettings.FieldPasswordResetTTLMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.SuspiciousLoginEmailEnabled(); ok {
+		_spec.SetField(instancesettings.FieldSuspiciousLoginEmailEnabled, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)
@@ -670,6 +714,41 @@ func (_u *InstanceSettingsUpdateOne) AddMfaStepUpMaxAgeMinutes(v int) *InstanceS
 	return _u
 }
 
+// SetPasswordResetTTLMinutes sets the "password_reset_ttl_minutes" field.
+func (_u *InstanceSettingsUpdateOne) SetPasswordResetTTLMinutes(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.ResetPasswordResetTTLMinutes()
+	_u.mutation.SetPasswordResetTTLMinutes(v)
+	return _u
+}
+
+// SetNillablePasswordResetTTLMinutes sets the "password_reset_ttl_minutes" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillablePasswordResetTTLMinutes(v *int) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetPasswordResetTTLMinutes(*v)
+	}
+	return _u
+}
+
+// AddPasswordResetTTLMinutes adds value to the "password_reset_ttl_minutes" field.
+func (_u *InstanceSettingsUpdateOne) AddPasswordResetTTLMinutes(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.AddPasswordResetTTLMinutes(v)
+	return _u
+}
+
+// SetSuspiciousLoginEmailEnabled sets the "suspicious_login_email_enabled" field.
+func (_u *InstanceSettingsUpdateOne) SetSuspiciousLoginEmailEnabled(v bool) *InstanceSettingsUpdateOne {
+	_u.mutation.SetSuspiciousLoginEmailEnabled(v)
+	return _u
+}
+
+// SetNillableSuspiciousLoginEmailEnabled sets the "suspicious_login_email_enabled" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableSuspiciousLoginEmailEnabled(v *bool) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetSuspiciousLoginEmailEnabled(*v)
+	}
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdateOne) SetUpdatedAt(v time.Time) *InstanceSettingsUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -854,6 +933,15 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.AddedMfaStepUpMaxAgeMinutes(); ok {
 		_spec.AddField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.PasswordResetTTLMinutes(); ok {
+		_spec.SetField(instancesettings.FieldPasswordResetTTLMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedPasswordResetTTLMinutes(); ok {
+		_spec.AddField(instancesettings.FieldPasswordResetTTLMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.SuspiciousLoginEmailEnabled(); ok {
+		_spec.SetField(instancesettings.FieldSuspiciousLoginEmailEnabled, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

@@ -13,6 +13,11 @@ type UserRepository interface {
 	GetByRealmAndUsername(ctx context.Context, realmID, username string) (*domain.User, error)
 	Update(ctx context.Context, id string, p UpdateUserParams) (*domain.User, error)
 	Delete(ctx context.Context, id string) error
+	// CompareAndSwapLockout replaces the lockout state of a user only if it
+	// still equals old (optimistic locking, Step 12): two concurrent wrong
+	// passwords must both be counted. false = someone changed it first;
+	// reload and try again.
+	CompareAndSwapLockout(ctx context.Context, id string, old, next domain.LockoutState) (bool, error)
 }
 
 type CreateUserParams struct {
@@ -20,12 +25,12 @@ type CreateUserParams struct {
 	Username     string
 	Email        string
 	PasswordHash string
-	Status			 domain.UserStatus
+	Status       domain.UserStatus
 }
 
 type UpdateUserParams struct {
 	Username     *string
 	Email        *string
 	PasswordHash *string
-	Status			 *domain.UserStatus
+	Status       *domain.UserStatus
 }

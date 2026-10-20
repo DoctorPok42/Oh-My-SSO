@@ -1,11 +1,13 @@
 :root {
   --bg: #f4f5f7; --card: #ffffff; --text: #1d2330; --muted: #5d6676;
   --border: #d5d9e0; --accent: #2b59c3; --accent-text: #ffffff; --error-bg: #fdecec; --error: #a3201c;
+  --ok-bg: #e7f5ea; --ok: #1a5e2b; --warn-bg: #fff4d6; --warn: #6b4a00;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #12151b; --card: #1b2029; --text: #e7eaf0; --muted: #9aa3b2;
     --border: #333b48; --accent: #7aa2ff; --accent-text: #0d1220; --error-bg: #3a1d1d; --error: #ffb4ae;
+    --ok-bg: #16301e; --ok: #9be3ad; --warn-bg: #33290f; --warn: #f2d27a;
   }
 }
 * { box-sizing: border-box; }
@@ -42,3 +44,9 @@ button[disabled] { opacity: .6; cursor: progress; }
 footer { margin-top: 24px; font-size: .9rem; }
 a { color: var(--accent); }
 [hidden] { display: none !important; }
+/* Step 12: forgot / reset password pages */
+.aside { margin: 8px 0 0; text-align: right; font-size: .9rem; }
+.warn { margin: 0 0 4px; padding: 10px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: .95rem; }
+.notice { margin: 0 0 16px; padding: 10px 12px; border-radius: 8px; background: var(--ok-bg); color: var(--ok); }
+.links { margin: 20px 0 0; text-align: center; font-size: .9rem; }
+.links button { width: auto; margin: 0; padding: 0; border: 0; background: none; color: var(--accent); font-weight: 400; text-decoration: underline; }

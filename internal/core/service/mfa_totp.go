@@ -195,6 +195,7 @@ func (s *MFAService) ConfirmTOTPEnrollment(ctx context.Context, user *domain.Use
 		"type":     string(activated.Type),
 		"replaced": hadTOTP,
 	})
+	s.notify(ctx, user, domain.NotificationMfaMethodAdded, activated)
 	return res, nil
 }
 
