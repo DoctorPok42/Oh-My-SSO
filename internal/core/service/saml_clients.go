@@ -67,6 +67,9 @@ type SAMLClientInput struct {
 	// AttributeMappings renames attributes ({"mail": "email"}).
 	AttributeMappings map[string]string
 	GrantedBy         string // "cli:alice"
+	// RequireConsent (Step 13): users approve the service provider on a
+	// consent screen before it receives any attribute. Off by default.
+	RequireConsent bool
 }
 
 // SAMLClientService creates and maintains SAML clients.
@@ -135,6 +138,7 @@ func (s *SAMLClientService) Create(ctx context.Context, in SAMLClientInput) (*do
 		WantResponseSigned:  &in.WantResponseSigned,
 		SubjectType:         &subjectType,
 		AttributeMappings:   cfg.AttributeMappings,
+		RequireConsent:      &in.RequireConsent,
 	}
 	if app, err = s.clients.Update(ctx, app.ID, upd); err != nil {
 		return nil, fmt.Errorf("configure client: %w", err)

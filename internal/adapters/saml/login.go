@@ -22,10 +22,11 @@ import (
 //	no session (or ForceAuthn)            -> the password form
 //	session, MFA policy not met           -> the second factor form
 //	session, a factor must be enrolled    -> explain what to do
+//	session, consent needed (Step 13)     -> the consent page
 //	session, all good                     -> the signed response, POSTed to the ACS
 //
 // IsPassive (the service provider wants no page at all) turns every "show a
-// form" above into a NoPassive error response.
+// page" above into a NoPassive error response.
 func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	realm, _ := realmFrom(ctx)
@@ -57,12 +58,6 @@ func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app := pc.App
-	if app.RequireConsent {
-		// Consent screens arrive in Step 13. Until then fail closed: never
-		// release data the user was supposed to approve first.
-		a.sendError(w, r, &p, samllib.StatusResponder, statusRequestDenied, "user consent is required and not supported yet")
-		return
-	}
 
 	sess := a.currentSession(r, realm)
 	if sess == nil || (p.ForceAuthn && sess.CreatedAt.Before(p.CreatedAt)) {
@@ -100,6 +95,12 @@ func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 	default:
 		a.logger.ErrorContext(ctx, "saml: identity assertion failed", "error", err, "entity_id", app.EntityID)
 		a.sendError(w, r, &p, samllib.StatusResponder, "", "")
+		return
+	}
+
+	// Step 13: the user's consent, when the service provider needs it,
+	// before any attribute leaves.
+	if !a.consentStep(w, r, &p, app, sess, as) {
 		return
 	}
 

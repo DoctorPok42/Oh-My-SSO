@@ -203,6 +203,28 @@ oidc-demo:
 	go run ./cmd/oidc-demo
 
 # ------------------------------------------------------------------------------
+# Consent screen (Step 13). client= takes a client_id (OIDC) or an entity_id
+# (SAML); user= a username or an email.
+# More: go run ./cmd/idp consents --help
+# ------------------------------------------------------------------------------
+
+## consent-on: Users must approve a client on the consent screen (usage: make consent-on realm=demo client=demo)
+consent-on:
+	go run ./cmd/idp consents set-client --realm $(realm) --client $(client) --required=true
+
+## consent-off: Never ask for consent for a client (usage: make consent-off realm=demo client=demo)
+consent-off:
+	go run ./cmd/idp consents set-client --realm $(realm) --client $(client) --required=false
+
+## consents: The applications a user approved (usage: make consents realm=demo user=alice)
+consents:
+	go run ./cmd/idp consents list --realm $(realm) --user $(user)
+
+## consent-revoke: Take back a user's consent and revoke the client's tokens (usage: make consent-revoke realm=demo user=alice client=demo)
+consent-revoke:
+	go run ./cmd/idp consents revoke --realm $(realm) --user $(user) --client $(client) --reason "$(reason)"
+
+# ------------------------------------------------------------------------------
 # SAML 2.0 (Step 11) — same code as the future admin API.
 # More: go run ./cmd/idp saml --help
 # The test service provider (SimpleSAMLphp, dev/saml-sp/) runs in Docker and
@@ -368,6 +390,7 @@ clean:
 	mfa-list mfa-reset mfa-policy \
 	oidc-clients oidc-rotate-secret dev-seed oidc-demo \
 	saml-clients keys-rotate-saml keys-activate-saml saml-sp saml-sp-register \
+	consent-on consent-off consents consent-revoke \
 	test test-integration test-all coverage \
 	lint fmt vuln check check-core-deps check-adapter-deps \
 	docker-up docker-down docker-reset docker-logs psql dev \

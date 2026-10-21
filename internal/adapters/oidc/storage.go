@@ -140,13 +140,8 @@ func checkAuthorizePolicy(pc *core.ProtocolClient, req *oidc.AuthRequest) error 
 	default:
 		return oidc.ErrInvalidRequest().WithDescription("unsupported response_mode")
 	}
-	if slices.Contains(req.Prompt, oidc.PromptConsent) || pc.App.RequireConsent {
-		// Consent screens arrive in Step 13. Fail closed: never pretend the
-		// user consented. "consent_required" is OIDC Core, section 3.1.2.6.
-		e := oidc.ErrInteractionRequired().WithDescription("user consent is not supported yet")
-		e.ErrorType = "consent_required"
-		return e
-	}
+	// prompt=consent and require_consent are handled by the login page once
+	// the user is known (Step 13, consent.go): nothing to refuse here.
 	return nil
 }
 

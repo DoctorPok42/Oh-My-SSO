@@ -109,6 +109,7 @@ func (a *Adapter) checkBrowser(next http.Handler) http.Handler {
 //	no session (or prompt=login / max_age)  -> show the password form
 //	session, MFA policy not met             -> show the second factor form
 //	session, a factor must be enrolled      -> explain what to do
+//	session, consent needed (Step 13)       -> show the consent page
 //	session, all good                       -> complete the request, go to the callback
 func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -170,6 +171,12 @@ func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 	default:
 		a.logger.ErrorContext(ctx, "oidc: identity assertion failed", "error", err, "client_id", ar.ClientID)
 		a.authError(w, r, ar, oidc.ErrServerError())
+		return
+	}
+
+	// Step 13: the user is known and allowed; ask for their consent when
+	// the client needs it, before anything leaves for the application.
+	if !a.consentStep(w, r, ar, pc, sess, as) {
 		return
 	}
 

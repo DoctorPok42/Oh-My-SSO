@@ -34,16 +34,19 @@ const (
 	TemplateMfaReset               Template = "mfa_reset"
 	TemplateBackupCodesRegenerated Template = "backup_codes_regenerated"
 	TemplateAccountLocked          Template = "account_locked"
+	// TemplateAppConnected (Step 13): approved on the consent screen.
+	TemplateAppConnected Template = "app_connected"
 	// TemplateTest is sent by `idp mail test` to check the SMTP settings.
 	TemplateTest Template = "test"
 )
 
-// AllTemplates lists every template (tests check each one renders).
+// AllTemplates lists every template: LoadTemplates parses each one at
+// start-up.
 var AllTemplates = []Template{
 	TemplatePasswordReset, TemplatePasswordChanged, TemplateNewDeviceLogin,
 	TemplateSuspiciousLogin, TemplateMfaMethodAdded, TemplateMfaMethodRemoved,
 	TemplateMfaReset, TemplateBackupCodesRegenerated, TemplateAccountLocked,
-	TemplateTest,
+	TemplateAppConnected, TemplateTest,
 }
 
 // EmailSender sends one e-mail made from a template and its data.

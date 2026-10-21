@@ -2,6 +2,7 @@ package entstore
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"sso.internal/sso/ent"
@@ -29,6 +30,11 @@ func (r *entConsentRepository) Create(ctx context.Context, p repository.CreateCo
 	}
 	e, err := builder.Save(ctx)
 	if err != nil {
+		// Step 13: two tabs approving the same client at once. The caller
+		// reads the row the other one created and updates it.
+		if ent.IsConstraintError(err) {
+			return nil, fmt.Errorf("%w: %v", repository.ErrConflict, err)
+		}
 		return nil, err
 	}
 	return toDomainConsent(e), nil
@@ -37,7 +43,7 @@ func (r *entConsentRepository) Create(ctx context.Context, p repository.CreateCo
 func (r *entConsentRepository) GetByID(ctx context.Context, id string) (*domain.Consent, error) {
 	e, err := r.client.Consent.Get(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainConsent(e), nil
 }
@@ -48,9 +54,25 @@ func (r *entConsentRepository) GetByUserAndClient(ctx context.Context, userID, c
 		Where(consent.UserID(userID), consent.ClientRefID(clientRefID)).
 		Only(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainConsent(e), nil
+}
+
+func (r *entConsentRepository) ListByUser(ctx context.Context, userID string) ([]*domain.Consent, error) {
+	rows, err := r.client.Consent.
+		Query().
+		Where(consent.UserID(userID)).
+		Order(ent.Desc(consent.FieldUpdatedAt)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.Consent, 0, len(rows))
+	for _, e := range rows {
+		out = append(out, toDomainConsent(e))
+	}
+	return out, nil
 }
 
 func (r *entConsentRepository) Update(ctx context.Context, id string, p repository.UpdateConsentParams) (*domain.Consent, error) {
@@ -58,9 +80,18 @@ func (r *entConsentRepository) Update(ctx context.Context, id string, p reposito
 	if p.Scopes != nil {
 		builder = builder.SetScopes(p.Scopes)
 	}
+	if p.Status != nil {
+		builder = builder.SetStatus(entschema.ConsentStatus(*p.Status))
+	}
+	if p.GrantedAt != nil {
+		builder = builder.SetGrantedAt(*p.GrantedAt)
+	}
+	if p.ClearRevokedAt {
+		builder = builder.ClearRevokedAt()
+	}
 	e, err := builder.Save(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapNotFound(err)
 	}
 	return toDomainConsent(e), nil
 }
@@ -71,11 +102,11 @@ func (r *entConsentRepository) Revoke(ctx context.Context, id string) error {
 		SetStatus(entschema.ConsentStatus(domain.ConsentRevoked)).
 		SetRevokedAt(time.Now()).
 		Save(ctx)
-	return err
+	return mapNotFound(err)
 }
 
 func (r *entConsentRepository) Delete(ctx context.Context, id string) error {
-	return r.client.Consent.DeleteOneID(id).Exec(ctx)
+	return mapNotFound(r.client.Consent.DeleteOneID(id).Exec(ctx))
 }
 
 func toDomainConsent(e *ent.Consent) *domain.Consent {

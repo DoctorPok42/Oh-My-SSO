@@ -26,6 +26,7 @@ import (
 //	idp oidc clients create        --realm demo --client-id payroll --redirect-uri https://payroll.example.com/callback \
 //	                               --scope profile,email,offline_access --allow-role employees
 //	idp oidc clients create        --realm demo --client-id spa --public --redirect-uri http://localhost:5173/callback
+//	idp oidc clients create        --realm demo --client-id partner --redirect-uri https://partner.example.com/cb --require-consent
 //	idp oidc clients rotate-secret --realm demo --client-id payroll
 //
 // Like the server, it reads DATABASE_URL from the environment.
@@ -35,7 +36,7 @@ const oidcUsage = `usage:
   idp oidc clients create        --realm <name> --client-id <id> --redirect-uri <uri> [--redirect-uri <uri>...]
                                  [--name <text>] [--public] [--scope <a,b>] [--post-logout-uri <uri>]
                                  [--grant authorization_code,refresh_token] [--auth-method client_secret_basic|client_secret_post]
-                                 [--no-pkce] [--allow-role <name>] [--allow-group <name>]
+                                 [--no-pkce] [--allow-role <name>] [--allow-group <name>] [--require-consent]
   idp oidc clients rotate-secret --realm <name> --client-id <id>
 `
 
@@ -146,10 +147,10 @@ func oidcClientsList(ctx context.Context, args []string, out io.Writer) error {
 		return nil
 	}
 	tw := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "CLIENT_ID\tNAME\tTYPE\tSTATUS\tPKCE\tSCOPES\tREDIRECT URIS")
+	fmt.Fprintln(tw, "CLIENT_ID\tNAME\tTYPE\tSTATUS\tPKCE\tCONSENT\tSCOPES\tREDIRECT URIS")
 	for _, c := range list {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%t\t%s\t%s\n", c.ClientID, c.Name, c.ClientType, c.Status,
-			c.RequirePKCE || c.ClientType == domain.ClientAppTypePublic,
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%t\t%s\t%s\t%s\n", c.ClientID, c.Name, c.ClientType, c.Status,
+			c.RequirePKCE || c.ClientType == domain.ClientAppTypePublic, consentLabel(c.RequireConsent),
 			strings.Join(c.AllowedScopes, " "), strings.Join(c.RedirectURIs, " "))
 	}
 	return tw.Flush()
@@ -163,6 +164,7 @@ func oidcClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 	public := fs.Bool("public", false, "public client (SPA, mobile, CLI): no secret, PKCE mandatory")
 	authMethod := fs.String("auth-method", "", "client_secret_basic (default) or client_secret_post")
 	noPKCE := fs.Bool("no-pkce", false, "do not require PKCE (confidential clients only, not recommended)")
+	requireConsent := fs.Bool("require-consent", false, "users approve the client on a consent screen first (Step 13)")
 	var redirects, postLogout, scopes, grants, roles, groups listFlag
 	fs.Var(&redirects, "redirect-uri", "allowed redirect URI, exact match (repeatable, required)")
 	fs.Var(&postLogout, "post-logout-uri", "allowed post-logout redirect URI (repeatable)")
@@ -196,6 +198,7 @@ func oidcClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 		AllowRoles:              roles,
 		AllowGroups:             groups,
 		GrantedBy:               cliActor(),
+		RequireConsent:          *requireConsent,
 	})
 	if err != nil {
 		return err
@@ -205,6 +208,7 @@ func oidcClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 	fmt.Fprintf(out, "  type:          %s (token endpoint auth: %s)\n", app.ClientType, app.TokenEndpointAuthMethod)
 	fmt.Fprintf(out, "  scopes:        %s\n", strings.Join(app.AllowedScopes, " "))
 	fmt.Fprintf(out, "  redirect URIs: %s\n", strings.Join(app.RedirectURIs, " "))
+	fmt.Fprintf(out, "  consent:       %s\n", consentLabel(app.RequireConsent))
 	if len(roles)+len(groups) == 0 {
 		fmt.Fprintln(out, "  WARNING: no --allow-role / --allow-group: nobody can log in to this client yet (deny by default).")
 	}

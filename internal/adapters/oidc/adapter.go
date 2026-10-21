@@ -151,6 +151,7 @@ func (a *Adapter) routes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(a.requireRealm, securityHeaders)
 	r.Get("/oidc/login", a.handleLogin)
+	r.Post("/oidc/consent", a.handleConsent) // Step 13
 	r.Get("/oidc/logged-out", a.handleLoggedOut)
 	r.Get("/oidc/assets/{file}", handleAsset)
 	r.With(a.bindBrowser).Handle("/oidc/authorize", a.provider)

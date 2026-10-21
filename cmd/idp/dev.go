@@ -284,6 +284,10 @@ func devSeed(ctx context.Context, args []string, out io.Writer) error {
 	fmt.Fprintf(out, "Register a service provider: idp saml clients create --realm %s --metadata-url <its metadata URL> --allow-role %s --scope %s\n",
 		realm.Name, demoRole, demoSAMLScope)
 
+	// Step 13: the demo client does not ask for consent; one command shows
+	// the consent screen.
+	fmt.Fprintf(out, "\nConsent screen: make consent-on realm=%s client=%s (and consent-off to stop)\n", realm.Name, demoClientID)
+
 	fmt.Fprintf(out, "\nFor cmd/oidc-demo (put these in .env, then `make oidc-demo`):\n")
 	fmt.Fprintf(out, "  DEMO_ISSUER=%s/r/%s\n", devPublicURL(), realm.Name)
 	fmt.Fprintf(out, "  DEMO_CLIENT_ID=%s\n", demoClientID)
