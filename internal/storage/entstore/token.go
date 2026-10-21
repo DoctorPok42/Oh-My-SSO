@@ -6,6 +6,7 @@ import (
 
 	"sso.internal/sso/ent"
 	entschema "sso.internal/sso/ent/schema"
+	"sso.internal/sso/ent/session"
 	"sso.internal/sso/ent/token"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
@@ -121,6 +122,27 @@ func (r *entTokenRepository) RevokeFamily(ctx context.Context, familyID string) 
 	}
 	return r.client.Token.Update().
 		Where(token.FamilyID(familyID), token.Revoked(false)).
+		SetRevoked(true).
+		Save(ctx)
+}
+
+// RevokeByUserAndClient is one UPDATE ... WHERE: the tokens are found through
+// their session (sessions carry the user id, tokens do not).
+func (r *entTokenRepository) RevokeByUserAndClient(ctx context.Context, userID, clientRefID string) (int, error) {
+	if userID == "" || clientRefID == "" {
+		return 0, nil
+	}
+	return r.client.Token.Update().
+		Where(
+			token.ClientRefID(clientRefID),
+			token.Revoked(false),
+			token.TypeIn(
+				entschema.TokenType(domain.TokenAccessToken),
+				entschema.TokenType(domain.TokenRefreshToken),
+				entschema.TokenType(domain.TokenIDToken),
+			),
+			token.HasSessionWith(session.UserID(userID)),
+		).
 		SetRevoked(true).
 		Save(ctx)
 }

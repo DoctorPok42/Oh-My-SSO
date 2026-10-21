@@ -22,6 +22,9 @@ const (
 	NotificationAccountLocked          NotificationKind = "account_locked"
 	// NotificationSuspiciousLogin also needs suspicious_login_email_enabled.
 	NotificationSuspiciousLogin NotificationKind = "suspicious_login"
+	// NotificationAppConnected (Step 13): the user approved an application
+	// on the consent screen, or approved more for it than before.
+	NotificationAppConnected NotificationKind = "app_connected"
 )
 
 // IsSecurityAlert tells whether the realm's notification_email_enabled
@@ -75,4 +78,11 @@ type NotificationEvent struct {
 	// suspicious_login: the browser was unknown too. When the realm does not
 	// send suspicious-login e-mails, the "new device" e-mail goes instead.
 	NewDevice bool
+
+	// app_connected: the application and what it can now receive, in the
+	// words of the consent screen. AccessAdded: it already had access to
+	// something, these items come on top.
+	ClientName  string
+	Access      []string
+	AccessAdded bool
 }

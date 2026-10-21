@@ -42,6 +42,7 @@ type IdentityCoreService struct {
 	km       keymanager.KeyManager
 	timeouts TimeoutChecker
 	mfa      *MFAService                   // nil: MFA not configured (no policy enforced)
+	consent  *ConsentService               // nil: clients requiring consent fail closed (Step 13)
 	audit    repository.AuditLogRepository // nil: refresh token replays are only logged
 	logger   *slog.Logger
 	now      func() time.Time
@@ -69,6 +70,9 @@ type IdentityCoreDeps struct {
 	// MFA enforces the MFA policies in IssueIdentityAssertion and backs
 	// VerifyMFA (Step 9). nil: no MFA (tests of earlier steps).
 	MFA *MFAService
+	// Consent backs CheckConsent / GrantConsent / DenyConsent (Step 13).
+	// nil: a client with require_consent gets no assertion (fail closed).
+	Consent *ConsentService
 	// Audit records refresh token replays (Step 10). nil: logged only.
 	Audit repository.AuditLogRepository
 }
@@ -98,6 +102,7 @@ func NewIdentityCore(d IdentityCoreDeps, opts ...IdentityCoreOption) *IdentityCo
 		km:       d.KeyManager,
 		timeouts: d.Timeouts,
 		mfa:      d.MFA,
+		consent:  d.Consent,
 		audit:    d.Audit,
 		logger:   slog.Default(),
 		now:      time.Now,

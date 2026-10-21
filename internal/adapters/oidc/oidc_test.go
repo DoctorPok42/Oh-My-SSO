@@ -128,6 +128,12 @@ func TestCheckAuthorizePolicy(t *testing.T) {
 	consent := testClient(func(c *domain.ClientApp) { c.RequireConsent = true })
 
 	require.NoError(t, checkAuthorizePolicy(conf, ok()))
+	// Step 13: consent is asked on the login page, once the user is known;
+	// /authorize no longer refuses these requests.
+	require.NoError(t, checkAuthorizePolicy(consent, ok()), "client requires consent")
+	withPrompt := ok()
+	withPrompt.Prompt = []string{"consent"}
+	require.NoError(t, checkAuthorizePolicy(conf, withPrompt), "prompt=consent")
 
 	cases := []struct {
 		name string
@@ -141,8 +147,6 @@ func TestCheckAuthorizePolicy(t *testing.T) {
 		{"plain", conf, func(r *oidc.AuthRequest) { r.CodeChallengeMethod = oidc.CodeChallengeMethodPlain }, "invalid_request"},
 		{"method missing (= plain)", conf, func(r *oidc.AuthRequest) { r.CodeChallengeMethod = "" }, "invalid_request"},
 		{"fragment response mode", conf, func(r *oidc.AuthRequest) { r.ResponseMode = oidc.ResponseModeFragment }, "invalid_request"},
-		{"prompt=consent", conf, func(r *oidc.AuthRequest) { r.Prompt = []string{"consent"} }, "consent_required"},
-		{"client requires consent (Step 13)", consent, nil, "consent_required"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

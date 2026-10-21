@@ -39,7 +39,7 @@ const samlUsage = `usage:
                                [--slo-url <url>] [--cert-file <pem>...] [--name <text>]
                                [--name-id-format persistent|transient|email|unspecified] [--pairwise]
                                [--want-response-signed] [--scope <a,b>] [--rename from=to,...]
-                               [--allow-role <name>] [--allow-group <name>]
+                               [--allow-role <name>] [--allow-group <name>] [--require-consent]
   idp saml clients add-cert    --realm <name> --entity-id <id> --cert-file <pem> [--not-before <RFC3339>] [--not-after <RFC3339>]
   idp saml clients remove-cert --realm <name> --entity-id <id> --fingerprint <sha256 hex prefix>
 `
@@ -135,10 +135,10 @@ func samlClientsList(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	}
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "ENTITY ID\tNAME\tSTATUS\tNAMEID\tSLO\tCERTIFICATES (sha256, window)")
+	fmt.Fprintln(tw, "ENTITY ID\tNAME\tSTATUS\tNAMEID\tSLO\tCONSENT\tCERTIFICATES (sha256, window)")
 	for _, c := range list {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", c.EntityID, c.Name, c.Status,
-			shortNameIDFormat(c.NameIDFormat), yesNo(c.SLOURL != ""), describeCertificates(c))
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", c.EntityID, c.Name, c.Status,
+			shortNameIDFormat(c.NameIDFormat), yesNo(c.SLOURL != ""), consentLabel(c.RequireConsent), describeCertificates(c))
 	}
 	return tw.Flush()
 }
@@ -155,6 +155,7 @@ func samlClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 	nameIDFormat := fs.String("name-id-format", "", "persistent (default), transient, email or unspecified")
 	pairwise := fs.Bool("pairwise", false, "give this provider its own persistent NameID per user")
 	wantResponseSigned := fs.Bool("want-response-signed", false, "also sign the <Response> (the <Assertion> always is)")
+	requireConsent := fs.Bool("require-consent", false, "users approve the provider on a consent screen first (Step 13)")
 	var certFiles, scopes, renames, roles, groups listFlag
 	fs.Var(&certFiles, "cert-file", "PEM certificate of the provider (repeatable; added to those of the metadata)")
 	fs.Var(&scopes, "scope", "ClientScopes (protocol saml2 or both) producing the attributes, comma separated")
@@ -177,6 +178,7 @@ func samlClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 		AllowRoles:         roles,
 		AllowGroups:        groups,
 		GrantedBy:          cliActor(),
+		RequireConsent:     *requireConsent,
 	}
 
 	var md *samladapter.SPMetadata
@@ -243,6 +245,7 @@ func samlClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 	fmt.Fprintf(out, "  SLO URL:      %s\n", orDash(app.SLOURL))
 	fmt.Fprintf(out, "  NameID:       %s\n", app.NameIDFormat)
 	fmt.Fprintf(out, "  certificates: %s\n", describeCertificates(app))
+	fmt.Fprintf(out, "  consent:      %s\n", consentLabel(app.RequireConsent))
 	if len(app.ClientCertificates) == 0 {
 		fmt.Fprintln(out, "  note: without a certificate, its requests are not signed: it can sign users in, but cannot use single logout")
 	} else {

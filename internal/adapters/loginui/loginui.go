@@ -6,9 +6,10 @@
 // reloads itself; the adapter decides everything on reload. No login logic
 // lives here, and Step 14 can restyle it without changing any flow.
 //
-// It also renders the two other pages a browser flow needs: a short message
-// ("this link has expired") and an auto-submitted form, which is how SAML
-// hands an assertion to a service provider (HTTP-POST binding).
+// It also renders the other pages a browser flow needs: a short message
+// ("this link has expired"), an auto-submitted form, which is how SAML hands
+// an assertion to a service provider (HTTP-POST binding), and the consent
+// page (Step 13), a plain HTML form that works without JavaScript.
 //
 // Like the adapters, this package never talks to storage: it is HTML only.
 package loginui
@@ -87,6 +88,33 @@ type ResetPassword struct {
 	MaxLength    int
 }
 
+// Consent is the data of the consent page (Step 13): "Allow <app> to access
+// your account?". The form posts back to Action with the request id, the
+// one-time token, and decision=allow|deny.
+type Consent struct {
+	RealmDisplay string
+	ClientName   string
+	// ClientHost is where the browser goes after the answer (host of the
+	// redirect URI or ACS URL): a user can spot a look-alike application.
+	ClientHost string
+	Username   string // who is signed in
+	Items      []ConsentLine
+	// MoreThanBefore: the user approved this application before and it now
+	// asks for more (the new lines are marked).
+	MoreThanBefore bool
+	Action         string // form action, e.g. "/r/<realm>/oidc/consent"
+	RequestID      string
+	Token          string // one-time anti-CSRF token, checked by the adapter
+	Assets         string
+}
+
+// ConsentLine is one item of the consent page.
+type ConsentLine struct {
+	Title       string
+	Description string
+	New         bool // not approved before
+}
+
 // Message is a short page with a title and one sentence.
 type Message struct {
 	Title string
@@ -129,6 +157,12 @@ func (p *Pages) RenderForgotPassword(w http.ResponseWriter, data ForgotPassword)
 // browser never sends to the server; password.js reads it.
 func (p *Pages) RenderResetPassword(w http.ResponseWriter, data ResetPassword) {
 	p.render(w, http.StatusOK, "reset.html", PageCSP, data)
+}
+
+// RenderConsent writes the consent page (no script: PageCSP allows the form
+// to post to this site only).
+func (p *Pages) RenderConsent(w http.ResponseWriter, data Consent) {
+	p.render(w, http.StatusOK, "consent.html", PageCSP, data)
 }
 
 // RenderMessage writes a message page. assets: where Asset is mounted.

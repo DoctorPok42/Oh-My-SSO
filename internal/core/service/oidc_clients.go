@@ -67,6 +67,9 @@ type OIDCClientInput struct {
 	// Secret supplied from outside (config-as-code). Empty: generated.
 	Secret    string
 	GrantedBy string // written on ClientRole/ClientGroup rows ("cli:alice")
+	// RequireConsent (Step 13): users approve the client on a consent
+	// screen before it receives anything. Off by default.
+	RequireConsent bool
 }
 
 // OIDCClientService creates and maintains OIDC clients.
@@ -142,6 +145,7 @@ func (s *OIDCClientService) Create(ctx context.Context, in OIDCClientInput) (*do
 		AllowedScopes:           cfg.AllowedScopes,
 		TokenEndpointAuthMethod: &cfg.AuthMethod,
 		RequirePKCE:             &requirePKCE,
+		RequireConsent:          &in.RequireConsent,
 	}
 	if hash != "" {
 		upd.ClientSecretHash = &hash

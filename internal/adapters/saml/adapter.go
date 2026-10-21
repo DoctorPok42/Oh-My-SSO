@@ -90,6 +90,7 @@ func (a *Adapter) routes() http.Handler {
 	r.Get("/saml/sso", a.handleSSO)
 	r.Post("/saml/sso", a.handleSSO)
 	r.Get("/saml/login", a.handleLogin)
+	r.Post("/saml/consent", a.handleConsent) // Step 13
 	r.Get("/saml/slo", a.handleSLO)
 	r.Post("/saml/slo", a.handleSLO)
 	r.Get("/saml/logged-out", a.handleLoggedOut)

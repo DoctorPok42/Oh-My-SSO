@@ -50,3 +50,13 @@ a { color: var(--accent); }
 .notice { margin: 0 0 16px; padding: 10px 12px; border-radius: 8px; background: var(--ok-bg); color: var(--ok); }
 .links { margin: 20px 0 0; text-align: center; font-size: .9rem; }
 .links button { width: auto; margin: 0; padding: 0; border: 0; background: none; color: var(--accent); font-weight: 400; text-decoration: underline; }
+/* Step 13: consent page */
+.lead { margin: 0 0 8px; }
+.consent { margin: 0 0 16px; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: 8px; }
+.consent li { padding: 10px 12px; border-top: 1px solid var(--border); }
+.consent li:first-child { border-top: 0; }
+.consent strong { display: block; }
+.consent span { display: block; color: var(--muted); font-size: .9rem; }
+.tag { font-style: normal; font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; background: var(--warn-bg); color: var(--warn); }
+button.deny { margin-top: 12px; }
+.small { margin: 20px 0 0; color: var(--muted); font-size: .85rem; }

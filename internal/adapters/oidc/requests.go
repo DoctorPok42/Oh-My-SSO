@@ -70,6 +70,14 @@ type authRequest struct {
 	// Set when the code is issued.
 	CodeHash string `json:"ch,omitempty"`
 
+	// Consent screen (Step 13). ConsentTokenHash: SHA-256 of the one-time
+	// token of the form on screen; ConsentItems: what that form shows (and
+	// what "Allow" grants). ConsentDone: the user allowed during THIS
+	// request, which satisfies prompt=consent.
+	ConsentTokenHash string             `json:"ct,omitempty"`
+	ConsentItems     []core.ConsentItem `json:"ci,omitempty"`
+	ConsentDone      bool               `json:"cd,omitempty"`
+
 	// Not stored: computed once per token request (see assertionFor).
 	assertion *core.IdentityAssertion
 	client    *core.ProtocolClient
@@ -185,6 +193,10 @@ func (a *Adapter) assertionFor(ctx context.Context, ar *authRequest) (*core.Iden
 		// The client's subject_type changed during the login: do not hand
 		// out tokens for a subject the login page did not settle on.
 		return nil, nil, oidc.ErrInvalidGrant().WithDescription("the subject changed, start the login again")
+	}
+	// Step 13: the consent may have been revoked since the login page.
+	if err := a.consentStillValid(ctx, ar, as); err != nil {
+		return nil, nil, err
 	}
 	ar.assertion, ar.client = as, pc
 	return as, pc, nil

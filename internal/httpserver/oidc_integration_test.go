@@ -52,6 +52,10 @@ const (
 
 	payrollClientID    = "payroll"
 	payrollRedirectURI = "https://payroll.example.test/callback"
+
+	// Step 13: a client with require_consent.
+	partnerClientID    = "partner"
+	partnerRedirectURI = "https://partner.example.test/callback"
 )
 
 type discoveryDoc struct {
@@ -78,6 +82,9 @@ type oidcTestEnv struct {
 	webSecret string
 	// payrollSecret: a client whose MFA policy is "required".
 	payrollSecret string
+	// partnerSecret: a client with require_consent (Step 13).
+	partnerSecret string
+	consent       *service.ConsentService
 	alice         *domain.User
 	tokens        repository.TokenRepository
 	audit         repository.AuditLogRepository
@@ -128,9 +135,13 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 	})
 	auth := service.NewAuthService(users, attempts)
 	rbac := service.NewRBACService(access, audit)
+	consent := service.NewConsentService(service.ConsentDeps{
+		Consents: entstore.NewConsentRepository(client), Clients: clients, Sessions: sessions,
+		Tokens: tokens, Audit: audit,
+	}, service.WithConsentClock(clock.Now))
 	idp := service.NewIdentityCore(service.IdentityCoreDeps{
 		Auth: auth, Sessions: sessions, RBAC: rbac, Users: users, Clients: clients, Realms: realms,
-		Tokens: tokens, SigningKeys: signingKeys, KeyManager: km, MFA: mfa, Audit: audit,
+		Tokens: tokens, SigningKeys: signingKeys, KeyManager: km, MFA: mfa, Consent: consent, Audit: audit,
 	}, service.WithIdentityCoreClock(clock.Now))
 
 	// The issuer must be the server's own URL, known once it listens.
@@ -210,9 +221,17 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 	required := domain.ClientAppMFARequired
 	_, err = clients.Update(ctx, payroll.ID, repository.UpdateClientAppParams{MFAPolicy: &required})
 	require.NoError(t, err)
+	// partner shows the consent screen (Step 13).
+	_, partnerSecret, err := oidcClients.Create(ctx, service.OIDCClientInput{
+		RealmID: realm.ID, Name: "Partner Portal", ClientID: partnerClientID,
+		RedirectURIs: []string{partnerRedirectURI}, Scopes: []string{"profile", "email", "offline_access", "groups"},
+		AllowRoles: []string{"employees"}, RequireConsent: true,
+	})
+	require.NoError(t, err)
 
 	env := &oidcTestEnv{ts: ts, ent: client, realm: realm, realmURL: ts.URL + "/r/" + oidcRealm,
-		webSecret: webSecret, payrollSecret: payrollSecret, alice: alice, tokens: tokens, audit: audit, clock: clock}
+		webSecret: webSecret, payrollSecret: payrollSecret, partnerSecret: partnerSecret, consent: consent,
+		alice: alice, tokens: tokens, audit: audit, clock: clock}
 	resp, err := ts.Client().Get(env.realmURL + "/.well-known/openid-configuration")
 	require.NoError(t, err)
 	defer resp.Body.Close()

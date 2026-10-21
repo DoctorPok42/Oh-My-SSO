@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Allow access · {{.RealmDisplay}}</title>
+<link rel="stylesheet" href="{{.Assets}}/login.css">
+</head>
+<body>
+<main class="card">
+  <header>
+    <p class="realm">{{.RealmDisplay}}</p>
+    <h1>Allow {{.ClientName}} to access your account?</h1>
+    <p class="client">Signed in as <strong>{{.Username}}</strong></p>
+  </header>
+
+  {{if .MoreThanBefore}}<p class="notice">You already use this application. It now asks for more than before (marked “new”).</p>{{end}}
+
+  <p class="lead">If you allow it, <strong>{{.ClientName}}</strong> will receive:</p>
+  <ul class="consent">
+    <li><strong>Who you are</strong><span>An identifier of your account, so that the application recognises you.</span></li>
+    {{- range .Items}}
+    <li><strong>{{.Title}}{{if .New}} <em class="tag">new</em>{{end}}</strong>{{if .Description}}<span>{{.Description}}</span>{{end}}</li>
+    {{- end}}
+  </ul>
+  {{if .ClientHost}}<p class="hint">You will then go back to <strong>{{.ClientHost}}</strong>.</p>{{end}}
+
+  <form method="post" action="{{.Action}}">
+    <input type="hidden" name="id" value="{{.RequestID}}">
+    <input type="hidden" name="consent_token" value="{{.Token}}">
+    <button type="submit" name="decision" value="allow">Allow</button>
+    <button type="submit" name="decision" value="deny" class="secondary deny">Deny</button>
+  </form>
+
+  <p class="small">Your answer is remembered for this application. Only allow applications you trust.</p>
+</main>
+</body>
+</html>

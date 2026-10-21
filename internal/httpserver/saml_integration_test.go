@@ -114,9 +114,12 @@ func setupSAMLTestEnv(t *testing.T) *samlTestEnv {
 	})
 	auth := service.NewAuthService(users, attempts)
 	rbac := service.NewRBACService(access, audit)
+	consent := service.NewConsentService(service.ConsentDeps{ // Step 13
+		Consents: entstore.NewConsentRepository(client), Clients: clients, Sessions: sessions, Tokens: tokens, Audit: audit,
+	})
 	idp := service.NewIdentityCore(service.IdentityCoreDeps{
 		Auth: auth, Sessions: sessions, RBAC: rbac, Users: users, Clients: clients, Realms: realms,
-		Tokens: tokens, SigningKeys: signingKeys, KeyManager: km, MFA: mfa, Audit: audit,
+		Tokens: tokens, SigningKeys: signingKeys, KeyManager: km, MFA: mfa, Consent: consent, Audit: audit,
 	})
 
 	var router http.Handler
@@ -607,14 +610,53 @@ func TestSAMLIntegration(t *testing.T) {
 			_, second := statusOf(t, fields["SAMLResponse"])
 			require.Equal(t, "urn:oasis:names:tc:SAML:2.0:status:RequestDenied", second)
 		})
-		t.Run("consent required (Step 13): RequestDenied, fail closed", func(t *testing.T) {
-			consent := env.newSP(t, spOpts{name: "consent", allow: true, mutateApp: func(u *repository.UpdateClientAppParams) {
-				yes := true
-				u.RequireConsent = &yes
-			}})
+		requireConsent := func(u *repository.UpdateClientAppParams) {
+			yes := true
+			u.RequireConsent = &yes
+		}
+		t.Run("consent required (Step 13): the page, Allow, then the assertion", func(t *testing.T) {
+			sp := env.newSP(t, spOpts{name: "partner", allow: true, nameID: "email", mutateApp: requireConsent})
 			b := aliceB
-			u, _ := consent.redirectRequest(nil)
+
+			// IsPassive: the page cannot be shown.
+			yes := true
+			u, _ := sp.redirectRequest(func(r *samllib.AuthnRequest) { r.IsPassive = &yes })
 			_, body := b.get(u)
+			_, fields := autoPost(t, body)
+			_, second := statusOf(t, fields["SAMLResponse"])
+			require.Equal(t, "urn:oasis:names:tc:SAML:2.0:status:NoPassive", second)
+
+			u, reqID := sp.redirectRequest(nil)
+			resp, page := b.get(u)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+			require.Contains(t, page, "Allow partner to access your account?")
+			require.Contains(t, page, "Your e-mail address", "an emailAddress NameID sends the e-mail itself")
+			require.Contains(t, page, "saml_profile", "the attribute scope (no description: its name)")
+			require.Contains(t, page, "partner.example.test")
+			action, form := consentForm(t, page)
+			form.Set("decision", "allow")
+			_, body = b.postForm(env.ts.URL+action, form)
+			acs, fields := autoPost(t, body)
+			require.Equal(t, "https://partner.example.test/acs", acs)
+			a, err := sp.assertion(fields["SAMLResponse"], reqID)
+			require.NoError(t, err)
+			require.Equal(t, "alice@acme.test", a.Subject.NameID.Value)
+
+			// Approved: the next request goes straight to the provider.
+			u, reqID = sp.redirectRequest(nil)
+			_, body = b.get(u)
+			_, fields = autoPost(t, body)
+			_, err = sp.assertion(fields["SAMLResponse"], reqID)
+			require.NoError(t, err)
+		})
+		t.Run("consent denied (Step 13): RequestDenied", func(t *testing.T) {
+			sp := env.newSP(t, spOpts{name: "survey", allow: true, mutateApp: requireConsent})
+			b := aliceB
+			u, _ := sp.redirectRequest(nil)
+			_, page := b.get(u)
+			action, form := consentForm(t, page)
+			form.Set("decision", "deny")
+			_, body := b.postForm(env.ts.URL+action, form)
 			_, fields := autoPost(t, body)
 			_, second := statusOf(t, fields["SAMLResponse"])
 			require.Equal(t, "urn:oasis:names:tc:SAML:2.0:status:RequestDenied", second)

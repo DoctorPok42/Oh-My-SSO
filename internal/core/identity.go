@@ -38,6 +38,11 @@ var (
 	// ErrTokenReused: a refresh token that was already exchanged came back.
 	// Somebody holds a copy: every token of its family has been revoked.
 	ErrTokenReused = errors.New("core: refresh token reused, token family revoked")
+
+	// ErrConsentNotConfigured (Step 13): a client needs the user's consent,
+	// but the IdentityCore was built without the consent service. Fail
+	// closed: no assertion without the consent it requires.
+	ErrConsentNotConfigured = errors.New("core: user consent required but not configured")
 )
 
 // About the two MFA errors:
@@ -223,6 +228,69 @@ type SessionParticipant struct {
 	SubjectFormat string
 }
 
+// --- Consent (Step 13) ---------------------------------------------------------
+
+// ConsentItem is one thing the user is asked to approve before a client
+// receives data about them: an OIDC scope ("email"), or a ClientScope whose
+// attributes a SAML service provider receives. The adapter decides which
+// items a request involves and how they read; the core only stores and
+// compares the Scope names.
+type ConsentItem struct {
+	Scope       string // stored in Consent.scopes, e.g. "email" or "saml_profile"
+	Title       string // plain language, e.g. "Your e-mail address"
+	Description string // optional detail under the title
+}
+
+// ConsentCheck asks "must this user approve these scopes for this client
+// before going on?". It is the isolated, composable step the plan calls
+// shouldRequestConsent: today the adapters call it right after the identity
+// assertion, a future per-client authentication flow can call it anywhere.
+type ConsentCheck struct {
+	SessionID string // the session proves who the user is
+	ClientRef string // ClientApp.ID
+	// Scopes the client is about to receive (names of ConsentItem.Scope).
+	// Empty is valid: the client still learns who the user is.
+	Scopes []string
+	// Force asks for the screen even when the client does not require
+	// consent or the user already approved everything (OIDC prompt=consent).
+	Force bool
+}
+
+// ConsentDecision is the answer of CheckConsent.
+type ConsentDecision struct {
+	// Required: show the consent screen before issuing anything.
+	Required bool
+	// Missing are the requested scopes the user has not approved yet, in
+	// request order. Missing can be empty while Required is true: first use
+	// of a client that only asks for the user's identity, or Force.
+	Missing []string
+	// Previously is true when the user had approved this client before
+	// (some scopes): the screen can say "asks for more than before".
+	Previously bool
+}
+
+// ConsentGrant records what the user approved on the consent screen.
+type ConsentGrant struct {
+	SessionID string
+	ClientRef string
+	// Items exactly as shown to the user. Their Scope names are stored;
+	// their Titles go into the "an application can access your account"
+	// e-mail.
+	Items     []ConsentItem
+	IPAddress string
+	UserAgent string
+}
+
+// ConsentDenial records that the user refused (AuditLog only: nothing is
+// stored, the next request asks again).
+type ConsentDenial struct {
+	SessionID string
+	ClientRef string
+	Scopes    []string
+	IPAddress string
+	UserAgent string
+}
+
 // IdentityCore is the only entry point adapters use.
 type IdentityCore interface {
 	// --- Authentication ---
@@ -254,6 +322,20 @@ type IdentityCore interface {
 	// then builds the neutral assertion.
 	// An empty requestedScopes means "all effective scopes".
 	IssueIdentityAssertion(ctx context.Context, sessionID, clientRef string, requestedScopes []string) (*IdentityAssertion, error)
+
+	// --- Consent (Step 13) ---
+
+	// CheckConsent decides whether the consent screen must be shown. A
+	// client with require_consent=false never needs it (unless Force); a
+	// client with require_consent=true needs it on first use, after a
+	// revocation, and whenever it asks for a scope not approved yet.
+	CheckConsent(ctx context.Context, c ConsentCheck) (*ConsentDecision, error)
+	// GrantConsent stores the approval for the session's user: the new
+	// scopes are merged with those approved before (one Consent row per user
+	// and client). A revoked consent starts again from these items only.
+	GrantConsent(ctx context.Context, g ConsentGrant) (*domain.Consent, error)
+	// DenyConsent records a refusal in the AuditLog.
+	DenyConsent(ctx context.Context, d ConsentDenial) error
 
 	// --- Authorization ---
 

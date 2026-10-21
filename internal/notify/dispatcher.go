@@ -290,6 +290,10 @@ func (d *Dispatcher) data(e domain.NotificationEvent, user *domain.User, realm *
 		for _, r := range e.SuspiciousReasons {
 			out.Reasons = append(out.Reasons, reasonText(r, out.Location))
 		}
+	case domain.NotificationAppConnected:
+		out.AppName = e.ClientName
+		out.AppAccess = e.Access
+		out.AppAccessAdded = e.AccessAdded
 	}
 	return out
 }

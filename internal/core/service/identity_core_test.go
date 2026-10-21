@@ -220,6 +220,9 @@ type fakeTokenRepo struct {
 	repository.TokenRepository
 	mu    sync.Mutex // Step 10 tests rotate refresh tokens concurrently
 	byJTI map[string]*domain.Token
+	// sessionUser maps a session to its user (Step 13: RevokeByUserAndClient
+	// goes through the session, like the real query).
+	sessionUser func(sessionID string) string
 }
 
 func (f *fakeTokenRepo) GetByJTI(_ context.Context, jti string) (*domain.Token, error) {
@@ -313,6 +316,7 @@ const (
 	clientShop1      = "client-shop-1" // pairwise, sector "shop"
 	clientShop2      = "client-shop-2" // pairwise, sector "shop"
 	clientBadSubject = "client-bad-subject-type"
+	clientConsent    = "client-consent" // Step 13: require_consent = true
 	shopSector       = "https://shop.example.com"
 )
 
@@ -347,6 +351,10 @@ type coreFixture struct {
 	keys       *fakeSigningKeyRepo
 	km         *localdev.KeyManager
 	timeouts   *fakeTimeouts
+	// Step 13
+	consents *fakeConsentRepo
+	notifier *recordingNotifier
+	consent  *service.ConsentService
 }
 
 // advance moves the shared fake clock forward.
@@ -381,7 +389,7 @@ func newCoreFixture(t *testing.T) *coreFixture {
 		},
 	}
 	for _, ref := range []string{clientOIDC, clientSAML, clientLongTTL, clientNoAud,
-		clientPairA, clientPairB, clientShop1, clientShop2, clientBadSubject} {
+		clientPairA, clientPairB, clientShop1, clientShop2, clientBadSubject, clientConsent} {
 		access.clients[ref] = activeClient(ref, allowed, nil, scopeIDs)
 	}
 
@@ -414,6 +422,9 @@ func newCoreFixture(t *testing.T) *coreFixture {
 		clientBadSubject: oidc(clientBadSubject, "bad", func(c *domain.ClientApp) {
 			c.SubjectType = "something-else"
 		}),
+		clientConsent: oidc(clientConsent, "partner-app", func(c *domain.ClientApp) {
+			c.Name, c.RequireConsent = "Partner App", true
+		}),
 	}}
 
 	f.attempts = &fakeLoginAttemptRepo{}
@@ -429,6 +440,24 @@ func newCoreFixture(t *testing.T) *coreFixture {
 	f.clients = clients
 
 	f.sessionSvc = service.NewSessionService(f.sessions, fakeSettingsRepo{}, f.tokens, fakeSessionCache{}, service.WithClock(clock))
+	f.tokens.sessionUser = func(id string) string {
+		f.sessions.mu.Lock()
+		defer f.sessions.mu.Unlock()
+		if s, ok := f.sessions.byID[id]; ok {
+			return s.UserID
+		}
+		return ""
+	}
+	f.consents = newFakeConsentRepo(clock)
+	f.notifier = &recordingNotifier{}
+	f.consent = service.NewConsentService(service.ConsentDeps{
+		Consents: f.consents,
+		Clients:  clients,
+		Sessions: f.sessionSvc,
+		Tokens:   f.tokens,
+		Audit:    f.audit,
+		Notifier: f.notifier,
+	}, service.WithConsentClock(clock))
 	f.core = service.NewIdentityCore(service.IdentityCoreDeps{
 		Auth:        service.NewAuthService(users, f.attempts, service.WithTimeoutChecker(f.timeouts)),
 		Sessions:    f.sessionSvc,
@@ -440,6 +469,7 @@ func newCoreFixture(t *testing.T) *coreFixture {
 		SigningKeys: f.keys,
 		KeyManager:  f.km,
 		Timeouts:    f.timeouts,
+		Consent:     f.consent,
 		Audit:       f.audit,
 	}, service.WithIdentityCoreClock(clock))
 	return f
