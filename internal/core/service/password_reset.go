@@ -179,6 +179,37 @@ func (s *PasswordResetService) RequestReset(ctx context.Context, in RequestReset
 	return nil
 }
 
+// IssueActivationToken (Step 14) creates a one-time "choose your password"
+// token for an account an admin (or `idp-admin bootstrap`) just created. It
+// is a reset token like any other: same table, same page, same rules. It
+// works once, expires after ttl, and cancels the user's earlier unused
+// links. It sends nothing: the caller e-mails the link (invitation) or
+// shows it once to whoever created the account.
+//
+// issuedBy is written to the audit log ("user:<admin id>", "cli:root@host").
+func (s *PasswordResetService) IssueActivationToken(ctx context.Context, user *domain.User, ttl time.Duration, issuedBy string) (string, time.Time, error) {
+	if ttl <= 0 {
+		return "", time.Time{}, errors.New("password reset: activation link lifetime must be positive")
+	}
+	if _, err := s.tokens.DeleteUnusedByUser(ctx, user.ID); err != nil {
+		return "", time.Time{}, fmt.Errorf("activation link: cancel previous links: %w", err)
+	}
+	raw, hash := newResetToken()
+	expires := s.now().Add(ttl)
+	if _, err := s.tokens.Create(ctx, repository.CreatePasswordResetTokenParams{
+		UserID:    user.ID,
+		TokenHash: hash,
+		ExpiresAt: expires,
+	}); err != nil {
+		return "", time.Time{}, fmt.Errorf("activation link: store token: %w", err)
+	}
+	s.auditEvent(ctx, user, "activation_link_issued", "", "", domain.AuditLogInfo, map[string]interface{}{
+		"issued_by":  issuedBy,
+		"expires_at": expires.UTC().Format(time.RFC3339),
+	})
+	return raw, expires, nil
+}
+
 // ResetPasswordInput is the "choose a new password" form.
 type ResetPasswordInput struct {
 	RealmID     string

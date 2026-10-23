@@ -20,6 +20,10 @@ type LoginAttempt struct {
 	ID string `json:"id,omitempty"`
 	// Identifier holds the value of the "identifier" field.
 	Identifier string `json:"identifier,omitempty"`
+	// RealmID holds the value of the "realm_id" field.
+	RealmID string `json:"realm_id,omitempty"`
+	// UserID holds the value of the "user_id" field.
+	UserID string `json:"user_id,omitempty"`
 	// IPAddress holds the value of the "ip_address" field.
 	IPAddress string `json:"ip_address,omitempty"`
 	// UserAgent holds the value of the "user_agent" field.
@@ -38,7 +42,7 @@ func (*LoginAttempt) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case loginattempt.FieldID, loginattempt.FieldIdentifier, loginattempt.FieldIPAddress, loginattempt.FieldUserAgent, loginattempt.FieldStatus, loginattempt.FieldFailureReason:
+		case loginattempt.FieldID, loginattempt.FieldIdentifier, loginattempt.FieldRealmID, loginattempt.FieldUserID, loginattempt.FieldIPAddress, loginattempt.FieldUserAgent, loginattempt.FieldStatus, loginattempt.FieldFailureReason:
 			values[i] = new(sql.NullString)
 		case loginattempt.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -68,6 +72,18 @@ func (_m *LoginAttempt) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field identifier", values[i])
 			} else if value.Valid {
 				_m.Identifier = value.String
+			}
+		case loginattempt.FieldRealmID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field realm_id", values[i])
+			} else if value.Valid {
+				_m.RealmID = value.String
+			}
+		case loginattempt.FieldUserID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field user_id", values[i])
+			} else if value.Valid {
+				_m.UserID = value.String
 			}
 		case loginattempt.FieldIPAddress:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -137,6 +153,12 @@ func (_m *LoginAttempt) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("identifier=")
 	builder.WriteString(_m.Identifier)
+	builder.WriteString(", ")
+	builder.WriteString("realm_id=")
+	builder.WriteString(_m.RealmID)
+	builder.WriteString(", ")
+	builder.WriteString("user_id=")
+	builder.WriteString(_m.UserID)
 	builder.WriteString(", ")
 	builder.WriteString("ip_address=")
 	builder.WriteString(_m.IPAddress)

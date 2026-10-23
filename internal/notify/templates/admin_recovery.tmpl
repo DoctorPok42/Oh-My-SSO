@@ -1,0 +1,30 @@
+{{define "subject"}}Security alert: admin recovery used on {{.Realm}}{{end}}
+
+{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+
+The emergency recovery procedure of the admin console was used:
+
+  What:  {{.RecoveryKind}}
+  By:    {{.RecoveryActor}} (command line on the admin server)
+  When:  {{.When}}
+{{- if .RecoveryAccount}}
+  New admin account: {{.RecoveryAccount}}
+{{- end}}
+
+You receive this because you are an administrator of {{.Realm}}.
+If nobody in your team planned this, treat it as an incident: check the
+audit log, disable the new account, and review who can reach the admin server.
+{{end}}
+
+{{define "html"}}{{template "title" "Admin recovery was used"}}
+<p style="margin:0 0 12px 0;">Hello{{if .Username}} {{.Username}}{{end}},</p>
+<p style="margin:0 0 12px 0;">The emergency recovery procedure of the admin console was used.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0;font-size:14px;">
+<tr><td style="padding:2px 12px 2px 0;color:#59636e;">What</td><td>{{.RecoveryKind}}</td></tr>
+<tr><td style="padding:2px 12px 2px 0;color:#59636e;">By</td><td>{{.RecoveryActor}} (command line on the admin server)</td></tr>
+<tr><td style="padding:2px 12px 2px 0;color:#59636e;">When</td><td>{{.When}}</td></tr>
+{{if .RecoveryAccount}}<tr><td style="padding:2px 12px 2px 0;color:#59636e;">New admin account</td><td>{{.RecoveryAccount}}</td></tr>{{end}}
+</table>
+<p style="margin:0 0 12px 0;">You receive this because you are an administrator of {{.Realm}}.</p>
+{{template "muted" "If nobody in your team planned this, treat it as an incident: check the audit log, disable the new account, and review who can reach the admin server."}}
+{{end}}

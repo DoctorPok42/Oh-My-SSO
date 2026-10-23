@@ -154,6 +154,20 @@ func (s *RBACService) GetEffectiveClientScopes(ctx context.Context, userID, clie
 	return out, nil
 }
 
+// RequiredClientScopeIDs returns the client scopes mapped as "required" on
+// a client (Step 14). It grants nothing by itself: a required scope is only
+// emitted when it is also one of the user's effective scopes.
+func (s *RBACService) RequiredClientScopeIDs(ctx context.Context, clientRef string) ([]string, error) {
+	policy, err := s.access.GetClientAccessPolicy(ctx, clientRef)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("rbac: load client policy: %w", err)
+	}
+	return policy.RequiredScopeIDs, nil
+}
+
 func effectivePermissions(res grantResult) []*domain.Permission {
 	if res.denyReason != "" {
 		return []*domain.Permission{}

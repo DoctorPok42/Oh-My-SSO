@@ -1,0 +1,286 @@
+package app
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	vk "github.com/valkey-io/valkey-go"
+
+	"sso.internal/sso/ent"
+	valkeycache "sso.internal/sso/internal/cache/valkey"
+	"sso.internal/sso/internal/core/domain"
+	"sso.internal/sso/internal/core/repository"
+	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/keymanager"
+	"sso.internal/sso/internal/notify"
+	"sso.internal/sso/internal/ratelimit"
+	"sso.internal/sso/internal/storage/entstore"
+)
+
+// Core is everything the binaries share: storage, caches, and the core
+// services, wired exactly once.
+type Core struct {
+	Ent        *ent.Client
+	Valkey     vk.Client
+	KeyManager keymanager.KeyManager
+	KMSBackend string
+	PublicURL  string
+
+	// Dispatcher sends e-mails in the background; nil when e-mail is off.
+	Dispatcher *notify.Dispatcher
+	// Notifier is the Dispatcher, or a no-op when e-mail is off.
+	Notifier service.Notifier
+
+	Users       repository.UserRepository
+	Clients     repository.ClientRepository
+	Realms      repository.RealmRepository
+	Tokens      repository.TokenRepository
+	SigningKeys repository.SigningKeyRepository
+	Settings    repository.InstanceSettingsRepository
+	Audit       repository.AuditLogRepository
+	Roles       repository.RoleRepository
+	Groups      repository.GroupRepository
+	Scopes      repository.ClientScopeRepository
+	Permissions repository.PermissionRepository
+	Admin       repository.AdminRepository
+
+	Auth          *service.AuthService
+	Sessions      *service.SessionService
+	RBAC          *service.RBACService
+	KeyRotation   *service.KeyRotationService
+	Lockout       *service.LockoutService
+	MFAPolicy     *service.MFAPolicyService
+	MFA           *service.MFAService
+	PasswordReset *service.PasswordResetService
+	Consent       *service.ConsentService
+	IdentityCore  *service.IdentityCoreService
+	OIDCClients   *service.OIDCClientService
+	SAMLClients   *service.SAMLClientService
+	Timeouts      service.NoActiveTimeouts
+	RateLimiter   ratelimit.Limiter
+}
+
+// EmailEnabled tells whether e-mails can leave the server (SMTP, or the log
+// in development). "Forgot password" and invitation e-mails need it.
+func (c *Core) EmailEnabled() bool { return c.Dispatcher != nil }
+
+// BuildCore opens the database, Valkey and the KeyManager, and wires every
+// core service (what cmd/idp did in serve() before Step 14).
+func BuildCore() *Core {
+	c := &Core{}
+	c.Ent = EntClient()
+	c.KeyManager, c.KMSBackend = KeyManager()
+	c.PublicURL = PublicURL()
+
+	var err error
+	c.Valkey, err = valkeycache.New(os.Getenv("VALKEY_ADDR"))
+	if err != nil {
+		log.Fatalf("valkey: %v", err)
+	}
+
+	client := c.Ent
+	c.Users = entstore.NewUserRepository(client)
+	c.Clients = entstore.NewClientRepository(client)
+	c.Realms = entstore.NewRealmRepository(client)
+	c.Tokens = entstore.NewTokenRepository(client)
+	c.SigningKeys = entstore.NewSigningKeyRepository(client)
+	c.Settings = entstore.NewInstanceSettingsRepository(client)
+	c.Audit = entstore.NewAuditLogRepository(client)
+	c.Roles = entstore.NewRoleRepository(client)
+	c.Groups = entstore.NewGroupRepository(client)
+	c.Scopes = entstore.NewClientScopeRepository(client)
+	c.Permissions = entstore.NewPermissionRepository(client)
+	c.Admin = entstore.NewAdminRepository(client)
+	sessionRepo := entstore.NewSessionRepository(client)
+	c.RateLimiter = valkeycache.NewRateLimiter(c.Valkey)
+
+	// --- E-mail notifications (Step 12) ---
+	// The dispatcher sends in the background; every core service only
+	// calls Notify(event). Without SMTP (production), no e-mail at all.
+	c.Notifier = service.NopNotifier{}
+	if sender := EmailSender(Templates()); sender != nil {
+		c.Dispatcher = NewDispatcher(client, c.PublicURL, sender)
+		c.Dispatcher.Start()
+		c.Notifier = c.Dispatcher
+	}
+
+	// --- Account lockout (Step 12) ---
+	c.Lockout = service.NewLockoutService(service.LockoutDeps{
+		Users:    c.Users,
+		Unknown:  valkeycache.NewLockoutStore(c.Valkey),
+		Settings: c.Settings,
+		Notifier: c.Notifier,
+		Audit:    c.Audit,
+	})
+
+	c.Auth = service.NewAuthService(
+		c.Users,
+		entstore.NewLoginAttemptRepository(client),
+		service.WithTimeoutChecker(c.Timeouts),
+		service.WithLockout(c.Lockout),
+	)
+
+	// --- Sign-in analysis: new device, suspicious sign-in (Step 12) ---
+	loginSecurity := service.NewLoginSecurityService(service.LoginSecurityDeps{
+		Sessions: sessionRepo,
+		Audit:    c.Audit,
+		Notifier: c.Notifier,
+		GeoIP:    GeoIP(),
+	})
+
+	c.Sessions = service.NewSessionService(
+		sessionRepo,
+		c.Settings,
+		c.Tokens,
+		valkeycache.NewSessionCache(c.Valkey),
+		service.WithLoginObserver(loginSecurity),
+	)
+
+	c.RBAC = service.NewRBACService(entstore.NewAccessRepository(client), c.Audit)
+
+	c.KeyRotation = service.NewKeyRotationService(
+		c.SigningKeys,
+		entstore.NewKeyRotationLogRepository(client),
+		c.Settings,
+		c.KeyManager,
+		c.KMSBackend,
+	)
+
+	// --- MFA (Step 9) ---
+	encrypter, ok := c.KeyManager.(keymanager.Encrypter)
+	if !ok {
+		log.Fatalf("keymanager: backend %q cannot encrypt (needed for TOTP secrets)", c.KMSBackend)
+	}
+	c.MFAPolicy = service.NewMFAPolicyService(service.MFAPolicyDeps{
+		Settings: c.Settings,
+		Clients:  c.Clients,
+		Roles:    c.Roles,
+		Policies: entstore.NewMfaPolicyRepository(client),
+		Access:   entstore.NewAccessRepository(client),
+		Audit:    c.Audit,
+	})
+	c.MFA = service.NewMFAService(service.MFADeps{
+		Users:         c.Users,
+		Methods:       entstore.NewMfaMethodRepository(client),
+		BackupCodes:   entstore.NewMfaBackupCodeRepository(client),
+		Sessions:      c.Sessions,
+		Policy:        c.MFAPolicy,
+		Envelope:      service.NewEnvelopeService(c.SigningKeys, encrypter, c.KMSBackend),
+		Store:         valkeycache.NewMFAStore(c.Valkey),
+		Limiter:       valkeycache.NewRateLimiter(c.Valkey),
+		LoginAttempts: entstore.NewLoginAttemptRepository(client),
+		Audit:         c.Audit,
+		Realms:        c.Realms,
+		Clients:       c.Clients,
+		Passkeys:      Passkeys(),
+		Notifier:      c.Notifier,
+		IssuerName:    os.Getenv("MFA_TOTP_ISSUER"),
+	})
+
+	// --- Password reset (Step 12) ---
+	// Step 14: always built. Without e-mail there is no "forgot password",
+	// but activation links (bootstrap, invitations shown to the admin) still
+	// use the same one-time tokens and the same "choose a password" page.
+	c.PasswordReset = service.NewPasswordResetService(service.PasswordResetDeps{
+		Users:    c.Users,
+		Tokens:   entstore.NewPasswordResetTokenRepository(client),
+		Sessions: c.Sessions,
+		Policy:   service.NewPasswordPolicyService(c.Settings),
+		Settings: c.Settings,
+		Lockout:  c.Lockout,
+		Notifier: c.Notifier,
+		Audit:    c.Audit,
+	})
+
+	// --- Consent screen (Step 13) ---
+	c.Consent = service.NewConsentService(service.ConsentDeps{
+		Consents: entstore.NewConsentRepository(client),
+		Clients:  c.Clients,
+		Sessions: c.Sessions,
+		Tokens:   c.Tokens,
+		Audit:    c.Audit,
+		Notifier: c.Notifier,
+	})
+
+	c.IdentityCore = service.NewIdentityCore(service.IdentityCoreDeps{
+		Auth:        c.Auth,
+		Sessions:    c.Sessions,
+		RBAC:        c.RBAC,
+		Users:       c.Users,
+		Clients:     c.Clients,
+		Realms:      c.Realms,
+		Tokens:      c.Tokens,
+		SigningKeys: c.SigningKeys,
+		KeyManager:  c.KeyManager,
+		Timeouts:    c.Timeouts,
+		MFA:         c.MFA,
+		Consent:     c.Consent,
+		Audit:       c.Audit,
+	})
+
+	c.OIDCClients = service.NewOIDCClientService(c.Clients, c.Scopes, c.Roles, c.Groups)
+	c.SAMLClients = service.NewSAMLClientService(c.Clients, c.Scopes, c.Roles, c.Groups)
+	return c
+}
+
+// Close lets queued e-mails leave (a few seconds at most), then closes
+// Valkey and the database.
+func (c *Core) Close() {
+	if c.Dispatcher != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		c.Dispatcher.Close(ctx)
+		cancel()
+	}
+	if c.Valkey != nil {
+		c.Valkey.Close()
+	}
+	if c.Ent != nil {
+		_ = c.Ent.Close()
+	}
+}
+
+// NewDispatcher wires the e-mail dispatcher on the database.
+func NewDispatcher(client *ent.Client, publicURL string, sender notify.EmailSender) *notify.Dispatcher {
+	return notify.NewDispatcher(notify.DispatcherConfig{PublicURL: publicURL}, notify.DispatcherDeps{
+		Sender:   sender,
+		Users:    entstore.NewUserRepository(client),
+		Realms:   entstore.NewRealmRepository(client),
+		Settings: entstore.NewInstanceSettingsRepository(client),
+		Audit:    entstore.NewAuditLogRepository(client),
+	})
+}
+
+// CLINotifier is the notifier of command-line tools (`idp mfa reset`,
+// `idp-admin recover`...): it sends right away, since the process ends
+// with the command.
+func CLINotifier(client *ent.Client) service.Notifier {
+	sender := EmailSender(Templates())
+	if sender == nil {
+		return service.NopNotifier{}
+	}
+	return SyncNotifier{D: NewDispatcher(client, DevPublicURL(), sender)}
+}
+
+// SyncNotifier processes each event in the caller's goroutine.
+type SyncNotifier struct{ D *notify.Dispatcher }
+
+func (n SyncNotifier) Notify(ctx context.Context, e domain.NotificationEvent) {
+	if err := n.D.Process(ctx, e); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: e-mail not sent: %v\n", err)
+	}
+}
+
+// AdminService builds the service behind the Admin API (Step 14).
+func (c *Core) AdminService() *service.AdminService {
+	return service.NewAdminService(service.AdminDeps{
+		Realms: c.Realms, Users: c.Users, Clients: c.Clients, Scopes: c.Scopes, Roles: c.Roles, Groups: c.Groups,
+		Permissions: c.Permissions, Settings: c.Settings, Audit: c.Audit,
+		Access: entstore.NewAccessRepository(c.Ent), MfaMethods: entstore.NewMfaMethodRepository(c.Ent), Admin: c.Admin,
+		Sessions: c.Sessions, KeyRotation: c.KeyRotation, MFA: c.MFA, MFAPolicy: c.MFAPolicy,
+		PasswordReset: c.PasswordReset, Lockout: c.Lockout, OIDCClients: c.OIDCClients, SAMLClients: c.SAMLClients,
+		Notifier: c.Notifier, PublicURL: c.PublicURL, EmailEnabled: c.EmailEnabled(), KMSBackend: c.KMSBackend,
+	})
+}

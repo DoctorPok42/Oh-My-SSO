@@ -22,6 +22,8 @@ const (
 
 type LoginAttempt struct {
 	ID            string
+	RealmID       string // Step 14; empty on rows written before
+	UserID        string // Step 14; empty when no account matched
 	Identifier    string
 	IPAddress     string
 	UserAgent     string

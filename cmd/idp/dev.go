@@ -238,8 +238,7 @@ func devSeed(ctx context.Context, args []string, out io.Writer) error {
 	case hasSAMLKey:
 		fmt.Fprintln(out, "SAML signing key: exists")
 	case backend == backendLocalDev:
-		fmt.Fprintln(out, "SAML signing key: NOT created (local_dev, see above). Or create it through the running server:")
-		fmt.Fprintf(out, "             POST /r/%s/admin/signing-keys/rotate {\"purpose\":\"saml_signing\"}\n", realm.Name)
+		fmt.Fprintln(out, "SAML signing key: NOT created (local_dev, see above): use KEYMANAGER_BACKEND=vault.")
 	default:
 		res, err := rotation.Rotate(ctx, service.RotateInput{RealmID: realm.ID, Purpose: domain.SigningKeyPurposeSAMLSigning,
 			TriggeredBy: cliActor(), Reason: "idp dev seed"})
@@ -295,7 +294,7 @@ func devSeed(ctx context.Context, args []string, out io.Writer) error {
 	return nil
 }
 
-// devPublicURL: what the server uses as PUBLIC_URL (see buildPublicURL).
+// devPublicURL: what the server uses as PUBLIC_URL (see app.PublicURL).
 func devPublicURL() string {
 	if u := os.Getenv("PUBLIC_URL"); u != "" {
 		return strings.TrimRight(u, "/")

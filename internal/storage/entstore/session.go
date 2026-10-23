@@ -35,6 +35,8 @@ func (r *entSessionRepository) Create(ctx context.Context, p repository.CreateSe
 		SetNillableMfaMethodType(nonEmpty(p.MFAMethodType)).
 		SetNillableMfaVerifiedAt(nonZeroTime(p.MFAVerifiedAt)).
 		SetAuthMethod(p.AuthMethod).
+		SetNillableCreatedAt(nonZeroTime(p.CreatedAt)).
+		SetNillableLastActivityAt(nonZeroTime(p.CreatedAt)).
 		Save(ctx)
 	if err != nil {
 		return nil, err

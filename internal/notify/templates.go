@@ -63,6 +63,11 @@ type Data struct {
 	AppName        string
 	AppAccess      []string
 	AppAccessAdded bool
+
+	// admin_recovery (Step 14).
+	RecoveryKind    string
+	RecoveryActor   string
+	RecoveryAccount string
 }
 
 type htmlData struct {

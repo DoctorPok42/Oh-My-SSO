@@ -84,7 +84,7 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 			if user == nil {
 				reason = domain.LoginFailureUnknownAccount
 			}
-			s.recordAttempt(ctx, p, domain.LoginAttemptFailure, reason)
+			s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, reason)
 			return nil, &AccountLockedError{Until: until}
 		}
 	}
@@ -97,7 +97,7 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 		if user == nil {
 			reason = domain.LoginFailureUnknownAccount
 		}
-		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, reason)
+		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, reason)
 		s.recordFailure(ctx, subj)
 		return nil, ErrInvalidCredentials
 	}
@@ -107,7 +107,7 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 		return nil, fmt.Errorf("authenticate local: verify password: %w", err)
 	}
 	if !ok {
-		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, domain.LoginFailureInvalidCredentials)
+		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, domain.LoginFailureInvalidCredentials)
 		s.recordFailure(ctx, subj)
 		return nil, ErrInvalidCredentials
 	}
@@ -121,7 +121,7 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 	}
 
 	if user.Status != domain.UserActive {
-		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, domain.LoginFailureAccountLocked)
+		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, domain.LoginFailureAccountLocked)
 		return nil, ErrAccountNotActive
 	}
 
@@ -132,11 +132,11 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 		return nil, fmt.Errorf("authenticate local: check timeout: %w", err)
 	}
 	if blocked {
-		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, domain.LoginFailureTimeoutActive)
+		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, domain.LoginFailureTimeoutActive)
 		return nil, ErrTimeoutActive
 	}
 
-	s.recordAttempt(ctx, p, domain.LoginAttemptSuccess, "")
+	s.recordAttempt(ctx, p, user, domain.LoginAttemptSuccess, "")
 	return user, nil
 }
 
@@ -184,8 +184,17 @@ func (s *AuthService) findUserByIdentifier(ctx context.Context, realmID, identif
 	return nil, err
 }
 
-func (s *AuthService) recordAttempt(ctx context.Context, p AuthenticateLocalParams, status domain.LoginAttemptStatus, reason domain.LoginAttemptFailureReason) {
+// recordAttempt writes one LoginAttempt. user is nil when the identifier
+// matched no account; the realm is always known (Step 14: per-realm
+// dashboard figures, a user's own sign-in history).
+func (s *AuthService) recordAttempt(ctx context.Context, p AuthenticateLocalParams, user *domain.User, status domain.LoginAttemptStatus, reason domain.LoginAttemptFailureReason) {
+	userID := ""
+	if user != nil {
+		userID = user.ID
+	}
 	_, _ = s.loginAttempts.Create(ctx, repository.CreateLoginAttemptParams{
+		RealmID:       p.RealmID,
+		UserID:        userID,
 		Identifier:    p.Identifier,
 		IPAddress:     p.IPAddress,
 		UserAgent:     p.UserAgent,

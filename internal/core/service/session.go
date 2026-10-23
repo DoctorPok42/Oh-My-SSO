@@ -132,11 +132,13 @@ func (s *SessionService) Create(ctx context.Context, in CreateSessionInput) (raw
 		mfaAt = s.now()
 	}
 
+	now := s.now()
 	sess, err = s.sessions.Create(ctx, repository.CreateSessionParams{
+		CreatedAt:         now,
 		TokenHash:         HashSessionToken(rawToken),
 		RealmID:           in.RealmID,
 		UserID:            in.UserID,
-		ExpiresAt:         s.now().Add(policy.maxLifetime),
+		ExpiresAt:         now.Add(policy.maxLifetime),
 		IPAddress:         in.IPAddress,
 		UserAgent:         in.UserAgent,
 		MFAVerified:       in.MFAVerified,

@@ -39,6 +39,13 @@ func (LoginAttempt) Fields() []ent.Field {
 			Immutable().
 			DefaultFunc(uuid.NewString),
 		field.String("identifier").NotEmpty().Immutable(),
+		// Step 14: the realm of the login page and, when the identifier
+		// matched an account, that user. Empty on rows written before Step 14.
+		// They let the admin dashboard count sign-ins per realm and the
+		// account console show a user their own sign-in history, without
+		// guessing from the identifier (the same e-mail may exist in two realms).
+		field.String("realm_id").Optional().Immutable(),
+		field.String("user_id").Optional().Immutable(),
 		field.String("ip_address").Optional().Immutable(),
 		field.String("user_agent").Optional().Immutable(),
 		field.String("status").GoType(LoginAttemptStatus("")).Immutable(),
@@ -55,5 +62,7 @@ func (LoginAttempt) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("identifier", "created_at"),
 		index.Fields("ip_address", "created_at"),
+		index.Fields("realm_id", "created_at"),
+		index.Fields("user_id", "created_at"),
 	}
 }

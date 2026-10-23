@@ -23,7 +23,9 @@ type Server struct {
 	// Optional, set with options (Step 8). Their routes are only mounted
 	// when provided, so existing callers of New keep working unchanged.
 	publicKeys PublicKeySource
-	keyRotator KeyRotator
+	// Step 14: the signing key admin endpoints moved to the Admin API
+	// (internal/adminapi, cmd/idp-admin). This server is reachable by end
+	// users and exposes no admin route.
 
 	// Step 9: MFA. nil = no second factor anywhere (earlier steps' tests).
 	mfa      *service.MFAService
@@ -37,6 +39,10 @@ type Server struct {
 
 	// Step 12: password reset. nil = no forgot/reset routes.
 	passwordReset *service.PasswordResetService
+	// Step 14: "forgot password" (needs e-mail). The "choose a password"
+	// page is mounted whenever passwordReset is set: activation links of
+	// new accounts (bootstrap, invitations) use it too.
+	forgotPassword bool
 }
 
 // OIDCProvider is the OIDC adapter as the router sees it (implemented by
@@ -63,11 +69,6 @@ func WithJWKS(src PublicKeySource) Option {
 	return func(s *Server) { s.publicKeys = src }
 }
 
-// WithSigningKeyAdmin mounts /r/{realm}/admin/signing-keys/... (RBAC protected).
-func WithSigningKeyAdmin(rot KeyRotator) Option {
-	return func(s *Server) { s.keyRotator = rot }
-}
-
 // WithMFA turns on the second factor: login challenge, step-up, account
 // MFA routes, and step-up on sensitive admin routes.
 func WithMFA(mfa *service.MFAService) Option {
@@ -87,10 +88,16 @@ func WithSAML(p SAMLProvider) Option {
 	return func(s *Server) { s.saml = p }
 }
 
-// WithPasswordReset mounts the "forgot password" flow (Step 12): the
-// forgot-password and reset-password pages and their JSON endpoints.
+// WithPasswordReset mounts the reset-password page and its JSON endpoint
+// (Step 12): reset links from e-mails, and activation links (Step 14).
 func WithPasswordReset(p *service.PasswordResetService) Option {
 	return func(s *Server) { s.passwordReset = p }
+}
+
+// WithForgotPassword also mounts the "forgot password" page and endpoint,
+// which send a reset link by e-mail. Only when e-mails can leave the server.
+func WithForgotPassword(enabled bool) Option {
+	return func(s *Server) { s.forgotPassword = enabled }
 }
 
 // WithDevPages mounts /r/{realm}/dev/mfa, a bare HTML page to try the MFA
@@ -150,9 +157,6 @@ func New(
 		}
 		if s.saml != nil {
 			s.mountSAML(r)
-		}
-		if s.keyRotator != nil {
-			s.mountSigningKeyAdmin(r)
 		}
 	})
 

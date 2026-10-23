@@ -58,3 +58,7 @@ func describeUserAgent(ua string) string {
 		return ua
 	}
 }
+
+// DescribeUserAgent is describeUserAgent for other packages (Step 14: the
+// sessions screen of the admin console shows "Firefox on Windows" too).
+func DescribeUserAgent(ua string) string { return describeUserAgent(ua) }

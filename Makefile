@@ -104,14 +104,32 @@ run:
 	@echo "Starting idp on :$(PORT)..."
 	go run ./cmd/idp
 
-## run-admin: Run cmd/idp-admin locally (Admin API)
+## run-admin: Run cmd/idp-admin locally (Admin API on :8090, for the admin console)
 run-admin:
 	@echo "Starting idp-admin..."
 	go run ./cmd/idp-admin
 
 # ------------------------------------------------------------------------------
-# Signing keys (Step 8) — same code as POST /r/{realm}/admin/signing-keys/...
-# Not with KEYMANAGER_BACKEND=local_dev for rotate: use the HTTP endpoint then.
+# Admin console bootstrap and break-glass (Step 14) — idp-admin only: the
+# public binary (idp) refuses every change to the master realm.
+# ------------------------------------------------------------------------------
+
+email     ?=
+admin_url ?= $(if $(ADMIN_PANEL_URL),$(ADMIN_PANEL_URL),http://localhost:3000)
+what      ?= admin
+
+## admin-bootstrap: First start: master realm, admin console client and first admin (usage: make admin-bootstrap email=you@example.com [admin_url=http://localhost:3000])
+admin-bootstrap:
+	go run ./cmd/idp-admin bootstrap --email $(email) --admin-url $(admin_url)
+
+## admin-recover: Break-glass, interactive, alerts every admin (usage: make admin-recover what=admin email=new@example.com | make admin-recover what=client-secret)
+admin-recover:
+	go run ./cmd/idp-admin recover $(what) $(if $(email),--email $(email),)
+
+# ------------------------------------------------------------------------------
+# Signing keys (Step 8) — same code as the Admin API (Step 14):
+# POST /api/v1/realms/{realm}/signing-keys/... Not with KEYMANAGER_BACKEND=local_dev
+# (keys would live in the memory of another process): use Vault (`make dev`).
 # ------------------------------------------------------------------------------
 
 realm ?= master
@@ -385,7 +403,7 @@ clean:
 
 .PHONY: help tools tidy generate \
 	migrate-diff migrate-apply migrate-status migrate-lint \
-	build run run-admin \
+	build run run-admin admin-bootstrap admin-recover \
 	keys-list keys-rotate keys-retire \
 	mfa-list mfa-reset mfa-policy \
 	oidc-clients oidc-rotate-secret dev-seed oidc-demo \

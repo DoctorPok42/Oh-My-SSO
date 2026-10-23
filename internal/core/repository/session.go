@@ -27,6 +27,11 @@ type SessionRepository interface {
 }
 
 type CreateSessionParams struct {
+	// CreatedAt (Step 14): when the session starts; also its first
+	// last_activity_at. Zero: the database's clock. The session service sets
+	// it from its own clock, like expires_at, so every timestamp of a session
+	// comes from the same clock.
+	CreatedAt         time.Time
 	RealmID           string
 	UserID            string
 	ExpiresAt         time.Time

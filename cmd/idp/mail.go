@@ -6,19 +6,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
-	"log/slog"
-	"net"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"sso.internal/sso/ent"
-	"sso.internal/sso/internal/core/domain"
+	"sso.internal/sso/internal/app"
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/notify"
-	"sso.internal/sso/internal/storage/entstore"
 )
 
 // E-mail (Step 12). Configuration, all optional in development:
@@ -38,110 +32,18 @@ const mailUsage = `usage:
   idp mail test --to <address>
 `
 
-// buildEmailSender returns the sender configured by SMTP_*, or nil when
-// e-mail is off.
+// The e-mail builders moved to internal/app (Step 14), shared with
+// cmd/idp-admin. These short names keep the CLI files unchanged.
+
 func buildEmailSender(templates *notify.Templates) notify.EmailSender {
-	appEnv := os.Getenv("APP_ENV")
-	host := os.Getenv("SMTP_HOST")
-	if host == "" {
-		if appEnv == "development" {
-			log.Printf("mail: SMTP_HOST is not set: e-mails are printed in this log instead (development only)")
-			return &notify.LogEmailSender{Templates: templates, Logger: slog.Default()}
-		}
-		log.Printf("mail: SMTP_HOST is not set: no e-mail is sent, \"forgot password\" is disabled")
-		return nil
-	}
-
-	port := 0
-	if p := os.Getenv("SMTP_PORT"); p != "" {
-		n, err := strconv.Atoi(p)
-		if err != nil {
-			log.Fatalf("mail: SMTP_PORT %q is not a number", p)
-		}
-		port = n
-	}
-	from := unquote(os.Getenv("SMTP_FROM"))
-	if from == "" {
-		if appEnv == "production" {
-			log.Fatalf("mail: SMTP_FROM is required when APP_ENV=production")
-		}
-		from = "Oh-My-SSO <no-reply@localhost>"
-	}
-	security := notify.Security(strings.ToLower(os.Getenv("SMTP_SECURITY")))
-	if security == notify.SecurityNone && appEnv == "production" && !isLoopbackHost(host) {
-		log.Fatalf("mail: SMTP_SECURITY=none sends passwords and reset links in clear: refused in production (except to localhost)")
-	}
-
-	sender, err := notify.NewSMTPEmailSender(notify.SMTPConfig{
-		Host:     host,
-		Port:     port,
-		Username: os.Getenv("SMTP_USERNAME"),
-		Password: os.Getenv("SMTP_PASSWORD"),
-		Security: security,
-		From:     from,
-		HeloName: os.Getenv("SMTP_HELO_NAME"),
-	}, templates)
-	if err != nil {
-		log.Fatalf("mail: %v", err)
-	}
-	cfg := sender.Config()
-	log.Printf("mail: SMTP %s:%d (%s), from %s", cfg.Host, cfg.Port, cfg.Security, cfg.From)
-	return sender
+	return app.EmailSender(templates)
 }
 
-// unquote removes quotes around a whole value (SMTP_FROM="A <a@b>" read by
-// a tool that keeps them, like make), but not quotes inside it.
-func unquote(v string) string {
-	if len(v) >= 2 && (v[0] == '"' || v[0] == '\'') && v[len(v)-1] == v[0] {
-		return v[1 : len(v)-1]
-	}
-	return v
-}
-
-func isLoopbackHost(host string) bool {
-	if host == "localhost" {
-		return true
-	}
-	ip := net.ParseIP(host)
-	return ip != nil && ip.IsLoopback()
-}
-
-func loadTemplates() *notify.Templates {
-	t, err := notify.LoadTemplates()
-	if err != nil {
-		log.Fatalf("mail: %v", err) // embedded files: only a broken build gets here
-	}
-	return t
-}
-
-// newDispatcher wires the dispatcher on the database.
-func newDispatcher(client *ent.Client, publicURL string, sender notify.EmailSender) *notify.Dispatcher {
-	return notify.NewDispatcher(notify.DispatcherConfig{PublicURL: publicURL}, notify.DispatcherDeps{
-		Sender:   sender,
-		Users:    entstore.NewUserRepository(client),
-		Realms:   entstore.NewRealmRepository(client),
-		Settings: entstore.NewInstanceSettingsRepository(client),
-		Audit:    entstore.NewAuditLogRepository(client),
-	})
-}
+func loadTemplates() *notify.Templates { return app.Templates() }
 
 // cliNotifier is the notifier of the CLI commands (`idp mfa reset`...): it
 // sends right away, since the process ends with the command.
-func cliNotifier(client *ent.Client) service.Notifier {
-	sender := buildEmailSender(loadTemplates())
-	if sender == nil {
-		return service.NopNotifier{}
-	}
-	return syncNotifier{d: newDispatcher(client, devPublicURL(), sender)}
-}
-
-type syncNotifier struct{ d *notify.Dispatcher }
-
-func (n syncNotifier) Notify(ctx context.Context, e domain.NotificationEvent) {
-	if err := n.d.Process(ctx, e); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: e-mail not sent: %v\n", err)
-	}
-}
+func cliNotifier(client *ent.Client) service.Notifier { return app.CLINotifier(client) }
 
 func runMailCommand(args []string) int {
 	if len(args) == 0 || args[0] != "test" {

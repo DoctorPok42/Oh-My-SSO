@@ -38,6 +38,10 @@ const (
 	TemplateAppConnected Template = "app_connected"
 	// TemplateTest is sent by `idp mail test` to check the SMTP settings.
 	TemplateTest Template = "test"
+	// Step 14: invitation of a new account, and the alert sent to every
+	// admin after `idp-admin recover`.
+	TemplateAccountInvite Template = "account_invite"
+	TemplateAdminRecovery Template = "admin_recovery"
 )
 
 // AllTemplates lists every template: LoadTemplates parses each one at
@@ -46,7 +50,7 @@ var AllTemplates = []Template{
 	TemplatePasswordReset, TemplatePasswordChanged, TemplateNewDeviceLogin,
 	TemplateSuspiciousLogin, TemplateMfaMethodAdded, TemplateMfaMethodRemoved,
 	TemplateMfaReset, TemplateBackupCodesRegenerated, TemplateAccountLocked,
-	TemplateAppConnected, TemplateTest,
+	TemplateAppConnected, TemplateTest, TemplateAccountInvite, TemplateAdminRecovery,
 }
 
 // EmailSender sends one e-mail made from a template and its data.

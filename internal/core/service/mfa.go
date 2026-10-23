@@ -852,6 +852,8 @@ func (s *MFAService) recordMFAFailure(ctx context.Context, user *domain.User, ip
 		return
 	}
 	_, _ = s.loginAttempts.Create(ctx, repository.CreateLoginAttemptParams{
+		RealmID:       user.RealmID,
+		UserID:        user.ID,
 		Identifier:    user.Username,
 		IPAddress:     ip,
 		UserAgent:     ua,

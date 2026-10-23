@@ -240,7 +240,11 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 	if err != nil {
 		return nil, fmt.Errorf("issue identity assertion: effective scopes: %w", err)
 	}
-	scopes = filterRequestedScopes(scopes, requestedScopes)
+	required, err := s.rbac.RequiredClientScopeIDs(ctx, clientRef)
+	if err != nil {
+		return nil, fmt.Errorf("issue identity assertion: required scopes: %w", err)
+	}
+	scopes = filterRequestedScopes(scopes, requestedScopes, required)
 
 	// 6. Lifetime: client TTL, but never beyond the session itself.
 	now := s.now()
@@ -377,17 +381,19 @@ func assertionTTL(c *domain.ClientApp) time.Duration {
 }
 
 // filterRequestedScopes keeps the effective scopes whose name was requested,
-// plus the "is_default" ones, which are included without being asked for.
+// plus the "is_default" ones and the ones the client maps as "required"
+// (requiredIDs, Step 14), which are included without being asked for.
 // An empty request means "everything the user is entitled to". A requested
 // scope the user does not have is silently dropped: requesting never grants,
-// and is_default never grants either (the scope must be effective first).
-func filterRequestedScopes(effective []*domain.ClientScope, requested []string) []*domain.ClientScope {
+// and is_default / required never grant either (the scope must be effective
+// first).
+func filterRequestedScopes(effective []*domain.ClientScope, requested, requiredIDs []string) []*domain.ClientScope {
 	if len(requested) == 0 {
 		return effective
 	}
 	out := make([]*domain.ClientScope, 0, len(effective))
 	for _, cs := range effective {
-		if cs.IsDefault || slices.Contains(requested, cs.Name) {
+		if cs.IsDefault || slices.Contains(requested, cs.Name) || slices.Contains(requiredIDs, cs.ID) {
 			out = append(out, cs)
 		}
 	}

@@ -57,14 +57,6 @@ func (s *Server) mountPasswordReset(r chi.Router) {
 		panic("httpserver: login pages: " + err.Error()) // embedded templates: a bug, not a runtime error
 	}
 	// Full paths (not r.Route("/auth")): mountAuth already owns that sub-router.
-	r.Get("/auth/forgot-password", func(w http.ResponseWriter, r *http.Request) {
-		realm := realmFromContext(r)
-		pages.RenderForgotPassword(w, loginui.ForgotPassword{
-			RealmDisplay: realmDisplay(realm.DisplayName, realm.Name),
-			Base:         "/r/" + realm.Name,
-			Assets:       "/r/" + realm.Name + "/auth/assets",
-		})
-	})
 	r.Get("/auth/reset-password", func(w http.ResponseWriter, r *http.Request) {
 		realm := realmFromContext(r)
 		pages.RenderResetPassword(w, loginui.ResetPassword{
@@ -78,8 +70,22 @@ func (s *Server) mountPasswordReset(r chi.Router) {
 	r.Get("/auth/assets/{file}", func(w http.ResponseWriter, r *http.Request) {
 		loginui.Asset(w, r, chi.URLParam(r, "file"))
 	})
-	r.With(requireJSON).Post("/auth/forgot-password", s.handleForgotPassword)
 	r.With(requireJSON).Post("/auth/reset-password", s.handleResetPassword)
+
+	// "Forgot password" sends a link by e-mail: only when e-mails can
+	// leave the server (Step 14: the reset page above is always there,
+	// activation links of new accounts use it too).
+	if s.forgotPassword {
+		r.Get("/auth/forgot-password", func(w http.ResponseWriter, r *http.Request) {
+			realm := realmFromContext(r)
+			pages.RenderForgotPassword(w, loginui.ForgotPassword{
+				RealmDisplay: realmDisplay(realm.DisplayName, realm.Name),
+				Base:         "/r/" + realm.Name,
+				Assets:       "/r/" + realm.Name + "/auth/assets",
+			})
+		})
+		r.With(requireJSON).Post("/auth/forgot-password", s.handleForgotPassword)
+	}
 }
 
 // handleForgotPassword never says whether the account exists: same status,

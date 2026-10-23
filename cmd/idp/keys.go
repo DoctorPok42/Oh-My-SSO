@@ -19,7 +19,8 @@ import (
 
 // "idp keys" manages signing keys without going through HTTP, like the
 // future "idp config apply" (see configuration-as-code.md). It calls exactly
-// the same service as POST /r/{realm}/admin/signing-keys/rotate.
+// the same service as the Admin API (Step 14, cmd/idp-admin):
+// POST /api/v1/realms/{realm}/signing-keys/rotate.
 //
 //	idp keys list    --realm master
 //	idp keys rotate  --realm master [--type RSA|EC] [--grace 48h] [--reason "..."]
@@ -186,7 +187,7 @@ func keysRotate(ctx context.Context, args []string, out io.Writer) error {
 		// vanish when it exits, leaving the realm with an "active" key that
 		// nobody can sign with.
 		return errors.New("the local_dev KeyManager keeps private keys in process memory, so a key created by the CLI would be lost when it exits.\n" +
-			"Use the running server instead: POST /r/" + env.realm.Name + "/admin/signing-keys/rotate, or a real backend (KEYMANAGER_BACKEND=vault)")
+			"Use a real backend: KEYMANAGER_BACKEND=vault (`make dev` starts Vault)")
 	}
 
 	res, err := env.rotation.Rotate(ctx, service.RotateInput{

@@ -14,12 +14,25 @@ func TestFilterRequestedScopes_DefaultScopes(t *testing.T) {
 	dept := &domain.ClientScope{Name: "department", IsDefault: true}
 	effective := []*domain.ClientScope{groups, dept}
 
-	require.Equal(t, effective, filterRequestedScopes(effective, nil), "no request: everything")
-	require.Equal(t, []*domain.ClientScope{groups, dept}, filterRequestedScopes(effective, []string{"openid", "groups"}))
-	require.Equal(t, []*domain.ClientScope{dept}, filterRequestedScopes(effective, []string{"openid"}),
+	require.Equal(t, effective, filterRequestedScopes(effective, nil, nil), "no request: everything")
+	require.Equal(t, []*domain.ClientScope{groups, dept}, filterRequestedScopes(effective, []string{"openid", "groups"}, nil))
+	require.Equal(t, []*domain.ClientScope{dept}, filterRequestedScopes(effective, []string{"openid"}, nil),
 		"is_default is kept without being requested")
-	require.Empty(t, filterRequestedScopes([]*domain.ClientScope{groups}, []string{"openid", "department"}),
+	require.Empty(t, filterRequestedScopes([]*domain.ClientScope{groups}, []string{"openid", "department"}, nil),
 		"is_default never grants: the scope must be effective (RBAC) first")
+}
+
+// Step 14: a scope the client maps as "required" comes without being asked
+// for, like is_default, but only for that client, and never grants.
+func TestFilterRequestedScopes_RequiredScopes(t *testing.T) {
+	groups := &domain.ClientScope{ID: "s-groups", Name: "groups"}
+	dept := &domain.ClientScope{ID: "s-dept", Name: "department"}
+	effective := []*domain.ClientScope{groups, dept}
+
+	require.Equal(t, []*domain.ClientScope{dept}, filterRequestedScopes(effective, []string{"openid"}, []string{"s-dept"}))
+	require.Equal(t, effective, filterRequestedScopes(effective, []string{"openid", "groups"}, []string{"s-dept"}))
+	require.Empty(t, filterRequestedScopes([]*domain.ClientScope{groups}, []string{"openid"}, []string{"s-dept"}),
+		"required never grants: the scope must be effective (RBAC) first")
 }
 
 func TestUserAttributes(t *testing.T) {

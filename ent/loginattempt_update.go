@@ -68,6 +68,12 @@ func (_u *LoginAttemptUpdate) sqlSave(ctx context.Context) (_node int, err error
 			}
 		}
 	}
+	if _u.mutation.RealmIDCleared() {
+		_spec.ClearField(loginattempt.FieldRealmID, field.TypeString)
+	}
+	if _u.mutation.UserIDCleared() {
+		_spec.ClearField(loginattempt.FieldUserID, field.TypeString)
+	}
 	if _u.mutation.IPAddressCleared() {
 		_spec.ClearField(loginattempt.FieldIPAddress, field.TypeString)
 	}
@@ -167,6 +173,12 @@ func (_u *LoginAttemptUpdateOne) sqlSave(ctx context.Context) (_node *LoginAttem
 				ps[i](selector)
 			}
 		}
+	}
+	if _u.mutation.RealmIDCleared() {
+		_spec.ClearField(loginattempt.FieldRealmID, field.TypeString)
+	}
+	if _u.mutation.UserIDCleared() {
+		_spec.ClearField(loginattempt.FieldUserID, field.TypeString)
 	}
 	if _u.mutation.IPAddressCleared() {
 		_spec.ClearField(loginattempt.FieldIPAddress, field.TypeString)

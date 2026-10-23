@@ -131,7 +131,7 @@ func setupResetEnv(t *testing.T) *resetEnv {
 	srv := httpserver.New(auth, sessions,
 		service.NewRBACService(entstore.NewAccessRepository(client), audit),
 		realms, entstore.NewClientRepository(client), valkeycache.NewRateLimiter(valkeyClient),
-		httpserver.WithPasswordReset(reset),
+		httpserver.WithPasswordReset(reset), httpserver.WithForgotPassword(true),
 	)
 	ts := httptest.NewServer(srv.Router())
 	t.Cleanup(ts.Close)

@@ -294,6 +294,14 @@ func (d *Dispatcher) data(e domain.NotificationEvent, user *domain.User, realm *
 		out.AppName = e.ClientName
 		out.AppAccess = e.Access
 		out.AppAccessAdded = e.AccessAdded
+	case domain.NotificationAccountInvite:
+		// Same page and same one-time tokens as a password reset (Step 14).
+		out.ResetURL = d.link(realm, "/auth/reset-password") + "#token=" + url.QueryEscape(e.ResetToken)
+		out.ExpiresIn = humanDuration(e.ExpiresAt.Sub(e.OccurredAt))
+	case domain.NotificationAdminRecovery:
+		out.RecoveryKind = e.RecoveryKind
+		out.RecoveryActor = e.RecoveryActor
+		out.RecoveryAccount = e.RecoveryAccount
 	}
 	return out
 }

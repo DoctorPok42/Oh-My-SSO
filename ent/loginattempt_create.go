@@ -27,6 +27,34 @@ func (_c *LoginAttemptCreate) SetIdentifier(v string) *LoginAttemptCreate {
 	return _c
 }
 
+// SetRealmID sets the "realm_id" field.
+func (_c *LoginAttemptCreate) SetRealmID(v string) *LoginAttemptCreate {
+	_c.mutation.SetRealmID(v)
+	return _c
+}
+
+// SetNillableRealmID sets the "realm_id" field if the given value is not nil.
+func (_c *LoginAttemptCreate) SetNillableRealmID(v *string) *LoginAttemptCreate {
+	if v != nil {
+		_c.SetRealmID(*v)
+	}
+	return _c
+}
+
+// SetUserID sets the "user_id" field.
+func (_c *LoginAttemptCreate) SetUserID(v string) *LoginAttemptCreate {
+	_c.mutation.SetUserID(v)
+	return _c
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (_c *LoginAttemptCreate) SetNillableUserID(v *string) *LoginAttemptCreate {
+	if v != nil {
+		_c.SetUserID(*v)
+	}
+	return _c
+}
+
 // SetIPAddress sets the "ip_address" field.
 func (_c *LoginAttemptCreate) SetIPAddress(v string) *LoginAttemptCreate {
 	_c.mutation.SetIPAddress(v)
@@ -207,6 +235,14 @@ func (_c *LoginAttemptCreate) createSpec() (*LoginAttempt, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.Identifier(); ok {
 		_spec.SetField(loginattempt.FieldIdentifier, field.TypeString, value)
 		_node.Identifier = value
+	}
+	if value, ok := _c.mutation.RealmID(); ok {
+		_spec.SetField(loginattempt.FieldRealmID, field.TypeString, value)
+		_node.RealmID = value
+	}
+	if value, ok := _c.mutation.UserID(); ok {
+		_spec.SetField(loginattempt.FieldUserID, field.TypeString, value)
+		_node.UserID = value
 	}
 	if value, ok := _c.mutation.IPAddress(); ok {
 		_spec.SetField(loginattempt.FieldIPAddress, field.TypeString, value)
