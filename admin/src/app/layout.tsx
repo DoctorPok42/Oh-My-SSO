@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import NextTopLoader from "nextjs-toploader";
 import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
 import "@fontsource/ibm-plex-sans/600.css";
@@ -25,9 +26,16 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  // The page's CSP nonce (proxy.ts), for the bar's <style> element.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en" className={themeClass(theme)} suppressHydrationWarning>
       <body className="min-h-dvh">
+        {/* The thin bar at the top while the next page loads: starts on every
+            link click, ends when Next.js shows the page. The console's other
+            waits (search, drawers, reload after a change) start it too:
+            components/console/navigation-progress.tsx. */}
+        <NextTopLoader color="var(--accent)" height={3} showSpinner={false} shadow={false} zIndex={100} nonce={nonce} />
         {children}
         <Toaster />
       </body>

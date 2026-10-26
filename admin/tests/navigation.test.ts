@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { beginPending, isContentPending, isPending } from "@/components/console/navigation-progress";
-import { progressAt } from "@/components/console/progress-curve";
 import { searchHref } from "@/components/console/search-form";
 
 describe("progress bar counter", () => {
@@ -46,19 +45,5 @@ describe("searchHref", () => {
         ["user", "a b&c"],
       ]),
     ).toBe("/r/demo/audit?action=admin.client.update&user=a+b%26c");
-  });
-});
-
-describe("progress curve (worker bar)", () => {
-  it("starts quickly, never passes 95 %, never stops moving", () => {
-    expect(progressAt(0)).toBeCloseTo(0.08, 2);
-    expect(progressAt(500)).toBeGreaterThan(0.3);
-    let prev = progressAt(0);
-    for (let t = 250; t <= 20_000; t += 250) {
-      const p = progressAt(t);
-      expect(p).toBeLessThanOrEqual(0.95);
-      expect(p).toBeGreaterThan(prev); // still moving, even after 20 s
-      prev = p;
-    }
   });
 });

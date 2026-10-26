@@ -135,45 +135,12 @@
   }
 }
 
-/* Navigation progress bar (components/console/navigation-progress.tsx).
-   Invisible for the first 150 ms, so a fast navigation shows nothing; then
-   it grows fast and slows down near the end, until the page arrives. It is
-   an indeterminate bar: its length only says "still working". */
-@keyframes nav-progress {
-  0% {
-    opacity: 1;
-    transform: scaleX(0.05);
-  }
-  25% {
-    transform: scaleX(0.5);
-  }
-  100% {
-    opacity: 1;
-    transform: scaleX(0.92);
-  }
-}
-.nav-progress[data-nav-progress="on"] {
-  animation: nav-progress 12s cubic-bezier(0.1, 0.65, 0.25, 1) 150ms forwards;
-}
-/* The worker's canvas (progress-bar.ts): drawn off the main thread. When it
-   runs, the CSS bar above stays hidden. */
-.nav-progress-canvas {
-  position: fixed;
-  inset-inline: 0;
-  top: 0;
-  z-index: 100;
-  width: 100%;
-  height: 3px;
-  pointer-events: none;
-}
-html[data-progress-renderer="worker"] .nav-progress {
-  display: none;
-}
+/* Top progress bar: nextjs-toploader (app/layout.tsx) draws #nprogress.
+   With "reduce motion", it jumps instead of sliding (its moves are inline
+   transitions set by nprogress: !important wins over them). */
 @media (prefers-reduced-motion: reduce) {
-  .nav-progress[data-nav-progress="on"] {
-    animation: none;
-    opacity: 1;
-    transform: scaleX(0.6);
-    transition: opacity 0s 150ms;
+  #nprogress .bar,
+  #nprogress .peg {
+    transition: none !important;
   }
 }
