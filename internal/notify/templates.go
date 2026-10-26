@@ -58,11 +58,13 @@ type Data struct {
 	// suspicious_login: plain-language reasons.
 	Reasons []string
 
-	// app_connected (Step 13): the application, what it can now receive (as
-	// worded on the consent screen), and whether it had access before.
 	AppName        string
 	AppAccess      []string
 	AppAccessAdded bool
+
+	RecoveryKind    string
+	RecoveryActor   string
+	RecoveryAccount string
 }
 
 type htmlData struct {

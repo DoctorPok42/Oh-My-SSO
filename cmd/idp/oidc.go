@@ -18,18 +18,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// "idp oidc clients ..." manages OIDC clients until the admin panel exists
-// (Step 14). It calls the same service the admin API and `idp config apply`
-// will use, so the validation rules are the same everywhere.
-//
-//	idp oidc clients list          --realm demo
-//	idp oidc clients create        --realm demo --client-id payroll --redirect-uri https://payroll.example.com/callback \
-//	                               --scope profile,email,offline_access --allow-role employees
-//	idp oidc clients create        --realm demo --client-id spa --public --redirect-uri http://localhost:5173/callback
-//	idp oidc clients create        --realm demo --client-id partner --redirect-uri https://partner.example.com/cb --require-consent
-//	idp oidc clients rotate-secret --realm demo --client-id payroll
-//
-// Like the server, it reads DATABASE_URL from the environment.
 
 const oidcUsage = `usage:
   idp oidc clients list          --realm <name>
@@ -164,7 +152,7 @@ func oidcClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 	public := fs.Bool("public", false, "public client (SPA, mobile, CLI): no secret, PKCE mandatory")
 	authMethod := fs.String("auth-method", "", "client_secret_basic (default) or client_secret_post")
 	noPKCE := fs.Bool("no-pkce", false, "do not require PKCE (confidential clients only, not recommended)")
-	requireConsent := fs.Bool("require-consent", false, "users approve the client on a consent screen first (Step 13)")
+	requireConsent := fs.Bool("require-consent", false, "users approve the client on a consent screen first")
 	var redirects, postLogout, scopes, grants, roles, groups listFlag
 	fs.Var(&redirects, "redirect-uri", "allowed redirect URI, exact match (repeatable, required)")
 	fs.Var(&postLogout, "post-logout-uri", "allowed post-logout redirect URI (repeatable)")

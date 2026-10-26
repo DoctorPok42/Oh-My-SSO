@@ -104,14 +104,32 @@ run:
 	@echo "Starting idp on :$(PORT)..."
 	go run ./cmd/idp
 
-## run-admin: Run cmd/idp-admin locally (Admin API)
+## run-admin: Run cmd/idp-admin locally (Admin API on :8090, for the admin console)
 run-admin:
 	@echo "Starting idp-admin..."
 	go run ./cmd/idp-admin
 
 # ------------------------------------------------------------------------------
-# Signing keys (Step 8) — same code as POST /r/{realm}/admin/signing-keys/...
-# Not with KEYMANAGER_BACKEND=local_dev for rotate: use the HTTP endpoint then.
+# Admin console bootstrap and break-glass (Step 14) — idp-admin only: the
+# public binary (idp) refuses every change to the master realm.
+# ------------------------------------------------------------------------------
+
+email     ?=
+admin_url ?= $(if $(ADMIN_PANEL_URL),$(ADMIN_PANEL_URL),http://localhost:3000)
+what      ?= admin
+
+## admin-bootstrap: First start: master realm, admin console client and first admin (usage: make admin-bootstrap email=you@example.com [admin_url=http://localhost:3000])
+admin-bootstrap:
+	go run ./cmd/idp-admin bootstrap --email $(email) --admin-url $(admin_url)
+
+## admin-recover: Break-glass, interactive, alerts every admin (usage: make admin-recover what=admin email=new@example.com | make admin-recover what=client-secret)
+admin-recover:
+	go run ./cmd/idp-admin recover $(what) $(if $(email),--email $(email),)
+
+# ------------------------------------------------------------------------------
+# Signing keys (Step 8) — same code as the Admin API (Step 14):
+# POST /api/v1/realms/{realm}/signing-keys/... Not with KEYMANAGER_BACKEND=local_dev
+# (keys would live in the memory of another process): use Vault (`make dev`).
 # ------------------------------------------------------------------------------
 
 realm ?= master
@@ -367,13 +385,41 @@ dev: docker-up migrate-apply vault-enable-transit
 # Admin panel (Next.js — see admin/)
 # ------------------------------------------------------------------------------
 
-## admin-dev: Run the Next.js admin panel in development mode
+args ?=
+
+## admin-install: Install the admin console's dependencies (exact versions of package-lock.json)
+admin-install:
+	cd admin && npm ci
+
+## admin-dev: Run the Next.js admin panel in development mode (reads admin/.env.local)
 admin-dev:
 	cd admin && npm run dev
 
 ## admin-build: Build the admin panel for production
 admin-build:
 	cd admin && npm run build
+
+## admin-lint: ESLint + Prettier + TypeScript on the admin console
+admin-lint:
+	cd admin && npm run lint && npm run typecheck
+
+## admin-test: Unit tests of the admin console (Vitest)
+admin-test:
+	cd admin && npm test
+
+## admin-e2e: End-to-end tests on a throw-away stack (needs `make dev`; usage: make admin-e2e [args="-g realm"])
+admin-e2e:
+	admin/e2e/run.sh $(args)
+
+# ------------------------------------------------------------------------------
+# Docker images (Step 14) — see Dockerfile, admin/Dockerfile, compose.example.yml
+# ------------------------------------------------------------------------------
+
+## docker-build: Build the three images: idp, idp-admin, admin console
+docker-build:
+	docker build --target idp -t oh-my-sso-idp .
+	docker build --target idp-admin -t oh-my-sso-idp-admin .
+	docker build -t oh-my-sso-admin ./admin
 
 # ------------------------------------------------------------------------------
 # Cleanup
@@ -382,10 +428,11 @@ admin-build:
 ## clean: Remove binaries and test artifacts
 clean:
 	rm -rf $(GOBIN) coverage.out coverage.html
+	rm -rf admin/.next admin/test-results admin/playwright-report admin/e2e/.state
 
 .PHONY: help tools tidy generate \
 	migrate-diff migrate-apply migrate-status migrate-lint \
-	build run run-admin \
+	build run run-admin admin-bootstrap admin-recover \
 	keys-list keys-rotate keys-retire \
 	mfa-list mfa-reset mfa-policy \
 	oidc-clients oidc-rotate-secret dev-seed oidc-demo \
@@ -394,5 +441,5 @@ clean:
 	test test-integration test-all coverage \
 	lint fmt vuln check check-core-deps check-adapter-deps \
 	docker-up docker-down docker-reset docker-logs psql dev \
-	admin-dev admin-build \
+	admin-install admin-dev admin-build admin-lint admin-test admin-e2e docker-build \
 	clean

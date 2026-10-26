@@ -8,8 +8,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// Where a claim may appear. The values are those of ClientScope.claim_mappers
-// "token_location" (modele-donnees-final.md); "saml_attribute" is Step 11's.
 type location string
 
 const (
@@ -26,6 +24,7 @@ var reservedClaims = []string{
 	"iss", "sub", "aud", "exp", "iat", "nbf", "jti", "auth_time", "nonce",
 	"acr", "amr", "azp", "sid", "at_hash", "c_hash", "s_hash", "client_id",
 	"scope", "cnf", "act", "may_act", "typ", "token_type", "events",
+	"entitlements",
 }
 
 func isReserved(name string) bool { return name == "" || slices.Contains(reservedClaims, name) }

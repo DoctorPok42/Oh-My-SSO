@@ -13,7 +13,6 @@ import (
 	"sso.internal/sso/internal/lockoutstore"
 )
 
-// Step 12: account lockout through AuthService.AuthenticateLocal.
 
 type lockoutFixture struct {
 	clock    *testClock

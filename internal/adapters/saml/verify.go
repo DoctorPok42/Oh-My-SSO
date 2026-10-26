@@ -21,13 +21,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// Checking what a service provider sends (Step 11).
-//
-// A service provider with at least one certificate usable now must sign
-// every request (AuthnRequest, LogoutRequest): the Keycloak-like rule chosen
-// for this step. client_certificates is a list so that the provider can roll
-// its certificate over: every certificate whose window (not_before,
-// not_after) and X.509 dates include "now" is tried.
 
 var (
 	errUnsigned     = errors.New("saml: the message must be signed")
@@ -115,7 +108,7 @@ func (a *Adapter) verifyInbound(in *inbound, root *etree.Element, app *domain.Cl
 		return nil, err
 	}
 	if !hasCertificates(app) {
-		return root, nil // no certificate: signature not required (Step 11 rule)
+		return root, nil
 	}
 	if len(certs) == 0 {
 		return nil, fmt.Errorf("%w: no certificate of %s is valid now", errBadSignature, app.EntityID)

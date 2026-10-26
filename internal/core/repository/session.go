@@ -12,9 +12,6 @@ type SessionRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.Session, error)
 	GetByTokenHash(ctx context.Context, tokenHash string) (*domain.Session, error)
 	ListActiveByUser(ctx context.Context, userID string) ([]*domain.Session, error)
-	// ListRecentByUser returns the user's sessions (any status) created
-	// since the given time, newest first, at most limit. Step 12 compares a
-	// new sign-in with them (known device, usual hours and places).
 	ListRecentByUser(ctx context.Context, userID string, since time.Time, limit int) ([]*domain.Session, error)
 	Touch(ctx context.Context, id string, at time.Time) error
 	MarkExpired(ctx context.Context, id string) error
@@ -27,6 +24,7 @@ type SessionRepository interface {
 }
 
 type CreateSessionParams struct {
+	CreatedAt         time.Time
 	RealmID           string
 	UserID            string
 	ExpiresAt         time.Time

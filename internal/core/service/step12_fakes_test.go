@@ -11,11 +11,7 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// In-memory fakes for the Step 12 tests (password reset, lockout, sign-in
-// analysis). Same rule as the other fakes: the embedded interface is nil,
-// so an unexpected call panics.
 
-// testClock is a settable clock shared by the services under test.
 type testClock struct {
 	mu sync.Mutex
 	t  time.Time

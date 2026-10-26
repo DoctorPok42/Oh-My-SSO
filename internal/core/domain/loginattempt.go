@@ -22,6 +22,8 @@ const (
 
 type LoginAttempt struct {
 	ID            string
+	RealmID       string
+	UserID        string
 	Identifier    string
 	IPAddress     string
 	UserAgent     string

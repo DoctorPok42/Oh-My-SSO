@@ -15,7 +15,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Storage-side checks for Step 7, against a real PostgreSQL.
 
 func TestRealm_EnsurePairwiseSubjectSalt_Integration(t *testing.T) {
 	f := newRBACFixture(t)

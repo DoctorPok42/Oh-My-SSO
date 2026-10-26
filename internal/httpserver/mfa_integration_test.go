@@ -32,11 +32,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 9a Definition of Done, through HTTP, with a real Postgres and a real
-// Valkey (testcontainers, Docker required):
-// TOTP enrollment -> login with a TOTP -> login with a backup code ->
-// login with an expired / invalid TOTP rejected. Plus step-up and a client
-// policy.
 
 type mfaTestEnv struct {
 	ts      *httptest.Server
@@ -342,8 +337,6 @@ func mustURL(t *testing.T, raw string) *url.URL {
 	return u
 }
 
-// Step 9b Definition of Done, over HTTP: passkey enrollment -> login with
-// the passkey as second factor (software authenticator, real signatures).
 func TestMFA_HTTP_Passkey_Integration(t *testing.T) {
 	env := setupMFATestEnv(t)
 	ctx := context.Background()

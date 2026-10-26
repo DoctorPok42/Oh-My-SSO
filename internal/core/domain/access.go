@@ -32,6 +32,7 @@ type ClientAccessPolicy struct {
 	RoleIDs   []string
 	GroupIDs  []string
 	ScopeIDs  []string
+	RequiredScopeIDs []string
 }
 
 const InternalAdminClientID = "sso-admin"

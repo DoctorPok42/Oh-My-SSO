@@ -33,8 +33,6 @@ type Config struct {
 	// DevPages links to /r/{realm}/dev/mfa when a factor must be enrolled
 	// first (APP_ENV=development).
 	DevPages bool
-	// PasswordReset shows the "Forgot password?" link on the sign-in page
-	// (Step 12: /r/{realm}/auth/forgot-password is mounted).
 	PasswordReset bool
 	// Now is the clock (tests). nil: time.Now.
 	Now func() time.Time
@@ -90,7 +88,7 @@ func (a *Adapter) routes() http.Handler {
 	r.Get("/saml/sso", a.handleSSO)
 	r.Post("/saml/sso", a.handleSSO)
 	r.Get("/saml/login", a.handleLogin)
-	r.Post("/saml/consent", a.handleConsent) // Step 13
+	r.Post("/saml/consent", a.handleConsent)
 	r.Get("/saml/slo", a.handleSLO)
 	r.Post("/saml/slo", a.handleSLO)
 	r.Get("/saml/logged-out", a.handleLoggedOut)

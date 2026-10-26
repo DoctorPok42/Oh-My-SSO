@@ -96,23 +96,24 @@ func TestBuildClaims(t *testing.T) {
 func TestApplyRenames(t *testing.T) {
 	pc := testClient(func(c *domain.ClientApp) {
 		c.AttributeMappings = map[string]interface{}{
-			"email":              "mail",     // ok
-			"given_name":         "sub",      // reserved target: ignored
-			"sid":                "session",  // reserved source: ignored
-			"preferred_username": "groups",   // would overwrite: ignored
-			"department":         "",         // empty: ignored
-			"absent":             "whatever", // nothing to rename
-			"family_name":        42,         // not a string: ignored
+			"email":              "mail",         // ok
+			"given_name":         "sub",          // reserved target: ignored
+			"sid":                "session",      // reserved source: ignored
+			"preferred_username": "groups",       // would overwrite: ignored
+			"department":         "",             // empty: ignored
+			"absent":             "whatever",     // nothing to rename
+			"family_name":        42,             // not a string: ignored
+			"team":               "entitlements",
 		}
 	})
 	claims := map[string]any{
 		"email": "a@acme.test", "given_name": "Alice", "preferred_username": "alice",
-		"groups": []string{"admins"}, "department": "R&D", "family_name": "Martin",
+		"groups": []string{"admins"}, "department": "R&D", "family_name": "Martin", "team": "ops",
 	}
 	applyRenames(claims, pc.App.AttributeMappings, pc.App.ClientID, quiet)
 	require.Equal(t, map[string]any{
 		"mail": "a@acme.test", "given_name": "Alice", "preferred_username": "alice",
-		"groups": []string{"admins"}, "department": "R&D", "family_name": "Martin",
+		"groups": []string{"admins"}, "department": "R&D", "family_name": "Martin", "team": "ops",
 	}, claims)
 }
 
@@ -128,8 +129,6 @@ func TestCheckAuthorizePolicy(t *testing.T) {
 	consent := testClient(func(c *domain.ClientApp) { c.RequireConsent = true })
 
 	require.NoError(t, checkAuthorizePolicy(conf, ok()))
-	// Step 13: consent is asked on the login page, once the user is known;
-	// /authorize no longer refuses these requests.
 	require.NoError(t, checkAuthorizePolicy(consent, ok()), "client requires consent")
 	withPrompt := ok()
 	withPrompt.Prompt = []string{"consent"}

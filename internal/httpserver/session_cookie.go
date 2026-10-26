@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-// SessionCookieName is the SSO session cookie. Exported for the protocol
-// adapters (Step 10), which read it on their login pages.
 const SessionCookieName = "sso_session"
 
 const sessionCookieName = SessionCookieName
@@ -53,11 +51,7 @@ func sessionTokenFromRequest(r *http.Request) string {
 	return c.Value
 }
 
-// --- MFA login challenge cookie (Step 9) --------------------------------------
 
-// mfaChallengeCookieName holds the random token linking "password OK" to
-// "second factor OK". It only exists between the two steps (5 minutes max)
-// and is only sent to /r/{realm}/auth/mfa/... (Path).
 const mfaChallengeCookieName = "sso_mfa"
 
 func mfaChallengeCookiePath(realmName string) string {
@@ -102,12 +96,7 @@ func mfaChallengeTokenFromRequest(r *http.Request) string {
 	return c.Value
 }
 
-// --- device cookie (Step 12) --------------------------------------------------
 
-// deviceCookieName holds a random id that stays in the browser for a year.
-// Sessions store its hash (Session.device_fingerprint): a sign-in whose id
-// was never seen on the account comes from a new device. It grants nothing
-// by itself, it is only a "have we seen this browser before?" marker.
 const deviceCookieName = "sso_device"
 
 // deviceCookieMaxAge: one year (browsers cap cookie lifetimes at 400 days).

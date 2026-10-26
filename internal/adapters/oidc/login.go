@@ -19,11 +19,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// The login page of the OIDC flow (Step 10). The page itself lives in
-// internal/adapters/loginui since Step 11, shared with the SAML adapter: it
-// only calls the JSON API that already exists (/auth/login,
-// /auth/mfa/verify, passkeys, /auth/step-up), then reloads itself; the
-// server decides everything on reload.
 
 const (
 	// browserCookieName binds a login to the browser that started it (see
@@ -101,16 +96,7 @@ func (a *Adapter) checkBrowser(next http.Handler) http.Handler {
 	})
 }
 
-// --- login page ------------------------------------------------------------------
 
-// handleLogin is where the library sends the user (Client.LoginURL). Each
-// visit re-evaluates the situation from the session cookie:
-//
-//	no session (or prompt=login / max_age)  -> show the password form
-//	session, MFA policy not met             -> show the second factor form
-//	session, a factor must be enrolled      -> explain what to do
-//	session, consent needed (Step 13)       -> show the consent page
-//	session, all good                       -> complete the request, go to the callback
 func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	realm, _ := realmFrom(ctx)
@@ -174,8 +160,6 @@ func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Step 13: the user is known and allowed; ask for their consent when
-	// the client needs it, before anything leaves for the application.
 	if !a.consentStep(w, r, ar, pc, sess, as) {
 		return
 	}

@@ -10,23 +10,7 @@ import (
 	"sso.internal/sso/internal/core/service"
 )
 
-// Passkey / security key endpoints (Step 9b). Each ceremony has two calls:
-// "options" (give this JSON to navigator.credentials.create() or .get()),
-// then "verify" (send back the credential the browser returned, as JSON:
-// credential.toJSON()).
-//
-//	POST /r/{realm}/auth/mfa/webauthn/options             login, 2nd step (cookie sso_mfa)
-//	POST /r/{realm}/auth/mfa/webauthn/verify
-//	POST /r/{realm}/auth/step-up/webauthn/options         step-up (session)
-//	POST /r/{realm}/auth/step-up/webauthn/verify
-//	POST /r/{realm}/account/mfa/webauthn/register/options add a passkey (session + step-up)
-//	POST /r/{realm}/account/mfa/webauthn/register/verify
-//
-// MDN: https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
 
-// maxWebAuthnBodySize: a registration response with "none" attestation is
-// about 1 KiB; 64 KiB leaves room for authenticators that attach
-// certificates anyway.
 const maxWebAuthnBodySize = 64 << 10
 
 type passkeyRegisterRequest struct {

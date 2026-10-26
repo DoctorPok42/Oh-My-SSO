@@ -20,7 +20,7 @@ import (
 type fakeTransit struct {
 	mu       sync.Mutex
 	keys     map[string]string // name -> type
-	lastSign map[string]any    // body of the last /sign request (Step 11)
+	lastSign map[string]any
 }
 
 func (f *fakeTransit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +55,6 @@ func (f *fakeTransit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		reply(map[string]any{"plaintext": strings.TrimPrefix(ct, prefix)})
 	case "sign":
-		// Step 11: remember the request, answer a recognizable signature.
 		f.lastSign = body
 		reply(map[string]any{"signature": "vault:v1:" + base64.StdEncoding.EncodeToString([]byte("sig-of-"+name))})
 	default:
@@ -100,7 +99,6 @@ func TestVault_EncryptDecrypt_Requests(t *testing.T) {
 	}
 }
 
-// Step 11: SignDigest asks Transit to sign our digest as it is ("prehashed").
 func TestVault_SignDigest_Request(t *testing.T) {
 	ft := &fakeTransit{keys: map[string]string{}}
 	srv := httptest.NewServer(ft)

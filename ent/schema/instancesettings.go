@@ -46,12 +46,7 @@ func (InstanceSettings) Fields() []ent.Field {
 		// sensitive actions (step-up), e.g. rotating a signing key or
 		// removing an MFA factor.
 		field.Int("mfa_step_up_max_age_minutes").Default(10),
-		// Step 12: how long a password reset link stays valid.
 		field.Int("password_reset_ttl_minutes").Default(30),
-		// Step 12: e-mail the user when a successful sign-in looks unusual
-		// (new country, unusual hour...). The event is always written to the
-		// AuditLog (level "suspicious"); this only controls the e-mail, and
-		// notification_email_enabled must be on as well.
 		field.Bool("suspicious_login_email_enabled").Default(false),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.String("updated_by").Optional(),

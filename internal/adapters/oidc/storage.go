@@ -140,8 +140,6 @@ func checkAuthorizePolicy(pc *core.ProtocolClient, req *oidc.AuthRequest) error 
 	default:
 		return oidc.ErrInvalidRequest().WithDescription("unsupported response_mode")
 	}
-	// prompt=consent and require_consent are handled by the login page once
-	// the user is known (Step 13, consent.go): nothing to refuse here.
 	return nil
 }
 
@@ -410,6 +408,12 @@ func (s *storage) GetPrivateClaimsFromRequest(ctx context.Context, request op.To
 	// RFC 9068, section 2.2.3: the granted scopes, space separated.
 	claims["scope"] = strings.Join(request.GetScopes(), " ")
 	claims["sid"] = as.SessionID
+	// RFC 9068, section 2.2.3.1: what the user may do. Only the admin
+	// console's tokens carry it (see core.IdentityAssertion.Entitlements);
+	// never in the ID token or /userinfo.
+	if as.Entitlements != nil {
+		claims["entitlements"] = as.Entitlements
+	}
 	return claims, nil
 }
 

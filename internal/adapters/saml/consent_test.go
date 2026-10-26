@@ -9,7 +9,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// Step 13: what the consent page lists for a SAML service provider.
 func TestConsentItems(t *testing.T) {
 	attrs := &domain.ClientScope{Name: "saml_profile", Description: "Your name, e-mail and groups", Protocol: domain.ClientScopeProtocolSAML2}
 	oidcOnly := &domain.ClientScope{Name: "groups", Protocol: domain.ClientScopeProtocolOIDC}

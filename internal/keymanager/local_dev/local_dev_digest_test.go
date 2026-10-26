@@ -10,8 +10,6 @@ import (
 	localdev "sso.internal/sso/internal/keymanager/local_dev"
 )
 
-// Step 11: SignDigest signs a digest computed by the caller (XML-DSig,
-// X.509). The result must verify exactly like Sign over the payload.
 func TestLocalDev_SignDigest(t *testing.T) {
 	ctx := context.Background()
 	km := localdev.New("test")

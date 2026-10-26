@@ -1,8 +1,5 @@
 package domain
 
-// SAML NameID formats (SAML Core §8.3), the values of
-// ClientApp.NameIDFormat. They are plain identifiers here: the SAML adapter
-// decides what each one means for the XML it builds (Step 11).
 const (
 	// NameIDFormatPersistent: a stable, opaque identifier (the core's
 	// Subject: User.ID or a pairwise value). The default.

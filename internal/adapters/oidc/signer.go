@@ -19,15 +19,7 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// The private key never leaves the KMS (Step 3): instead of handing go-jose
-// a private key, we hand it a jose.OpaqueSigner whose SignPayload asks the
-// KMS, through core.Signer, to sign the JWT header and payload.
-//
-// go-jose: https://pkg.go.dev/github.com/go-jose/go-jose/v4#OpaqueSigner
-// JWS algorithms: https://www.rfc-editor.org/rfc/rfc7518#section-3
 
-// algFor maps a key type to its JWS algorithm. RS256 is the one every OIDC
-// client must support (OIDC Core, section 15.1).
 func algFor(t domain.SigningKeyType) (jose.SignatureAlgorithm, error) {
 	switch t {
 	case domain.SigningKeyRSA:

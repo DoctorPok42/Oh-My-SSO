@@ -53,7 +53,6 @@ func TestVaultIntegration_GenerateAndSign(t *testing.T) {
 
 			verifySignature(t, tt.keyType, generated.PublicKeyPEM, payload, sig)
 
-			// Step 11: the same key signs a digest we computed (prehashed).
 			digest := sha256.Sum256(payload)
 			sig, err = km.SignDigest(ctx, generated.KMSKeyReference, digest[:])
 			if err != nil {

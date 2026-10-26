@@ -15,7 +15,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 8 - the repository methods used by key rotation, on a real Postgres.
 
 func newTestSigningKey(t *testing.T, ctx context.Context, repo repository.SigningKeyRepository, realmID string) *domain.SigningKey {
 	t.Helper()

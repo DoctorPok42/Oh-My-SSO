@@ -17,8 +17,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 11 - what SAML stores in Postgres: key certificates, the "pending"
-// status, and session participants (tokens with a subject).
 
 func TestSigningKeyRepository_PendingAndCertificate(t *testing.T) {
 	ctx := context.Background()

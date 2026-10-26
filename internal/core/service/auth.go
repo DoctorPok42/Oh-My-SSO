@@ -24,7 +24,7 @@ type AuthService struct {
 	users         repository.UserRepository
 	loginAttempts repository.LoginAttemptRepository
 	timeouts      TimeoutChecker
-	lockout       *LockoutService // Step 12, optional: nil = no account lockout
+	lockout       *LockoutService
 	logger        *slog.Logger
 }
 
@@ -40,9 +40,6 @@ func WithTimeoutChecker(tc TimeoutChecker) AuthOption {
 	}
 }
 
-// WithLockout turns on the account lockout (Step 12): wrong passwords are
-// counted and, past the realm's lockout_threshold, sign-in is refused with
-// an *AccountLockedError until the lock ends.
 func WithLockout(l *LockoutService) AuthOption {
 	return func(s *AuthService) { s.lockout = l }
 }
@@ -71,9 +68,6 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 	}
 	subj := LockoutSubject{RealmID: p.RealmID, User: user, Identifier: p.Identifier, IPAddress: p.IPAddress, UserAgent: p.UserAgent}
 
-	// Step 12: a locked identity is refused BEFORE the password is checked,
-	// so guessing stops completely during the lock. Unknown identifiers
-	// lock the same way: the answer never tells whether an account exists.
 	if s.lockout != nil {
 		until, err := s.lockout.Check(ctx, subj)
 		if err != nil {
@@ -84,7 +78,7 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 			if user == nil {
 				reason = domain.LoginFailureUnknownAccount
 			}
-			s.recordAttempt(ctx, p, domain.LoginAttemptFailure, reason)
+			s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, reason)
 			return nil, &AccountLockedError{Until: until}
 		}
 	}
@@ -97,7 +91,7 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 		if user == nil {
 			reason = domain.LoginFailureUnknownAccount
 		}
-		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, reason)
+		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, reason)
 		s.recordFailure(ctx, subj)
 		return nil, ErrInvalidCredentials
 	}
@@ -107,7 +101,7 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 		return nil, fmt.Errorf("authenticate local: verify password: %w", err)
 	}
 	if !ok {
-		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, domain.LoginFailureInvalidCredentials)
+		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, domain.LoginFailureInvalidCredentials)
 		s.recordFailure(ctx, subj)
 		return nil, ErrInvalidCredentials
 	}
@@ -121,7 +115,7 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 	}
 
 	if user.Status != domain.UserActive {
-		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, domain.LoginFailureAccountLocked)
+		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, domain.LoginFailureAccountLocked)
 		return nil, ErrAccountNotActive
 	}
 
@@ -132,11 +126,11 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 		return nil, fmt.Errorf("authenticate local: check timeout: %w", err)
 	}
 	if blocked {
-		s.recordAttempt(ctx, p, domain.LoginAttemptFailure, domain.LoginFailureTimeoutActive)
+		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, domain.LoginFailureTimeoutActive)
 		return nil, ErrTimeoutActive
 	}
 
-	s.recordAttempt(ctx, p, domain.LoginAttemptSuccess, "")
+	s.recordAttempt(ctx, p, user, domain.LoginAttemptSuccess, "")
 	return user, nil
 }
 
@@ -184,8 +178,14 @@ func (s *AuthService) findUserByIdentifier(ctx context.Context, realmID, identif
 	return nil, err
 }
 
-func (s *AuthService) recordAttempt(ctx context.Context, p AuthenticateLocalParams, status domain.LoginAttemptStatus, reason domain.LoginAttemptFailureReason) {
+func (s *AuthService) recordAttempt(ctx context.Context, p AuthenticateLocalParams, user *domain.User, status domain.LoginAttemptStatus, reason domain.LoginAttemptFailureReason) {
+	userID := ""
+	if user != nil {
+		userID = user.ID
+	}
 	_, _ = s.loginAttempts.Create(ctx, repository.CreateLoginAttemptParams{
+		RealmID:       p.RealmID,
+		UserID:        userID,
 		Identifier:    p.Identifier,
 		IPAddress:     p.IPAddress,
 		UserAgent:     p.UserAgent,

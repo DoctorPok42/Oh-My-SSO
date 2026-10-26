@@ -22,6 +22,8 @@ func (r *entLoginAttemptRepository) Create(ctx context.Context, p repository.Cre
 	e, err := r.client.LoginAttempt.
 		Create().
 		SetIdentifier(p.Identifier).
+		SetNillableRealmID(nonEmpty(p.RealmID)).
+		SetNillableUserID(nonEmpty(p.UserID)).
 		SetNillableIPAddress(nonEmpty(p.IPAddress)).
 		SetNillableUserAgent(nonEmpty(p.UserAgent)).
 		SetStatus(entschema.LoginAttemptStatus(p.Status)).
@@ -76,6 +78,8 @@ func toDomainLoginAttempts(rows []*ent.LoginAttempt) []*domain.LoginAttempt {
 func toDomainLoginAttempt(e *ent.LoginAttempt) *domain.LoginAttempt {
 	return &domain.LoginAttempt{
 		ID:            e.ID,
+		RealmID:       e.RealmID,
+		UserID:        e.UserID,
 		Identifier:    e.Identifier,
 		IPAddress:     e.IPAddress,
 		UserAgent:     e.UserAgent,

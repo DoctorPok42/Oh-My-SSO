@@ -21,8 +21,6 @@ var (
 	ErrInvalidCredentials = errors.New("core: invalid credentials")
 	ErrAccountNotActive   = errors.New("core: account not active")
 	ErrTimeoutActive      = errors.New("core: an active timeout blocks this user or client")
-	// ErrAccountLocked (Step 12): too many wrong passwords, sign-in refused
-	// for a while. Also returned for identifiers that match no account.
 	ErrAccountLocked       = errors.New("core: too many failed sign-ins, try again later")
 	ErrSessionInvalid      = errors.New("core: session invalid")
 	ErrForbidden           = errors.New("core: forbidden")
@@ -31,7 +29,6 @@ var (
 	ErrNoActiveSigningKey  = errors.New("core: no active signing key")
 	ErrClientMisconfigured = errors.New("core: client misconfigured")
 
-	// Step 10 (protocol clients and tokens).
 	ErrClientNotFound      = errors.New("core: client not found")
 	ErrInvalidClientSecret = errors.New("core: invalid client credentials")
 	ErrTokenInvalid        = errors.New("core: token invalid")
@@ -39,20 +36,10 @@ var (
 	// Somebody holds a copy: every token of its family has been revoked.
 	ErrTokenReused = errors.New("core: refresh token reused, token family revoked")
 
-	// ErrConsentNotConfigured (Step 13): a client needs the user's consent,
-	// but the IdentityCore was built without the consent service. Fail
-	// closed: no assertion without the consent it requires.
 	ErrConsentNotConfigured = errors.New("core: user consent required but not configured")
 )
 
-// About the two MFA errors:
-//   - ErrMFANotImplemented: VerifyMFA was called on an IdentityCore built
-//     without the MFA service (Step 9 wiring missing).
-//   - ErrMFARequired: the session does not satisfy the MFA policy of the
-//     client, of the user's roles or of the realm. Use errors.As with
-//     *MFARequiredError to know which methods are accepted.
 
-// Credentials is the input of a local (username/email + password) login.
 type Credentials struct {
 	RealmID    string
 	Identifier string // username or email
@@ -83,9 +70,6 @@ type IssuedSession struct {
 	Session  *domain.Session
 }
 
-// MFAChallenge is the user's answer to a code-based second-factor
-// challenge. WebAuthn/passkey answers are not codes: they go through their
-// own ceremony (Step 9b).
 type MFAChallenge struct {
 	Method   string // "totp" or "backup_code"
 	Response string // the code typed by the user
@@ -155,6 +139,14 @@ type IdentityAssertion struct {
 	// client requested (plus the realm's is_default scopes, always kept).
 	// Adapters apply each scope's ClaimMappers, which are protocol-specific.
 	Scopes []*domain.ClientScope
+
+	// Entitlements: the user's effective permissions on this client,
+	// "resource:action", sorted. Computed ONLY for the internal admin client
+	// (domain.InternalAdminClientID, the admin console), nil for every other
+	// client. The OIDC adapter puts them in the access token's
+	// "entitlements" claim (RFC 9068, section 2.2.3.1), so the Admin API
+	// authorizes a call without reading the database.
+	Entitlements []string
 }
 
 // ProtocolClient is a client app as a protocol adapter sees it.
@@ -203,11 +195,6 @@ type Signer interface {
 	Sign(ctx context.Context, payload []byte) ([]byte, error)
 }
 
-// DigestSigner is a Signer that can also sign a SHA-256 digest computed by
-// the caller (Step 11). XML-DSig computes the digest of the canonical
-// <SignedInfo> itself and only then asks for a signature, so the SAML adapter
-// needs this form. Signers returned for saml_signing keys implement it; use a
-// type assertion.
 type DigestSigner interface {
 	Signer
 	// SignDigest signs a 32-byte SHA-256 digest (RSA PKCS#1 v1.5 for RSA).
@@ -217,8 +204,6 @@ type DigestSigner interface {
 	CertificatePEM() string
 }
 
-// SessionParticipant describes a client that received an identity
-// assertion for a session (Step 11, SAML Single Logout).
 type SessionParticipant struct {
 	SessionID string
 	ClientRef string // ClientApp.ID
@@ -228,13 +213,7 @@ type SessionParticipant struct {
 	SubjectFormat string
 }
 
-// --- Consent (Step 13) ---------------------------------------------------------
 
-// ConsentItem is one thing the user is asked to approve before a client
-// receives data about them: an OIDC scope ("email"), or a ClientScope whose
-// attributes a SAML service provider receives. The adapter decides which
-// items a request involves and how they read; the core only stores and
-// compares the Scope names.
 type ConsentItem struct {
 	Scope       string // stored in Consent.scopes, e.g. "email" or "saml_profile"
 	Title       string // plain language, e.g. "Your e-mail address"
@@ -323,12 +302,7 @@ type IdentityCore interface {
 	// An empty requestedScopes means "all effective scopes".
 	IssueIdentityAssertion(ctx context.Context, sessionID, clientRef string, requestedScopes []string) (*IdentityAssertion, error)
 
-	// --- Consent (Step 13) ---
 
-	// CheckConsent decides whether the consent screen must be shown. A
-	// client with require_consent=false never needs it (unless Force); a
-	// client with require_consent=true needs it on first use, after a
-	// revocation, and whenever it asks for a scope not approved yet.
 	CheckConsent(ctx context.Context, c ConsentCheck) (*ConsentDecision, error)
 	// GrantConsent stores the approval for the session's user: the new
 	// scopes are merged with those approved before (one Consent row per user
@@ -371,29 +345,15 @@ type IdentityCore interface {
 	// RevokeTokenFamily revokes every token of a family. Idempotent.
 	RevokeTokenFamily(ctx context.Context, familyID string) error
 
-	// --- Session participants (Step 11) ---
 
-	// RegisterSessionParticipant records that a client received an identity
-	// assertion for an active session. If the client already has a record
-	// for this session with the same SubjectFormat (and Subject, except for
-	// transient identifiers), that record is returned unchanged: the client
-	// keeps one SessionIndex (the record's JTI) and one NameID for the whole
-	// session. The record expires with the session and is revoked with it.
 	RegisterSessionParticipant(ctx context.Context, p SessionParticipant) (*domain.Token, error)
 	// SessionParticipants returns the participant records of a session that
 	// are not revoked yet, oldest first. Call it BEFORE RevokeSession, which
 	// revokes them.
 	SessionParticipants(ctx context.Context, sessionID string) ([]*domain.Token, error)
 
-	// --- Protocol clients (Step 10) ---
 
-	// LookupClient finds an active client of the realm by its protocol
-	// identifier: the OIDC client_id or the SAML entity_id. A deleted,
-	// inactive or unknown client is ErrClientNotFound.
 	LookupClient(ctx context.Context, realmID string, protocol domain.ClientAppProtocol, protocolID string) (*ProtocolClient, error)
-	// ClientByRef finds an active client by its ClientApp.ID, any protocol
-	// (Step 11: Single Logout knows participants by reference). A deleted,
-	// inactive or unknown client is ErrClientNotFound.
 	ClientByRef(ctx context.Context, clientRef string) (*ProtocolClient, error)
 	// AuthenticateClient checks the secret of a confidential client, in
 	// constant time. Wrong secret, or a client without a secret (public):
@@ -405,11 +365,5 @@ type IdentityCore interface {
 	// Signer returns the newest active key of the realm for that purpose.
 	// For saml_signing it is also a DigestSigner.
 	Signer(ctx context.Context, realmID string, purpose domain.SigningKeyPurpose) (Signer, error)
-	// PublicKeys returns the keys whose public part must be published so
-	// that clients can verify signatures: the "active" keys, the "rotating"
-	// keys still inside their grace period, and the "pending" keys (Step 11:
-	// published before they sign). Newest first.
-	// The OIDC adapter publishes the jwt_signing ones as a JWKS, the SAML
-	// adapter the saml_signing ones in its metadata.
 	PublicKeys(ctx context.Context, realmID string, purpose domain.SigningKeyPurpose) ([]*domain.SigningKey, error)
 }

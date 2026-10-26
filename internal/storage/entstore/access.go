@@ -71,6 +71,7 @@ func (r *entAccessRepository) GetClientAccessPolicy(ctx context.Context, clientR
 		WithRoles().        // through ClientRole
 		WithGroups().       // through ClientGroup
 		WithClientScopes(). // through ClientScopeMapping
+		WithClientScopeMappings().
 		Only(ctx)
 	if err != nil {
 		return nil, mapNotFound(err)
@@ -92,6 +93,11 @@ func (r *entAccessRepository) GetClientAccessPolicy(ctx context.Context, clientR
 	}
 	for _, cs := range c.Edges.ClientScopes {
 		policy.ScopeIDs = append(policy.ScopeIDs, cs.ID)
+	}
+	for _, m := range c.Edges.ClientScopeMappings {
+		if m.Required {
+			policy.RequiredScopeIDs = append(policy.RequiredScopeIDs, m.ClientScopeID)
+		}
 	}
 	return policy, nil
 }

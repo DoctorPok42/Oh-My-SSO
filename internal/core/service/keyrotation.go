@@ -12,41 +12,6 @@ import (
 	"sso.internal/sso/internal/keymanager"
 )
 
-// Key rotation (Step 8).
-//
-// Life of a signing key:
-//
-//	        Rotate                    grace deadline passed
-//	active ────────► rotating ────────────────────────────► retired
-//	   │                            (RetireExpired)            ▲
-//	   └───────────────────────────────────────────────────────┘
-//	        Rotate with Compromised = true (no grace at all)
-//
-//   - pending:  (saml_signing only, Step 11) published, does not sign yet.
-//     See "SAML keys" below.
-//   - active:   signs new tokens AND is published in the JWKS.
-//   - rotating: no longer signs, still published so tokens it signed before
-//     the rotation stay verifiable until they expire.
-//   - retired:  neither signs nor is published. Kept in the database for
-//     history (KeyRotationLog points to it).
-//
-// OIDC Core §10.1.1 describes the same idea:
-// https://openid.net/specs/openid-connect-core-1_0.html#RotateSigKeys
-//
-// SAML keys (Step 11) rotate in two steps. A JWT client fetches the JWKS and
-// picks the key by its kid, but a SAML service provider is often configured
-// by hand with ONE certificate of the IdP. Switching right away would break
-// it. So:
-//
-//	Rotate    new key "pending": published in the metadata next to the
-//	          current one, which keeps signing. Admins of the SPs add the
-//	          new certificate (or their SP refreshes our metadata).
-//	Activate  the pending key signs; the previous one goes "rotating" with
-//	          the usual grace period, then "retired".
-//
-// The first SAML key of a realm is active at once (nothing to replace), and
-// a compromised rotation still switches immediately: in an emergency a
-// broken SP is better than a leaked key.
 
 const (
 	// DefaultKeyRotationGrace is used when the realm has no InstanceSettings
@@ -77,13 +42,6 @@ var (
 	ErrActivationNotSupported = errors.New("service: this key purpose rotates in one step, there is nothing to activate")
 )
 
-// rotatablePurposes lists the purposes Rotate accepts today.
-//
-//   - jwt_signing: yes (Step 8).
-//   - saml_signing: yes (Step 11), in two steps: Rotate then Activate.
-//   - envelope_encryption: never this way. Retiring it would make every
-//     secret it encrypted (TOTP secrets...) impossible to decrypt: it needs
-//     re-encryption, not rotation.
 var rotatablePurposes = map[domain.SigningKeyPurpose]bool{
 	domain.SigningKeyPurposeJWT:         true,
 	domain.SigningKeyPurposeSAMLSigning: true,
@@ -351,12 +309,6 @@ type ActivateInput struct {
 	Reason      string
 }
 
-// Activate makes the "pending" key of a purpose the signing key (Step 11)
-// and moves the previous active keys to "rotating".
-//
-// The order is the same as in Rotate: the pending key is activated FIRST, so
-// the realm is never left without a key that signs. Two active keys for a
-// moment is harmless: Signer picks the newest.
 func (s *KeyRotationService) Activate(ctx context.Context, in ActivateInput) (*RotateResult, error) {
 	if in.Purpose == "" {
 		in.Purpose = domain.SigningKeyPurposeSAMLSigning

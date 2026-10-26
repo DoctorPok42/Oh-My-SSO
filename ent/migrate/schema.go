@@ -510,6 +510,8 @@ var (
 	LoginAttemptsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
 		{Name: "identifier", Type: field.TypeString},
+		{Name: "realm_id", Type: field.TypeString, Nullable: true},
+		{Name: "user_id", Type: field.TypeString, Nullable: true},
 		{Name: "ip_address", Type: field.TypeString, Nullable: true},
 		{Name: "user_agent", Type: field.TypeString, Nullable: true},
 		{Name: "status", Type: field.TypeString},
@@ -525,12 +527,22 @@ var (
 			{
 				Name:    "loginattempt_identifier_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{LoginAttemptsColumns[1], LoginAttemptsColumns[6]},
+				Columns: []*schema.Column{LoginAttemptsColumns[1], LoginAttemptsColumns[8]},
 			},
 			{
 				Name:    "loginattempt_ip_address_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{LoginAttemptsColumns[2], LoginAttemptsColumns[6]},
+				Columns: []*schema.Column{LoginAttemptsColumns[4], LoginAttemptsColumns[8]},
+			},
+			{
+				Name:    "loginattempt_realm_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{LoginAttemptsColumns[2], LoginAttemptsColumns[8]},
+			},
+			{
+				Name:    "loginattempt_user_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{LoginAttemptsColumns[3], LoginAttemptsColumns[8]},
 			},
 		},
 	}

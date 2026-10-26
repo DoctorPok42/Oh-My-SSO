@@ -28,7 +28,6 @@ type KeyManager struct {
 var (
 	_ keymanager.KeyManager = (*KeyManager)(nil)
 	_ keymanager.Encrypter  = (*KeyManager)(nil)
-	// Step 11: XML-DSig and X.509 certificates hand over a digest.
 	_ keymanager.DigestSigner = (*KeyManager)(nil)
 )
 
@@ -119,9 +118,6 @@ func (k *KeyManager) Sign(ctx context.Context, kmsKeyReference string, payload [
 	return base64.StdEncoding.DecodeString(parts[2])
 }
 
-// SignDigest implements keymanager.DigestSigner (Step 11): the same Transit
-// sign call, with "prehashed" so Vault signs our SHA-256 digest as it is.
-// https://developer.hashicorp.com/vault/api-docs/secret/transit#sign-data
 func (k *KeyManager) SignDigest(ctx context.Context, kmsKeyReference string, digest []byte) ([]byte, error) {
 	if len(digest) != sha256.Size {
 		return nil, fmt.Errorf("vault keymanager: digest must be %d bytes (SHA-256), got %d", sha256.Size, len(digest))

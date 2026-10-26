@@ -9,7 +9,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// Step 13: what the consent page lists for an OIDC request.
 func TestConsentItems(t *testing.T) {
 	groups := &domain.ClientScope{Name: "groups", Description: "The groups you belong to"}
 	noText := &domain.ClientScope{Name: "department"}

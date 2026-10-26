@@ -70,6 +70,16 @@ func Identifier(v string) predicate.LoginAttempt {
 	return predicate.LoginAttempt(sql.FieldEQ(FieldIdentifier, v))
 }
 
+// RealmID applies equality check predicate on the "realm_id" field. It's identical to RealmIDEQ.
+func RealmID(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldEQ(FieldRealmID, v))
+}
+
+// UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
+func UserID(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldEQ(FieldUserID, v))
+}
+
 // IPAddress applies equality check predicate on the "ip_address" field. It's identical to IPAddressEQ.
 func IPAddress(v string) predicate.LoginAttempt {
 	return predicate.LoginAttempt(sql.FieldEQ(FieldIPAddress, v))
@@ -159,6 +169,156 @@ func IdentifierEqualFold(v string) predicate.LoginAttempt {
 // IdentifierContainsFold applies the ContainsFold predicate on the "identifier" field.
 func IdentifierContainsFold(v string) predicate.LoginAttempt {
 	return predicate.LoginAttempt(sql.FieldContainsFold(FieldIdentifier, v))
+}
+
+// RealmIDEQ applies the EQ predicate on the "realm_id" field.
+func RealmIDEQ(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldEQ(FieldRealmID, v))
+}
+
+// RealmIDNEQ applies the NEQ predicate on the "realm_id" field.
+func RealmIDNEQ(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldNEQ(FieldRealmID, v))
+}
+
+// RealmIDIn applies the In predicate on the "realm_id" field.
+func RealmIDIn(vs ...string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldIn(FieldRealmID, vs...))
+}
+
+// RealmIDNotIn applies the NotIn predicate on the "realm_id" field.
+func RealmIDNotIn(vs ...string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldNotIn(FieldRealmID, vs...))
+}
+
+// RealmIDGT applies the GT predicate on the "realm_id" field.
+func RealmIDGT(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldGT(FieldRealmID, v))
+}
+
+// RealmIDGTE applies the GTE predicate on the "realm_id" field.
+func RealmIDGTE(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldGTE(FieldRealmID, v))
+}
+
+// RealmIDLT applies the LT predicate on the "realm_id" field.
+func RealmIDLT(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldLT(FieldRealmID, v))
+}
+
+// RealmIDLTE applies the LTE predicate on the "realm_id" field.
+func RealmIDLTE(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldLTE(FieldRealmID, v))
+}
+
+// RealmIDContains applies the Contains predicate on the "realm_id" field.
+func RealmIDContains(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldContains(FieldRealmID, v))
+}
+
+// RealmIDHasPrefix applies the HasPrefix predicate on the "realm_id" field.
+func RealmIDHasPrefix(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldHasPrefix(FieldRealmID, v))
+}
+
+// RealmIDHasSuffix applies the HasSuffix predicate on the "realm_id" field.
+func RealmIDHasSuffix(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldHasSuffix(FieldRealmID, v))
+}
+
+// RealmIDIsNil applies the IsNil predicate on the "realm_id" field.
+func RealmIDIsNil() predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldIsNull(FieldRealmID))
+}
+
+// RealmIDNotNil applies the NotNil predicate on the "realm_id" field.
+func RealmIDNotNil() predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldNotNull(FieldRealmID))
+}
+
+// RealmIDEqualFold applies the EqualFold predicate on the "realm_id" field.
+func RealmIDEqualFold(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldEqualFold(FieldRealmID, v))
+}
+
+// RealmIDContainsFold applies the ContainsFold predicate on the "realm_id" field.
+func RealmIDContainsFold(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldContainsFold(FieldRealmID, v))
+}
+
+// UserIDEQ applies the EQ predicate on the "user_id" field.
+func UserIDEQ(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldEQ(FieldUserID, v))
+}
+
+// UserIDNEQ applies the NEQ predicate on the "user_id" field.
+func UserIDNEQ(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldNEQ(FieldUserID, v))
+}
+
+// UserIDIn applies the In predicate on the "user_id" field.
+func UserIDIn(vs ...string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldIn(FieldUserID, vs...))
+}
+
+// UserIDNotIn applies the NotIn predicate on the "user_id" field.
+func UserIDNotIn(vs ...string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldNotIn(FieldUserID, vs...))
+}
+
+// UserIDGT applies the GT predicate on the "user_id" field.
+func UserIDGT(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldGT(FieldUserID, v))
+}
+
+// UserIDGTE applies the GTE predicate on the "user_id" field.
+func UserIDGTE(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldGTE(FieldUserID, v))
+}
+
+// UserIDLT applies the LT predicate on the "user_id" field.
+func UserIDLT(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldLT(FieldUserID, v))
+}
+
+// UserIDLTE applies the LTE predicate on the "user_id" field.
+func UserIDLTE(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldLTE(FieldUserID, v))
+}
+
+// UserIDContains applies the Contains predicate on the "user_id" field.
+func UserIDContains(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldContains(FieldUserID, v))
+}
+
+// UserIDHasPrefix applies the HasPrefix predicate on the "user_id" field.
+func UserIDHasPrefix(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldHasPrefix(FieldUserID, v))
+}
+
+// UserIDHasSuffix applies the HasSuffix predicate on the "user_id" field.
+func UserIDHasSuffix(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldHasSuffix(FieldUserID, v))
+}
+
+// UserIDIsNil applies the IsNil predicate on the "user_id" field.
+func UserIDIsNil() predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldIsNull(FieldUserID))
+}
+
+// UserIDNotNil applies the NotNil predicate on the "user_id" field.
+func UserIDNotNil() predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldNotNull(FieldUserID))
+}
+
+// UserIDEqualFold applies the EqualFold predicate on the "user_id" field.
+func UserIDEqualFold(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldEqualFold(FieldUserID, v))
+}
+
+// UserIDContainsFold applies the ContainsFold predicate on the "user_id" field.
+func UserIDContainsFold(v string) predicate.LoginAttempt {
+	return predicate.LoginAttempt(sql.FieldContainsFold(FieldUserID, v))
 }
 
 // IPAddressEQ applies the EQ predicate on the "ip_address" field.

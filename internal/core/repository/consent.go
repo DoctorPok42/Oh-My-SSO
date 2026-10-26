@@ -14,9 +14,6 @@ type ConsentRepository interface {
 	// GetByID and GetByUserAndClient return ErrNotFound when there is no row.
 	GetByID(ctx context.Context, id string) (*domain.Consent, error)
 	GetByUserAndClient(ctx context.Context, userID, clientRefID string) (*domain.Consent, error)
-	// ListByUser returns every consent of a user, granted or revoked, most
-	// recently changed first (Step 13: `idp consents list`, later the
-	// "connected applications" page of the user panel).
 	ListByUser(ctx context.Context, userID string) ([]*domain.Consent, error)
 	Update(ctx context.Context, id string, p UpdateConsentParams) (*domain.Consent, error)
 	Revoke(ctx context.Context, id string) error
@@ -32,8 +29,6 @@ type CreateConsentParams struct {
 // UpdateConsentParams: nil fields are left unchanged.
 type UpdateConsentParams struct {
 	Scopes []string
-	// Step 13: approving a client again after a revocation sets the status
-	// back to granted with a new GrantedAt, and clears RevokedAt.
 	Status         *domain.ConsentStatus
 	GrantedAt      *time.Time
 	ClearRevokedAt bool

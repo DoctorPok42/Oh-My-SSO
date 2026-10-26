@@ -20,15 +20,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// "idp dev seed" prepares a database to try the OIDC and SAML flows by
-// hand, until the admin panel (Step 14) can create realms and users.
-// Development only.
-//
-//	idp dev seed [--realm demo] [--user alice] [--password ...] [--redirect-uri http://localhost:9000/callback]
-//
-// It is idempotent: what exists is kept (an existing user keeps its
-// password), so it can be run again. Every run gives the demo client a new
-// secret, because a secret is only shown once.
 
 const devUsage = `usage:
   idp dev seed [--realm demo] [--user alice] [--password <text>] [--redirect-uri <uri>]
@@ -38,8 +29,6 @@ const devUsage = `usage:
 const (
 	demoClientID = "demo"
 	demoRole     = "employees"
-	// demoSAMLScope (Step 11) turns the user's profile into the usual SAML
-	// attributes. SAML clients list it with --scope.
 	demoSAMLScope = "saml_profile"
 )
 
@@ -165,7 +154,6 @@ func devSeed(ctx context.Context, args []string, out io.Writer) error {
 		if pw == "" {
 			pw = rand.Text()[:16]
 		}
-		// Step 12: the realm's password policy applies here too.
 		policy := service.NewPasswordPolicyService(entstore.NewInstanceSettingsRepository(client))
 		if err := policy.Validate(ctx, realm.ID, pw, &domain.User{Username: *username, Email: *username + "@example.test"}); err != nil {
 			return fmt.Errorf("--password: %w", err)
@@ -228,8 +216,6 @@ func devSeed(ctx context.Context, args []string, out io.Writer) error {
 		fmt.Fprintf(out, "client %q: exists, new secret generated (the previous one stops working)\n", demoClientID)
 	}
 
-	// 6. SAML (Step 11): the realm's SAML signing key, and a ClientScope
-	// producing the attributes, granted to the demo role.
 	hasSAMLKey := slices.ContainsFunc(keys, func(k *domain.SigningKey) bool {
 		return k.Purpose == domain.SigningKeyPurposeSAMLSigning &&
 			(k.Status == domain.SigningKeyActive || k.Status == domain.SigningKeyPending)
@@ -238,8 +224,7 @@ func devSeed(ctx context.Context, args []string, out io.Writer) error {
 	case hasSAMLKey:
 		fmt.Fprintln(out, "SAML signing key: exists")
 	case backend == backendLocalDev:
-		fmt.Fprintln(out, "SAML signing key: NOT created (local_dev, see above). Or create it through the running server:")
-		fmt.Fprintf(out, "             POST /r/%s/admin/signing-keys/rotate {\"purpose\":\"saml_signing\"}\n", realm.Name)
+		fmt.Fprintln(out, "SAML signing key: NOT created (local_dev, see above): use KEYMANAGER_BACKEND=vault.")
 	default:
 		res, err := rotation.Rotate(ctx, service.RotateInput{RealmID: realm.ID, Purpose: domain.SigningKeyPurposeSAMLSigning,
 			TriggeredBy: cliActor(), Reason: "idp dev seed"})
@@ -284,8 +269,6 @@ func devSeed(ctx context.Context, args []string, out io.Writer) error {
 	fmt.Fprintf(out, "Register a service provider: idp saml clients create --realm %s --metadata-url <its metadata URL> --allow-role %s --scope %s\n",
 		realm.Name, demoRole, demoSAMLScope)
 
-	// Step 13: the demo client does not ask for consent; one command shows
-	// the consent screen.
 	fmt.Fprintf(out, "\nConsent screen: make consent-on realm=%s client=%s (and consent-off to stop)\n", realm.Name, demoClientID)
 
 	fmt.Fprintf(out, "\nFor cmd/oidc-demo (put these in .env, then `make oidc-demo`):\n")
@@ -295,7 +278,7 @@ func devSeed(ctx context.Context, args []string, out io.Writer) error {
 	return nil
 }
 
-// devPublicURL: what the server uses as PUBLIC_URL (see buildPublicURL).
+// devPublicURL: what the server uses as PUBLIC_URL (see app.PublicURL).
 func devPublicURL() string {
 	if u := os.Getenv("PUBLIC_URL"); u != "" {
 		return strings.TrimRight(u, "/")

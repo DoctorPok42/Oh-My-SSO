@@ -14,17 +14,6 @@ type stepUpResponse struct {
 	MaxAgeSeconds  int      `json:"max_age_seconds"`
 }
 
-// requireStepUp lets the request through only if the session authenticated
-// recently enough for this kind of action (Step 9). Without the MFA service
-// it does nothing, so servers built without MFA keep working.
-//
-// It must run after requireSession.
-//
-//	403 {"error":"step_up_required"}        -> POST /auth/step-up, then retry
-//	403 {"error":"recent_login_required"}   -> no factor: log in again
-//	403 {"error":"mfa_enrollment_required"} -> a policy wants MFA: enroll first
-//
-// Same idea as OAuth 2.0 Step-Up (RFC 9470), for a cookie session.
 func (s *Server) requireStepUp(mode service.StepUpMode) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		if s.mfa == nil {

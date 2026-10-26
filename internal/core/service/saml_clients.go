@@ -19,16 +19,7 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// SAML client management (Step 11). Same role as OIDCClientService: used by
-// `idp saml clients ...` today, by the admin API (Step 14) and
-// `idp config apply` later. The rules live here once.
-//
-// Nothing here knows XML: reading a service provider's metadata file is the
-// SAML adapter's job (adapters/saml.ParseSPMetadata), which then fills a
-// SAMLClientInput.
 
-// maxEntityIDLength: SAML Core §8.3.6 caps an entity identifier at 1024
-// characters.
 const maxEntityIDLength = 1024
 
 // SAMLClientInput is what an admin provides to create a SAML client.
@@ -46,10 +37,6 @@ type SAMLClientInput struct {
 	// NameIDFormat: a URI, or a short name (persistent, transient, email,
 	// unspecified). Empty: persistent.
 	NameIDFormat string
-	// Certificates of the service provider. With at least one, every request
-	// it sends must be signed with one of them (Step 11 decision, like
-	// Keycloak's "client signature required"). Without any, it can log users
-	// in, but cannot send a LogoutRequest.
 	Certificates []domain.ClientCertificate
 	// WantResponseSigned also signs the <Response> (the <Assertion> inside
 	// is always signed).
@@ -60,15 +47,11 @@ type SAMLClientInput struct {
 	// Scopes: names of ClientScopes (protocol saml2 or both) whose claim
 	// mappers produce the SAML attributes.
 	Scopes []string
-	// AllowRoles / AllowGroups: whose members may use the client. Without
-	// any, nobody can (deny by default, Step 6).
 	AllowRoles  []string
 	AllowGroups []string
 	// AttributeMappings renames attributes ({"mail": "email"}).
 	AttributeMappings map[string]string
 	GrantedBy         string // "cli:alice"
-	// RequireConsent (Step 13): users approve the service provider on a
-	// consent screen before it receives any attribute. Off by default.
 	RequireConsent bool
 }
 

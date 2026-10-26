@@ -14,13 +14,9 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// OIDC client management (Step 10). Used by `idp oidc clients ...` today, and
-// meant for the admin API (Step 14) and `idp config apply` later: the
-// validation rules live here once, not in each entry point.
 
 var ErrInvalidClientConfig = errors.New("service: invalid client configuration")
 
-// Grant types accepted in Step 10 (OAuth 2.1 drops implicit and password).
 const (
 	GrantAuthorizationCode = "authorization_code"
 	GrantRefreshToken      = "refresh_token"
@@ -60,15 +56,11 @@ type OIDCClientInput struct {
 	// DisablePKCE turns PKCE off for a confidential client. Refused for a
 	// public client.
 	DisablePKCE bool
-	// AllowRoles / AllowGroups: names of the roles and groups whose members
-	// may use the client. Without any, nobody can (deny by default, Step 6).
 	AllowRoles  []string
 	AllowGroups []string
 	// Secret supplied from outside (config-as-code). Empty: generated.
 	Secret    string
 	GrantedBy string // written on ClientRole/ClientGroup rows ("cli:alice")
-	// RequireConsent (Step 13): users approve the client on a consent
-	// screen before it receives anything. Off by default.
 	RequireConsent bool
 }
 

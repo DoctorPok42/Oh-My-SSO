@@ -24,14 +24,7 @@ import (
 	"sso.internal/sso/internal/sessioncache"
 )
 
-// These tests exercise the whole IdentityCore in memory: no HTTP server, no
-// Postgres, no Valkey, no Vault. That is the Step 7 Definition of Done.
-//
-// Fakes embed the repository interface they implement. The embedded value is
-// nil, so calling a method the fake does not override panics: a test that
-// hits an unexpected code path fails loudly instead of silently passing.
 
-// --- in-memory fakes -------------------------------------------------------
 
 type fakeUserRepo struct {
 	repository.UserRepository
@@ -218,10 +211,8 @@ func (f *fakeClientAppRepo) GetByID(_ context.Context, id string) (*domain.Clien
 
 type fakeTokenRepo struct {
 	repository.TokenRepository
-	mu    sync.Mutex // Step 10 tests rotate refresh tokens concurrently
+	mu    sync.Mutex
 	byJTI map[string]*domain.Token
-	// sessionUser maps a session to its user (Step 13: RevokeByUserAndClient
-	// goes through the session, like the real query).
 	sessionUser func(sessionID string) string
 }
 
@@ -316,7 +307,8 @@ const (
 	clientShop1      = "client-shop-1" // pairwise, sector "shop"
 	clientShop2      = "client-shop-2" // pairwise, sector "shop"
 	clientBadSubject = "client-bad-subject-type"
-	clientConsent    = "client-consent" // Step 13: require_consent = true
+	clientConsent    = "client-consent"
+	clientAdmin      = "client-admin-console" // client_id = domain.InternalAdminClientID
 	shopSector       = "https://shop.example.com"
 )
 
@@ -351,10 +343,10 @@ type coreFixture struct {
 	keys       *fakeSigningKeyRepo
 	km         *localdev.KeyManager
 	timeouts   *fakeTimeouts
-	// Step 13
 	consents *fakeConsentRepo
 	notifier *recordingNotifier
 	consent  *service.ConsentService
+	access *fakeAccessRepo
 }
 
 // advance moves the shared fake clock forward.
@@ -386,6 +378,7 @@ func newCoreFixture(t *testing.T) *coreFixture {
 		},
 		clients: map[string]*domain.ClientAccessPolicy{
 			clientOther: activeClient(clientOther, []string{"role-someone-else"}, nil, nil),
+			clientAdmin: activeClient(clientAdmin, []string{"role-admin"}, []string{"group-admins"}, scopeIDs),
 		},
 	}
 	for _, ref := range []string{clientOIDC, clientSAML, clientLongTTL, clientNoAud,
@@ -425,6 +418,7 @@ func newCoreFixture(t *testing.T) *coreFixture {
 		clientConsent: oidc(clientConsent, "partner-app", func(c *domain.ClientApp) {
 			c.Name, c.RequireConsent = "Partner App", true
 		}),
+		clientAdmin: oidc(clientAdmin, domain.InternalAdminClientID, nil),
 	}}
 
 	f.attempts = &fakeLoginAttemptRepo{}
@@ -437,6 +431,7 @@ func newCoreFixture(t *testing.T) *coreFixture {
 
 	rbac, audit := newRBAC(access)
 	f.audit = audit
+	f.access = access
 	f.clients = clients
 
 	f.sessionSvc = service.NewSessionService(f.sessions, fakeSettingsRepo{}, f.tokens, fakeSessionCache{}, service.WithClock(clock))
@@ -633,6 +628,28 @@ func TestIdentityCore_IssueIdentityAssertion(t *testing.T) {
 		require.Equal(t, "alice@example.com", a.UserAttributes["email"])
 		require.Equal(t, "alice", a.UserAttributes["username"])
 		require.ElementsMatch(t, []string{"email", "profile"}, scopeNames(a.Scopes))
+		require.Nil(t, a.Entitlements, "only the admin console's tokens carry permissions")
+	})
+
+	t.Run("admin console: entitlements are the effective permissions, sorted and unique", func(t *testing.T) {
+		f := newCoreFixture(t)
+		// alice becomes an administrator: "role-admin" and "group-admins" only
+		// count on the admin console, whose policy allows them. Two
+		// permissions share the name "client:read" (one from the role, one
+		// from the group): the list must not repeat it.
+		alice := f.access.users[aliceID]
+		alice.Roles = append(alice.Roles, role("role-admin", []*domain.Permission{
+			perm("p-user-read", "user", "read"), perm("p-client-read", "client", "read"),
+		}, nil))
+		alice.Groups = append(alice.Groups, group("group-admins", []*domain.Permission{
+			perm("p-audit-read", "audit", "read"), perm("p-client-read-2", "client", "read"),
+		}, nil))
+		sess := f.aliceSession(t).Session
+
+		a, err := f.core.IssueIdentityAssertion(ctx, sess.ID, clientAdmin, nil)
+		require.NoError(t, err)
+		require.Equal(t, []string{"audit:read", "client:read", "user:read"}, a.Entitlements)
+		require.Empty(t, f.audit.entries, "computing entitlements is not an authorization attempt")
 	})
 
 	t.Run("SAML client: entity id as audience, short default lifetime", func(t *testing.T) {

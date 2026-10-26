@@ -13,21 +13,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Consent (Step 13).
-//
-// Some applications must not receive anything about a user before that user
-// said yes: ClientApp.require_consent (false by default, set per client). The
-// adapters show a consent screen; this service decides when, and remembers
-// the answer in Consent (one row per user and client).
-//
-//	CheckConsent  -> must the screen be shown now?        (shouldRequestConsent)
-//	GrantConsent  -> the user clicked "Allow"             (row created or merged)
-//	DenyConsent   -> the user clicked "Deny"              (AuditLog only)
-//	Revoke        -> the user (or an admin) takes it back (row revoked + tokens)
-//
-// Like MFA, the decision is a separate step instead of a flag hard-wired in
-// a login handler: a future per-client authentication flow can place it
-// wherever the flow needs it, without rewriting it.
 
 var (
 	// ErrConsentNotFound: the user never approved this client.
@@ -56,9 +41,6 @@ type ConsentDeps struct {
 	Logger   *slog.Logger
 }
 
-// ConsentService implements the consent primitives of IdentityCore, plus
-// the management operations (list, revoke, client setting) used by the CLI
-// today and by the admin and user panels at Step 14.
 type ConsentService struct {
 	consents repository.ConsentRepository
 	clients  repository.ClientRepository
@@ -258,10 +240,7 @@ func (s *ConsentService) Deny(ctx context.Context, d core.ConsentDenial) error {
 	return nil
 }
 
-// --- management (CLI today, admin and user panels at Step 14) -----------------
 
-// ConsentView is a consent with its client, for listings. Client is nil
-// when the client was deleted since.
 type ConsentView struct {
 	Consent *domain.Consent
 	Client  *domain.ClientApp

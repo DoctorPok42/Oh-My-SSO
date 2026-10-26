@@ -15456,6 +15456,8 @@ type LoginAttemptMutation struct {
 	typ            string
 	id             *string
 	identifier     *string
+	realm_id       *string
+	user_id        *string
 	ip_address     *string
 	user_agent     *string
 	status         *schema.LoginAttemptStatus
@@ -15605,6 +15607,104 @@ func (m *LoginAttemptMutation) OldIdentifier(ctx context.Context) (v string, err
 // ResetIdentifier resets all changes to the "identifier" field.
 func (m *LoginAttemptMutation) ResetIdentifier() {
 	m.identifier = nil
+}
+
+// SetRealmID sets the "realm_id" field.
+func (m *LoginAttemptMutation) SetRealmID(s string) {
+	m.realm_id = &s
+}
+
+// RealmID returns the value of the "realm_id" field in the mutation.
+func (m *LoginAttemptMutation) RealmID() (r string, exists bool) {
+	v := m.realm_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRealmID returns the old "realm_id" field's value of the LoginAttempt entity.
+// If the LoginAttempt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LoginAttemptMutation) OldRealmID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRealmID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRealmID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRealmID: %w", err)
+	}
+	return oldValue.RealmID, nil
+}
+
+// ClearRealmID clears the value of the "realm_id" field.
+func (m *LoginAttemptMutation) ClearRealmID() {
+	m.realm_id = nil
+	m.clearedFields[loginattempt.FieldRealmID] = struct{}{}
+}
+
+// RealmIDCleared returns if the "realm_id" field was cleared in this mutation.
+func (m *LoginAttemptMutation) RealmIDCleared() bool {
+	_, ok := m.clearedFields[loginattempt.FieldRealmID]
+	return ok
+}
+
+// ResetRealmID resets all changes to the "realm_id" field.
+func (m *LoginAttemptMutation) ResetRealmID() {
+	m.realm_id = nil
+	delete(m.clearedFields, loginattempt.FieldRealmID)
+}
+
+// SetUserID sets the "user_id" field.
+func (m *LoginAttemptMutation) SetUserID(s string) {
+	m.user_id = &s
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *LoginAttemptMutation) UserID() (r string, exists bool) {
+	v := m.user_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the LoginAttempt entity.
+// If the LoginAttempt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LoginAttemptMutation) OldUserID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ClearUserID clears the value of the "user_id" field.
+func (m *LoginAttemptMutation) ClearUserID() {
+	m.user_id = nil
+	m.clearedFields[loginattempt.FieldUserID] = struct{}{}
+}
+
+// UserIDCleared returns if the "user_id" field was cleared in this mutation.
+func (m *LoginAttemptMutation) UserIDCleared() bool {
+	_, ok := m.clearedFields[loginattempt.FieldUserID]
+	return ok
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *LoginAttemptMutation) ResetUserID() {
+	m.user_id = nil
+	delete(m.clearedFields, loginattempt.FieldUserID)
 }
 
 // SetIPAddress sets the "ip_address" field.
@@ -15860,9 +15960,15 @@ func (m *LoginAttemptMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *LoginAttemptMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 8)
 	if m.identifier != nil {
 		fields = append(fields, loginattempt.FieldIdentifier)
+	}
+	if m.realm_id != nil {
+		fields = append(fields, loginattempt.FieldRealmID)
+	}
+	if m.user_id != nil {
+		fields = append(fields, loginattempt.FieldUserID)
 	}
 	if m.ip_address != nil {
 		fields = append(fields, loginattempt.FieldIPAddress)
@@ -15889,6 +15995,10 @@ func (m *LoginAttemptMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case loginattempt.FieldIdentifier:
 		return m.Identifier()
+	case loginattempt.FieldRealmID:
+		return m.RealmID()
+	case loginattempt.FieldUserID:
+		return m.UserID()
 	case loginattempt.FieldIPAddress:
 		return m.IPAddress()
 	case loginattempt.FieldUserAgent:
@@ -15910,6 +16020,10 @@ func (m *LoginAttemptMutation) OldField(ctx context.Context, name string) (ent.V
 	switch name {
 	case loginattempt.FieldIdentifier:
 		return m.OldIdentifier(ctx)
+	case loginattempt.FieldRealmID:
+		return m.OldRealmID(ctx)
+	case loginattempt.FieldUserID:
+		return m.OldUserID(ctx)
 	case loginattempt.FieldIPAddress:
 		return m.OldIPAddress(ctx)
 	case loginattempt.FieldUserAgent:
@@ -15935,6 +16049,20 @@ func (m *LoginAttemptMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetIdentifier(v)
+		return nil
+	case loginattempt.FieldRealmID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRealmID(v)
+		return nil
+	case loginattempt.FieldUserID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
 		return nil
 	case loginattempt.FieldIPAddress:
 		v, ok := value.(string)
@@ -16001,6 +16129,12 @@ func (m *LoginAttemptMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *LoginAttemptMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(loginattempt.FieldRealmID) {
+		fields = append(fields, loginattempt.FieldRealmID)
+	}
+	if m.FieldCleared(loginattempt.FieldUserID) {
+		fields = append(fields, loginattempt.FieldUserID)
+	}
 	if m.FieldCleared(loginattempt.FieldIPAddress) {
 		fields = append(fields, loginattempt.FieldIPAddress)
 	}
@@ -16024,6 +16158,12 @@ func (m *LoginAttemptMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *LoginAttemptMutation) ClearField(name string) error {
 	switch name {
+	case loginattempt.FieldRealmID:
+		m.ClearRealmID()
+		return nil
+	case loginattempt.FieldUserID:
+		m.ClearUserID()
+		return nil
 	case loginattempt.FieldIPAddress:
 		m.ClearIPAddress()
 		return nil
@@ -16043,6 +16183,12 @@ func (m *LoginAttemptMutation) ResetField(name string) error {
 	switch name {
 	case loginattempt.FieldIdentifier:
 		m.ResetIdentifier()
+		return nil
+	case loginattempt.FieldRealmID:
+		m.ResetRealmID()
+		return nil
+	case loginattempt.FieldUserID:
+		m.ResetUserID()
 		return nil
 	case loginattempt.FieldIPAddress:
 		m.ResetIPAddress()

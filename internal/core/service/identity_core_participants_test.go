@@ -12,7 +12,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// Step 11: session participants (who must hear about a Single Logout).
 
 func TestIdentityCore_SessionParticipants(t *testing.T) {
 	ctx := context.Background()

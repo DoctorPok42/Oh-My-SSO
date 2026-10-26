@@ -8,12 +8,6 @@ import (
 	oidcadapter "sso.internal/sso/internal/adapters/oidc"
 )
 
-// mountOIDC plugs the OIDC adapter (Step 10) into the realm routes. The
-// adapter routes /oidc/* itself; it only needs to know the realm, which the
-// realm middleware already resolved.
-//
-//	GET /r/{realm}/.well-known/openid-configuration
-//	    /r/{realm}/oidc/...
 func (s *Server) mountOIDC(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		r.Use(oidcRealm)

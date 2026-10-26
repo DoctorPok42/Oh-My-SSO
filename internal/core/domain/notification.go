@@ -2,8 +2,6 @@ package domain
 
 import "time"
 
-// NotificationKind identifies an e-mail sent to a user about their account
-// (Step 12). Each kind has a template in internal/notify/templates.
 type NotificationKind string
 
 const (
@@ -22,16 +20,18 @@ const (
 	NotificationAccountLocked          NotificationKind = "account_locked"
 	// NotificationSuspiciousLogin also needs suspicious_login_email_enabled.
 	NotificationSuspiciousLogin NotificationKind = "suspicious_login"
-	// NotificationAppConnected (Step 13): the user approved an application
-	// on the consent screen, or approved more for it than before.
 	NotificationAppConnected NotificationKind = "app_connected"
+
+	NotificationAccountInvite NotificationKind = "account_invite"
+	NotificationAdminRecovery NotificationKind = "admin_recovery"
 )
 
 // IsSecurityAlert tells whether the realm's notification_email_enabled
 // switch applies to this kind.
 func (k NotificationKind) IsSecurityAlert() bool {
 	switch k {
-	case NotificationPasswordReset, NotificationPasswordChanged:
+	case NotificationPasswordReset, NotificationPasswordChanged,
+		NotificationAccountInvite, NotificationAdminRecovery:
 		return false
 	default:
 		return true
@@ -85,4 +85,8 @@ type NotificationEvent struct {
 	ClientName  string
 	Access      []string
 	AccessAdded bool
+
+	RecoveryKind    string
+	RecoveryActor   string
+	RecoveryAccount string
 }

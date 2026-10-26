@@ -20,18 +20,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// "idp saml clients ..." manages SAML service providers until the admin
-// panel exists (Step 14). Same service as the future admin API.
-//
-//	idp saml clients list        --realm demo
-//	idp saml clients create      --realm demo --metadata-file sp.xml --allow-role employees --scope saml_profile
-//	idp saml clients create      --realm demo --entity-id https://sp.example.com/metadata \
-//	                             --acs-url https://sp.example.com/acs --slo-url https://sp.example.com/slo \
-//	                             --cert-file sp.crt --allow-role employees
-//	idp saml clients add-cert    --realm demo --entity-id <id> --cert-file new.crt --not-before 2026-11-01T00:00:00Z
-//	idp saml clients remove-cert --realm demo --entity-id <id> --fingerprint 3f2a9c01
-//
-// Like the server, it reads DATABASE_URL from the environment.
 
 const samlUsage = `usage:
   idp saml clients list        --realm <name>
@@ -155,7 +143,7 @@ func samlClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 	nameIDFormat := fs.String("name-id-format", "", "persistent (default), transient, email or unspecified")
 	pairwise := fs.Bool("pairwise", false, "give this provider its own persistent NameID per user")
 	wantResponseSigned := fs.Bool("want-response-signed", false, "also sign the <Response> (the <Assertion> always is)")
-	requireConsent := fs.Bool("require-consent", false, "users approve the provider on a consent screen first (Step 13)")
+	requireConsent := fs.Bool("require-consent", false, "users approve the provider on a consent screen first")
 	var certFiles, scopes, renames, roles, groups listFlag
 	fs.Var(&certFiles, "cert-file", "PEM certificate of the provider (repeatable; added to those of the metadata)")
 	fs.Var(&scopes, "scope", "ClientScopes (protocol saml2 or both) producing the attributes, comma separated")

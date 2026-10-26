@@ -15,6 +15,10 @@ const (
 	FieldID = "id"
 	// FieldIdentifier holds the string denoting the identifier field in the database.
 	FieldIdentifier = "identifier"
+	// FieldRealmID holds the string denoting the realm_id field in the database.
+	FieldRealmID = "realm_id"
+	// FieldUserID holds the string denoting the user_id field in the database.
+	FieldUserID = "user_id"
 	// FieldIPAddress holds the string denoting the ip_address field in the database.
 	FieldIPAddress = "ip_address"
 	// FieldUserAgent holds the string denoting the user_agent field in the database.
@@ -33,6 +37,8 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldIdentifier,
+	FieldRealmID,
+	FieldUserID,
 	FieldIPAddress,
 	FieldUserAgent,
 	FieldStatus,
@@ -72,6 +78,16 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByIdentifier orders the results by the identifier field.
 func ByIdentifier(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIdentifier, opts...).ToFunc()
+}
+
+// ByRealmID orders the results by the realm_id field.
+func ByRealmID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRealmID, opts...).ToFunc()
+}
+
+// ByUserID orders the results by the user_id field.
+func ByUserID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUserID, opts...).ToFunc()
 }
 
 // ByIPAddress orders the results by the ip_address field.

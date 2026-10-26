@@ -38,8 +38,6 @@ type Config struct {
 	// DevPages links to /r/{realm}/dev/mfa when a user must enroll a factor
 	// first (APP_ENV=development).
 	DevPages bool
-	// PasswordReset shows the "Forgot password?" link on the login page
-	// (Step 12: /r/{realm}/auth/forgot-password is mounted).
 	PasswordReset bool
 	// Now is the clock (tests). nil: time.Now.
 	Now func() time.Time
@@ -105,7 +103,6 @@ func New(cfg Config, idp core.IdentityCore, store oidcstore.Store) (*Adapter, er
 			op.NewEndpoint("oidc/userinfo"),
 			op.NewEndpoint("oidc/revoke"),
 			op.NewEndpoint("oidc/logout"),
-			// Served by the Step 8 JWKS handler, not by the library.
 			op.NewEndpoint(".well-known/jwks.json"),
 		),
 		op.WithCustomIntrospectionEndpoint(op.NewEndpoint("oidc/introspect")),
@@ -151,7 +148,7 @@ func (a *Adapter) routes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(a.requireRealm, securityHeaders)
 	r.Get("/oidc/login", a.handleLogin)
-	r.Post("/oidc/consent", a.handleConsent) // Step 13
+	r.Post("/oidc/consent", a.handleConsent)
 	r.Get("/oidc/logged-out", a.handleLoggedOut)
 	r.Get("/oidc/assets/{file}", handleAsset)
 	r.With(a.bindBrowser).Handle("/oidc/authorize", a.provider)

@@ -14,6 +14,8 @@ type LoginAttemptRepository interface {
 }
 
 type CreateLoginAttemptParams struct {
+	RealmID       string
+	UserID        string
 	Identifier    string
 	IPAddress     string
 	UserAgent     string

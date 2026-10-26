@@ -42,7 +42,7 @@ type IdentityCoreService struct {
 	km       keymanager.KeyManager
 	timeouts TimeoutChecker
 	mfa      *MFAService                   // nil: MFA not configured (no policy enforced)
-	consent  *ConsentService               // nil: clients requiring consent fail closed (Step 13)
+	consent  *ConsentService
 	audit    repository.AuditLogRepository // nil: refresh token replays are only logged
 	logger   *slog.Logger
 	now      func() time.Time
@@ -67,13 +67,8 @@ type IdentityCoreDeps struct {
 	// Timeouts should be the same checker given to AuthService. nil means
 	// NoActiveTimeouts.
 	Timeouts TimeoutChecker
-	// MFA enforces the MFA policies in IssueIdentityAssertion and backs
-	// VerifyMFA (Step 9). nil: no MFA (tests of earlier steps).
 	MFA *MFAService
-	// Consent backs CheckConsent / GrantConsent / DenyConsent (Step 13).
-	// nil: a client with require_consent gets no assertion (fail closed).
 	Consent *ConsentService
-	// Audit records refresh token replays (Step 10). nil: logged only.
 	Audit repository.AuditLogRepository
 }
 
@@ -177,8 +172,6 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 		return nil, err
 	}
 
-	// 2. Authorization BEFORE reading any user data. A denial is written to
-	//    the AuditLog by the RBAC service (Step 6).
 	if err := s.rbac.AuthorizeClientAccess(ctx, AuthorizeInput{
 		RealmID:   sess.RealmID,
 		UserID:    sess.UserID,
@@ -212,9 +205,6 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 		return nil, err
 	}
 
-	// 4b. MFA policies of the realm, the client and the user's roles
-	//     (Step 9). On failure the adapter sends the user to the step-up
-	//     page (same session) or to MFA enrollment: *core.MFARequiredError.
 	if s.mfa != nil {
 		if err := s.mfa.CheckClientAccess(ctx, sess, user, client); err != nil {
 			return nil, err
@@ -240,7 +230,20 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 	if err != nil {
 		return nil, fmt.Errorf("issue identity assertion: effective scopes: %w", err)
 	}
-	scopes = filterRequestedScopes(scopes, requestedScopes)
+	required, err := s.rbac.RequiredClientScopeIDs(ctx, clientRef)
+	if err != nil {
+		return nil, fmt.Errorf("issue identity assertion: required scopes: %w", err)
+	}
+	scopes = filterRequestedScopes(scopes, requestedScopes, required)
+
+	// 5b. The admin console's own permissions, carried by its access token
+	//     (see core.IdentityAssertion.Entitlements). Other clients: none.
+	var entitlements []string
+	if client.ClientID == domain.InternalAdminClientID {
+		if entitlements, err = s.entitlements(ctx, sess.UserID, clientRef); err != nil {
+			return nil, fmt.Errorf("issue identity assertion: entitlements: %w", err)
+		}
+	}
 
 	// 6. Lifetime: client TTL, but never beyond the session itself.
 	now := s.now()
@@ -263,7 +266,23 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 		UserID:         user.ID,
 		UserAttributes: userAttributes(user, groups, roles),
 		Scopes:         scopes,
+		Entitlements:   entitlements,
 	}, nil
+}
+
+// entitlements: the effective permissions as "resource:action", sorted and
+// unique; never nil (an empty list still says "no permission").
+func (s *IdentityCoreService) entitlements(ctx context.Context, userID, clientRef string) ([]string, error) {
+	perms, err := s.rbac.GetEffectivePermissions(ctx, userID, clientRef)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(perms))
+	for _, p := range perms {
+		out = append(out, p.Resource+":"+p.Action)
+	}
+	slices.Sort(out)
+	return slices.Compact(out), nil
 }
 
 // subjectFor returns the identifier this client will see for this user.
@@ -376,18 +395,13 @@ func assertionTTL(c *domain.ClientApp) time.Duration {
 	return defaultAssertionTTL
 }
 
-// filterRequestedScopes keeps the effective scopes whose name was requested,
-// plus the "is_default" ones, which are included without being asked for.
-// An empty request means "everything the user is entitled to". A requested
-// scope the user does not have is silently dropped: requesting never grants,
-// and is_default never grants either (the scope must be effective first).
-func filterRequestedScopes(effective []*domain.ClientScope, requested []string) []*domain.ClientScope {
+func filterRequestedScopes(effective []*domain.ClientScope, requested, requiredIDs []string) []*domain.ClientScope {
 	if len(requested) == 0 {
 		return effective
 	}
 	out := make([]*domain.ClientScope, 0, len(effective))
 	for _, cs := range effective {
-		if cs.IsDefault || slices.Contains(requested, cs.Name) {
+		if cs.IsDefault || slices.Contains(requested, cs.Name) || slices.Contains(requiredIDs, cs.ID) {
 			out = append(out, cs)
 		}
 	}
@@ -514,8 +528,6 @@ func VerificationKeys(keys []*domain.SigningKey, purpose domain.SigningKeyPurpos
 		}
 		switch k.Status {
 		case domain.SigningKeyActive, domain.SigningKeyPending:
-			// pending (Step 11, SAML): published before it signs, so that
-			// clients which copy the certificate by hand can add it first.
 			out = append(out, k)
 		case domain.SigningKeyRotating:
 			// A zero RetireAfter only exists on rows created before the
@@ -551,7 +563,6 @@ func (k *kmsSigner) Sign(ctx context.Context, payload []byte) ([]byte, error) {
 	return sig, nil
 }
 
-// kmsSigner is also a core.DigestSigner (Step 11, XML-DSig).
 var _ core.DigestSigner = (*kmsSigner)(nil)
 
 func (k *kmsSigner) SignDigest(ctx context.Context, digest []byte) ([]byte, error) {

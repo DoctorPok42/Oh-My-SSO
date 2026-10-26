@@ -58,3 +58,5 @@ func describeUserAgent(ua string) string {
 		return ua
 	}
 }
+
+func DescribeUserAgent(ua string) string { return describeUserAgent(ua) }

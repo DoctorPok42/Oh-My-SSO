@@ -39,6 +39,8 @@ func (LoginAttempt) Fields() []ent.Field {
 			Immutable().
 			DefaultFunc(uuid.NewString),
 		field.String("identifier").NotEmpty().Immutable(),
+		field.String("realm_id").Optional().Immutable(),
+		field.String("user_id").Optional().Immutable(),
 		field.String("ip_address").Optional().Immutable(),
 		field.String("user_agent").Optional().Immutable(),
 		field.String("status").GoType(LoginAttemptStatus("")).Immutable(),
@@ -55,5 +57,7 @@ func (LoginAttempt) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("identifier", "created_at"),
 		index.Fields("ip_address", "created_at"),
+		index.Fields("realm_id", "created_at"),
+		index.Fields("user_id", "created_at"),
 	}
 }

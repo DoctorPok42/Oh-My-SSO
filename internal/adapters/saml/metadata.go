@@ -11,14 +11,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// IdP metadata (SAML Metadata, OASIS 2005): the XML "business card" a
-// service provider imports once: our entity ID, where to send requests, and
-// the certificates our signatures verify with.
-//
-// Every published saml_signing key is listed: the active one, a "pending"
-// one (Step 11 two-step rotation: published before it signs) and the
-// "rotating" ones still in their grace period. A service provider that
-// reloads this document regularly follows rotations by itself.
 
 const (
 	metadataValidity = 48 * time.Hour

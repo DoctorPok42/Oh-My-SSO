@@ -19,8 +19,6 @@ import (
 const (
 	routeAuthLogin = "auth.login"
 
-	// Per IP, against one machine trying many accounts. Per account, the
-	// realm's lockout policy applies instead (Step 12, LockoutService).
 	loginAttemptsPerIP   = 20
 	loginRateLimitWindow = 15 * time.Minute
 )
@@ -28,11 +26,7 @@ const (
 type loginRequest struct {
 	Identifier string `json:"identifier"`
 	Password   string `json:"password"`
-	// ClientID (optional): OIDC client_id of the application the user is
-	// logging in for. Its MFA policy then applies right away (Step 9).
 	ClientID string `json:"client_id,omitempty"`
-	// EntityID (optional): the same for a SAML application (Step 11). At
-	// most one of ClientID and EntityID.
 	EntityID string `json:"entity_id,omitempty"`
 }
 
@@ -121,7 +115,6 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		var locked *service.AccountLockedError
 		switch {
 		case errors.As(err, &locked):
-			// Same answer whether the account exists or not (Step 12).
 			writeRetryAfter(w, locked.Until)
 		case errors.Is(err, service.ErrInvalidCredentials),
 			errors.Is(err, service.ErrAccountNotActive),
@@ -134,11 +127,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := loginResponse{Status: string(service.LoginAuthenticated), UserID: user.ID}
-	// Step 12: the browser's device id (cookie created if missing). Its hash
-	// goes into the session, so the next sign-in can tell a known device.
 	device := service.DeviceFingerprint(ensureDeviceCookie(w, r, realm.Name))
 
-	// Step 9: is a second factor needed before any session exists?
 	if s.mfa != nil {
 		dec, err := s.mfa.BeginLogin(r.Context(), service.BeginLoginInput{
 			User:              user,

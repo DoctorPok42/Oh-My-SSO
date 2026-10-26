@@ -15,13 +15,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// "idp settings" reads and changes the realm settings that Step 12 uses,
-// until the admin panel (Step 14) has a Settings screen.
-//
-//	idp settings show --realm demo
-//	idp settings set  --realm demo --notification-email=true --suspicious-login-email=true
-//	idp settings set  --realm demo --lockout-threshold 5 --lockout-duration 15m
-//	idp settings set  --realm demo --min-password-length 14 --password-reset-ttl 30m
 
 const settingsUsage = `usage:
   idp settings show --realm <name>

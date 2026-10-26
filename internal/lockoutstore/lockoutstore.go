@@ -1,15 +1,3 @@
-// Package lockoutstore keeps the account lockout state of identifiers that
-// match no account (Step 12).
-//
-// Why bother with accounts that do not exist? If only real accounts could
-// be locked, an attacker would learn which usernames exist just by failing
-// a few passwords: "locked" means "real". So an unknown identifier is
-// counted and locked exactly like a real one, and only the e-mail ("your
-// account was locked") is reserved to real accounts.
-//
-// Real accounts keep their state in Postgres (columns of the users table);
-// unknown identifiers live here (Valkey in production, Memory in tests),
-// because they must not create rows and can be forgotten after a day.
 package lockoutstore
 
 import (

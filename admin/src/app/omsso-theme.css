@@ -1,0 +1,114 @@
+/* OMSSO design tokens — Tailwind v4.
+   Import in your Tailwind entry: @import "./omsso-theme.css";
+   Default (no .dark class) follows system preference; add `dark` class on <html>
+   to force dark regardless of system. */
+
+@theme inline {
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-row-hover: var(--row-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-neutral: var(--neutral);
+  --color-neutral-soft: var(--neutral-soft);
+
+  --color-input-bg: var(--input-bg);
+  --color-input-border: var(--input-border);
+
+  --shadow-elevation: var(--shadow);
+  --shadow-elevation-md: var(--shadow-md);
+}
+
+:root {
+  --page: #0D0F16;
+  --surface: #161923;
+  --surface-alt: #1C202B;
+  --row-hover: #1B1E29;
+  --border: #282C39;
+  --border-strong: #3A3F4F;
+
+  --text-primary: #F1F2F7;
+  --text-secondary: #A7ACC1;
+  --text-muted: #6C7086;
+
+  --accent: #7A90F7;
+  --accent-hover: #93A5F9;
+  --accent-soft: #232B4D;
+  --on-accent: #0D0F16;
+
+  --success: #4ADE80;
+  --success-soft: #173324;
+  --warning: #FBBF24;
+  --warning-soft: #3B2C10;
+  --danger: #F87171;
+  --danger-soft: #3B1A1A;
+  --info: #60A5FA;
+  --info-soft: #182746;
+  --neutral: #9AA0B7;
+  --neutral-soft: #252A38;
+
+  --input-bg: #1C202B;
+  --input-border: #333849;
+
+  --shadow: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 16px 40px rgba(0,0,0,0.5);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) {
+    --page: #F4F5FA;
+    --surface: #FFFFFF;
+    --surface-alt: #FAFBFD;
+    --row-hover: #F7F8FC;
+    --border: #E2E5EE;
+    --border-strong: #CBD0DE;
+
+    --text-primary: #13151F;
+    --text-secondary: #565B70;
+    --text-muted: #8D92A6;
+
+    --accent: #3557D6;
+    --accent-hover: #2C47B8;
+    --accent-soft: #EAEEFC;
+    --on-accent: #FFFFFF;
+
+    --success: #15803D;
+    --success-soft: #E5F6EA;
+    --warning: #B45309;
+    --warning-soft: #FDF1DF;
+    --danger: #B91C1C;
+    --danger-soft: #FCE8E8;
+    --info: #1D4ED8;
+    --info-soft: #E7EEFD;
+    --neutral: #4B5063;
+    --neutral-soft: #EEF0F4;
+
+    --input-bg: #FFFFFF;
+    --input-border: #D7DAE4;
+
+    --shadow: 0 1px 2px rgba(20,22,35,0.06);
+    --shadow-md: 0 12px 32px rgba(20,22,35,0.12);
+  }
+}

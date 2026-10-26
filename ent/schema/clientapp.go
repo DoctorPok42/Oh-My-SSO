@@ -94,8 +94,6 @@ func (ClientApp) Fields() []ent.Field {
 		field.JSON("allowed_scopes", []string{}).Optional(),
 		field.String("token_endpoint_auth_method").Optional(),
 		field.String("id_token_signed_alg").Optional(),
-		// Seconds. Short on purpose (Step 10): a JWT access token cannot be
-		// recalled before it expires.
 		field.Int("access_token_ttl").Default(300),
 		field.Int("refresh_token_ttl").Default(2592000),
 		field.Int("id_token_ttl").Default(3600),

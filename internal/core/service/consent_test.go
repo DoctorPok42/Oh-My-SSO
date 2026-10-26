@@ -16,13 +16,7 @@ import (
 	"sso.internal/sso/internal/core/service"
 )
 
-// Step 13: the consent primitives, in memory (no HTTP, no database).
-//
-// Definition of done of the plan: consent is asked once for the same scopes,
-// asked again when a new scope appears, and never when require_consent is
-// false.
 
-// --- fakes ---------------------------------------------------------------------
 
 type fakeConsentRepo struct {
 	repository.ConsentRepository

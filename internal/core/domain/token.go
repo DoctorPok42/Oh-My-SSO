@@ -8,10 +8,6 @@ const (
 	TokenAccessToken  TokenType = "access_token"
 	TokenRefreshToken TokenType = "refresh_token"
 	TokenIDToken      TokenType = "id_token"
-	// TokenSAMLSession (Step 11) records that a SAML client received an
-	// assertion for a session. JTI is the SessionIndex the client knows,
-	// Subject / SubjectFormat the NameID it received. Single Logout lists
-	// these rows to know which clients to log out.
 	TokenSAMLSession TokenType = "saml_session"
 )
 

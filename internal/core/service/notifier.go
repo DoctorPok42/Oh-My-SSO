@@ -11,16 +11,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Notifier receives the account events that may turn into e-mails (Step 12):
-// reset links, password changed, new device, MFA changes, lockouts...
-//
-// The core only says what happened. Whether an e-mail goes out (realm
-// switches), which template, the SMTP connection and the AuditLog entry
-// are the job of the implementation (internal/notify.Dispatcher), so that
-// no endpoint has to know about e-mail.
-//
-// Notify must return immediately: the dispatcher queues the event and
-// sends it in the background. A slow mail server must never slow a login.
 type Notifier interface {
 	Notify(ctx context.Context, e domain.NotificationEvent)
 }
@@ -30,10 +20,7 @@ type NopNotifier struct{}
 
 func (NopNotifier) Notify(context.Context, domain.NotificationEvent) {}
 
-// --- realm settings, shared by the Step 12 services ---------------------------
 
-// Defaults of InstanceSettings (same values as ent/schema), used when a realm
-// has no settings row yet.
 const (
 	defaultMinPasswordLength       = 12
 	defaultLockoutThreshold        = 5

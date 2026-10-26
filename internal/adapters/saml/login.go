@@ -14,19 +14,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// Web Browser SSO, step 2: the sign-in page, then the assertion.
-//
-// handleLogin is where /saml/sso sends the browser. Each visit re-evaluates
-// the situation from the session cookie, like the OIDC adapter:
-//
-//	no session (or ForceAuthn)            -> the password form
-//	session, MFA policy not met           -> the second factor form
-//	session, a factor must be enrolled    -> explain what to do
-//	session, consent needed (Step 13)     -> the consent page
-//	session, all good                     -> the signed response, POSTed to the ACS
-//
-// IsPassive (the service provider wants no page at all) turns every "show a
-// page" above into a NoPassive error response.
 func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	realm, _ := realmFrom(ctx)
@@ -98,8 +85,6 @@ func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Step 13: the user's consent, when the service provider needs it,
-	// before any attribute leaves.
 	if !a.consentStep(w, r, &p, app, sess, as) {
 		return
 	}
@@ -158,9 +143,6 @@ func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 var errNoEmail = errors.New("the user has no e-mail address, required by this service provider's NameID format")
 
-// nameIDValue computes the NameID for a format. The persistent value is the
-// core's Subject: never the e-mail and never the username, so it survives
-// their changes (public or pairwise, see Step 7).
 func nameIDValue(format string, as *core.IdentityAssertion) (string, error) {
 	switch format {
 	case domain.NameIDFormatEmail:

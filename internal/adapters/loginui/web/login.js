@@ -1,15 +1,3 @@
-// Login page of the OIDC (Step 10) and SAML (Step 11) flows.
-//
-// It only calls the JSON API of the IdP, then reloads the page: on reload
-// the server looks at the session cookie and either asks for more, or sends
-// the browser back to the application. Nothing here decides who gets in.
-// The application is named "client_id" (OIDC) or "entity_id" (SAML).
-//
-//   password      POST {base}/auth/login                 {identifier, password, client_id | entity_id}
-//   second factor POST {base}/auth/mfa/verify            {method, code}   (cookie sso_mfa)
-//                 POST {base}/auth/mfa/webauthn/options|verify            (passkey)
-//   step-up       POST {base}/auth/step-up               {method, code}   (session)
-//                 POST {base}/auth/step-up/webauthn/options|verify
 (() => {
   "use strict";
   const app = document.getElementById("app");

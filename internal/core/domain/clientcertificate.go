@@ -5,16 +5,6 @@ import (
 	"time"
 )
 
-// ClientCertificate is one entry of ClientApp.ClientCertificates (SAML,
-// Step 11): a certificate of the service provider, used to check the
-// signature of the requests it sends (AuthnRequest, LogoutRequest).
-//
-// It is a list, not a single field, so that a service provider can change
-// its certificate without downtime: register the new one with a NotBefore,
-// give the old one a NotAfter, and both are accepted in between.
-//
-// Stored as JSON: {"certificate": "<PEM>", "not_before": "<RFC 3339>",
-// "not_after": "<RFC 3339>"}; both dates are optional.
 type ClientCertificate struct {
 	PEM       string
 	NotBefore time.Time // zero: no lower bound

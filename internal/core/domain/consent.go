@@ -9,10 +9,6 @@ const (
 	ConsentRevoked ConsentStatus = "revoked"
 )
 
-// Consent is what a user approved for one client (Step 13): one row per
-// (user, client), whose Scopes grow when the client asks for more and the
-// user agrees again. A revoked row is kept (history) until the user approves
-// the client again, which starts a new list.
 type Consent struct {
 	ID          string
 	UserID      string

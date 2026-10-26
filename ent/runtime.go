@@ -492,7 +492,7 @@ func init() {
 	// loginattempt.IdentifierValidator is a validator for the "identifier" field. It is called by the builders before save.
 	loginattempt.IdentifierValidator = loginattemptDescIdentifier.Validators[0].(func(string) error)
 	// loginattemptDescCreatedAt is the schema descriptor for created_at field.
-	loginattemptDescCreatedAt := loginattemptFields[6].Descriptor()
+	loginattemptDescCreatedAt := loginattemptFields[8].Descriptor()
 	// loginattempt.DefaultCreatedAt holds the default value on creation for the created_at field.
 	loginattempt.DefaultCreatedAt = loginattemptDescCreatedAt.Default.(func() time.Time)
 	// loginattemptDescID is the schema descriptor for id field.

@@ -12,8 +12,6 @@ import (
 	"sso.internal/sso/internal/lockoutstore"
 )
 
-// lockoutStore keeps the lockout state of identifiers that match no account
-// (Step 12, see package lockoutstore).
 type lockoutStore struct {
 	client valkey.Client
 }

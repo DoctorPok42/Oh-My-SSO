@@ -55,8 +55,6 @@ func (MfaMethod) Fields() []ent.Field {
 		// (sign counter, flags, transports...) is in webauthn_credential.
 		field.String("credential_id").Optional(),
 		field.Text("public_key").Optional(),
-		// WebAuthn / passkey: the credential record as JSON, exactly as the
-		// go-webauthn library needs it back at each login (Step 9b).
 		field.Text("webauthn_credential").Optional(),
 		field.Bool("is_discoverable").Default(false),
 		field.String("status").GoType(MfaMethodStatus("")).Default(string(MfaMethodActive)),

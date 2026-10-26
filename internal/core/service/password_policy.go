@@ -12,26 +12,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Password policy (Step 12): the one place that decides whether a NEW
-// password is acceptable. Every code path that sets a password calls it:
-// reset, `idp dev seed`, and later the account console and the admin panel.
-//
-// It follows NIST SP 800-63B-4 §3.1.1.2 ("password verifiers"), also the
-// basis of the OWASP Authentication Cheat Sheet:
-//   - a minimum length (the realm's min_password_length), counted in
-//     characters, not bytes: "été" is 3 characters but 5 bytes. NIST asks
-//     for 15 when the password is the only factor, 8 at least with MFA:
-//     8 is the floor here, 12 the default;
-//   - a generous maximum (NIST: at least 64), only to refuse abuse;
-//   - no composition rules ("one digit, one symbol..."): they push people
-//     to "Password1!" and do not make passwords stronger;
-//   - no reuse of the account's own username or e-mail.
-//
-// Existing passwords are never re-checked at login: raising the minimum
-// applies to the next password a user chooses, it does not lock anyone out.
-//
-// https://pages.nist.gov/800-63-4/sp800-63b/passwords
-// https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
 
 const (
 	// MaxPasswordLength in characters. NIST asks for at least 64.

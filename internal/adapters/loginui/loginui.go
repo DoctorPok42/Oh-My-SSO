@@ -1,17 +1,3 @@
-// Package loginui holds the sign-in pages shared by the protocol adapters:
-// OIDC (Step 10) and SAML (Step 11) show the same page.
-//
-// The page is deliberately small: it only calls the JSON API that already
-// exists (/auth/login, /auth/mfa/verify, passkeys, /auth/step-up), then
-// reloads itself; the adapter decides everything on reload. No login logic
-// lives here, and Step 14 can restyle it without changing any flow.
-//
-// It also renders the other pages a browser flow needs: a short message
-// ("this link has expired"), an auto-submitted form, which is how SAML hands
-// an assertion to a service provider (HTTP-POST binding), and the consent
-// page (Step 13), a plain HTML form that works without JavaScript.
-//
-// Like the adapters, this package never talks to storage: it is HTML only.
 package loginui
 
 import (
@@ -68,18 +54,15 @@ type Login struct {
 	LoginHint   string
 	CancelURL   string
 	EnrollURL   string // dev pages only
-	// ForgotPasswordURL (Step 12): "Forgot password?" link, "" = hidden.
 	ForgotPasswordURL string
 }
 
-// ForgotPassword is the data of the "forgot password" page (Step 12).
 type ForgotPassword struct {
 	RealmDisplay string
 	Base         string // "/r/<realm>", prefix of the JSON API
 	Assets       string
 }
 
-// ResetPassword is the data of the "choose a new password" page (Step 12).
 type ResetPassword struct {
 	RealmDisplay string
 	Base         string
@@ -88,9 +71,6 @@ type ResetPassword struct {
 	MaxLength    int
 }
 
-// Consent is the data of the consent page (Step 13): "Allow <app> to access
-// your account?". The form posts back to Action with the request id, the
-// one-time token, and decision=allow|deny.
 type Consent struct {
 	RealmDisplay string
 	ClientName   string
