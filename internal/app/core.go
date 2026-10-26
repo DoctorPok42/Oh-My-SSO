@@ -67,8 +67,6 @@ type Core struct {
 // in development). "Forgot password" and invitation e-mails need it.
 func (c *Core) EmailEnabled() bool { return c.Dispatcher != nil }
 
-// BuildCore opens the database, Valkey and the KeyManager, and wires every
-// core service (what cmd/idp did in serve() before Step 14).
 func BuildCore() *Core {
 	c := &Core{}
 	c.Ent = EntClient()
@@ -97,9 +95,6 @@ func BuildCore() *Core {
 	sessionRepo := entstore.NewSessionRepository(client)
 	c.RateLimiter = valkeycache.NewRateLimiter(c.Valkey)
 
-	// --- E-mail notifications (Step 12) ---
-	// The dispatcher sends in the background; every core service only
-	// calls Notify(event). Without SMTP (production), no e-mail at all.
 	c.Notifier = service.NopNotifier{}
 	if sender := EmailSender(Templates()); sender != nil {
 		c.Dispatcher = NewDispatcher(client, c.PublicURL, sender)
@@ -107,7 +102,6 @@ func BuildCore() *Core {
 		c.Notifier = c.Dispatcher
 	}
 
-	// --- Account lockout (Step 12) ---
 	c.Lockout = service.NewLockoutService(service.LockoutDeps{
 		Users:    c.Users,
 		Unknown:  valkeycache.NewLockoutStore(c.Valkey),
@@ -123,7 +117,6 @@ func BuildCore() *Core {
 		service.WithLockout(c.Lockout),
 	)
 
-	// --- Sign-in analysis: new device, suspicious sign-in (Step 12) ---
 	loginSecurity := service.NewLoginSecurityService(service.LoginSecurityDeps{
 		Sessions: sessionRepo,
 		Audit:    c.Audit,
@@ -149,7 +142,6 @@ func BuildCore() *Core {
 		c.KMSBackend,
 	)
 
-	// --- MFA (Step 9) ---
 	encrypter, ok := c.KeyManager.(keymanager.Encrypter)
 	if !ok {
 		log.Fatalf("keymanager: backend %q cannot encrypt (needed for TOTP secrets)", c.KMSBackend)
@@ -180,10 +172,6 @@ func BuildCore() *Core {
 		IssuerName:    os.Getenv("MFA_TOTP_ISSUER"),
 	})
 
-	// --- Password reset (Step 12) ---
-	// Step 14: always built. Without e-mail there is no "forgot password",
-	// but activation links (bootstrap, invitations shown to the admin) still
-	// use the same one-time tokens and the same "choose a password" page.
 	c.PasswordReset = service.NewPasswordResetService(service.PasswordResetDeps{
 		Users:    c.Users,
 		Tokens:   entstore.NewPasswordResetTokenRepository(client),
@@ -195,7 +183,6 @@ func BuildCore() *Core {
 		Audit:    c.Audit,
 	})
 
-	// --- Consent screen (Step 13) ---
 	c.Consent = service.NewConsentService(service.ConsentDeps{
 		Consents: entstore.NewConsentRepository(client),
 		Clients:  c.Clients,
@@ -273,7 +260,6 @@ func (n SyncNotifier) Notify(ctx context.Context, e domain.NotificationEvent) {
 	}
 }
 
-// AdminService builds the service behind the Admin API (Step 14).
 func (c *Core) AdminService() *service.AdminService {
 	return service.NewAdminService(service.AdminDeps{
 		Realms: c.Realms, Users: c.Users, Clients: c.Clients, Scopes: c.Scopes, Roles: c.Roles, Groups: c.Groups,

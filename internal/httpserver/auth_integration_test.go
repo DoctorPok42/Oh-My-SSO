@@ -79,8 +79,6 @@ func setupTestEnv(t *testing.T) *testEnv {
 
 	realms := entstore.NewRealmRepository(client)
 	users := entstore.NewUserRepository(client)
-	// Step 12: the per-account limit is the account lockout (5 wrong
-	// passwords by default), for real and unknown accounts alike.
 	lockout := service.NewLockoutService(service.LockoutDeps{
 		Users:    users,
 		Unknown:  valkeycache.NewLockoutStore(valkeyClient),
@@ -219,10 +217,10 @@ func TestAuthLogin_Integration(t *testing.T) {
 
 		require.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
 		require.Equal(t, "rate_limited", decodeError(t, resp))
-		require.NotEmpty(t, resp.Header.Get("Retry-After"), "Step 12: the client knows when to come back")
+		require.NotEmpty(t, resp.Header.Get("Retry-After"), "the client knows when to come back")
 	})
 
-	t.Run("compte verrouillé : même le bon mot de passe est refusé (Step 12)", func(t *testing.T) {
+	t.Run("compte verrouillé : même le bon mot de passe est refusé", func(t *testing.T) {
 		realm := env.createRealm(t, "lockout-realm")
 		env.createUser(t, realm.ID, "erin", "the-real-password", domain.UserActive)
 		for i := 0; i < 5; i++ {
@@ -238,7 +236,7 @@ func TestAuthLogin_Integration(t *testing.T) {
 		require.True(t, u.Lockout.LockedAt(time.Now()), "the lock is stored on the user row")
 	})
 
-	t.Run("compte inexistant : même réponse qu'un vrai compte (Step 12)", func(t *testing.T) {
+	t.Run("compte inexistant : même réponse qu'un vrai compte", func(t *testing.T) {
 		realm := env.createRealm(t, "ghost-realm")
 		var statuses []int
 		for i := 0; i < 6; i++ {

@@ -42,29 +42,30 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 		f, _ := a.user.Profile["family_name"].(string)
 		out.User.Name = strings.TrimSpace(g + " " + f)
 	}
+	// From the token when it may be trusted; otherwise one RBAC resolution
+	// for the whole catalogue (not one Authorize per permission: twenty
+	// resolutions, two hundred SQL queries, and an audit entry
+	// "authorization denied" for every write permission an auditor lacks).
+	held, err := s.effectivePermissionNames(r.Context(), a)
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
 	perms := []string{}
 	for _, p := range service.AdminPermissions {
-		err := s.d.RBAC.Authorize(r.Context(), service.AuthorizeInput{RealmID: a.master.ID, UserID: a.user.ID,
-			ClientRef: a.client.ID, Resource: p.Resource, Action: p.Action})
-		if err == nil {
+		if held[p.Name()] {
 			perms = append(perms, p.Name())
 		}
 	}
 	out.Permissions = perms
-	if err := s.d.MFA.CheckStepUp(r.Context(), a.session, service.StepUpSensitiveAction); err == nil && !a.session.MFAVerifiedAt.IsZero() {
-		t := a.session.MFAVerifiedAt.Add(s.stepUpWindow(r.Context(), a))
+	// One step-up check, which also tells the window (the user, the realm's
+	// settings and the factors are read once).
+	window, err := s.d.MFA.CheckStepUpFor(r.Context(), a.session, a.user, service.StepUpSensitiveAction)
+	if err == nil && !a.session.MFAVerifiedAt.IsZero() {
+		t := a.session.MFAVerifiedAt.Add(window)
 		out.StepUpFreshUntil = &t
 	}
 	writeJSON(w, http.StatusOK, out)
-}
-
-// stepUpWindow: the master realm's step-up max age.
-func (s *Server) stepUpWindow(ctx context.Context, a *adminContext) time.Duration {
-	view, err := s.d.Admin.MFAPolicies(ctx, a.master)
-	if err != nil || view.StepUpMaxAgeMinutes <= 0 {
-		return 10 * time.Minute
-	}
-	return time.Duration(view.StepUpMaxAgeMinutes) * time.Minute
 }
 
 // --- realms ---------------------------------------------------------------------
@@ -156,13 +157,31 @@ type dashboardResponse struct {
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	realm := realmFrom(r)
+	// The infrastructure checks run while the numbers load, not after them.
+	infra := make(chan []healthLine, 1)
+	go func() { infra <- s.cachedHealth(r.Context()) }()
 	d, err := s.d.Admin.Dashboard(r.Context(), realm)
+	health := <-infra
 	if err != nil {
 		writeServiceError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, dashboardResponse{Dashboard: d, Infrastructure: s.health(r.Context()),
+	writeJSON(w, http.StatusOK, dashboardResponse{Dashboard: d, Infrastructure: health,
 		Realm: s.realmDetail(mustRealmView(realm))})
+}
+
+// cachedHealth: the last results if younger than healthCacheTTL. The checks
+// do not stop when the request that started them is cancelled: their result
+// is shared with the next callers.
+func (s *Server) cachedHealth(ctx context.Context) []healthLine {
+	s.healthCache.mu.Lock()
+	defer s.healthCache.mu.Unlock()
+	if s.healthCache.lines != nil && s.now().Sub(s.healthCache.at) < healthCacheTTL {
+		return s.healthCache.lines
+	}
+	s.healthCache.lines = s.health(context.WithoutCancel(ctx))
+	s.healthCache.at = s.now()
+	return s.healthCache.lines
 }
 
 func mustRealmView(r *domain.Realm) service.RealmView {
@@ -197,7 +216,6 @@ func (s *Server) health(ctx context.Context) []healthLine {
 	return out
 }
 
-// --- signing keys (moved from the public server, Step 8 / 11) ------------------
 
 type keyView struct {
 	Kid         string     `json:"kid"`
@@ -214,10 +232,7 @@ type keyView struct {
 // toKeyView: never kms_key_reference (internal pointer into the KMS).
 func toKeyView(k *domain.SigningKey) keyView {
 	v := keyView{Kid: k.Kid, KeyType: string(k.KeyType), Purpose: string(k.Purpose), Status: string(k.Status),
-		KMSBackend: k.KMSBackend, CreatedAt: k.CreatedAt, Algorithm: "RS256"}
-	if k.KeyType == domain.SigningKeyEC {
-		v.Algorithm = "ES256"
-	}
+		KMSBackend: k.KMSBackend, CreatedAt: k.CreatedAt, Algorithm: keyAlgorithm(k.KeyType)}
 	if !k.RetireAfter.IsZero() {
 		t := k.RetireAfter
 		v.RetireAfter = &t
@@ -227,6 +242,19 @@ func toKeyView(k *domain.SigningKey) keyView {
 		v.RetiredAt = &t
 	}
 	return v
+}
+
+// keyAlgorithm: the JOSE name of what the key does. AES keys are not signing
+// keys: they encrypt data at rest (envelope encryption of MFA secrets).
+func keyAlgorithm(t domain.SigningKeyType) string {
+	switch t {
+	case domain.SigningKeyEC:
+		return "ES256"
+	case domain.SigningKeyAES:
+		return "A256GCM"
+	default:
+		return "RS256"
+	}
 }
 
 func toKeyViews(keys []*domain.SigningKey) []keyView {

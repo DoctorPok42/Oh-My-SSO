@@ -13,7 +13,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 10: what refresh token rotation relies on in Postgres.
 func TestTokenRepository_RefreshRotation_Integration(t *testing.T) {
 	f := newRBACFixture(t)
 	tokens := entstore.NewTokenRepository(f.client)

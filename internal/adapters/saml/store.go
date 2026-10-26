@@ -57,8 +57,6 @@ type pendingRequest struct {
 	BrowserHash string    `json:"browser_hash"`
 	CreatedAt   time.Time `json:"created_at"`
 
-	// Consent page on screen (Step 13): SHA-256 of its one-time token, and
-	// the items it shows (what "Allow" grants).
 	ConsentTokenHash string             `json:"consent_token_hash,omitempty"`
 	ConsentItems     []core.ConsentItem `json:"consent_items,omitempty"`
 }

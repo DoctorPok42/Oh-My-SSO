@@ -1,13 +1,3 @@
-// Package passkey is the WebAuthn engine of Oh-My-SSO (Step 9b), built on
-// github.com/go-webauthn/webauthn. It implements service.PasskeyProvider.
-//
-// It lives outside internal/core because go-webauthn imports net/http, and
-// the core must stay free of HTTP (make check-core-deps). The core only
-// exchanges JSON (what the browser sends and receives) and opaque state
-// with it.
-//
-// Library: https://pkg.go.dev/github.com/go-webauthn/webauthn/webauthn
-// Spec:    https://www.w3.org/TR/webauthn-3/
 package passkey
 
 import (

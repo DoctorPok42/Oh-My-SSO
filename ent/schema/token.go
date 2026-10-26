@@ -20,10 +20,6 @@ const (
 	TokenAccessToken  TokenType = "access_token"
 	TokenRefreshToken TokenType = "refresh_token"
 	TokenIDToken      TokenType = "id_token"
-	// TokenSAMLSession (Step 11): "this SAML client received an assertion
-	// for this session". It is the client's session at the IdP: its jti is
-	// the SessionIndex the client knows, its subject the NameID it got.
-	// Single Logout reads these rows to know who else must be logged out.
 	TokenSAMLSession TokenType = "saml_session"
 )
 
@@ -43,11 +39,6 @@ func (Token) Fields() []ent.Field {
 		field.Bool("revoked").Default(false),
 		field.JSON("scopes", []string{}).Optional(),
 
-		// --- OIDC (Step 10) ---
-		// TokenHash is the SHA-256 of an opaque token (refresh tokens), the
-		// same idea as Session.token_hash: the database never sees the token
-		// itself, so a dump cannot be replayed. Empty for JWT access tokens,
-		// which are found by their jti.
 		field.String("token_hash").Optional().Unique().Immutable().Sensitive(),
 		// FamilyID groups every token born from one authorization: the code
 		// exchange and all the refreshes that follow. A replayed refresh token
@@ -57,11 +48,6 @@ func (Token) Fields() []ent.Field {
 		// (rotation). Presenting it again is a replay.
 		field.Time("used_at").Optional().Nillable(),
 
-		// --- Session participants (Step 11) ---
-		// Subject is the identifier the client received for the user (SAML
-		// NameID; later the OIDC "sub" for back-channel logout), and
-		// SubjectFormat its format (SAML NameID Format URI). A logout message
-		// sent to the client must repeat them exactly.
 		field.String("subject").Optional().Immutable(),
 		field.String("subject_format").Optional().Immutable(),
 	}

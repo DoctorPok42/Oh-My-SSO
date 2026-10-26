@@ -10,12 +10,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// --- Consent (Step 13) ------------------------------------------------------
-//
-// The three primitives delegate to ConsentService (consent.go). Without it
-// (an IdentityCore built for the tests of earlier steps), clients that need
-// consent fail closed: no assertion is better than one the user never
-// approved.
 
 func (s *IdentityCoreService) CheckConsent(ctx context.Context, c core.ConsentCheck) (*core.ConsentDecision, error) {
 	if s.consent != nil {

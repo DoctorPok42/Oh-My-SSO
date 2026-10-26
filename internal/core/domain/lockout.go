@@ -2,12 +2,6 @@ package domain
 
 import "time"
 
-// LockoutState is the account lockout bookkeeping of one login identity
-// (Step 12): a known user (columns of the users table) or an identifier
-// that matches no account (kept in Valkey, so that both behave the same and
-// a lock never reveals whether an account exists).
-//
-// Zero times mean "never".
 type LockoutState struct {
 	// FailedCount: wrong passwords in a row inside the observation window.
 	FailedCount  int

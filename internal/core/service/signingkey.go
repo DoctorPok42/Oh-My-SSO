@@ -22,27 +22,18 @@ import (
 )
 
 var (
-	// ErrDigestSigningUnsupported: the KeyManager backend cannot sign a
-	// digest computed by the caller (keymanager.DigestSigner), which SAML
-	// needs (Step 11). The three real backends can.
 	ErrDigestSigningUnsupported = errors.New("service: the key manager backend cannot sign a digest (needed for SAML)")
 	// ErrSAMLKeyMustBeRSA: RSA-SHA256 is the only signature algorithm every
 	// SAML service provider supports, so saml_signing keys are RSA.
 	ErrSAMLKeyMustBeRSA = errors.New("service: saml_signing keys must be RSA")
 )
 
-// samlCertificateValidity of the self-signed certificate of a SAML key. Its
-// dates are not what ends the key's life: rotation does (Step 11). They only
-// have to cover the life of the key, and many service providers refuse an
-// expired IdP certificate, so they are generous.
 const samlCertificateValidity = 10 * 365 * 24 * time.Hour
 
 type GenerateSigningKeyParams struct {
 	RealmID string
 	KeyType domain.SigningKeyType
 	Purpose domain.SigningKeyPurpose
-	// Status of the new key. Empty means "active". Step 11 creates SAML keys
-	// "pending" (published first, signing later).
 	Status domain.SigningKeyStatus
 	// Now is the clock used for the certificate dates (nil: time.Now).
 	Now func() time.Time

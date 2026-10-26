@@ -49,6 +49,7 @@ type accessClaims struct {
 	JTI       string       `json:"jti"`
 	ClientID  string       `json:"client_id"`
 	SessionID string       `json:"sid"`
+	Entitlements []string `json:"entitlements"`
 }
 
 // audience accepts "aud" as a string or an array of strings (RFC 7519 §4.1.3).

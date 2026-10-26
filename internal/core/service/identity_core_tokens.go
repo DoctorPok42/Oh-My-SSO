@@ -15,9 +15,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Token primitives for the protocol adapters (Step 10). Format-agnostic: the
-// core records which tokens exist and how long they live; the OIDC adapter
-// turns the records into JWTs.
 
 const (
 	// Used when the client row has no usable value.

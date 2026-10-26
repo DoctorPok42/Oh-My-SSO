@@ -26,7 +26,6 @@ import (
 	"sso.internal/sso/internal/storage/memstore"
 )
 
-// Step 8 - JWKS endpoint, tested through real HTTP requests on the router.
 
 type jwksRealms struct {
 	repository.RealmRepository // nil: any other method panics, on purpose
@@ -111,9 +110,6 @@ func (f *jwksFixture) fetchJWKS(t *testing.T) jwks.Set {
 	return set
 }
 
-// signJWT builds a real compact JWS (RFC 7515) "header.payload.signature"
-// with the realm's current Signer - exactly what the OIDC adapter will do at
-// Step 10. Only the KMS holds the private key: we just get a signature back.
 func (f *jwksFixture) signJWT(t *testing.T, sub string) string {
 	t.Helper()
 	ctx := context.Background()
@@ -168,8 +164,6 @@ func verifyJWT(token string, set jwks.Set) error {
 
 func b64(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }
 
-// Definition of Done of Step 8: a token signed with the old key stays
-// verifiable during the grace period, and stops being verifiable after it.
 func TestJWKS_TokenSignedWithOldKeyVerifiesDuringGracePeriod(t *testing.T) {
 	f := newJWKSFixture(t)
 	oldKey := f.rotate(t)

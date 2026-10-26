@@ -15,24 +15,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Password reset (Step 12), following the OWASP Forgot Password Cheat Sheet:
-// https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html
-//
-//	POST /auth/forgot-password {identifier}
-//	  └─► always "202 Accepted", same body, same time: the answer never
-//	      says whether the account exists. In the background:
-//	      RequestReset ─► random token (256 bits), SHA-256 stored,
-//	                      single use, expires (realm's password_reset_ttl_minutes)
-//	                  ─► e-mail with  PUBLIC_URL/r/<realm>/auth/reset-password#token=...
-//
-//	POST /auth/reset-password {token, password}
-//	  └─► ResetPassword ─► token valid? policy OK? ─► new Argon2id hash
-//	                    ─► ALL sessions revoked (reason "password_reset")
-//	                    ─► lockout cleared, other links cancelled
-//	                    ─► "password changed" e-mail
-//
-// After a reset the user signs in again, second factor included: access to
-// a mailbox must never be enough to get past MFA.
 
 var (
 	// ErrResetTokenInvalid covers unknown, expired and already used tokens,
@@ -179,14 +161,6 @@ func (s *PasswordResetService) RequestReset(ctx context.Context, in RequestReset
 	return nil
 }
 
-// IssueActivationToken (Step 14) creates a one-time "choose your password"
-// token for an account an admin (or `idp-admin bootstrap`) just created. It
-// is a reset token like any other: same table, same page, same rules. It
-// works once, expires after ttl, and cancels the user's earlier unused
-// links. It sends nothing: the caller e-mails the link (invitation) or
-// shows it once to whoever created the account.
-//
-// issuedBy is written to the audit log ("user:<admin id>", "cli:root@host").
 func (s *PasswordResetService) IssueActivationToken(ctx context.Context, user *domain.User, ttl time.Duration, issuedBy string) (string, time.Time, error) {
 	if ttl <= 0 {
 		return "", time.Time{}, errors.New("password reset: activation link lifetime must be positive")

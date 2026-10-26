@@ -22,8 +22,6 @@ func TestFilterRequestedScopes_DefaultScopes(t *testing.T) {
 		"is_default never grants: the scope must be effective (RBAC) first")
 }
 
-// Step 14: a scope the client maps as "required" comes without being asked
-// for, like is_default, but only for that client, and never grants.
 func TestFilterRequestedScopes_RequiredScopes(t *testing.T) {
 	groups := &domain.ClientScope{ID: "s-groups", Name: "groups"}
 	dept := &domain.ClientScope{ID: "s-dept", Name: "department"}

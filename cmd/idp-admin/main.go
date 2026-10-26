@@ -1,12 +1,3 @@
-// Command idp-admin is the admin side of Oh-My-SSO (Step 14). It runs on
-// the restricted admin network, never next to end users:
-//
-//	idp-admin [serve]                 the Admin API, for the admin console (admin/)
-//	idp-admin bootstrap ...           first start: master realm, admin console client, first admin
-//	idp-admin recover admin ...       break-glass: a NEW admin account when every admin lost access
-//	idp-admin recover client-secret   break-glass: a new secret for the admin console
-//
-// It shares the core and the database with cmd/idp (internal/app).
 package main
 
 import (
@@ -24,6 +15,7 @@ import (
 
 	"sso.internal/sso/internal/adminapi"
 	"sso.internal/sso/internal/app"
+	valkeycache "sso.internal/sso/internal/cache/valkey"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/notify"
 )
@@ -39,6 +31,7 @@ environment (besides DATABASE_URL, VALKEY_ADDR, KEYMANAGER_BACKEND... shared wit
   ADMIN_API_ALLOWED_CIDRS   who may call it, e.g. 10.0.2.15/32,10.0.3.0/24 (required in production)
   ADMIN_PANEL_URL           URL of the admin console (default http://localhost:3000)
   IDP_INTERNAL_URL          how this server reaches idp, for the dashboard (default http://localhost:$PORT)
+  ADMIN_API_LOG_REQUESTS    true: log every call with its duration (slow calls, 500 ms and more, always are)
 `
 
 func main() {
@@ -89,10 +82,11 @@ func serve() {
 		}
 	}
 
-	api := adminapi.New(adminapi.Config{PublicURL: c.PublicURL, AllowedNets: nets, KMSBackend: c.KMSBackend}, adminapi.Deps{
+	api := adminapi.New(adminapi.Config{PublicURL: c.PublicURL, AllowedNets: nets, KMSBackend: c.KMSBackend,
+		LogRequests: os.Getenv("ADMIN_API_LOG_REQUESTS") == "true"}, adminapi.Deps{
 		Admin: c.AdminService(), Realms: c.Realms, Users: c.Users, Clients: c.Clients, Tokens: c.Tokens,
 		Sessions: c.Sessions, RBAC: c.RBAC, MFA: c.MFA, Keys: c.IdentityCore, KeyRotation: c.KeyRotation,
-		Health: healthChecks(c), TestEmail: testEmail,
+		Health: healthChecks(c), TestEmail: testEmail, Rights: valkeycache.NewRightsEpoch(c.Valkey),
 	})
 
 	srv := &http.Server{Addr: addr, Handler: api.Router(), ReadHeaderTimeout: 10 * time.Second}

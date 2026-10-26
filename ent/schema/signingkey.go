@@ -37,10 +37,6 @@ const (
 type SigningKeyStatus string
 
 const (
-	// SigningKeyPending (Step 11, saml_signing only): the key is already
-	// published (SAML metadata) but does not sign yet. SAML clients often
-	// copy the IdP certificate by hand: publishing it first gives them time
-	// to add the new one before it is used.
 	SigningKeyPending  SigningKeyStatus = "pending"
 	SigningKeyActive   SigningKeyStatus = "active"
 	SigningKeyRotating SigningKeyStatus = "rotating"
@@ -71,10 +67,6 @@ func (SigningKey) Fields() []ent.Field {
 		// of recomputing it) means changing the realm setting later never
 		// shortens the grace period of a key that is already rotating.
 		field.Time("retire_after").Optional(),
-		// certificate (Step 11): self-signed X.509 certificate of the key, in
-		// PEM. SAML publishes keys as certificates, never as bare keys. It is
-		// signed by the KMS once, when the key is created, so the private key
-		// never leaves the KMS. Empty for jwt_signing keys.
 		field.Text("certificate").Optional().Immutable(),
 	}
 }

@@ -25,7 +25,10 @@ import (
 //     not revoked;
 //  4. the session behind it (claim "sid") is still active: revoking an
 //     admin's session cuts the API at once. Each call counts as activity;
-//  5. RBAC: the admin holds the permission of the route on "sso-admin";
+//  5. RBAC: the admin holds the permission of the route on "sso-admin":
+//     read from the token's "entitlements" while nothing changed in the
+//     master realm since it was issued, from the database otherwise
+//     (rights.go);
 //  6. for every change: a second factor verified less than
 //     mfa_step_up_max_age_minutes ago (10 by default). Otherwise
 //     403 {"error":"step_up_required"}: the console sends the admin through
@@ -36,6 +39,7 @@ type ctxKey int
 const (
 	ctxAdmin ctxKey = iota
 	ctxRealm
+	ctxRealmLookup // *lookups: the realm of the URL, read with the auth checks
 )
 
 // adminContext: what the auth chain learned about the caller.
@@ -45,6 +49,10 @@ type adminContext struct {
 	session *domain.Session
 	master  *domain.Realm
 	client  *domain.ClientApp // sso-admin
+	// rights: the token's entitlements, used only when rightsFromToken
+	// (nothing changed in the master realm since the token was issued).
+	rights          []string
+	rightsFromToken bool
 }
 
 func adminFrom(r *http.Request) *adminContext {
@@ -102,16 +110,7 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 			writeError(w, http.StatusUnauthorized, "invalid_token", "the session ended: sign in again")
 		}
 
-		master, err := s.d.Realms.GetByName(ctx, service.MasterRealmName)
-		if errors.Is(err, repository.ErrNotFound) {
-			writeError(w, http.StatusServiceUnavailable, "not_bootstrapped", "run `idp-admin bootstrap` first")
-			return
-		}
-		if err != nil {
-			writeServiceError(w, r, err)
-			return
-		}
-		client, err := s.d.Clients.GetByRealmAndClientID(ctx, master.ID, domain.InternalAdminClientID)
+		master, client, err := s.adminIdentity(ctx)
 		if errors.Is(err, repository.ErrNotFound) {
 			writeError(w, http.StatusServiceUnavailable, "not_bootstrapped", "run `idp-admin bootstrap` first")
 			return
@@ -130,32 +129,75 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 			writeServiceError(w, r, err)
 			return
 		}
-		tok, err := s.d.Tokens.GetByJTI(ctx, claims.JTI)
-		if err != nil || tok.Type != domain.TokenAccessToken || tok.Revoked || tok.ClientRefID != client.ID ||
+
+		// The signature is valid: the reads below are independent, so they
+		// run at the same time (one database round trip of waiting instead
+		// of five in a row). Every check is still made, in the same order.
+		l := s.lookup(ctx, r, claims)
+
+		tok := l.token
+		if l.tokenErr != nil || tok.Type != domain.TokenAccessToken || tok.Revoked || tok.ClientRefID != client.ID ||
 			!s.now().Before(tok.ExpiresAt) || tok.SessionID != claims.SessionID {
 			unauthorized()
 			return
 		}
-		sess, err := s.d.Sessions.TouchActive(ctx, claims.SessionID)
-		if err != nil || sess.RealmID != master.ID {
+		sess := l.session
+		if l.sessionErr != nil || sess.RealmID != master.ID {
 			unauthorized()
 			return
 		}
-		user, err := s.d.Users.GetByID(ctx, sess.UserID)
-		if err != nil || user.Status != domain.UserActive || user.DeletedAt != nil {
+		user := l.user
+		if l.userErr != nil || user.ID != sess.UserID {
+			// "sub" is the user id for the console (public subject). If it
+			// ever is not, read the session's user, as before.
+			if user, err = s.d.Users.GetByID(ctx, sess.UserID); err != nil {
+				unauthorized()
+				return
+			}
+		}
+		if user.Status != domain.UserActive || user.DeletedAt != nil {
 			unauthorized()
 			return
 		}
+		// Every check passed: the call counts as activity on the session.
+		s.d.Sessions.Touch(ctx, sess)
 
 		a := &adminContext{
 			actor: service.AdminActor{UserID: user.ID, Username: user.Username, RealmID: master.ID,
 				IPAddress: s.clientIP(r), UserAgent: s.clientUA(r)},
 			user: user, session: sess, master: master, client: client,
 		}
+		a.rights, a.rightsFromToken = l.rights, l.rightsFromToken
 		ctx = context.WithValue(ctx, ctxAdmin, a)
+		if l.realmName != "" {
+			ctx = context.WithValue(ctx, ctxRealmLookup, &l)
+		}
 		ctx = audit.WithActor(ctx, audit.Actor{UserID: user.ID, RealmID: master.ID})
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// adminIdentity: the master realm and the "sso-admin" client. Their rows
+// are read at most once a minute instead of on every call (two database
+// round trips saved per request). Only their ids matter here, and ids never
+// change; what can change (the client being disabled, a user's rights) is
+// checked fresh on every call by the RBAC step.
+func (s *Server) adminIdentity(ctx context.Context) (*domain.Realm, *domain.ClientApp, error) {
+	s.identity.mu.Lock()
+	defer s.identity.mu.Unlock()
+	if s.identity.master != nil && s.now().Sub(s.identity.at) < identityCacheTTL {
+		return s.identity.master, s.identity.client, nil
+	}
+	master, err := s.d.Realms.GetByName(ctx, service.MasterRealmName)
+	if err != nil {
+		return nil, nil, err
+	}
+	client, err := s.d.Clients.GetByRealmAndClientID(ctx, master.ID, domain.InternalAdminClientID)
+	if err != nil {
+		return nil, nil, err
+	}
+	s.identity.master, s.identity.client, s.identity.at = master, client, s.now()
+	return master, client, nil
 }
 
 // clientIP / clientUA: the admin's own browser, as forwarded by the admin
@@ -181,11 +223,17 @@ func (s *Server) clientUA(r *http.Request) string {
 	return r.UserAgent()
 }
 
-// require checks one permission ("client", "write") on the sso-admin client.
+// require checks one permission ("client", "write") on the sso-admin client:
+// from the token when it may be trusted, otherwise (and before any refusal)
+// with the RBAC service, which reads the database and audits a refusal.
 func (s *Server) require(resource, action string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			a := adminFrom(r)
+			if a.may(resource, action) {
+				next.ServeHTTP(w, r)
+				return
+			}
 			err := s.d.RBAC.Authorize(r.Context(), service.AuthorizeInput{
 				RealmID: a.master.ID, UserID: a.user.ID, ClientRef: a.client.ID,
 				Resource: resource, Action: action, IPAddress: a.actor.IPAddress, UserAgent: a.actor.UserAgent,
@@ -211,11 +259,10 @@ type stepUpBody struct {
 	MaxAgeSeconds int      `json:"max_age_seconds"`
 }
 
-// stepUp: every change needs a recent second factor (step 6).
 func (s *Server) stepUp(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a := adminFrom(r)
-		err := s.d.MFA.CheckStepUp(r.Context(), a.session, service.StepUpSensitiveAction)
+		_, err := s.d.MFA.CheckStepUpFor(r.Context(), a.session, a.user, service.StepUpSensitiveAction)
 		var su *service.StepUpRequiredError
 		switch {
 		case err == nil:
@@ -241,7 +288,17 @@ func (s *Server) stepUp(next http.Handler) http.Handler {
 // administered, and re-enabled).
 func (s *Server) loadRealm(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		realm, err := s.d.Admin.RealmByName(r.Context(), chi.URLParam(r, "realm"))
+		name := chi.URLParam(r, "realm")
+		var (
+			realm *domain.Realm
+			err   error
+		)
+		// Already read by authenticate, at the same time as the token.
+		if l, ok := r.Context().Value(ctxRealmLookup).(*lookups); ok && l.realmName == name {
+			realm, err = l.realm, l.realmErr
+		} else {
+			realm, err = s.d.Admin.RealmByName(r.Context(), name)
+		}
 		if err != nil {
 			writeServiceError(w, r, err)
 			return

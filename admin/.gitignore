@@ -1,0 +1,24 @@
+# dependencies
+/node_modules
+
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# tests
+/coverage
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/e2e/.state/
+
+# secrets: copy .env.example to .env.local
+.env*.local
+.env
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*

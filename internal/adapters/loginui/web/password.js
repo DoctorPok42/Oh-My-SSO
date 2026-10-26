@@ -1,12 +1,3 @@
-// "Forgot password" and "choose a new password" pages (Step 12).
-//
-//   forgot   POST {base}/auth/forgot-password  {identifier}       → always 202
-//   reset    POST {base}/auth/reset-password   {token, password}  → 200 or error
-//
-// The reset token is read from the URL fragment (#token=...): browsers never
-// send the fragment to the server, so the token cannot leak into access
-// logs or a Referer header. Right after reading it, the fragment is removed
-// from the address bar (and from history) with history.replaceState.
 (() => {
   "use strict";
   const $ = (id) => document.getElementById(id);

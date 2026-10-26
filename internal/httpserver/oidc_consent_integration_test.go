@@ -19,10 +19,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 13 Definition of Done, end to end through the OIDC login page: the
-// consent screen is shown once for the same scopes, again when a new scope
-// appears, never for a client without require_consent (unless it sends
-// prompt=consent), and a revocation ends the client's access.
 
 var reConsentAction = regexp.MustCompile(`<form method="post" action="([^"]*)">`)
 
@@ -81,7 +77,6 @@ func TestOIDC_Integration_Consent(t *testing.T) {
 		return n
 	}
 
-	// One browser, one password: the Step 4 rate limit counts logins.
 	b := e.newBrowser(t)
 	var first *oauth2.Token
 

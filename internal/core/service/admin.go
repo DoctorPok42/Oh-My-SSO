@@ -14,19 +14,7 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Admin operations (Step 14). The Admin API (internal/adminapi, served by
-// cmd/idp-admin) is a thin HTTP layer over this service: every rule lives
-// here, testable without HTTP.
-//
-// Who acts: an administrator, i.e. a user of the "master" realm signed in to
-// the admin console (OIDC client "sso-admin"). What they act on: any realm,
-// master included. Every change writes an AuditLog entry in the realm it
-// changes, with the administrator as the actor (user_id) and
-// details.admin_realm = "master": each realm's log tells the whole story of
-// that realm, admin actions included.
 
-// MasterRealmName is the system realm of the admin console. Its name is
-// reserved: RealmRepository.Create refuses it.
 const MasterRealmName = "master"
 
 // AdminActor is the administrator behind an Admin API call.
@@ -299,22 +287,12 @@ type NameRef struct {
 	Name string `json:"name"`
 }
 
-func (s *AdminService) roleRefs(ctx context.Context, ids []string) []NameRef {
+// namedRefs: ids with their already loaded names, sorted by name.
+func namedRefs(ids []string, names map[string]string) []NameRef {
 	out := make([]NameRef, 0, len(ids))
 	for _, id := range ids {
-		if r, err := s.d.Roles.GetByID(ctx, id); err == nil {
-			out = append(out, NameRef{ID: r.ID, Name: r.Name})
-		}
-	}
-	slices.SortFunc(out, func(a, b NameRef) int { return strings.Compare(a.Name, b.Name) })
-	return out
-}
-
-func (s *AdminService) groupRefs(ctx context.Context, ids []string) []NameRef {
-	out := make([]NameRef, 0, len(ids))
-	for _, id := range ids {
-		if g, err := s.d.Groups.GetByID(ctx, id); err == nil {
-			out = append(out, NameRef{ID: g.ID, Name: g.Name})
+		if n, ok := names[id]; ok {
+			out = append(out, NameRef{ID: id, Name: n})
 		}
 	}
 	slices.SortFunc(out, func(a, b NameRef) int { return strings.Compare(a.Name, b.Name) })

@@ -15,14 +15,7 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Users in the Admin API (Step 14): list, invite, change, suspend, delete,
-// memberships, effective rights (read-only), MFA (read-only + reset).
-//
-// Rights never come from the user screen itself: the only way to change
-// what a user may do is to add them to a group or give them a role (spec
-// "Users & Roles"). The effective rights are shown, never edited.
 
-// InviteActivationTTL: lifetime of an invitation link.
 const InviteActivationTTL = 7 * 24 * time.Hour
 
 var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._@+-]{0,127}$`)
@@ -139,8 +132,9 @@ func (s *AdminService) summaries(ctx context.Context, users []*domain.User) ([]U
 			ID: u.ID, Username: u.Username, Email: u.Email, Name: displayName(u), Status: u.Status,
 			HasPassword: u.PasswordHash != "", MFAEnrolled: mfa[u.ID], Locked: u.Lockout.LockedAt(now),
 			CreatedAt: u.CreatedAt,
-			Groups:    s.groupRefs(ctx, members[u.ID].GroupIDs),
-			Roles:     s.roleRefs(ctx, members[u.ID].RoleIDs),
+			// Names loaded with the memberships: no query per group or role.
+			Groups: namedRefs(members[u.ID].GroupIDs, members[u.ID].Names),
+			Roles:  namedRefs(members[u.ID].RoleIDs, members[u.ID].Names),
 		}
 		if t, ok := last[u.ID]; ok {
 			sum.LastLoginAt = &t

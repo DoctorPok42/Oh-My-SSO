@@ -14,12 +14,7 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Clients (OIDC and SAML applications) in the Admin API (Step 14). The
-// validation rules are those of OIDCClientService / SAMLClientService (the
-// CLI uses the same ones): this file only maps the admin console's forms
-// onto them, and handles grants by id.
 
-// ClientSummary: a row of the clients table.
 type ClientSummary struct {
 	ID        string                   `json:"id"`
 	Name      string                   `json:"name"`
@@ -180,8 +175,8 @@ func (s *AdminService) clientView(ctx context.Context, c *domain.ClientApp) (Cli
 		MFAPolicy:      string(c.MFAPolicy),
 		MFAMethods:     methodNames(c.MFAAllowedMethods),
 		ClientScopes:   []ClientScopeChoice{},
-		AllowedRoles:   s.roleRefs(ctx, grants.RoleIDs),
-		AllowedGroups:  s.groupRefs(ctx, grants.GroupIDs),
+		AllowedRoles:   namedRefs(grants.RoleIDs, grants.Names),
+		AllowedGroups:  namedRefs(grants.GroupIDs, grants.Names),
 		Mappings:       c.AttributeMappings,
 	}
 	if v.MFAPolicy == "" {
@@ -194,8 +189,8 @@ func (s *AdminService) clientView(ctx context.Context, c *domain.ClientApp) (Cli
 		v.Mappings = map[string]interface{}{}
 	}
 	for _, m := range grants.Scopes {
-		if cs, err := s.d.Scopes.GetByID(ctx, m.ClientScopeID); err == nil {
-			v.ClientScopes = append(v.ClientScopes, ClientScopeChoice{ID: cs.ID, Name: cs.Name, Protocol: string(cs.Protocol), Required: m.Required})
+		if m.Name != "" { // loaded with the mapping
+			v.ClientScopes = append(v.ClientScopes, ClientScopeChoice{ID: m.ClientScopeID, Name: m.Name, Protocol: m.Protocol, Required: m.Required})
 		}
 	}
 	slices.SortFunc(v.ClientScopes, func(a, b ClientScopeChoice) int { return strings.Compare(a.Name, b.Name) })

@@ -1,39 +1,17 @@
-// Package adminapi is the Admin API (Step 14), served by cmd/idp-admin on
-// the restricted admin network and called only by the admin console's
-// server (Next.js, admin/). Every rule lives in service.AdminService; this
-// package does HTTP: authentication, permissions, step-up, JSON.
-//
-// Routes (all JSON, under /api/v1):
-//
-//	GET    /me                                     who am I, what may I do
-//	GET    /realms                                 realm switcher
-//	POST   /realms                                 + new realm
-//	GET    /realms/{realm}                         one realm
-//	PATCH  /realms/{realm}                         rename, enable/disable
-//	GET    /realms/{realm}/dashboard               KPIs + infrastructure health
-//	...    /realms/{realm}/clients                 OIDC and SAML clients
-//	...    /realms/{realm}/client-scopes           client scopes and claim mappers
-//	...    /realms/{realm}/sessions                active sessions, revocation
-//	GET    /realms/{realm}/audit-logs              audit log with filters
-//	...    /realms/{realm}/users                   users (invite, groups, MFA reset...)
-//	...    /realms/{realm}/roles|groups|permissions
-//	...    /realms/{realm}/signing-keys            list, rotate, activate, retire
-//	...    /realms/{realm}/mfa-policies            realm, role and client policies
-//	...    /realms/{realm}/settings                realm settings, test e-mail
-//	GET    /realms/{realm}/timeouts                read-only for now
-//
-// GET /health answers 200 without authentication (container healthcheck).
 package adminapi
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
 )
@@ -49,12 +27,18 @@ type Config struct {
 	// one process; keys created here could never sign on the public server,
 	// so rotations are refused.
 	KMSBackend string
-	Now        func() time.Time
+	// LogRequests: log every call with its duration (slow ones always are).
+	LogRequests bool
+	Now         func() time.Time
 }
 
 // Authorizer is the RBAC check (service.RBACService).
 type Authorizer interface {
+	// Authorize checks one permission; a refusal is written to the audit log.
 	Authorize(ctx context.Context, in service.AuthorizeInput) error
+	// GetEffectivePermissions lists every permission at once, without audit
+	// entries: GET /me asks "what may I do", it does not attempt anything.
+	GetEffectivePermissions(ctx context.Context, userID, clientRef string) ([]*domain.Permission, error)
 }
 
 // HealthCheck is one line of the dashboard's infrastructure status.
@@ -79,6 +63,9 @@ type Deps struct {
 	Health      []HealthCheck
 	// TestEmail sends the "test" e-mail; nil when e-mail is off.
 	TestEmail func(ctx context.Context, to string) error
+	// Rights: when the master realm last changed, shared by every idp-admin
+	// process (rights.go). nil: kept in this process only.
+	Rights RightsEpoch
 }
 
 // Server is the Admin API.
@@ -87,7 +74,26 @@ type Server struct {
 	d        Deps
 	verifier *tokenVerifier
 	router   *chi.Mux
+
+	identity struct { // see adminIdentity
+		mu     sync.Mutex
+		master *domain.Realm
+		client *domain.ClientApp
+		at     time.Time
+	}
+	healthCache struct { // see cachedHealth
+		mu    sync.Mutex
+		lines []healthLine
+		at    time.Time
+	}
 }
+
+const (
+	identityCacheTTL = time.Minute
+	// healthCacheTTL: the dashboard's infrastructure checks (a real signature
+	// by the KMS, a call to idp, an SMTP connection...) run at most this often.
+	healthCacheTTL = 15 * time.Second
+)
 
 func (s *Server) now() time.Time { return s.cfg.Now() }
 
@@ -96,6 +102,9 @@ func New(cfg Config, d Deps) *Server {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
+	if d.Rights == nil {
+		d.Rights = &memoryEpoch{at: cfg.Now()}
+	}
 	s := &Server{cfg: cfg, d: d, router: chi.NewRouter()}
 	s.verifier = &tokenVerifier{keys: d.Keys, issuer: trimSlash(cfg.PublicURL) + "/r/" + service.MasterRealmName,
 		audience: "sso-admin", now: cfg.Now}
@@ -103,6 +112,7 @@ func New(cfg Config, d Deps) *Server {
 	r := s.router
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
+	r.Use(s.logSlow)
 	r.Use(securityHeaders)
 	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -119,7 +129,7 @@ func New(cfg Config, d Deps) *Server {
 			r.Use(s.loadRealm)
 			read := func(res string) func(http.Handler) http.Handler { return s.require(res, "read") }
 			write := func(res, action string) chi.Middlewares {
-				return chi.Middlewares{s.require(res, action), s.stepUp}
+				return chi.Middlewares{s.require(res, action), s.stepUp, s.recordRightsChange}
 			}
 
 			r.With(read("realm")).Get("/", s.handleGetRealm)
@@ -193,6 +203,28 @@ func New(cfg Config, d Deps) *Server {
 
 // Router is the HTTP handler of the Admin API.
 func (s *Server) Router() http.Handler { return s.router }
+
+// slowRequest: a call slower than this is logged (WARN) with its duration,
+// to find what makes a console page slow. ADMIN_API_LOG_REQUESTS=true
+// (Config.LogRequests) logs every call.
+const slowRequest = 500 * time.Millisecond
+
+func (s *Server) logSlow(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		next.ServeHTTP(ww, r)
+		d := time.Since(start)
+		switch {
+		case d >= slowRequest:
+			slog.WarnContext(r.Context(), "admin api: slow request", "method", r.Method, "path", r.URL.Path,
+				"status", ww.Status(), "duration_ms", d.Milliseconds())
+		case s.cfg.LogRequests:
+			slog.InfoContext(r.Context(), "admin api", "method", r.Method, "path", r.URL.Path,
+				"status", ww.Status(), "duration_ms", d.Milliseconds())
+		}
+	})
+}
 
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

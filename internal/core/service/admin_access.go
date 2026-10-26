@@ -13,12 +13,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Roles, groups and permissions in the Admin API (Step 14).
-//
-// A group or a role is the ONLY place where rights are granted: its
-// permissions (internal to the IdP) and its client scopes (what goes into
-// tokens). Groups are preferred: the role screen shows
-// domain.RoleSecurityNotice (spec: "less auditable than a group at scale").
 
 var accessNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 ._:-]{0,63}$`)
 
@@ -53,17 +47,19 @@ func (s *AdminService) ListRoles(ctx context.Context, realm *domain.Realm) ([]Ac
 	if err != nil {
 		return nil, err
 	}
-	_, counts, err := s.d.Admin.MemberCounts(ctx, realm.ID)
+	// Counts and grants of every role at once: a fixed number of queries,
+	// however many roles the realm has.
+	counts, err := s.d.Admin.RoleMemberCounts(ctx, realm.ID)
+	if err != nil {
+		return nil, err
+	}
+	grants, err := s.d.Admin.RealmRoleGrants(ctx, realm.ID)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]AccessView, 0, len(roles))
 	for _, r := range roles {
-		v, err := s.roleView(ctx, r, counts[r.ID])
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, v)
+		out = append(out, roleViewOf(r, counts[r.ID], grants[r.ID]))
 	}
 	return out, nil
 }
@@ -73,39 +69,65 @@ func (s *AdminService) ListGroups(ctx context.Context, realm *domain.Realm) ([]A
 	if err != nil {
 		return nil, err
 	}
-	counts, _, err := s.d.Admin.MemberCounts(ctx, realm.ID)
+	counts, err := s.d.Admin.GroupMemberCounts(ctx, realm.ID)
+	if err != nil {
+		return nil, err
+	}
+	grants, err := s.d.Admin.RealmGroupGrants(ctx, realm.ID)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]AccessView, 0, len(groups))
 	for _, g := range groups {
-		v, err := s.groupView(ctx, g, counts[g.ID])
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, v)
+		out = append(out, groupViewOf(g, counts[g.ID], grants[g.ID]))
 	}
 	return out, nil
 }
 
-func (s *AdminService) roleView(ctx context.Context, r *domain.Role, members int) (AccessView, error) {
+// roleView: one role, after a change (its members and grants read again).
+func (s *AdminService) roleView(ctx context.Context, r *domain.Role) (AccessView, error) {
+	counts, err := s.d.Admin.RoleMemberCounts(ctx, r.RealmID)
+	if err != nil {
+		return AccessView{}, err
+	}
 	grants, err := s.d.Admin.RoleGrants(ctx, r.ID)
 	if err != nil {
 		return AccessView{}, err
 	}
-	return AccessView{ID: r.ID, Kind: "role", Name: r.Name, Description: r.Description, Status: string(r.Status),
-		ManagedBy: string(r.ManagedBy), Members: members, PermissionIDs: grants.PermissionIDs,
-		ClientScopeIDs: grants.ClientScopeIDs, CreatedAt: r.CreatedAt, Notice: domain.RoleSecurityNotice}, nil
+	return roleViewOf(r, counts[r.ID], grants), nil
 }
 
-func (s *AdminService) groupView(ctx context.Context, g *domain.Group, members int) (AccessView, error) {
+func roleViewOf(r *domain.Role, members int, grants repository.Grants) AccessView {
+	return AccessView{ID: r.ID, Kind: "role", Name: r.Name, Description: r.Description, Status: string(r.Status),
+		ManagedBy: string(r.ManagedBy), Members: members, PermissionIDs: nonNil(grants.PermissionIDs),
+		ClientScopeIDs: nonNil(grants.ClientScopeIDs), CreatedAt: r.CreatedAt, Notice: domain.RoleSecurityNotice}
+}
+
+// groupView: one group, after a change.
+func (s *AdminService) groupView(ctx context.Context, g *domain.Group) (AccessView, error) {
+	counts, err := s.d.Admin.GroupMemberCounts(ctx, g.RealmID)
+	if err != nil {
+		return AccessView{}, err
+	}
 	grants, err := s.d.Admin.GroupGrants(ctx, g.ID)
 	if err != nil {
 		return AccessView{}, err
 	}
+	return groupViewOf(g, counts[g.ID], grants), nil
+}
+
+func groupViewOf(g *domain.Group, members int, grants repository.Grants) AccessView {
 	return AccessView{ID: g.ID, Kind: "group", Name: g.Name, Description: g.Description, Status: string(g.Status),
-		ManagedBy: string(g.ManagedBy), Members: members, PermissionIDs: grants.PermissionIDs,
-		ClientScopeIDs: grants.ClientScopeIDs, CreatedAt: g.CreatedAt}, nil
+		ManagedBy: string(g.ManagedBy), Members: members, PermissionIDs: nonNil(grants.PermissionIDs),
+		ClientScopeIDs: nonNil(grants.ClientScopeIDs), CreatedAt: g.CreatedAt}
+}
+
+// nonNil: a JSON list is [] rather than null.
+func nonNil(ids []string) []string {
+	if ids == nil {
+		return []string{}
+	}
+	return ids
 }
 
 func (s *AdminService) checkAccessInput(ctx context.Context, realm *domain.Realm, in AccessInput) (perms, scopes []string, err error) {
@@ -160,7 +182,8 @@ func (s *AdminService) CreateRole(ctx context.Context, actor AdminActor, realm *
 	s.auditAdmin(ctx, actor, realm.ID, "role.create", "Role", r.ID, domain.AuditLogInfo, map[string]interface{}{
 		"name": name, "permission_ids": perms, "client_scope_ids": scopes,
 	})
-	return s.roleView(ctx, r, 0)
+	// Just created: no member, and the grants are the ones just set.
+	return roleViewOf(r, 0, repository.Grants{PermissionIDs: perms, ClientScopeIDs: scopes}), nil
 }
 
 func (s *AdminService) UpdateRole(ctx context.Context, actor AdminActor, realm *domain.Realm, id string, in AccessInput) (AccessView, error) {
@@ -218,11 +241,7 @@ func (s *AdminService) UpdateRole(ctx context.Context, actor AdminActor, realm *
 	if len(details) > 0 {
 		s.auditAdmin(ctx, actor, realm.ID, "role.update", "Role", r.ID, domain.AuditLogInfo, details)
 	}
-	_, counts, err := s.d.Admin.MemberCounts(ctx, realm.ID)
-	if err != nil {
-		return AccessView{}, err
-	}
-	return s.roleView(ctx, r, counts[r.ID])
+	return s.roleView(ctx, r)
 }
 
 func (s *AdminService) DeleteRole(ctx context.Context, actor AdminActor, realm *domain.Realm, id string) error {
@@ -265,7 +284,7 @@ func (s *AdminService) CreateGroup(ctx context.Context, actor AdminActor, realm 
 	s.auditAdmin(ctx, actor, realm.ID, "group.create", "Group", g.ID, domain.AuditLogInfo, map[string]interface{}{
 		"name": name, "permission_ids": perms, "client_scope_ids": scopes,
 	})
-	return s.groupView(ctx, g, 0)
+	return groupViewOf(g, 0, repository.Grants{PermissionIDs: perms, ClientScopeIDs: scopes}), nil
 }
 
 func (s *AdminService) UpdateGroup(ctx context.Context, actor AdminActor, realm *domain.Realm, id string, in AccessInput) (AccessView, error) {
@@ -323,11 +342,7 @@ func (s *AdminService) UpdateGroup(ctx context.Context, actor AdminActor, realm 
 	if len(details) > 0 {
 		s.auditAdmin(ctx, actor, realm.ID, "group.update", "Group", g.ID, domain.AuditLogInfo, details)
 	}
-	counts, _, err := s.d.Admin.MemberCounts(ctx, realm.ID)
-	if err != nil {
-		return AccessView{}, err
-	}
-	return s.groupView(ctx, g, counts[g.ID])
+	return s.groupView(ctx, g)
 }
 
 func (s *AdminService) DeleteGroup(ctx context.Context, actor AdminActor, realm *domain.Realm, id string) error {

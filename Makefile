@@ -385,13 +385,41 @@ dev: docker-up migrate-apply vault-enable-transit
 # Admin panel (Next.js — see admin/)
 # ------------------------------------------------------------------------------
 
-## admin-dev: Run the Next.js admin panel in development mode
+args ?=
+
+## admin-install: Install the admin console's dependencies (exact versions of package-lock.json)
+admin-install:
+	cd admin && npm ci
+
+## admin-dev: Run the Next.js admin panel in development mode (reads admin/.env.local)
 admin-dev:
 	cd admin && npm run dev
 
 ## admin-build: Build the admin panel for production
 admin-build:
 	cd admin && npm run build
+
+## admin-lint: ESLint + Prettier + TypeScript on the admin console
+admin-lint:
+	cd admin && npm run lint && npm run typecheck
+
+## admin-test: Unit tests of the admin console (Vitest)
+admin-test:
+	cd admin && npm test
+
+## admin-e2e: End-to-end tests on a throw-away stack (needs `make dev`; usage: make admin-e2e [args="-g realm"])
+admin-e2e:
+	admin/e2e/run.sh $(args)
+
+# ------------------------------------------------------------------------------
+# Docker images (Step 14) — see Dockerfile, admin/Dockerfile, compose.example.yml
+# ------------------------------------------------------------------------------
+
+## docker-build: Build the three images: idp, idp-admin, admin console
+docker-build:
+	docker build --target idp -t oh-my-sso-idp .
+	docker build --target idp-admin -t oh-my-sso-idp-admin .
+	docker build -t oh-my-sso-admin ./admin
 
 # ------------------------------------------------------------------------------
 # Cleanup
@@ -400,6 +428,7 @@ admin-build:
 ## clean: Remove binaries and test artifacts
 clean:
 	rm -rf $(GOBIN) coverage.out coverage.html
+	rm -rf admin/.next admin/test-results admin/playwright-report admin/e2e/.state
 
 .PHONY: help tools tidy generate \
 	migrate-diff migrate-apply migrate-status migrate-lint \
@@ -412,5 +441,5 @@ clean:
 	test test-integration test-all coverage \
 	lint fmt vuln check check-core-deps check-adapter-deps \
 	docker-up docker-down docker-reset docker-logs psql dev \
-	admin-dev admin-build \
+	admin-install admin-dev admin-build admin-lint admin-test admin-e2e docker-build \
 	clean

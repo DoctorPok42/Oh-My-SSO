@@ -20,17 +20,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// "idp mfa" manages second factors and MFA policies from the command line
-// (Step 9). Same services as the HTTP API: the admin panel (Step 14) and the
-// config-as-code reconciler will call the very same functions.
-//
-//	idp mfa list   --realm master --user alice
-//	idp mfa reset  --realm master --user alice --reason "lost phone"
-//	idp mfa policy show        --realm master
-//	idp mfa policy set-realm   --realm master [--required=true|false] [--step-up-max-age 10m]
-//	idp mfa policy set-client  --realm master --client my-app --policy required [--methods totp,passkey]
-//	idp mfa policy set-role    --realm master --role admin [--required] [--methods passkey] [--grace-days 7] [--step-up]
-//	idp mfa policy delete-role --realm master --role admin
 
 const mfaUsage = `usage:
   idp mfa list   --realm <name> --user <username|email>
@@ -153,7 +142,6 @@ func (e *mfaEnv) mfaService(needSessions bool) (*service.MFAService, error) {
 			entstore.NewTokenRepository(e.client),
 			valkeycache.NewSessionCache(vc),
 		)
-		// Step 12: "your two-step verification was reset" e-mail.
 		deps.Notifier = cliNotifier(e.client)
 	}
 	return service.NewMFAService(deps), nil

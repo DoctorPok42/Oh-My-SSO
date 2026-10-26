@@ -1,17 +1,3 @@
-// Package geoip finds the country of an IP address in a local MaxMind DB
-// file (.mmdb), for the "new country" signal of the sign-in analysis (Step 12).
-//
-// Nothing is sent to an online service: the database is a file on disk,
-// read with github.com/oschwald/maxminddb-golang. Two free country databases
-// use this format:
-//
-//   - DB-IP "IP to Country Lite" (CC BY 4.0, no account needed):
-//     https://db-ip.com/db/download/ip-to-country-lite
-//   - MaxMind GeoLite2 Country (free account and licence key):
-//     https://dev.maxmind.com/geoip/geolite2-free-geolocation-data
-//
-// Both are updated monthly; refresh the file now and then (a cron job).
-// Set GEOIP_DB_PATH to the .mmdb file; without it the signal is off.
 package geoip
 
 import (

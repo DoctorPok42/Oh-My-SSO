@@ -1,0 +1,179 @@
+/* Oh-My-SSO admin console: Tailwind CSS v4 + the OMSSO design system.
+   https://tailwindcss.com/docs/theme */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* The design system's tokens, copied unchanged from the design handoff
+   (tokens/omsso-theme.css): colours for dark (default) and light, fonts,
+   shadows, as Tailwind utilities (bg-surface, text-text-muted...). */
+@import "./omsso-theme.css";
+
+/* --- Theme switch --------------------------------------------------------------
+   No class on <html>: follow the system (prefers-color-scheme, handled by the
+   tokens file). class="dark": always dark (the tokens file). class="light":
+   always light, even on a dark system: the light block again, which the
+   tokens file only applies through the media query. */
+:root.light {
+  --page: #f4f5fa;
+  --surface: #ffffff;
+  --surface-alt: #fafbfd;
+  --row-hover: #f7f8fc;
+  --border: #e2e5ee;
+  --border-strong: #cbd0de;
+  --text-primary: #13151f;
+  --text-secondary: #565b70;
+  --text-muted: #8d92a6;
+  --accent: #3557d6;
+  --accent-hover: #2c47b8;
+  --accent-soft: #eaeefc;
+  --on-accent: #ffffff;
+  --success: #15803d;
+  --success-soft: #e5f6ea;
+  --warning: #b45309;
+  --warning-soft: #fdf1df;
+  --danger: #b91c1c;
+  --danger-soft: #fce8e8;
+  --info: #1d4ed8;
+  --info-soft: #e7eefd;
+  --neutral: #4b5063;
+  --neutral-soft: #eef0f4;
+  --input-bg: #ffffff;
+  --input-border: #d7dae4;
+  --shadow: 0 1px 2px rgba(20, 22, 35, 0.06);
+  --shadow-md: 0 12px 32px rgba(20, 22, 35, 0.12);
+}
+
+/* Native controls (scrollbars, date pickers) follow the theme too. */
+:root {
+  color-scheme: dark;
+}
+:root.light {
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) {
+    color-scheme: light;
+  }
+}
+
+/* --- shadcn/ui variables, mapped onto the design system -----------------------
+   Components copied from shadcn/ui (https://ui.shadcn.com) read these names.
+   One clash: in shadcn "accent" is a hover background, in OMSSO it is the
+   brand colour. OMSSO wins: bg-accent is the brand colour; shadcn's hover
+   background is "row-hover" here (bg-row-hover). */
+:root {
+  --radius: 0.5rem;
+  --background: var(--page);
+  --foreground: var(--text-primary);
+  --card: var(--surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent);
+  --primary-foreground: var(--on-accent);
+  --secondary: var(--surface-alt);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--surface-alt);
+  --muted-foreground: var(--text-muted);
+  --destructive: var(--danger);
+  --input: var(--input-border);
+  --ring: var(--accent);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  /* DS radii: 6 small buttons, 8 buttons/inputs, 10 sub-cards, 12 cards. */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+  body {
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--accent-soft);
+  }
+}
+
+/* Navigation progress bar (components/console/navigation-progress.tsx).
+   Invisible for the first 150 ms, so a fast navigation shows nothing; then
+   it grows fast and slows down near the end, until the page arrives. It is
+   an indeterminate bar: its length only says "still working". */
+@keyframes nav-progress {
+  0% {
+    opacity: 1;
+    transform: scaleX(0.05);
+  }
+  25% {
+    transform: scaleX(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(0.92);
+  }
+}
+.nav-progress[data-nav-progress="on"] {
+  animation: nav-progress 12s cubic-bezier(0.1, 0.65, 0.25, 1) 150ms forwards;
+}
+/* The worker's canvas (progress-bar.ts): drawn off the main thread. When it
+   runs, the CSS bar above stays hidden. */
+.nav-progress-canvas {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  height: 3px;
+  pointer-events: none;
+}
+html[data-progress-renderer="worker"] .nav-progress {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress[data-nav-progress="on"] {
+    animation: none;
+    opacity: 1;
+    transform: scaleX(0.6);
+    transition: opacity 0s 150ms;
+  }
+}

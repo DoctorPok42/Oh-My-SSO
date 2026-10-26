@@ -5,17 +5,7 @@ import (
 	"strings"
 )
 
-// Step 14 guardrail: this binary is the PUBLIC server (edge network, next to
-// the end users). It may read the "master" realm (the realm of the admin
-// console) but never change it: resetting the MFA of an admin, rotating the
-// secret of the admin console, changing the master realm's settings... are
-// only possible with cmd/idp-admin, which runs on the restricted admin
-// network, and through the Admin API (RBAC, step-up MFA, audit log).
-//
-// An attacker who gets a shell on the public server must not be able to
-// turn it into "become admin of the IdP" with one command.
 
-// masterReadOnlyCommands may target the master realm: they change nothing.
 var masterReadOnlyCommands = map[string]bool{
 	"keys list":         true,
 	"mfa list":          true,

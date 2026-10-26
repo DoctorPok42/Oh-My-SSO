@@ -13,27 +13,7 @@ import (
 	"sso.internal/sso/internal/mfastore"
 )
 
-// Passkeys and security keys (WebAuthn), Step 9b.
-//
-// A WebAuthn "ceremony" always has two halves:
-//
-//	1. options: the server sends a random challenge (+ which credentials may
-//	   answer). The browser hands it to the authenticator (Face ID, Windows
-//	   Hello, YubiKey...).
-//	2. verify:  the authenticator signs the challenge with a private key that
-//	   never leaves it. The server checks the signature with the public key
-//	   it stored at registration, the origin and the relying party id.
-//
-// The state between the two halves lives in mfastore (Valkey), single use,
-// 5 minutes.
-//
-// The WebAuthn engine itself (go-webauthn) sits OUTSIDE the core, behind the
-// PasskeyProvider interface: that library imports net/http, and Step 7 keeps
-// internal/core free of HTTP (make check-core-deps).
-//
-// Spec: https://www.w3.org/TR/webauthn-3/ — Guide: https://passkeys.dev/docs/
 
-// PasskeyKind is what the user asks to register.
 type PasskeyKind string
 
 const (

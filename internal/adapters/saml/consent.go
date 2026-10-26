@@ -17,24 +17,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// The consent screen of the SAML flow (Step 13), the same page as OIDC.
-//
-//	/saml/sso -> /saml/login -> (MFA) -> consent page -> Response POSTed to the ACS
-//	                                      POST /saml/consent
-//
-// It shows when the service provider has require_consent and the user has
-// not approved everything it is about to receive. SAML has no "prompt"
-// parameter: nothing else triggers it. An AuthnRequest with IsPassive gets
-// NoPassive instead of the page; "Deny" sends RequestDenied (SAML Core,
-// section 3.2.2.2).
-//
-// What a service provider receives, in consent items:
-//   - the attributes of each effective ClientScope (one item per scope,
-//     worded by the scope's description);
-//   - the e-mail address when its NameID format is emailAddress: the NameID
-//     itself is then the e-mail.
-// The identifier (persistent or transient NameID) is the "Who you are" line
-// of the page.
 
 const scopeNameIDEmail = "email"
 

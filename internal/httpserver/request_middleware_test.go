@@ -44,8 +44,6 @@ func TestRequireJSON(t *testing.T) {
 	}
 }
 
-// Step 14: the public server exposes no admin route any more; the signing
-// key endpoints live in the Admin API (cmd/idp-admin).
 func TestPublicServer_HasNoAdminRoutes(t *testing.T) {
 	realm := &domain.Realm{ID: "realm-1", Name: "acme", Status: domain.RealmActive}
 	s := New(nil, nil, nil, &fakeRealmByName{realm: realm}, nil, nil)

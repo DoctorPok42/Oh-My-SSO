@@ -21,7 +21,6 @@ const (
 	KeyRotationRetired     KeyRotationAction = "retired"
 	KeyRotationCompromised KeyRotationAction = "compromised"
 	KeyRotationDeleted     KeyRotationAction = "deleted"
-	// KeyRotationActivated (Step 11): a "pending" key started to sign.
 	KeyRotationActivated KeyRotationAction = "activated"
 )
 

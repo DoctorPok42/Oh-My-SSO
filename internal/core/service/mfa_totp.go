@@ -231,8 +231,6 @@ func (s *MFAService) verifyTOTP(ctx context.Context, user *domain.User, code str
 	return consumed, nil
 }
 
-// matchTOTP returns the time step (counter) whose code equals the input,
-// trying the current step first, then the previous and next ones.
 func matchTOTP(secret, code string, now time.Time) (int64, bool) {
 	code = strings.ReplaceAll(strings.TrimSpace(code), " ", "")
 	if len(code) != int(totpDigits) || strings.Trim(code, "0123456789") != "" {

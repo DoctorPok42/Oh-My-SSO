@@ -312,9 +312,23 @@ func (s *Server) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_request", "status must be success or failure")
 		return
 	}
+	// level=warning,error,critical: any of these (comma separated).
+	var levels []domain.AuditLogLevel
+	for _, l := range strings.Split(q.Get("level"), ",") {
+		switch lv := domain.AuditLogLevel(strings.TrimSpace(l)); lv {
+		case "":
+		case domain.AuditLogDebug, domain.AuditLogInfo, domain.AuditLogSuspicious, domain.AuditLogWarning,
+			domain.AuditLogError, domain.AuditLogCritical:
+			levels = append(levels, lv)
+		default:
+			writeError(w, http.StatusBadRequest, "invalid_request",
+				"level must be a comma-separated list of debug, info, suspicious, warning, error, critical")
+			return
+		}
+	}
 	v, total, err := s.d.Admin.SearchAudit(r.Context(), realmFrom(r), repository.AuditSearch{
 		UserID: q.Get("user"), ClientRef: q.Get("client"), Action: q.Get("action"), Status: status,
-		From: from, To: to, Page: p,
+		Levels: levels, From: from, To: to, Page: p,
 	})
 	if err != nil {
 		writeServiceError(w, r, err)

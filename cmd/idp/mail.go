@@ -15,25 +15,11 @@ import (
 	"sso.internal/sso/internal/notify"
 )
 
-// E-mail (Step 12). Configuration, all optional in development:
-//
-//	SMTP_HOST=mail.example.com        no SMTP_HOST: development prints e-mails in the
-//	                                  log; production sends none (and turns off
-//	                                  "forgot password", which needs e-mail)
-//	SMTP_PORT=587                     default 587 (465 with SMTP_SECURITY=tls)
-//	SMTP_SECURITY=starttls            starttls | tls | none (none: localhost only in production)
-//	SMTP_USERNAME= / SMTP_PASSWORD=   empty: no authentication
-//	SMTP_FROM=Oh-My-SSO <no-reply@example.com>     required in production
-//	SMTP_HELO_NAME=                   name announced in EHLO (default "localhost")
-//
-//	idp mail test --to you@example.com   sends a test e-mail with these settings
 
 const mailUsage = `usage:
   idp mail test --to <address>
 `
 
-// The e-mail builders moved to internal/app (Step 14), shared with
-// cmd/idp-admin. These short names keep the CLI files unchanged.
 
 func buildEmailSender(templates *notify.Templates) notify.EmailSender {
 	return app.EmailSender(templates)

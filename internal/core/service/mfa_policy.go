@@ -12,22 +12,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// MFA policies (Step 9).
-//
-// Three places can ask for a second factor, and they COMBINE: the strictest
-// wins. Nothing can relax what another source requires.
-//
-//	realm   InstanceSettings.mfa_required_globally      -> required for everyone
-//	client  ClientApp.mfa_policy = "required"            -> required for this app
-//	        ClientApp.mfa_allowed_methods                -> which methods count
-//	roles   MfaPolicy (one per role): required,
-//	        allowed_methods, enrollment_grace_days,
-//	        step_up_for_sensitive_actions               -> for holders of the role
-//
-// resolveMFARequirement below is the ONLY place that turns these into a
-// decision. It is a pure function on purpose: when per-client
-// authentication "flows" exist one day, a flow step will call it instead
-// of a hard-coded `if` in a handler.
 
 const (
 	DefaultMFAStepUpMaxAge = 10 * time.Minute
@@ -210,11 +194,7 @@ func validateMFAMethods(methods []domain.MfaMethodType) error {
 	return nil
 }
 
-// --- MFAPolicyService --------------------------------------------------------
 
-// MFAPolicyService reads and changes MFA policies. The same functions serve
-// the CLI (`idp mfa policy ...`) today, and the admin panel (Step 14) and
-// the config-as-code reconciler later: no logic is duplicated.
 type MFAPolicyService struct {
 	settings repository.InstanceSettingsRepository
 	clients  repository.ClientRepository
@@ -258,7 +238,11 @@ func (s *MFAPolicyService) Requirement(ctx context.Context, user *domain.User, c
 	if err != nil {
 		return MFARequirement{}, err
 	}
+	return s.requirementWith(ctx, user, client, settings)
+}
 
+// requirementWith is Requirement with the realm's settings already loaded.
+func (s *MFAPolicyService) requirementWith(ctx context.Context, user *domain.User, client *domain.ClientApp, settings *domain.InstanceSettings) (MFARequirement, error) {
 	var rolePolicies []*domain.MfaPolicy
 	names := map[string]string{}
 	if s.access != nil && s.policies != nil {
@@ -295,7 +279,16 @@ func (s *MFAPolicyService) Requirement(ctx context.Context, user *domain.User, c
 // StepUpMaxAge is how long a second-factor verification counts as recent.
 func (s *MFAPolicyService) StepUpMaxAge(ctx context.Context, realmID string) time.Duration {
 	settings, err := s.realmSettings(ctx, realmID)
-	if err != nil || settings == nil || settings.MFAStepUpMaxAgeMinutes <= 0 {
+	if err != nil {
+		return DefaultMFAStepUpMaxAge
+	}
+	return stepUpMaxAgeOf(settings)
+}
+
+// stepUpMaxAgeOf is StepUpMaxAge with the realm's settings already loaded
+// (nil: none, the default).
+func stepUpMaxAgeOf(settings *domain.InstanceSettings) time.Duration {
+	if settings == nil || settings.MFAStepUpMaxAgeMinutes <= 0 {
 		return DefaultMFAStepUpMaxAge
 	}
 	return time.Duration(settings.MFAStepUpMaxAgeMinutes) * time.Minute

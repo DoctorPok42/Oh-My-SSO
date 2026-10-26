@@ -41,12 +41,9 @@ type SessionService struct {
 	policyMu    sync.Mutex
 	policyCache map[string]cachedPolicy
 
-	observer LoginObserver // Step 12, optional
+	observer LoginObserver
 }
 
-// LoginObserver is told about every new session, i.e. every completed
-// sign-in (Step 12: new device and unusual sign-in detection). It must not
-// block: LoginSecurityService does its work in the background.
 type LoginObserver interface {
 	SessionCreated(ctx context.Context, sess *domain.Session)
 }
@@ -103,9 +100,6 @@ type CreateSessionInput struct {
 	MFAMethodType string
 	// MFAVerifiedAt defaults to "now" when MFAVerified is true.
 	MFAVerifiedAt time.Time
-	// DeviceFingerprint (Step 12) is DeviceFingerprint(<id from the
-	// sso_device cookie>): the same browser gives the same value, which is
-	// how a sign-in from a new device is spotted.
 	DeviceFingerprint string
 }
 
@@ -264,20 +258,23 @@ func (s *SessionService) GetActive(ctx context.Context, sessionID string) (*doma
 	return sess, nil
 }
 
-// TouchActive records activity on a session found by its id, for
-// back-channel calls that DO prove the user is still using an application:
-// a refresh token exchange (Step 10, refresh tokens are bound to the SSO
-// session, like Keycloak). Same validity rules as GetActive; the activity
-// timestamp moves at most once per touchInterval.
 func (s *SessionService) TouchActive(ctx context.Context, sessionID string) (*domain.Session, error) {
 	sess, err := s.GetActive(ctx, sessionID)
 	if err != nil {
 		return nil, err
 	}
+	s.Touch(ctx, sess)
+	return sess, nil
+}
+
+// Touch records activity on a session the caller has just validated with
+// GetActive (the Admin API reads the session in parallel with its other
+// checks, and records the activity once they all passed). Same rule as
+// TouchActive: at most once per touchInterval.
+func (s *SessionService) Touch(ctx context.Context, sess *domain.Session) {
 	if now := s.now(); now.Sub(sess.LastActivityAt) >= touchInterval {
 		s.touch(ctx, sess, now)
 	}
-	return sess, nil
 }
 
 // MarkMFAVerified upgrades an active session after a successful second

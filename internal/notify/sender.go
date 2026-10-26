@@ -1,17 +1,3 @@
-// Package notify sends the e-mails of Oh-My-SSO (Step 12).
-//
-//	core services ──Notify(event)──► Dispatcher ──► queue (memory)
-//	                                     │ worker: is it allowed? (realm switches)
-//	                                     │         build the template data
-//	                                     ▼
-//	                               EmailSender.Send(to, template, data)
-//	                                     │  SMTPEmailSender: render + MIME + SMTP
-//	                                     ▼
-//	                               AuditLog action="notification_sent"
-//
-// Nothing here knows about Mailcow, Gmail or any provider: the SMTP sender
-// speaks standard SMTP (RFC 5321) with STARTTLS or implicit TLS, which every
-// mail server understands. Pointing it at another server is configuration.
 package notify
 
 import (
@@ -34,12 +20,9 @@ const (
 	TemplateMfaReset               Template = "mfa_reset"
 	TemplateBackupCodesRegenerated Template = "backup_codes_regenerated"
 	TemplateAccountLocked          Template = "account_locked"
-	// TemplateAppConnected (Step 13): approved on the consent screen.
 	TemplateAppConnected Template = "app_connected"
 	// TemplateTest is sent by `idp mail test` to check the SMTP settings.
 	TemplateTest Template = "test"
-	// Step 14: invitation of a new account, and the alert sent to every
-	// admin after `idp-admin recover`.
 	TemplateAccountInvite Template = "account_invite"
 	TemplateAdminRecovery Template = "admin_recovery"
 )

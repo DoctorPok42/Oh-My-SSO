@@ -11,7 +11,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 13: what the consent service relies on in Postgres.
 func TestConsentRepository_Integration(t *testing.T) {
 	f := newRBACFixture(t)
 	consents := entstore.NewConsentRepository(f.client)

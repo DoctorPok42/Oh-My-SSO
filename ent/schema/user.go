@@ -41,10 +41,6 @@ func (User) Fields() []ent.Field {
 		field.Time("last_login_at").Optional().Nillable(),
 		field.JSON("profile", map[string]interface{}{}).Optional(),
 
-		// Account lockout (Step 12). failed_login_count counts the wrong
-		// passwords in a row inside the observation window (the realm's
-		// lockout_duration_minutes, measured from last_failed_login_at).
-		// Reaching lockout_threshold sets locked_until.
 		field.Int("failed_login_count").Default(0),
 		field.Time("last_failed_login_at").Optional().Nillable(),
 		field.Time("locked_until").Optional().Nillable(),

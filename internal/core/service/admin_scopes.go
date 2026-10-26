@@ -13,9 +13,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Client scopes in the Admin API (Step 14): a named bundle of claim
-// mappers ("source attribute -> claim name -> where"). A scope reaches a
-// token only when the client maps it AND the user's group or role grants it.
 
 var scopeNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$`)
 

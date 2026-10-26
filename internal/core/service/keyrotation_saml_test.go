@@ -19,8 +19,6 @@ import (
 	"sso.internal/sso/internal/storage/memstore"
 )
 
-// Step 11 - SAML signing keys: self-signed certificate signed by the KMS,
-// and the two-step rotation (Rotate = pending, Activate = signs).
 
 func samlRotate(t *testing.T, f *rotFixture, in service.RotateInput) *service.RotateResult {
 	t.Helper()
@@ -106,7 +104,6 @@ func TestSAMLKey_TwoStepRotation(t *testing.T) {
 	f.settings.graceHours = 12
 	first := samlRotate(t, f, service.RotateInput{}).NewKey
 
-	// Step 1: the new key is published but does not sign.
 	staged := samlRotate(t, f, service.RotateInput{Reason: "yearly"})
 	pending := staged.NewKey
 	require.Equal(t, domain.SigningKeyPending, pending.Status)
@@ -122,7 +119,6 @@ func TestSAMLKey_TwoStepRotation(t *testing.T) {
 	_, err := f.rot.Rotate(ctx, service.RotateInput{RealmID: rotRealm, TriggeredBy: rotBy, Purpose: domain.SigningKeyPurposeSAMLSigning})
 	require.ErrorIs(t, err, service.ErrPendingKeyExists)
 
-	// Step 2: activation.
 	f.advance(48 * time.Hour)
 	res, err := f.rot.Activate(ctx, service.ActivateInput{RealmID: rotRealm, TriggeredBy: rotBy, Reason: "SPs updated"})
 	require.NoError(t, err)

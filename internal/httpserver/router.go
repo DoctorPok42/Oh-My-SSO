@@ -20,28 +20,16 @@ type Server struct {
 	clients     repository.ClientRepository
 	rateLimiter ratelimit.Limiter
 
-	// Optional, set with options (Step 8). Their routes are only mounted
-	// when provided, so existing callers of New keep working unchanged.
 	publicKeys PublicKeySource
-	// Step 14: the signing key admin endpoints moved to the Admin API
-	// (internal/adminapi, cmd/idp-admin). This server is reachable by end
-	// users and exposes no admin route.
 
-	// Step 9: MFA. nil = no second factor anywhere (earlier steps' tests).
 	mfa      *service.MFAService
 	devPages bool
 
-	// Step 10: OpenID Connect. nil = no OIDC routes.
 	oidc OIDCProvider
 
-	// Step 11: SAML 2.0. nil = no SAML routes.
 	saml SAMLProvider
 
-	// Step 12: password reset. nil = no forgot/reset routes.
 	passwordReset *service.PasswordResetService
-	// Step 14: "forgot password" (needs e-mail). The "choose a password"
-	// page is mounted whenever passwordReset is set: activation links of
-	// new accounts (bootstrap, invitations) use it too.
 	forgotPassword bool
 }
 
@@ -75,21 +63,14 @@ func WithMFA(mfa *service.MFAService) Option {
 	return func(s *Server) { s.mfa = mfa }
 }
 
-// WithOIDC mounts the OpenID Connect endpoints (Step 10): discovery and
-// /r/{realm}/oidc/... (authorize, login page, token, userinfo, revoke,
-// introspect, logout).
 func WithOIDC(p OIDCProvider) Option {
 	return func(s *Server) { s.oidc = p }
 }
 
-// WithSAML mounts the SAML 2.0 endpoints (Step 11): /r/{realm}/saml/...
-// (metadata, sso, login page, slo).
 func WithSAML(p SAMLProvider) Option {
 	return func(s *Server) { s.saml = p }
 }
 
-// WithPasswordReset mounts the reset-password page and its JSON endpoint
-// (Step 12): reset links from e-mails, and activation links (Step 14).
 func WithPasswordReset(p *service.PasswordResetService) Option {
 	return func(s *Server) { s.passwordReset = p }
 }

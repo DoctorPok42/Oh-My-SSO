@@ -13,9 +13,7 @@ import (
 	"sso.internal/sso/internal/core/service"
 )
 
-// Step 12: new device and suspicious sign-in detection.
 
-// fakeGeo: 203.0.113.x is France, 198.51.100.x is Japan, the rest unknown.
 type fakeGeo struct{}
 
 func (fakeGeo) Country(ip string) (string, string, bool) {

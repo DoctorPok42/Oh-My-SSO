@@ -32,10 +32,6 @@ type ClientAccessPolicy struct {
 	RoleIDs   []string
 	GroupIDs  []string
 	ScopeIDs  []string
-	// RequiredScopeIDs (Step 14): scopes mapped as "required" on the client.
-	// They are part of every assertion for this client (when the user is
-	// entitled to them), requested or not. The others are optional: only
-	// included when the client asks for them.
 	RequiredScopeIDs []string
 }
 

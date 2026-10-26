@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -18,6 +19,7 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 	jose "github.com/go-jose/go-jose/v4"
 	"github.com/stretchr/testify/require"
+	vk "github.com/valkey-io/valkey-go"
 	"golang.org/x/oauth2"
 
 	"sso.internal/sso/ent"
@@ -32,11 +34,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 14, end to end: `idp-admin bootstrap`, the first admin activates the
-// account and signs in to the admin console (OIDC on the master realm, TOTP
-// enrollment forced), then drives the Admin API with the access token:
-// create a realm, a group and an OIDC client in it. And the guardrails:
-// step-up, self-lockout, last admin, system objects, revoked session.
 
 const (
 	adminConsoleURL = "https://admin.example.test"
@@ -76,6 +73,7 @@ type adminTestEnv struct {
 	clock    *fakeClock
 	notifier *recordingNotifier
 	oidc     *oidcTestEnv // reuses its browser helpers and TOTP clock
+	valkey   vk.Client
 }
 
 func setupAdminTestEnv(t *testing.T) *adminTestEnv {
@@ -155,12 +153,13 @@ func setupAdminTestEnv(t *testing.T) *adminTestEnv {
 	})
 	api := httptest.NewServer(adminapi.New(adminapi.Config{PublicURL: ts.URL, Now: clock.Now}, adminapi.Deps{
 		Admin: admin, Realms: realms, Users: users, Clients: clients, Tokens: tokens, Sessions: sessions,
-		RBAC: rbac, MFA: mfa, Keys: idp, KeyRotation: rotation,
+		RBAC: rbac, MFA: mfa, Keys: idp, KeyRotation: rotation, Rights: valkeycache.NewRightsEpoch(valkeyClient),
 	}).Router())
 	t.Cleanup(api.Close)
 
 	return &adminTestEnv{idp: ts, api: api, admin: admin, sessions: sessions, audit: audit, users: users,
-		clock: clock, notifier: notifier, oidc: &oidcTestEnv{ts: ts, clock: clock, realmURL: ts.URL + "/r/master"}}
+		clock: clock, notifier: notifier, oidc: &oidcTestEnv{ts: ts, clock: clock, realmURL: ts.URL + "/r/master"},
+		valkey: valkeyClient}
 }
 
 // call sends one Admin API request with the admin's access token.
@@ -421,6 +420,126 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 		}
 	}
 	require.True(t, found)
+}
+
+func TestAdmin_Integration_RightsFromToken(t *testing.T) {
+	e := setupAdminTestEnv(t)
+	ctx := context.Background()
+
+	res, err := e.admin.Bootstrap(ctx, service.BootstrapInput{AdminEmail: "root@example.test",
+		AdminConsoleURL: adminConsoleURL, Actor: "cli:test@host"})
+	require.NoError(t, err)
+	e.activate(t, res.ActivationURL)
+	console := &oauth2.Config{ClientID: "sso-admin", ClientSecret: res.ClientSecret,
+		RedirectURL: adminConsoleURL + "/auth/callback", Scopes: []string{"openid", "profile", "email", "offline_access"},
+		Endpoint: oauth2.Endpoint{AuthURL: e.idp.URL + "/r/master/oidc/authorize", TokenURL: e.idp.URL + "/r/master/oidc/token",
+			AuthStyle: oauth2.AuthStyleInHeader}}
+	var rootSecret string
+	root := e.signIn(t, console, "root", &rootSecret).AccessToken
+
+	// alice: a second administrator.
+	status, out := e.call(t, root, http.MethodPost, "/api/v1/realms/master/users", map[string]any{
+		"email": "alice@example.test", "send_email": false,
+	})
+	require.Equal(t, http.StatusCreated, status, "%v", out)
+	aliceID := out["user"].(map[string]any)["id"].(string)
+	e.activate(t, out["activation_url"].(string))
+	status, groups := e.call(t, root, http.MethodGet, "/api/v1/realms/master/groups", nil)
+	require.Equal(t, http.StatusOK, status)
+	var adminsID string
+	for _, g := range groups["items"].([]any) {
+		if g.(map[string]any)["name"] == "admins" {
+			adminsID = g.(map[string]any)["id"].(string)
+		}
+	}
+	status, out = e.call(t, root, http.MethodPut, "/api/v1/realms/master/users/"+aliceID+"/groups",
+		map[string]any{"group_ids": []string{adminsID}})
+	require.Equal(t, http.StatusOK, status, "%v", out)
+	var aliceSecret string
+	aliceTok := e.signIn(t, console, "alice", &aliceSecret)
+	alice := aliceTok.AccessToken
+
+	// The access token carries the permissions; the ID token never does.
+	ents, ok := jwtClaims(t, alice)["entitlements"].([]any)
+	require.True(t, ok, "the admin console's access token has an entitlements claim")
+	require.Contains(t, ents, "user:write")
+	require.Contains(t, ents, "audit_log:read")
+	require.NotContains(t, jwtClaims(t, aliceTok.Extra("id_token").(string)), "entitlements")
+
+	// Nothing changed in master for an hour: the tokens are trusted.
+	setRightsEpoch(t, e, time.Now().Add(-time.Hour))
+	status, me := e.call(t, alice, http.MethodGet, "/api/v1/me", nil)
+	require.Equal(t, http.StatusOK, status, "%v", me)
+	require.Contains(t, me["permissions"], "user:write")
+
+	// A change that does NOT go through the Admin API (here: the service
+	// directly, like an edit in the database) is not seen: alice's token is
+	// trusted and the database is not asked. This proves the token is used.
+	master, err := e.admin.RealmByName(ctx, "master")
+	require.NoError(t, err)
+	actor := service.AdminActor{UserID: "test", Username: "test", RealmID: master.ID}
+	_, err = e.admin.SetUserGroups(ctx, actor, master, aliceID, []string{})
+	require.NoError(t, err)
+	status, _ = e.call(t, alice, http.MethodGet, "/api/v1/realms/master/users", nil)
+	require.Equal(t, http.StatusOK, status, "token trusted: the out-of-band change is not seen")
+
+	// Deleting the epoch (what the documentation says to do after such an
+	// edit) makes every token be checked again: refused, and audited.
+	require.NoError(t, e.valkey.Do(ctx, e.valkey.B().Del().Key("omsso:admin:rights_epoch").Build()).Error())
+	status, out = e.call(t, alice, http.MethodGet, "/api/v1/realms/master/users", nil)
+	require.Equal(t, http.StatusForbidden, status, "%v", out)
+	status, me = e.call(t, alice, http.MethodGet, "/api/v1/me", nil)
+	require.Equal(t, http.StatusOK, status)
+	require.Empty(t, me["permissions"], "/me reads the database too")
+
+	// The normal case: alice is an admin again, nothing changed for an hour,
+	// then root removes her through the Admin API. Her token, still valid,
+	// stops working at once: no sign-out, no refresh needed.
+	_, err = e.admin.SetUserGroups(ctx, actor, master, aliceID, []string{adminsID})
+	require.NoError(t, err)
+	setRightsEpoch(t, e, time.Now().Add(-time.Hour))
+	status, _ = e.call(t, alice, http.MethodGet, "/api/v1/realms/master/users", nil)
+	require.Equal(t, http.StatusOK, status)
+	status, out = e.call(t, root, http.MethodPut, "/api/v1/realms/master/users/"+aliceID+"/groups",
+		map[string]any{"group_ids": []string{}})
+	require.Equal(t, http.StatusOK, status, "%v", out)
+	status, out = e.call(t, alice, http.MethodGet, "/api/v1/realms/master/users", nil)
+	require.Equal(t, http.StatusForbidden, status, "%v", out)
+
+	denied, err := e.audit.ListByRealm(ctx, master.ID)
+	require.NoError(t, err)
+	n := 0
+	for _, l := range denied {
+		if l.Action == "authorization_denied" && l.UserID == aliceID {
+			n++
+		}
+	}
+	require.Equal(t, 2, n, "every refusal is decided and audited by the RBAC service")
+
+	// Changes elsewhere than master leave the tokens trusted.
+	setRightsEpoch(t, e, time.Now().Add(-time.Hour))
+	status, out = e.call(t, root, http.MethodPost, "/api/v1/realms", map[string]any{"name": "demo"})
+	require.Equal(t, http.StatusCreated, status, "%v", out)
+	status, out = e.call(t, root, http.MethodPost, "/api/v1/realms/demo/groups", map[string]any{"name": "staff"})
+	require.Equal(t, http.StatusCreated, status, "%v", out)
+	last := rightsEpoch(t, e)
+	require.True(t, last.Before(time.Now().Add(-50*time.Minute)), "a change in demo does not move the epoch: %v", last)
+	status, out = e.call(t, root, http.MethodPost, "/api/v1/realms/master/groups", map[string]any{"name": "helpdesk"})
+	require.Equal(t, http.StatusCreated, status, "%v", out)
+	require.WithinDuration(t, time.Now(), rightsEpoch(t, e), 5*time.Second, "a change in master moves it")
+}
+
+func setRightsEpoch(t *testing.T, e *adminTestEnv, at time.Time) {
+	t.Helper()
+	require.NoError(t, e.valkey.Do(context.Background(), e.valkey.B().Set().Key("omsso:admin:rights_epoch").
+		Value(strconv.FormatInt(at.UnixMilli(), 10)).Build()).Error())
+}
+
+func rightsEpoch(t *testing.T, e *adminTestEnv) time.Time {
+	t.Helper()
+	ms, err := e.valkey.Do(context.Background(), e.valkey.B().Get().Key("omsso:admin:rights_epoch").Build()).AsInt64()
+	require.NoError(t, err)
+	return time.UnixMilli(ms)
 }
 
 func jwtClaims(t *testing.T, raw string) map[string]any {

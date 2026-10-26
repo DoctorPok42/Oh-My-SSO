@@ -1,16 +1,3 @@
-// Package app is the start-up wiring shared by the two binaries (Step 14):
-//
-//	cmd/idp        public authentication (login, OIDC, SAML) and account pages
-//	cmd/idp-admin  the Admin API used by the admin panel, plus bootstrap/recover
-//
-// Both run the same core (internal/core) on the same database: this package
-// reads the environment once and builds the dependencies in one place, so
-// the two binaries cannot drift apart.
-//
-// It is only meant for cmd/: like the code it came from (cmd/idp/main.go
-// before Step 14), it stops the process with log.Fatal on a configuration
-// error. A server that starts half-configured is worse than one that does
-// not start.
 package app
 
 import (
@@ -21,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -41,12 +29,30 @@ import (
 // BackendLocalDev is the in-memory KeyManager (development only).
 const BackendLocalDev = "local_dev"
 
+// Connection pool (database/sql). Go keeps only 2 idle connections by
+// default: as soon as a request runs a few queries at the same time (the
+// Admin API's authentication, the dashboard), the extra connections are
+// closed after use and opened again on the next request, each opening
+// costing several round trips (TCP, PostgreSQL startup, SCRAM password
+// exchange). Keeping more of them open removes that cost.
+// https://pkg.go.dev/database/sql#DB.SetMaxIdleConns
+const (
+	dbMaxOpenConns    = 25 // per process: idp + idp-admin stay far below PostgreSQL's 100
+	dbMaxIdleConns    = 10
+	dbConnMaxIdleTime = 5 * time.Minute  // an unused connection is closed after that
+	dbConnMaxLifetime = 30 * time.Minute // and every connection is renewed now and then
+)
+
 // EntClient opens the database (DATABASE_URL).
 func EntClient() *ent.Client {
 	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatalf("db: %v", err)
 	}
+	db.SetMaxOpenConns(dbMaxOpenConns)
+	db.SetMaxIdleConns(dbMaxIdleConns)
+	db.SetConnMaxIdleTime(dbConnMaxIdleTime)
+	db.SetConnMaxLifetime(dbConnMaxLifetime)
 	drv := entsql.OpenDB(dialect.Postgres, db)
 	return ent.NewClient(ent.Driver(drv))
 }
@@ -165,9 +171,6 @@ func IdPPort() string {
 	return "8080"
 }
 
-// GeoIP opens the country database for the "new country" signal (Step 12).
-// GEOIP_DB_PATH=/path/to/dbip-country-lite.mmdb; unset = off. It returns a
-// nil interface (not a typed nil pointer) when off.
 func GeoIP() service.GeoIPResolver {
 	path := os.Getenv("GEOIP_DB_PATH")
 	if path == "" {
@@ -182,19 +185,7 @@ func GeoIP() service.GeoIPResolver {
 	return r
 }
 
-// --- e-mail (Step 12) -----------------------------------------------------------
-//
-//	SMTP_HOST=mail.example.com        no SMTP_HOST: development prints e-mails in the
-//	                                  log; production sends none (and turns off
-//	                                  "forgot password", which needs e-mail)
-//	SMTP_PORT=587                     default 587 (465 with SMTP_SECURITY=tls)
-//	SMTP_SECURITY=starttls            starttls | tls | none (none: localhost only in production)
-//	SMTP_USERNAME= / SMTP_PASSWORD=   empty: no authentication
-//	SMTP_FROM=Oh-My-SSO <no-reply@example.com>     required in production
-//	SMTP_HELO_NAME=                   name announced in EHLO (default "localhost")
 
-// EmailSender returns the sender configured by SMTP_*, or nil when e-mail
-// is off.
 func EmailSender(templates *notify.Templates) notify.EmailSender {
 	appEnv := os.Getenv("APP_ENV")
 	host := os.Getenv("SMTP_HOST")

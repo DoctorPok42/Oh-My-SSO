@@ -1,0 +1,9 @@
+# Go images: the sources only.
+.git
+admin
+bin
+coverage.*
+*.exe
+.env
+.env.*
+!.env.example

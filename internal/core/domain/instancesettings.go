@@ -24,8 +24,8 @@ type InstanceSettings struct {
 	NotificationEmailEnabled    bool
 	KeyRotationGraceHours       int
 	MFAStepUpMaxAgeMinutes      int
-	PasswordResetTTLMinutes     int  // Step 12
-	SuspiciousLoginEmailEnabled bool // Step 12
+	PasswordResetTTLMinutes     int
+	SuspiciousLoginEmailEnabled bool
 	UpdatedAt                   time.Time
 	UpdatedBy                   string
 }

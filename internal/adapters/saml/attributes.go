@@ -12,21 +12,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// SAML attributes (Step 11). As decided in Step 7, UserAttributes never
-// leave the IdP as they are: only the claim mappers of the user's effective
-// ClientScopes select what a service provider receives (minimal
-// disclosure). A mapper produces a SAML attribute when its token_location
-// includes "saml_attribute":
-//
-//	{"source_attribute": "email", "claim_name": "mail",
-//	 "token_location": "saml_attribute",
-//	 "saml_name_format": "basic",            // optional: basic (default), uri, unspecified
-//	 "saml_friendly_name": "mail"}           // optional
-//
-// In a scope whose protocol is "saml2", a mapper without token_location
-// targets SAML attributes; in a "both" scope it must say so explicitly
-// (the OIDC adapter reads the same rows). Then Client.attribute_mappings
-// renames ({"mail": "email"}), as for OIDC: it never adds data.
 
 const (
 	locSAMLAttribute = "saml_attribute"

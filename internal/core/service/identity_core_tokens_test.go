@@ -17,9 +17,7 @@ import (
 	"sso.internal/sso/internal/core/service"
 )
 
-// Step 10: the token primitives of IdentityCore, in memory.
 
-// --- fake methods the Step 10 primitives need --------------------------------
 
 func (f *fakeTokenRepo) Create(_ context.Context, p repository.CreateTokenParams) (*domain.Token, error) {
 	f.mu.Lock()
@@ -30,7 +28,7 @@ func (f *fakeTokenRepo) Create(_ context.Context, p repository.CreateTokenParams
 	t := &domain.Token{
 		ID: "tok-" + p.JTI, SessionID: p.SessionID, ClientRefID: p.ClientRefID, Type: p.Type,
 		JTI: p.JTI, ExpiresAt: p.ExpiresAt, Scopes: p.Scopes, TokenHash: p.TokenHash, FamilyID: p.FamilyID,
-		Subject: p.Subject, SubjectFormat: p.SubjectFormat, // Step 11
+		Subject: p.Subject, SubjectFormat: p.SubjectFormat,
 		IssuedAt: time.Now(),
 	}
 	f.byJTI[p.JTI] = t

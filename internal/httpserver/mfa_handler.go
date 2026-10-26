@@ -15,18 +15,6 @@ import (
 	"sso.internal/sso/internal/ratelimit"
 )
 
-// MFA endpoints (Step 9a).
-//
-//	POST   /r/{realm}/auth/mfa/verify               second step of the login (cookie sso_mfa)
-//	GET    /r/{realm}/auth/mfa/status?client_id=    what the session satisfies
-//	                                  (or ?entity_id= for a SAML client, Step 11)
-//	POST   /r/{realm}/auth/step-up                  verify a factor again (session)
-//
-//	GET    /r/{realm}/account/mfa                   my factors
-//	POST   /r/{realm}/account/mfa/totp              start a TOTP enrollment (step-up)
-//	POST   /r/{realm}/account/mfa/totp/{id}/confirm finish it with a first code
-//	DELETE /r/{realm}/account/mfa/{id}              remove a factor (step-up)
-//	POST   /r/{realm}/account/mfa/backup-codes      new backup codes (step-up)
 
 const (
 	routeAuthMFA          = "auth.mfa"
@@ -406,8 +394,6 @@ func (s *Server) sessionUser(w http.ResponseWriter, r *http.Request) (*domain.Us
 	return user, true
 }
 
-// clientFromQuery resolves ?client_id= (OIDC client_id) or ?entity_id=
-// (SAML entity ID, Step 11). Absent: nil. Both: invalid request.
 func (s *Server) clientFromQuery(w http.ResponseWriter, r *http.Request, realmID string) (*domain.ClientApp, bool) {
 	return s.lookupAnyClient(w, r, realmID, r.URL.Query().Get("client_id"), r.URL.Query().Get("entity_id"))
 }

@@ -17,24 +17,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// "idp keys" manages signing keys without going through HTTP, like the
-// future "idp config apply" (see configuration-as-code.md). It calls exactly
-// the same service as the Admin API (Step 14, cmd/idp-admin):
-// POST /api/v1/realms/{realm}/signing-keys/rotate.
-//
-//	idp keys list    --realm master
-//	idp keys rotate  --realm master [--type RSA|EC] [--grace 48h] [--reason "..."]
-//	idp keys rotate  --realm master --compromised --reason "key leaked in CI logs"
-//	idp keys retire  --realm master
-//
-// SAML keys (Step 11) rotate in two steps:
-//
-//	idp keys rotate   --realm master --purpose saml_signing   new key "pending": published, not signing
-//	idp keys activate --realm master [--grace 24h]            the pending key signs, the old one rotates
-//
-// It reads the same environment variables as the server (DATABASE_URL,
-// KEYMANAGER_BACKEND, VAULT_ADDR, ...): run it where the server runs, e.g.
-// `go run ./cmd/idp keys list --realm master`.
 
 const keysUsage = `usage:
   idp keys list     --realm <name>
@@ -233,9 +215,6 @@ func keysRotate(ctx context.Context, args []string, out io.Writer) error {
 	return nil
 }
 
-// keysActivate is the second step of a SAML key rotation (Step 11). It only
-// changes statuses in the database, so it also works with local_dev (the
-// pending key was created by the running server).
 func keysActivate(ctx context.Context, args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("keys activate", flag.ContinueOnError)
 	realmName := fs.String("realm", "", "realm name (required)")

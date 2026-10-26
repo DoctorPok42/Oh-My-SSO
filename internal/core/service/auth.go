@@ -24,7 +24,7 @@ type AuthService struct {
 	users         repository.UserRepository
 	loginAttempts repository.LoginAttemptRepository
 	timeouts      TimeoutChecker
-	lockout       *LockoutService // Step 12, optional: nil = no account lockout
+	lockout       *LockoutService
 	logger        *slog.Logger
 }
 
@@ -40,9 +40,6 @@ func WithTimeoutChecker(tc TimeoutChecker) AuthOption {
 	}
 }
 
-// WithLockout turns on the account lockout (Step 12): wrong passwords are
-// counted and, past the realm's lockout_threshold, sign-in is refused with
-// an *AccountLockedError until the lock ends.
 func WithLockout(l *LockoutService) AuthOption {
 	return func(s *AuthService) { s.lockout = l }
 }
@@ -71,9 +68,6 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 	}
 	subj := LockoutSubject{RealmID: p.RealmID, User: user, Identifier: p.Identifier, IPAddress: p.IPAddress, UserAgent: p.UserAgent}
 
-	// Step 12: a locked identity is refused BEFORE the password is checked,
-	// so guessing stops completely during the lock. Unknown identifiers
-	// lock the same way: the answer never tells whether an account exists.
 	if s.lockout != nil {
 		until, err := s.lockout.Check(ctx, subj)
 		if err != nil {
@@ -184,9 +178,6 @@ func (s *AuthService) findUserByIdentifier(ctx context.Context, realmID, identif
 	return nil, err
 }
 
-// recordAttempt writes one LoginAttempt. user is nil when the identifier
-// matched no account; the realm is always known (Step 14: per-realm
-// dashboard figures, a user's own sign-in history).
 func (s *AuthService) recordAttempt(ctx context.Context, p AuthenticateLocalParams, user *domain.User, status domain.LoginAttemptStatus, reason domain.LoginAttemptFailureReason) {
 	userID := ""
 	if user != nil {

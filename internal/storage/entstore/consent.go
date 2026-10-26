@@ -30,8 +30,6 @@ func (r *entConsentRepository) Create(ctx context.Context, p repository.CreateCo
 	}
 	e, err := builder.Save(ctx)
 	if err != nil {
-		// Step 13: two tabs approving the same client at once. The caller
-		// reads the row the other one created and updates it.
 		if ent.IsConstraintError(err) {
 			return nil, fmt.Errorf("%w: %v", repository.ErrConflict, err)
 		}

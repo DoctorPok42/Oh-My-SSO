@@ -19,18 +19,7 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// Signing (Step 11). Every message we send is signed with the realm's
-// active saml_signing key, which lives in the KMS: the adapter only ever
-// holds its certificate. Two forms are needed:
-//
-//   - XML-DSig, inside the XML (assertions, responses): goxmldsig builds the
-//     <Signature>, computes the SHA-256 of the canonical <SignedInfo> and
-//     hands that digest to a crypto.Signer: ours forwards it to the KMS
-//     (core.DigestSigner).
-//   - HTTP-Redirect binding: the signature covers the query string
-//     "SAMLRequest=...&RelayState=...&SigAlg=..." (SAML Bindings §3.4.4.1).
 
-// errNoSigningKey: the realm has no active saml_signing key yet.
 var errNoSigningKey = errors.New("saml: no active SAML signing key in this realm (idp keys rotate --purpose saml_signing)")
 
 // signingKey is the realm's active SAML key, for one request.

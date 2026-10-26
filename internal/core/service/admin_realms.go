@@ -13,16 +13,7 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Realms and realm settings in the Admin API (Step 14).
-//
-// A realm is an isolated tenant: its own users, clients, keys and audit
-// log, reached at /r/<name>/... on the public server. Realms are created,
-// renamed (display name) and disabled here. They are not deleted: deleting
-// would erase users, clients and the audit log in cascade, with no way
-// back (decided with the project owner: disable only, for now).
 
-// realmNamePattern: the name is part of every URL and issuer
-// (https://sso.example.com/r/<name>), so lowercase URL-safe characters only.
 var realmNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,62}$`)
 
 // RealmView is a realm in the realm switcher and on the realms page.

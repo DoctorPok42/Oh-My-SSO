@@ -14,34 +14,7 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Bootstrap and recovery of the master realm (Step 14).
-//
-// `idp-admin bootstrap` turns an empty database into a usable admin
-// console: the master realm, the admin permissions, the "admins" and
-// "auditors" groups, the internal OIDC client "sso-admin", and a first
-// administrator. `idp-admin recover` is the break-glass procedure when every
-// administrator lost access.
-//
-// Guardrails (decided with the project owner):
-//   - Bootstrap runs once. As soon as one account of the master realm has
-//     chosen its password, it refuses and changes nothing. No flag bypasses it.
-//   - It never writes a password: the administrator gets a one-time
-//     activation link (30 minutes) and chooses the password in the browser.
-//     Nothing secret ends up in the shell history, `ps` or CI logs.
-//   - It never changes what exists: an existing client keeps its secret and
-//     its redirect URIs (a re-run could otherwise send admin logins to an
-//     attacker's URL), an existing account keeps its password.
-//   - Recovery never resets an existing account: it creates a NEW one,
-//     visible in the user list, and alerts every administrator by e-mail.
-//   - Both write a "critical" AuditLog entry naming the OS user and host.
-//
-// Limit, stated plainly: someone holding DATABASE_URL and the KMS
-// credentials can bypass all this by writing to the database. These
-// guardrails stop misuse from the public binary and mistakes, and make
-// every use visible.
 
-// Admin permission catalogue: permissions of the master realm, checked on
-// the "sso-admin" client by the Admin API.
 type AdminPermission struct {
 	Resource    string
 	Action      string
@@ -90,6 +63,15 @@ const (
 // AdminConsoleCallbackPath is where the admin console receives the OIDC
 // authorization code (admin/app/auth/callback in the Next.js app).
 const AdminConsoleCallbackPath = "/auth/callback"
+
+// AdminConsoleAccessTokenTTL is deliberately longer than the default used by
+// regular OIDC clients because the admin console refreshes its own session
+// independently.
+const AdminConsoleAccessTokenTTL = 60 * time.Minute
+
+// AdminConsoleStepUpMaxAge is the period during which sensitive console
+// changes remain unlocked after MFA verification.
+const AdminConsoleStepUpMaxAge = 60 * time.Minute
 
 // Lifetime of the activation links of bootstrap and recovery accounts.
 const BootstrapActivationTTL = 30 * time.Minute
@@ -381,8 +363,10 @@ func (s *AdminService) ensureMasterSettings(ctx context.Context, realmID, actor 
 		return false, fmt.Errorf("bootstrap: settings: %w", err)
 	}
 	yes := true
+	stepUpMaxAge := int(AdminConsoleStepUpMaxAge / time.Minute)
 	_, err = s.d.Settings.Update(ctx, st.ID, repository.UpdateInstanceSettingsParams{
 		MFARequiredGlobally:      &yes,
+		MFAStepUpMaxAgeMinutes:   &stepUpMaxAge,
 		NotificationEmailEnabled: &yes,
 		UpdatedBy:                &actor,
 	})
@@ -475,8 +459,9 @@ func (s *AdminService) ensureAdminClient(ctx context.Context, realmID, consoleUR
 	}
 	config := domain.ClientAppManagedByConfig
 	required := domain.ClientAppMFARequired
+	accessTokenTTL := int(AdminConsoleAccessTokenTTL / time.Second)
 	if _, err := s.d.Clients.Update(ctx, app.ID, repository.UpdateClientAppParams{
-		ManagedBy: &config, MFAPolicy: &required,
+		ManagedBy: &config, MFAPolicy: &required, AccessTokenTTL: &accessTokenTTL,
 	}); err != nil {
 		return "", fmt.Errorf("configure client %s: %w", domain.InternalAdminClientID, err)
 	}

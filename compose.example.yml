@@ -1,0 +1,151 @@
+
+name: oh-my-sso
+
+x-server-env: &server-env
+  APP_ENV: development # "production" requires https URLs and a real SMTP sender
+  DATABASE_URL: postgres://sso:${POSTGRES_PASSWORD:-sso}@postgres:5432/sso?sslmode=disable
+  VALKEY_ADDR: valkey:6379
+  KEYMANAGER_BACKEND: vault
+  VAULT_ADDR: http://vault:8200
+  VAULT_TOKEN: ${VAULT_TOKEN:-dev-root-token}
+  PUBLIC_URL: http://sso.localhost:8080
+  PORT: "8080"
+  WEBAUTHN_RP_ID: sso.localhost
+  WEBAUTHN_RP_ORIGINS: http://sso.localhost:8080
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+  SMTP_SECURITY: none
+  SMTP_FROM: Oh-My-SSO <no-reply@sso.localhost>
+  ADMIN_PANEL_URL: http://localhost:3000
+
+services:
+  # --- data ---------------------------------------------------------------------
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sso
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sso}
+      POSTGRES_DB: sso
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sso -d sso"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks: [data]
+
+  valkey:
+    image: valkey/valkey
+    networks: [data]
+
+  vault:
+    image: hashicorp/vault:latest
+    command: ["vault", "server", "-dev"]
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-dev-root-token}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    cap_add: [IPC_LOCK]
+    healthcheck:
+      test: ["CMD", "vault", "status", "-address=http://127.0.0.1:8200"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+    networks: [data]
+
+  # One-shot: the Transit engine the key manager uses.
+  vault-init:
+    image: hashicorp/vault:latest
+    command: ["sh", "-c", "vault secrets enable transit || true"]
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN:-dev-root-token}
+    depends_on:
+      vault: { condition: service_healthy }
+    networks: [data]
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["127.0.0.1:8025:8025"] # inbox: http://localhost:8025
+    networks: [data]
+
+  # One-shot: database migrations (Atlas, versioned files of ent/migrate).
+  migrate:
+    image: arigaio/atlas:1.3.3-community
+    command:
+      - migrate
+      - apply
+      - --dir
+      - file:///migrations
+      - --url
+      - postgres://sso:${POSTGRES_PASSWORD:-sso}@postgres:5432/sso?sslmode=disable
+    volumes:
+      - ./ent/migrate/migrations:/migrations:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [data]
+
+  # --- servers ----------------------------------------------------------------------
+  idp:
+    build: { context: ., target: idp }
+    environment: *server-env
+    ports: ["8080:8080"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      vault-init: { condition: service_completed_successfully }
+      valkey: { condition: service_started }
+    networks:
+      data: {}
+      edge:
+        # The console's server reaches the IdP at the same address as the
+        # browsers (the OIDC issuer must match exactly).
+        aliases: [sso.localhost]
+    read_only: true
+
+  idp-admin:
+    build: { context: ., target: idp-admin }
+    environment:
+      <<: *server-env
+      ADMIN_API_ADDR: :8090
+      ADMIN_API_ALLOWED_CIDRS: 172.30.10.10/32 # the console, see networks.admin below
+      IDP_INTERNAL_URL: http://idp:8080 # dashboard health check
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      vault-init: { condition: service_completed_successfully }
+    networks:
+      data: {}
+      admin: { ipv4_address: 172.30.10.20 }
+    read_only: true
+
+  admin:
+    build: { context: ./admin }
+    environment:
+      OIDC_ISSUER: http://sso.localhost:8080/r/master
+      OIDC_CLIENT_ID: sso-admin
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?run the bootstrap first, then set OIDC_CLIENT_SECRET}
+      ADMIN_URL: http://localhost:3000
+      ADMIN_API_URL: http://172.30.10.20:8090
+      SESSION_SECRET: ${SESSION_SECRET:?openssl rand -base64 32}
+      DEFAULT_REALM: master
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      idp: { condition: service_started }
+      idp-admin: { condition: service_started }
+    networks:
+      edge: {}
+      admin: { ipv4_address: 172.30.10.10 }
+    read_only: true
+    tmpfs: [/tmp, /app/.next/cache]
+
+networks:
+  edge: {}
+  admin:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.10.0/24
+  data:
+    internal: true
+
+volumes:
+  db-data: {}

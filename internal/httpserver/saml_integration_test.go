@@ -46,14 +46,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 11, end to end with real service providers (crewjam/saml's
-// ServiceProvider, an independent implementation of the SP side: it checks
-// our signatures, audience, recipient, InResponseTo and dates), a real
-// Postgres and a real Valkey: SSO with both bindings, the security cases,
-// key rotation and Single Logout across several providers.
-//
-// The SimpleSAMLphp run of the Definition of Done is described in the
-// Step 11 notes; this test is what runs on every build.
 
 const (
 	samlRealm    = "acme"
@@ -114,7 +106,7 @@ func setupSAMLTestEnv(t *testing.T) *samlTestEnv {
 	})
 	auth := service.NewAuthService(users, attempts)
 	rbac := service.NewRBACService(access, audit)
-	consent := service.NewConsentService(service.ConsentDeps{ // Step 13
+	consent := service.NewConsentService(service.ConsentDeps{
 		Consents: entstore.NewConsentRepository(client), Clients: clients, Sessions: sessions, Tokens: tokens, Audit: audit,
 	})
 	idp := service.NewIdentityCore(service.IdentityCoreDeps{
@@ -463,8 +455,6 @@ func TestSAMLIntegration(t *testing.T) {
 	signedSP := env.newSP(t, spOpts{name: "wiki", signed: true, slo: true, allow: true})
 	plainSP := env.newSP(t, spOpts{name: "legacy", allow: true, nameID: "email", wantResign: true}) // no certificate
 
-	// Logins are rate limited per user (Step 4): one signed-in browser is
-	// shared by the cases that only need "alice has a session".
 	aliceB := env.browser(t)
 	aliceB.login("alice")
 
@@ -614,7 +604,7 @@ func TestSAMLIntegration(t *testing.T) {
 			yes := true
 			u.RequireConsent = &yes
 		}
-		t.Run("consent required (Step 13): the page, Allow, then the assertion", func(t *testing.T) {
+		t.Run("consent required: the page, Allow, then the assertion", func(t *testing.T) {
 			sp := env.newSP(t, spOpts{name: "partner", allow: true, nameID: "email", mutateApp: requireConsent})
 			b := aliceB
 
@@ -649,7 +639,7 @@ func TestSAMLIntegration(t *testing.T) {
 			_, err = sp.assertion(fields["SAMLResponse"], reqID)
 			require.NoError(t, err)
 		})
-		t.Run("consent denied (Step 13): RequestDenied", func(t *testing.T) {
+		t.Run("consent denied: RequestDenied", func(t *testing.T) {
 			sp := env.newSP(t, spOpts{name: "survey", allow: true, mutateApp: requireConsent})
 			b := aliceB
 			u, _ := sp.redirectRequest(nil)

@@ -17,17 +17,6 @@ import (
 	"sso.internal/sso/internal/ratelimit"
 )
 
-// MFA orchestration (Step 9): login challenge, step-up, factor management.
-//
-// Login with a second factor, seen from the browser:
-//
-//	POST /auth/login       password OK ──► no session yet, cookie sso_mfa
-//	                                        (random token, 5 min, single use)
-//	POST /auth/mfa/verify  code OK     ──► session created, already
-//	                                        mfa_verified, cookie sso_mfa removed
-//
-// Only the SHA-256 of the challenge token is stored (Valkey), like the
-// session token. Nothing that grants access exists before the second factor.
 
 const (
 	loginChallengeTTL       = 5 * time.Minute
@@ -112,8 +101,8 @@ type MFAService struct {
 	audit         repository.AuditLogRepository     // optional
 	realms        repository.RealmRepository        // optional: TOTP issuer name
 	clients       repository.ClientRepository       // optional: client of a challenge
-	passkeys      PasskeyProvider                   // optional: WebAuthn (Step 9b)
-	notifier      Notifier                          // optional: e-mails on factor changes (Step 12)
+	passkeys      PasskeyProvider
+	notifier      Notifier
 	issuerName    string                            // optional override
 	now           func() time.Time
 	logger        *slog.Logger
@@ -136,8 +125,6 @@ type MFADeps struct {
 	// Passkeys is the WebAuthn engine (internal/passkey). nil: passkeys and
 	// security keys are disabled.
 	Passkeys PasskeyProvider
-	// Notifier (Step 12, optional) is told when a factor is added or
-	// removed, backup codes are regenerated or an admin resets MFA.
 	Notifier Notifier
 	// IssuerName overrides the name shown in authenticator apps
 	// (default: the realm display name, or "Oh-My-SSO (<realm>)").
@@ -201,8 +188,6 @@ type BeginLoginInput struct {
 	Client    *domain.ClientApp // optional: the client the login is for
 	IPAddress string
 	UserAgent string
-	// DeviceFingerprint (Step 12) is kept in the challenge and given to the
-	// session created after the second factor.
 	DeviceFingerprint string
 }
 
@@ -478,58 +463,73 @@ func (s *MFAService) StepUp(ctx context.Context, sess *domain.Session, methodNam
 // CheckStepUp returns nil when the session has authenticated recently
 // enough for the action, or a *StepUpRequiredError saying what is missing.
 func (s *MFAService) CheckStepUp(ctx context.Context, sess *domain.Session, mode StepUpMode) error {
-	maxAge := s.policy.StepUpMaxAge(ctx, sess.RealmID)
+	_, err := s.CheckStepUpFor(ctx, sess, nil, mode)
+	return err
+}
+
+// CheckStepUpFor is CheckStepUp for a caller that already loaded the
+// session's user (nil: loaded here, when the mode needs it). It also returns
+// the realm's step-up window (mfa_step_up_max_age_minutes), for the Admin
+// API's /me. The realm's settings, the user and their factors are each read
+// once.
+func (s *MFAService) CheckStepUpFor(ctx context.Context, sess *domain.Session, user *domain.User, mode StepUpMode) (time.Duration, error) {
+	settings, settingsErr := s.policy.realmSettings(ctx, sess.RealmID)
+	maxAge := stepUpMaxAgeOf(settings) // the default if the read failed
 	now := s.now()
 	recentMFA := sess.MFAVerified && !sess.MFAVerifiedAt.IsZero() && now.Sub(sess.MFAVerifiedAt) <= maxAge
 	recentLogin := now.Sub(sess.CreatedAt) <= maxAge
 
 	factors, err := s.activeFactors(ctx, sess.UserID)
 	if err != nil {
-		return err
+		return maxAge, err
 	}
 
 	switch mode {
 	case StepUpAccountSecurity:
 		if len(factors) > 0 {
 			if recentMFA {
-				return nil
+				return maxAge, nil
 			}
-			return &StepUpRequiredError{Reason: StepUpNeedMFA, MaxAge: maxAge}
+			return maxAge, &StepUpRequiredError{Reason: StepUpNeedMFA, MaxAge: maxAge}
 		}
 		if recentLogin || recentMFA {
-			return nil
+			return maxAge, nil
 		}
-		return &StepUpRequiredError{Reason: StepUpNeedRecentLogin, MaxAge: maxAge}
+		return maxAge, &StepUpRequiredError{Reason: StepUpNeedRecentLogin, MaxAge: maxAge}
 
 	case StepUpSensitiveAction:
-		user, err := s.users.GetByID(ctx, sess.UserID)
-		if err != nil {
-			return fmt.Errorf("step-up: load user: %w", err)
+		if settingsErr != nil {
+			return maxAge, settingsErr
 		}
-		req, err := s.policy.Requirement(ctx, user, nil)
+		if user == nil || user.ID != sess.UserID {
+			if user, err = s.users.GetByID(ctx, sess.UserID); err != nil {
+				return maxAge, fmt.Errorf("step-up: load user: %w", err)
+			}
+		}
+		req, err := s.policy.requirementWith(ctx, user, nil, settings)
 		if err != nil {
-			return err
+			return maxAge, err
 		}
 		needMFA := len(factors) > 0 || req.Required || req.StepUpForSensitiveActions
 		if !needMFA {
 			if recentLogin || recentMFA {
-				return nil
+				return maxAge, nil
 			}
-			return &StepUpRequiredError{Reason: StepUpNeedRecentLogin, MaxAge: maxAge}
+			return maxAge, &StepUpRequiredError{Reason: StepUpNeedRecentLogin, MaxAge: maxAge}
 		}
-		answerable, err := s.answerableMethods(ctx, sess.UserID)
+		answerable, err := s.answerableFrom(ctx, sess.UserID, factors)
 		if err != nil {
-			return err
+			return maxAge, err
 		}
 		if len(filterMethods(answerable, req)) == 0 {
-			return &StepUpRequiredError{Reason: StepUpNeedEnrollment, AllowedMethods: req.AllowedMethods, MaxAge: maxAge}
+			return maxAge, &StepUpRequiredError{Reason: StepUpNeedEnrollment, AllowedMethods: req.AllowedMethods, MaxAge: maxAge}
 		}
 		if recentMFA && req.Allows(domain.MfaMethodType(sess.MFAMethodType)) {
-			return nil
+			return maxAge, nil
 		}
-		return &StepUpRequiredError{Reason: StepUpNeedMFA, AllowedMethods: req.AllowedMethods, MaxAge: maxAge}
+		return maxAge, &StepUpRequiredError{Reason: StepUpNeedMFA, AllowedMethods: req.AllowedMethods, MaxAge: maxAge}
 	}
-	return fmt.Errorf("step-up: unknown mode %d", mode)
+	return maxAge, fmt.Errorf("step-up: unknown mode %d", mode)
 }
 
 // CheckClientAccess enforces the MFA policy before an assertion is issued
@@ -787,6 +787,11 @@ func (s *MFAService) answerableMethods(ctx context.Context, userID string) ([]do
 	if err != nil {
 		return nil, err
 	}
+	return s.answerableFrom(ctx, userID, factors)
+}
+
+// answerableFrom is answerableMethods with the active factors already loaded.
+func (s *MFAService) answerableFrom(ctx context.Context, userID string, factors []*domain.MfaMethod) ([]domain.MfaMethodType, error) {
 	var out []domain.MfaMethodType
 	for _, t := range []domain.MfaMethodType{domain.MfaMethodTOTP, domain.MfaMethodPasskey, domain.MfaMethodWebAuthn} {
 		if hasType(factors, t) && s.canVerify(t) {
@@ -878,8 +883,6 @@ func (s *MFAService) auditEvent(ctx context.Context, user *domain.User, action, 
 	})
 }
 
-// notify tells the notifier about a change of the user's factors (Step 12).
-// m: the factor concerned, if any.
 func (s *MFAService) notify(ctx context.Context, user *domain.User, kind domain.NotificationKind, m *domain.MfaMethod) {
 	e := domain.NotificationEvent{
 		Kind:       kind,

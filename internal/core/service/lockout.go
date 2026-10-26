@@ -16,27 +16,6 @@ import (
 	"sso.internal/sso/internal/lockoutstore"
 )
 
-// Account lockout (Step 12).
-//
-// After lockout_threshold wrong passwords in a row, each within
-// lockout_duration_minutes of the previous one, sign-in is refused for
-// lockout_duration_minutes. While locked, the password is not even checked:
-// an attacker cannot keep guessing.
-//
-// Progressive: a lock that comes back within 24 h of the end of the
-// previous one lasts twice as long (15 min, 30 min, 1 h, 2 h... capped at
-// 24 h). A legitimate user who mistypes a few times is barely slowed down;
-// a script guessing passwords gets slower and slower.
-//
-// A successful login, an admin unlock (`idp users unlock`) or a password
-// reset clears everything.
-//
-// Unknown identifiers are locked exactly like real accounts (same
-// thresholds, same durations, same HTTP answer), in Valkey: otherwise
-// "this identifier can be locked" would mean "this account exists". Only
-// real accounts get the "account locked" e-mail and AuditLog entry.
-//
-// https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
 
 var ErrAccountLocked = core.ErrAccountLocked // alias: same variable as core
 

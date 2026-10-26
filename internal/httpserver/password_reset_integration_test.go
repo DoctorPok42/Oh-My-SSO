@@ -27,13 +27,7 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 12, Definition of Done over HTTP, with Postgres and Valkey:
-//   - forgot-password answers the same for an existing and an unknown e-mail
-//   - valid token / expired token / token already used
-//   - every session is revoked by the reset
-//   - an AuditLog(action='notification_sent') is written when the e-mail goes
 
-// captureSender is the "mail server" of the test: it keeps the e-mails.
 type captureSender struct {
 	mu   sync.Mutex
 	sent []capturedMail

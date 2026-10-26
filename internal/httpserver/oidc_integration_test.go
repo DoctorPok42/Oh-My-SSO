@@ -35,11 +35,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 10 Definition of Done, end to end with a real OIDC client
-// (golang.org/x/oauth2), a real Postgres and a real Valkey (testcontainers,
-// Docker required): authorization code + PKCE + refresh, plus the security
-// cases (refresh replay, code replay, missing PKCE, other browser, logout,
-// revocation, introspection).
 
 const (
 	oidcRealm      = "acme"
@@ -53,7 +48,6 @@ const (
 	payrollClientID    = "payroll"
 	payrollRedirectURI = "https://payroll.example.test/callback"
 
-	// Step 13: a client with require_consent.
 	partnerClientID    = "partner"
 	partnerRedirectURI = "https://partner.example.test/callback"
 )
@@ -82,7 +76,6 @@ type oidcTestEnv struct {
 	webSecret string
 	// payrollSecret: a client whose MFA policy is "required".
 	payrollSecret string
-	// partnerSecret: a client with require_consent (Step 13).
 	partnerSecret string
 	consent       *service.ConsentService
 	alice         *domain.User
@@ -212,7 +205,6 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 		AllowRoles: []string{"employees"},
 	})
 	require.NoError(t, err)
-	// payroll requires a second factor (Step 9 client policy).
 	payroll, payrollSecret, err := oidcClients.Create(ctx, service.OIDCClientInput{
 		RealmID: realm.ID, Name: "Payroll", ClientID: payrollClientID,
 		RedirectURIs: []string{payrollRedirectURI}, AllowRoles: []string{"employees"},
@@ -221,7 +213,6 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 	required := domain.ClientAppMFARequired
 	_, err = clients.Update(ctx, payroll.ID, repository.UpdateClientAppParams{MFAPolicy: &required})
 	require.NoError(t, err)
-	// partner shows the consent screen (Step 13).
 	_, partnerSecret, err := oidcClients.Create(ctx, service.OIDCClientInput{
 		RealmID: realm.ID, Name: "Partner Portal", ClientID: partnerClientID,
 		RedirectURIs: []string{partnerRedirectURI}, Scopes: []string{"profile", "email", "offline_access", "groups"},
@@ -609,8 +600,6 @@ func TestOIDC_Integration_LoginRules(t *testing.T) {
 	})
 }
 
-// prompt=login and max_age, in their own realm: the Step 4 rate limit
-// counts every login of an identifier (5 per 15 minutes).
 func TestOIDC_Integration_Reauthentication(t *testing.T) {
 	e := setupOIDCTestEnv(t)
 	cfg := e.oauth(webClientID, e.webSecret, webRedirectURI)
@@ -703,7 +692,6 @@ func TestOIDC_Integration_LogoutRevocationIntrospection(t *testing.T) {
 	})
 }
 
-// --- MFA (Step 9) through the OIDC login page -----------------------------------------
 
 func (e *oidcTestEnv) totpCode(t *testing.T, secret string) string {
 	t.Helper()
@@ -746,7 +734,6 @@ func TestOIDC_Integration_MFA(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Contains(t, body, `data-mode="enroll"`)
 
-	// 2. She enrolls a TOTP (Step 9 API, as the account page does)...
 	status, out := b.postJSON(e.realmURL+"/account/mfa/totp", map[string]string{"name": "phone"})
 	require.Equal(t, http.StatusCreated, status, "%v", out)
 	secret, methodID := out["secret"].(string), out["method_id"].(string)
@@ -763,8 +750,6 @@ func TestOIDC_Integration_MFA(t *testing.T) {
 	resp = b2.get(payroll.AuthCodeURL("s2", oauth2.S256ChallengeOption(verifier)))
 	loginURL = resp.Request.URL.String()
 	first := login(b2)
-	// login.js shows the code form right away (no full session yet: the
-	// pending MFA state lives in its own cookie, Step 9).
 	require.Equal(t, "mfa_required", first["status"])
 	status, out = b2.postJSON(e.realmURL+"/auth/mfa/verify", map[string]string{"method": "totp", "code": e.totpCode(t, secret)})
 	require.Equal(t, http.StatusOK, status, "%v", out)

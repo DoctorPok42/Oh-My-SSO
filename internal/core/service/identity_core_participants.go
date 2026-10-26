@@ -11,15 +11,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Session participants (Step 11).
-//
-// A SAML service provider keeps its own session once it has accepted an
-// assertion. For Single Logout the IdP must remember, per IdP session, which
-// service providers got an assertion, with the NameID and SessionIndex they
-// received: a LogoutRequest sent to them must repeat both. Those facts are
-// stored as Token rows of type "saml_session", next to the OIDC tokens of
-// the same session, so the existing cascade (RevokeSession revokes every
-// token of the session) covers them too.
 
 func (s *IdentityCoreService) RegisterSessionParticipant(ctx context.Context, p core.SessionParticipant) (*domain.Token, error) {
 	if p.SessionID == "" || p.ClientRef == "" || p.Subject == "" {

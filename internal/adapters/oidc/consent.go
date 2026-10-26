@@ -19,28 +19,7 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// The consent screen of the OIDC flow (Step 13).
-//
-//	/authorize -> login page -> (MFA) -> consent page -> callback -> code
-//	                                      POST /oidc/consent
-//
-// When it shows (the decision itself is core.IdentityCore.CheckConsent):
-//   - the client has require_consent and the user has not approved every
-//     scope it is about to receive (first use, a new scope, after a
-//     revocation);
-//   - or the client sent prompt=consent (OIDC Core, section 3.1.2.1), even
-//     with require_consent off: the application explicitly asks for it.
-//
-// prompt=none and consent needed: error consent_required (section 3.1.2.6).
-// "Deny": error access_denied (RFC 6749, section 4.1.2.1).
-//
-// The page is a plain HTML form. Its POST must come from the browser that
-// started the request (binding cookie, SameSite=Lax: never sent with a POST
-// from another site), carry the one-time token of the form actually shown
-// (OWASP "synchronizer token"), and the user's session cookie.
 
-// Words of the standard scopes on the consent page. Custom ClientScopes use
-// their description (or their name when the admin left it empty).
 var standardConsentItems = map[string]core.ConsentItem{
 	scopeProfile: {Scope: scopeProfile, Title: "Your profile",
 		Description: "Your name, username and the other details of your profile (picture, language...)."},

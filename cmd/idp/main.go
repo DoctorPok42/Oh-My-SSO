@@ -23,14 +23,11 @@ import (
 	"sso.internal/sso/internal/oidcstore"
 )
 
-// Builders shared with cmd/idp-admin live in internal/app (Step 14). These
-// short names keep the CLI files of this package unchanged.
 
 func buildKeyManager() (keymanager.KeyManager, string) { return app.KeyManager() }
 
 func buildEntClient() *ent.Client { return app.EntClient() }
 
-// buildOIDC returns the OpenID Connect adapter (Step 10).
 func buildOIDC(publicURL string, idp core.IdentityCore, store oidcstore.Store, passkeys, passwordReset bool) *oidcadapter.Adapter {
 	appEnv := os.Getenv("APP_ENV")
 	a, err := oidcadapter.New(oidcadapter.Config{
@@ -48,8 +45,6 @@ func buildOIDC(publicURL string, idp core.IdentityCore, store oidcstore.Store, p
 	return a
 }
 
-// buildSAML returns the SAML 2.0 adapter (Step 11). It reuses the OIDC
-// short-lived store (a generic key/value store; SAML keys start with "saml:").
 func buildSAML(publicURL string, idp core.IdentityCore, store oidcstore.Store, passkeys, passwordReset bool) *samladapter.Adapter {
 	appEnv := os.Getenv("APP_ENV")
 	a, err := samladapter.New(samladapter.Config{
@@ -82,7 +77,6 @@ const backendLocalDev = app.BackendLocalDev
 //	idp mail test  send a test e-mail with the SMTP_* settings (see mail.go)
 //	idp dev seed   demo realm, user and OIDC client (development only, see dev.go)
 func main() {
-	// Step 14: this public binary never changes the master realm.
 	if err := guardMasterRealm(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(2)
@@ -119,13 +113,9 @@ func main() {
 func serve() {
 	port := app.IdPPort()
 
-	// Everything shared with cmd/idp-admin: database, Valkey, KeyManager,
-	// e-mail and every core service (internal/app, Step 14).
 	c := app.BuildCore()
 	defer c.Close()
 
-	// --- OpenID Connect (Step 10) and SAML 2.0 (Step 11) ---
-	// "Forgot password" links only show when e-mails can leave the server.
 	flowStore := valkeycache.NewOIDCStore(c.Valkey)
 	oidcProvider := buildOIDC(c.PublicURL, c.IdentityCore, flowStore, c.MFA.PasskeysEnabled(), c.EmailEnabled())
 	samlProvider := buildSAML(c.PublicURL, c.IdentityCore, flowStore, c.MFA.PasskeysEnabled(), c.EmailEnabled())
@@ -136,12 +126,8 @@ func serve() {
 		httpserver.WithDevPages(os.Getenv("APP_ENV") == "development"),
 		httpserver.WithOIDC(oidcProvider),
 		httpserver.WithSAML(samlProvider),
-		// Step 14: the "choose a password" page is always there (activation
-		// links of new accounts); "forgot password" needs e-mail.
 		httpserver.WithPasswordReset(c.PasswordReset),
 		httpserver.WithForgotPassword(c.EmailEnabled()),
-		// Step 14: the signing key endpoints moved to cmd/idp-admin. This
-		// server is reachable by end users: it exposes no admin route.
 	}
 	srv := httpserver.New(
 		c.Auth,
@@ -153,9 +139,6 @@ func serve() {
 		opts...,
 	)
 
-	// Graceful stop (Step 12): on Ctrl+C or `docker stop` (SIGTERM), stop
-	// accepting connections, let running requests finish, then give the
-	// e-mails still in the queue a few seconds to leave (c.Close).
 	httpSrv := &http.Server{Addr: ":" + port, Handler: srv.Router(), ReadHeaderTimeout: 10 * time.Second}
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

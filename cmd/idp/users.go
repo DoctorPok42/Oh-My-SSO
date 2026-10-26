@@ -15,11 +15,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// "idp users" (Step 12): account lockout from the command line, until the
-// admin panel (Step 14) has a button for it.
-//
-//	idp users status --realm demo --user alice    failed sign-ins, lock
-//	idp users unlock --realm demo --user alice    clear them now
 
 const usersUsage = `usage:
   idp users status --realm <name> --user <username|email>

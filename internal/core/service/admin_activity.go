@@ -5,18 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"sync"
 	"time"
 
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Sessions, audit log, dashboard, MFA policies and timeouts in the Admin
-// API (Step 14).
 
-// --- sessions -------------------------------------------------------------------
 
-// SessionView: a row of the sessions table.
 type SessionView struct {
 	ID             string    `json:"id"`
 	User           NameRef   `json:"user"`
@@ -41,17 +38,12 @@ type SessionFilter struct {
 }
 
 func (s *AdminService) ListSessions(ctx context.Context, realm *domain.Realm, f SessionFilter) ([]SessionView, int, error) {
-	st, err := s.settingsOf(ctx, realm.ID)
+	now, idleSince, err := s.activeWindow(ctx, realm)
 	if err != nil {
 		return nil, 0, err
 	}
-	idle := time.Duration(st.SessionIdleMinutes) * time.Minute
-	if idle <= 0 {
-		idle = defaultSessionIdleTimeout
-	}
-	now := s.d.Now()
 	sessions, total, err := s.d.Admin.SearchSessions(ctx, repository.SessionSearch{
-		RealmID: realm.ID, UserID: f.UserID, ClientRef: f.ClientRef, Now: now, IdleSince: now.Add(-idle), Page: f.Page,
+		RealmID: realm.ID, UserID: f.UserID, ClientRef: f.ClientRef, Now: now, IdleSince: idleSince, Page: f.Page,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -230,44 +222,94 @@ type SigningKeyInfo struct {
 
 func (s *AdminService) Dashboard(ctx context.Context, realm *domain.Realm) (*Dashboard, error) {
 	d := &Dashboard{SigningKeys: []SigningKeyInfo{}}
-	_, total, err := s.ListSessions(ctx, realm, SessionFilter{Page: repository.Page{Limit: 1}})
-	if err != nil {
-		return nil, err
+	since := s.d.Now().Add(-24 * time.Hour)
+
+	// Six independent reads, run at the same time: the screen waits for the
+	// slowest one, not for their sum (each is one or two database round
+	// trips, and a round trip through Docker's port forwarding is not free).
+	// Each function writes its own fields of d.
+	var (
+		wg   sync.WaitGroup
+		mu   sync.Mutex
+		errs []error
+	)
+	run := func(f func() error) {
+		wg.Go(func() {
+			if err := f(); err != nil {
+				mu.Lock()
+				errs = append(errs, err)
+				mu.Unlock()
+			}
+		})
 	}
-	d.ActiveSessions = total
-	if d.ActiveClients, err = s.d.Admin.CountActiveClients(ctx, realm.ID); err != nil {
-		return nil, err
-	}
-	ok, ko, err := s.d.Admin.LoginCounts(ctx, realm.ID, s.d.Now().Add(-24*time.Hour))
-	if err != nil {
-		return nil, err
-	}
-	d.Logins24h = LoginStats{Success: ok, Failure: ko, SuccessRate: -1}
-	if ok+ko > 0 {
-		d.Logins24h.SuccessRate = round1(100 * float64(ok) / float64(ok+ko))
-	}
-	enrolled, users, err := s.d.Admin.MFACoverage(ctx, realm.ID)
-	if err != nil {
-		return nil, err
-	}
-	d.MFA = MFACoverage{Enrolled: enrolled, Total: users}
-	if users > 0 {
-		d.MFA.Percent = round1(100 * float64(enrolled) / float64(users))
-	}
-	keys, err := s.d.KeyRotation.List(ctx, realm.ID)
-	if err != nil {
-		return nil, err
-	}
-	for _, k := range keys {
-		if k.Status == domain.SigningKeyActive {
-			d.SigningKeys = append(d.SigningKeys, SigningKeyInfo{Kid: k.Kid, KeyType: string(k.KeyType),
-				Purpose: string(k.Purpose), Status: string(k.Status), CreatedAt: k.CreatedAt})
+	run(func() (err error) {
+		d.ActiveSessions, err = s.countActiveSessions(ctx, realm)
+		return err
+	})
+	run(func() (err error) {
+		d.ActiveClients, err = s.d.Admin.CountActiveClients(ctx, realm.ID)
+		return err
+	})
+	run(func() error {
+		ok, ko, err := s.d.Admin.LoginCounts(ctx, realm.ID, since)
+		d.Logins24h = LoginStats{Success: ok, Failure: ko, SuccessRate: -1}
+		if ok+ko > 0 {
+			d.Logins24h.SuccessRate = round1(100 * float64(ok) / float64(ok+ko))
 		}
-	}
-	if d.RecentActivity, _, err = s.SearchAudit(ctx, realm, repository.AuditSearch{Page: repository.Page{Limit: 6}}); err != nil {
+		return err
+	})
+	run(func() error {
+		enrolled, users, err := s.d.Admin.MFACoverage(ctx, realm.ID)
+		d.MFA = MFACoverage{Enrolled: enrolled, Total: users}
+		if users > 0 {
+			d.MFA.Percent = round1(100 * float64(enrolled) / float64(users))
+		}
+		return err
+	})
+	run(func() error {
+		keys, err := s.d.KeyRotation.List(ctx, realm.ID)
+		for _, k := range keys {
+			if k.Status == domain.SigningKeyActive {
+				d.SigningKeys = append(d.SigningKeys, SigningKeyInfo{Kid: k.Kid, KeyType: string(k.KeyType),
+					Purpose: string(k.Purpose), Status: string(k.Status), CreatedAt: k.CreatedAt})
+			}
+		}
+		return err
+	})
+	run(func() (err error) {
+		// The dashboard shows no total: not counted.
+		d.RecentActivity, _, err = s.SearchAudit(ctx, realm, repository.AuditSearch{Page: repository.Page{Limit: 6, NoTotal: true}})
+		return err
+	})
+	wg.Wait()
+	if err := errors.Join(errs...); err != nil {
 		return nil, err
 	}
 	return d, nil
+}
+
+// activeWindow: a session is active when it has not expired and was used
+// within the realm's idle timeout.
+func (s *AdminService) activeWindow(ctx context.Context, realm *domain.Realm) (now, idleSince time.Time, err error) {
+	st, err := s.settingsOf(ctx, realm.ID)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	idle := time.Duration(st.SessionIdleMinutes) * time.Minute
+	if idle <= 0 {
+		idle = defaultSessionIdleTimeout
+	}
+	now = s.d.Now()
+	return now, now.Add(-idle), nil
+}
+
+// countActiveSessions: the total of ListSessions, one COUNT query.
+func (s *AdminService) countActiveSessions(ctx context.Context, realm *domain.Realm) (int, error) {
+	now, idleSince, err := s.activeWindow(ctx, realm)
+	if err != nil {
+		return 0, err
+	}
+	return s.d.Admin.CountSessions(ctx, repository.SessionSearch{RealmID: realm.ID, Now: now, IdleSince: idleSince})
 }
 
 func round1(v float64) float64 { return float64(int(v*10+0.5)) / 10 }
@@ -386,10 +428,7 @@ func (s *AdminService) DeleteRoleMFA(ctx context.Context, actor AdminActor, real
 	return s.MFAPolicies(ctx, realm)
 }
 
-// --- timeouts (read-only in Step 14) ---------------------------------------------
 
-// TimeoutView: a temporary restriction. Creating them comes with the real
-// enforcement at login, in a later step (spec: Phase 2).
 type TimeoutView struct {
 	ID         string     `json:"id"`
 	TargetType string     `json:"target_type"`

@@ -18,19 +18,6 @@ import (
 	"sso.internal/sso/internal/keymanager"
 )
 
-// Envelope encryption (Step 9).
-//
-//	          ┌───────────── stored in Postgres ─────────────┐
-//	secret ──► AES-256-GCM(DEK) ──► ciphertext               │
-//	DEK    ──► KMS.Encrypt(KEK) ──► wrapped DEK              │
-//	          └──────────────────────────────────────────────┘
-//	KEK: never leaves Vault / OVH KMS (one per realm, purpose envelope_encryption)
-//
-// Reading a secret back needs both the database AND the KMS. A database dump
-// alone is useless. Each secret has its own random DEK, so the KMS is called
-// once per encryption / decryption with 32 bytes, never with the data itself.
-//
-// https://cloud.google.com/kms/docs/envelope-encryption
 
 var (
 	ErrEnvelopeNotConfigured   = errors.New("service: envelope encryption is not configured (KMS backend cannot encrypt)")

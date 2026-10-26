@@ -13,12 +13,7 @@ import (
 	"sso.internal/sso/internal/passkey/passkeytest"
 )
 
-// Step 9b: passkeys and security keys through the real WebAuthn engine
-// (go-webauthn, internal/passkey) and a software authenticator that signs
-// like a phone would.
 
-// enrollPasskey registers a credential for the user with auth and returns
-// the stored method and the backup codes (first factor only).
 func (f *mfaFixture) enrollPasskey(t *testing.T, userID string, auth *passkeytest.Authenticator, kind service.PasskeyKind) (*domain.MfaMethod, []string, *domain.Session) {
 	t.Helper()
 	ctx := context.Background()

@@ -14,25 +14,7 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// Single Logout (SAML Profiles §4.4), service-provider-initiated.
-//
-//  1. A service provider sends a signed <LogoutRequest> naming the user
-//     (NameID) and its session (SessionIndex).
-//  2. We find the IdP session, list its other participants, and revoke it:
-//     RevokeSession also revokes every token of the session, OIDC ones
-//     included.
-//  3. The browser visits each other SAML participant that has an SLO URL:
-//     a signed <LogoutRequest> goes out (HTTP-Redirect), its
-//     <LogoutResponse> comes back here, then the next one (Step 11 choice:
-//     front-channel, through the browser).
-//  4. Finally the initiator gets its <LogoutResponse>: Success, with the
-//     second-level code PartialLogout when somebody could not be reached.
-//
-// If a participant never answers (down, or the user closes the tab), the
-// chain stops there; the IdP session is already gone, so nothing can
-// sign the user in again without a new login.
 
-// logoutRequestLifetime: NotOnOrAfter of the LogoutRequests we send.
 const logoutRequestLifetime = 2 * time.Minute
 
 func (a *Adapter) handleSLO(w http.ResponseWriter, r *http.Request) {
@@ -75,9 +57,6 @@ func (a *Adapter) handleLogoutRequest(w http.ResponseWriter, r *http.Request, in
 		return
 	}
 	app := pc.App
-	// A LogoutRequest must be authenticated (Profiles §4.4.4.1): without a
-	// certificate, anybody could log any user out. Step 11 rule: a provider
-	// without certificate cannot use Single Logout.
 	if !hasCertificates(app) {
 		a.refuseLogout(w, r, issuer, errors.New("saml: this service provider has no certificate, it cannot send a LogoutRequest"))
 		return

@@ -11,7 +11,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 14: the queries of the Admin API, on a real PostgreSQL.
 func TestAdminRepository_Integration(t *testing.T) {
 	f := newRBACFixture(t)
 	admin := entstore.NewAdminRepository(f.client)
@@ -35,12 +34,20 @@ func TestAdminRepository_Integration(t *testing.T) {
 		require.ElementsMatch(t, []string{ops.ID}, m[alice.ID].GroupIDs)
 		require.ElementsMatch(t, []string{support.ID}, m[alice.ID].RoleIDs)
 		require.ElementsMatch(t, []string{staff.ID}, m[bob.ID].GroupIDs)
+		require.Equal(t, map[string]string{ops.ID: ops.Name, support.ID: support.Name}, m[alice.ID].Names,
+			"names come with the memberships")
 
-		groups, roles, err := admin.MemberCounts(ctx, f.realm.ID)
+		// Counted by PostgreSQL; a deleted account does not count.
+		carol := f.user()
+		require.NoError(t, admin.SetUserGroups(ctx, carol.ID, []string{staff.ID}))
+		require.NoError(t, f.client.User.UpdateOneID(carol.ID).SetDeletedAt(time.Now()).Exec(ctx))
+		groups, err := admin.GroupMemberCounts(ctx, f.realm.ID)
 		require.NoError(t, err)
 		require.Equal(t, 1, groups[staff.ID])
 		require.Equal(t, 1, groups[ops.ID])
-		require.Equal(t, 1, roles[support.ID])
+		roles, err := admin.RoleMemberCounts(ctx, f.realm.ID)
+		require.NoError(t, err)
+		require.Equal(t, map[string]int{support.ID: 1}, roles)
 
 		ids, err := admin.ActiveGroupMemberIDs(ctx, staff.ID)
 		require.NoError(t, err)
@@ -61,6 +68,25 @@ func TestAdminRepository_Integration(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 2, total, "total ignores the page size")
 
+		// The total without a COUNT query (page not full), with one (full
+		// page, or empty page past the end), or not at all.
+		for _, c := range []struct {
+			page  repository.Page
+			rows  int
+			total int
+		}{
+			{repository.Page{Limit: 10}, 2, 2},
+			{repository.Page{Offset: 1, Limit: 10}, 1, 2},
+			{repository.Page{Offset: 1, Limit: 1}, 1, 2},
+			{repository.Page{Offset: 5, Limit: 10}, 0, 2},
+			{repository.Page{Limit: 10, NoTotal: true}, 2, -1},
+		} {
+			got, total, err := admin.SearchUsers(ctx, repository.UserSearch{RealmID: f.realm.ID, Page: c.page})
+			require.NoError(t, err)
+			require.Len(t, got, c.rows, "%+v", c.page)
+			require.Equal(t, c.total, total, "%+v", c.page)
+		}
+
 		n, err := admin.CountUsersWithPassword(ctx, f.realm.ID)
 		require.NoError(t, err)
 		require.Zero(t, n)
@@ -79,8 +105,10 @@ func TestAdminRepository_Integration(t *testing.T) {
 		require.Equal(t, []string{ops.ID}, g.GroupIDs)
 		require.Equal(t, []string{support.ID}, g.RoleIDs)
 		require.ElementsMatch(t, []repository.ScopeMapping{
-			{ClientScopeID: groupsScope.ID, Required: true}, {ClientScopeID: deptScope.ID},
-		}, g.Scopes)
+			{ClientScopeID: groupsScope.ID, Required: true, Name: groupsScope.Name, Protocol: string(groupsScope.Protocol)},
+			{ClientScopeID: deptScope.ID, Name: deptScope.Name, Protocol: string(deptScope.Protocol)},
+		}, g.Scopes, "the scopes' names come with the mappings")
+		require.Equal(t, map[string]string{ops.ID: ops.Name, support.ID: support.Name}, g.Names)
 
 		policy, err := access.GetClientAccessPolicy(ctx, app.ID)
 		require.NoError(t, err)
@@ -113,6 +141,15 @@ func TestAdminRepository_Integration(t *testing.T) {
 		gg, err := admin.GroupGrants(ctx, ops.ID)
 		require.NoError(t, err)
 		require.Equal(t, []string{p2.ID}, gg.PermissionIDs)
+
+		// Every role / group of the realm at once.
+		all, err := admin.RealmRoleGrants(ctx, f.realm.ID)
+		require.NoError(t, err)
+		require.Equal(t, rg, all[support.ID])
+		allGroups, err := admin.RealmGroupGrants(ctx, f.realm.ID)
+		require.NoError(t, err)
+		require.Equal(t, gg, allGroups[ops.ID])
+		require.Equal(t, repository.Grants{PermissionIDs: []string{}, ClientScopeIDs: []string{}}, allGroups[staff.ID])
 
 		require.NoError(t, admin.SetManagedBy(ctx, "group", ops.ID, "config"))
 		g, err := entstore.NewGroupRepository(f.client).GetByID(ctx, ops.ID)
@@ -167,13 +204,15 @@ func TestAdminRepository_Integration(t *testing.T) {
 		audit := entstore.NewAuditLogRepository(f.client)
 		for _, p := range []repository.CreateAuditLogParams{
 			{RealmID: f.realm.ID, UserID: "admin-1", Action: "admin.user.update", ResourceType: "User", ResourceID: alice.ID},
-			{RealmID: f.realm.ID, UserID: alice.ID, Action: "login", Status: domain.AuditLogFailure},
+			{RealmID: f.realm.ID, UserID: alice.ID, Action: "login", Status: domain.AuditLogFailure, Level: domain.AuditLogWarning},
 			{RealmID: f.realm.ID, UserID: "admin-1", Action: "admin.client.update", ResourceType: "ClientApp", ResourceID: app.ID},
 		} {
 			if p.Status == "" {
 				p.Status = domain.AuditLogSuccess
 			}
-			p.Level = domain.AuditLogInfo
+			if p.Level == "" {
+				p.Level = domain.AuditLogInfo
+			}
 			_, err := audit.Create(ctx, p)
 			require.NoError(t, err)
 		}
@@ -186,9 +225,36 @@ func TestAdminRepository_Integration(t *testing.T) {
 		_, total, err = admin.SearchAuditLogs(ctx, repository.AuditSearch{RealmID: f.realm.ID, Status: domain.AuditLogFailure})
 		require.NoError(t, err)
 		require.Equal(t, 1, total)
+		rows, total, err := admin.SearchAuditLogs(ctx, repository.AuditSearch{RealmID: f.realm.ID,
+			Levels: []domain.AuditLogLevel{domain.AuditLogWarning, domain.AuditLogError}})
+		require.NoError(t, err)
+		require.Equal(t, 1, total, "the bell: warning and above only")
+		require.Equal(t, "login", rows[0].Action)
 		_, total, err = admin.SearchAuditLogs(ctx, repository.AuditSearch{RealmID: f.realm.ID, From: time.Now().Add(time.Hour)})
 		require.NoError(t, err)
 		require.Zero(t, total)
+	})
+
+	t.Run("sessions: count alone", func(t *testing.T) {
+		sessions := entstore.NewSessionRepository(f.client)
+		for _, u := range []*domain.User{alice, alice, bob} {
+			_, err := sessions.Create(ctx, repository.CreateSessionParams{RealmID: f.realm.ID, UserID: u.ID,
+				TokenHash: "hash-" + u.ID + time.Now().String(), ExpiresAt: time.Now().Add(time.Hour), AuthMethod: domain.AuthMethodPassword})
+			require.NoError(t, err)
+		}
+		live := repository.SessionSearch{RealmID: f.realm.ID, Now: time.Now(), IdleSince: time.Now().Add(-time.Hour)}
+		n, err := admin.CountSessions(ctx, live)
+		require.NoError(t, err)
+		require.Equal(t, 3, n)
+		live.UserID = alice.ID
+		n, err = admin.CountSessions(ctx, live)
+		require.NoError(t, err)
+		require.Equal(t, 2, n)
+		rows, total, err := admin.SearchSessions(ctx, repository.SessionSearch{RealmID: f.realm.ID, Now: time.Now(),
+			IdleSince: time.Now().Add(-time.Hour), Page: repository.Page{Limit: 2}})
+		require.NoError(t, err)
+		require.Len(t, rows, 2)
+		require.Equal(t, 3, total)
 	})
 
 	t.Run("the master realm is created only here", func(t *testing.T) {

@@ -17,9 +17,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// Web Browser SSO, step 1: the service provider sends an <AuthnRequest>
-// (SAML Profiles §4.1). It is checked, remembered, and the browser goes to
-// the sign-in page.
 
 const (
 	// clockSkew tolerated between our clock and the service provider's.

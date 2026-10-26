@@ -14,8 +14,8 @@ type LoginAttemptRepository interface {
 }
 
 type CreateLoginAttemptParams struct {
-	RealmID       string // Step 14: realm of the login page (empty in old rows)
-	UserID        string // Step 14: the account the identifier matched, if any
+	RealmID       string
+	UserID        string
 	Identifier    string
 	IPAddress     string
 	UserAgent     string

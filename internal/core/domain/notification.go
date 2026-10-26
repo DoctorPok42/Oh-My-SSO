@@ -2,8 +2,6 @@ package domain
 
 import "time"
 
-// NotificationKind identifies an e-mail sent to a user about their account
-// (Step 12). Each kind has a template in internal/notify/templates.
 type NotificationKind string
 
 const (
@@ -22,16 +20,9 @@ const (
 	NotificationAccountLocked          NotificationKind = "account_locked"
 	// NotificationSuspiciousLogin also needs suspicious_login_email_enabled.
 	NotificationSuspiciousLogin NotificationKind = "suspicious_login"
-	// NotificationAppConnected (Step 13): the user approved an application
-	// on the consent screen, or approved more for it than before.
 	NotificationAppConnected NotificationKind = "app_connected"
 
-	// NotificationAccountInvite (Step 14): an admin created the account; the
-	// e-mail carries the one-time link to choose a password. Always sent.
 	NotificationAccountInvite NotificationKind = "account_invite"
-	// NotificationAdminRecovery (Step 14): `idp-admin recover` was used on
-	// the master realm. Sent to every admin, whatever the realm settings:
-	// an admin must never miss that someone used the break-glass procedure.
 	NotificationAdminRecovery NotificationKind = "admin_recovery"
 )
 
@@ -95,9 +86,6 @@ type NotificationEvent struct {
 	Access      []string
 	AccessAdded bool
 
-	// admin_recovery (Step 14): what was recovered ("admin account" or
-	// "admin console secret"), who ran the command ("cli:root@host"), and
-	// the new account when one was created.
 	RecoveryKind    string
 	RecoveryActor   string
 	RecoveryAccount string

@@ -14,9 +14,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// SPMetadata is what a service provider's metadata file tells us, ready to
-// fill a service.SAMLClientInput (Step 11, `idp saml clients create
-// --metadata-file`). Reading metadata is XML, hence here and not in the core.
 type SPMetadata struct {
 	EntityID string
 	// ACSURL: the HTTP-POST AssertionConsumerService (the default one, else

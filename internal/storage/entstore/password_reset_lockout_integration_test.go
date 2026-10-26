@@ -13,8 +13,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 12: the repository methods behind the lockout, the password reset
-// and the sign-in history, against a real Postgres.
 
 func TestUserRepository_CompareAndSwapLockout_Integration(t *testing.T) {
 	ctx := context.Background()

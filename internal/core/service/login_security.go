@@ -11,25 +11,7 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Sign-in analysis (Step 12): after every new session, compare it with the
-// user's recent sessions.
-//
-//   - New device: the browser's sso_device cookie (a random id, stored as
-//     Session.device_fingerprint) was never seen on this account.
-//     → AuditLog "new_device_login" (info) + "new sign-in" e-mail.
-//
-//   - Suspicious: the sign-in worked but looks unusual. Reasons:
-//     new_country             country never seen for this user (needs GEOIP_DB_PATH)
-//     unusual_hour            no past sign-in within ±2 h of this time of day
-//     new_network_and_device  unknown browser AND unknown network (/24, /48)
-//     → AuditLog "suspicious_login" (level suspicious, always) + "unusual
-//     sign-in" e-mail when the realm turned suspicious_login_email_enabled on.
-//
-// The very first sign-in of an account has nothing to compare with: no
-// alert. Nothing here ever blocks a sign-in; it only informs (the user, and
-// the admin through the AuditLog).
 
-// GeoIPResolver gives the country of an IP address (internal/geoip).
 type GeoIPResolver interface {
 	// Country returns the ISO 3166-1 code and English name, ok=false when
 	// unknown (private address, address missing from the database).

@@ -1,11 +1,3 @@
-// Package mfastore holds the short-lived state of MFA ceremonies: the login
-// challenge between "password OK" and "second factor OK" (Step 9a), and
-// later the WebAuthn challenges (Step 9b).
-//
-// Everything here expires within minutes and can be lost without harm (the
-// user just starts again), which is why it lives in Valkey rather than in
-// Postgres. Keys are always hashes of the random token sent to the browser,
-// never the token itself, so a dump of Valkey cannot be replayed.
 package mfastore
 
 import (
@@ -22,16 +14,12 @@ type LoginChallenge struct {
 	ClientRef string    `json:"cref,omitempty"` // ClientApp.ID the login is for, if any
 	IPAddress string    `json:"ip,omitempty"`
 	UserAgent string    `json:"ua,omitempty"`
-	Device    string    `json:"dev,omitempty"` // Step 12: device fingerprint (hash) for the session
+	Device    string    `json:"dev,omitempty"`
 	Methods   []string  `json:"m"`             // methods that may answer this challenge
 	CreatedAt time.Time `json:"cat"`
 	ExpiresAt time.Time `json:"exp"`
 }
 
-// Ceremony is a WebAuthn ceremony in progress (Step 9b): the server sent
-// options with a random challenge to the browser and waits for the signed
-// answer. SessionData is go-webauthn's state, stored verbatim (the library
-// asks for that: a hand-rebuilt copy loses information).
 type Ceremony struct {
 	Purpose     string          `json:"p"` // "register", "login" or "step_up"
 	RealmID     string          `json:"rid"`

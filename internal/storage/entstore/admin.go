@@ -4,17 +4,22 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
+
+	"entgo.io/ent/dialect/sql"
 
 	"sso.internal/sso/ent"
 	"sso.internal/sso/ent/auditlog"
 	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/clientgroup"
 	"sso.internal/sso/ent/clientrole"
+	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/clientscopemapping"
 	"sso.internal/sso/ent/group"
 	"sso.internal/sso/ent/loginattempt"
 	"sso.internal/sso/ent/mfamethod"
+	"sso.internal/sso/ent/permission"
 	"sso.internal/sso/ent/predicate"
 	"sso.internal/sso/ent/realm"
 	"sso.internal/sso/ent/role"
@@ -27,7 +32,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Admin queries (Step 14). See repository.AdminRepository.
 
 type entAdminRepository struct {
 	client *ent.Client
@@ -50,6 +54,30 @@ func clampPage(p repository.Page) (offset, limit int) {
 	}
 	return offset, limit
 }
+
+// pageTotal returns the total number of matches of a paged search. The page
+// is read first: when it is not full, it tells the total by itself (offset +
+// rows) and the COUNT query is skipped. A small realm's lists thus cost one
+// query instead of two. Only an empty page after the first one (the total
+// shrank) or a full page needs counting.
+func pageTotal(ctx context.Context, p repository.Page, offset, limit, got int, count func(context.Context) (int, error)) (int, error) {
+	switch {
+	case p.NoTotal:
+		return -1, nil
+	case got < limit && (got > 0 || offset == 0):
+		return offset + got, nil
+	}
+	return count(ctx)
+}
+
+// quoteIdent quotes a PostgreSQL identifier ("user_groups"). For the
+// hand-written sub-queries below, built only from Ent's table and column
+// constants, never from input.
+func quoteIdent(name string) string { return `"` + strings.ReplaceAll(name, `"`, `""`) + `"` }
+
+// quoteLiteral quotes a constant of this code ('active') for the same
+// sub-queries: an aggregate expression cannot carry bind parameters.
+func quoteLiteral(v string) string { return "'" + strings.ReplaceAll(v, "'", "''") + "'" }
 
 // --- realms ---------------------------------------------------------------------
 
@@ -94,12 +122,12 @@ func (r *entAdminRepository) SearchUsers(ctx context.Context, f repository.UserS
 		preds = append(preds, user.HasRolesWith(role.ID(f.RoleID)))
 	}
 	q := r.client.User.Query().Where(preds...)
-	total, err := q.Clone().Count(ctx)
+	offset, limit := clampPage(f.Page)
+	rows, err := q.Clone().Order(ent.Asc(user.FieldUsername)).Offset(offset).Limit(limit).All(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
-	offset, limit := clampPage(f.Page)
-	rows, err := q.Order(ent.Asc(user.FieldUsername)).Offset(offset).Limit(limit).All(ctx)
+	total, err := pageTotal(ctx, f.Page, offset, limit, len(rows), q.Count)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -142,19 +170,22 @@ func (r *entAdminRepository) Memberships(ctx context.Context, userIDs []string) 
 	}
 	rows, err := r.client.User.Query().
 		Where(user.IDIn(userIDs...)).
-		WithGroups(func(q *ent.GroupQuery) { q.Select(group.FieldID) }).
-		WithRoles(func(q *ent.RoleQuery) { q.Select(role.FieldID) }).
+		Select(user.FieldID).
+		WithGroups(func(q *ent.GroupQuery) { q.Select(group.FieldID, group.FieldName) }).
+		WithRoles(func(q *ent.RoleQuery) { q.Select(role.FieldID, role.FieldName) }).
 		All(ctx)
 	if err != nil {
 		return nil, err
 	}
 	for _, u := range rows {
-		m := repository.Memberships{GroupIDs: []string{}, RoleIDs: []string{}}
+		m := repository.Memberships{GroupIDs: []string{}, RoleIDs: []string{}, Names: map[string]string{}}
 		for _, g := range u.Edges.Groups {
 			m.GroupIDs = append(m.GroupIDs, g.ID)
+			m.Names[g.ID] = g.Name
 		}
 		for _, ro := range u.Edges.Roles {
 			m.RoleIDs = append(m.RoleIDs, ro.ID)
+			m.Names[ro.ID] = ro.Name
 		}
 		out[u.ID] = m
 	}
@@ -177,30 +208,58 @@ func (r *entAdminRepository) ActiveGroupMemberIDs(ctx context.Context, groupID s
 		IDs(ctx)
 }
 
-func (r *entAdminRepository) MemberCounts(ctx context.Context, realmID string) (map[string]int, map[string]int, error) {
-	groups, err := r.client.Group.Query().
-		Where(group.RealmID(realmID)).
-		WithUsers(func(q *ent.UserQuery) { q.Where(user.DeletedAtIsNil()).Select(user.FieldID) }).
-		All(ctx)
+func (r *entAdminRepository) GroupMemberCounts(ctx context.Context, realmID string) (map[string]int, error) {
+	var rows []struct {
+		ID      string `json:"id"`
+		Members int    `json:"members"`
+	}
+	err := r.client.Group.Query().Where(group.RealmID(realmID)).
+		Select(group.FieldID).
+		Aggregate(memberCount(group.UsersTable, group.UsersPrimaryKey[1])).
+		Scan(ctx, &rows)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	roles, err := r.client.Role.Query().
-		Where(role.RealmID(realmID)).
-		WithUsers(func(q *ent.UserQuery) { q.Where(user.DeletedAtIsNil()).Select(user.FieldID) }).
-		All(ctx)
+	out := make(map[string]int, len(rows))
+	for _, row := range rows {
+		out[row.ID] = row.Members
+	}
+	return out, nil
+}
+
+func (r *entAdminRepository) RoleMemberCounts(ctx context.Context, realmID string) (map[string]int, error) {
+	var rows []struct {
+		ID      string `json:"id"`
+		Members int    `json:"members"`
+	}
+	err := r.client.Role.Query().Where(role.RealmID(realmID)).
+		Select(role.FieldID).
+		Aggregate(memberCount(role.UsersTable, role.UsersPrimaryKey[1])).
+		Scan(ctx, &rows)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	gc := make(map[string]int, len(groups))
-	for _, g := range groups {
-		gc[g.ID] = len(g.Edges.Users)
+	out := make(map[string]int, len(rows))
+	for _, row := range rows {
+		out[row.ID] = row.Members
 	}
-	rc := make(map[string]int, len(roles))
-	for _, ro := range roles {
-		rc[ro.ID] = len(ro.Edges.Users)
+	return out, nil
+}
+
+// memberCount adds to "SELECT id FROM groups WHERE ..." a column "members":
+// the number of (not deleted) users linked to the row through joinTable
+// (user_groups or user_roles), counted by PostgreSQL:
+//
+//	(SELECT COUNT(*) FROM "user_groups" AS j JOIN "users" AS u ON u."id" = j."user_id"
+//	 WHERE j."group_id" = "groups"."id" AND u."deleted_at" IS NULL) AS "members"
+//
+// Before, every member's id was loaded into Go to be counted there.
+func memberCount(joinTable, ownerColumn string) ent.AggregateFunc {
+	return func(s *sql.Selector) string {
+		return fmt.Sprintf(`(SELECT COUNT(*) FROM %s AS j JOIN %s AS u ON u.%s = j.%s WHERE j.%s = %s AND u.%s IS NULL) AS %s`,
+			quoteIdent(joinTable), quoteIdent(user.Table), quoteIdent(user.FieldID), quoteIdent("user_id"),
+			quoteIdent(ownerColumn), s.C("id"), quoteIdent(user.FieldDeletedAt), quoteIdent("members"))
 	}
-	return gc, rc, nil
 }
 
 // realFactor: an active factor that can answer a challenge on its own.
@@ -294,6 +353,51 @@ func (r *entAdminRepository) GroupGrants(ctx context.Context, groupID string) (r
 	return g, nil
 }
 
+func (r *entAdminRepository) RealmRoleGrants(ctx context.Context, realmID string) (map[string]repository.Grants, error) {
+	rows, err := r.client.Role.Query().
+		Where(role.RealmID(realmID)).
+		Select(role.FieldID).
+		WithPermissions(func(q *ent.PermissionQuery) { q.Select(permission.FieldID) }).
+		WithClientScopes(func(q *ent.ClientScopeQuery) { q.Select(clientscope.FieldID) }).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]repository.Grants, len(rows))
+	for _, e := range rows {
+		out[e.ID] = grantsOf(e.Edges.Permissions, e.Edges.ClientScopes)
+	}
+	return out, nil
+}
+
+func (r *entAdminRepository) RealmGroupGrants(ctx context.Context, realmID string) (map[string]repository.Grants, error) {
+	rows, err := r.client.Group.Query().
+		Where(group.RealmID(realmID)).
+		Select(group.FieldID).
+		WithPermissions(func(q *ent.PermissionQuery) { q.Select(permission.FieldID) }).
+		WithClientScopes(func(q *ent.ClientScopeQuery) { q.Select(clientscope.FieldID) }).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]repository.Grants, len(rows))
+	for _, e := range rows {
+		out[e.ID] = grantsOf(e.Edges.Permissions, e.Edges.ClientScopes)
+	}
+	return out, nil
+}
+
+func grantsOf(perms []*ent.Permission, scopes []*ent.ClientScope) repository.Grants {
+	g := repository.Grants{PermissionIDs: []string{}, ClientScopeIDs: []string{}}
+	for _, p := range perms {
+		g.PermissionIDs = append(g.PermissionIDs, p.ID)
+	}
+	for _, cs := range scopes {
+		g.ClientScopeIDs = append(g.ClientScopeIDs, cs.ID)
+	}
+	return g
+}
+
 func (r *entAdminRepository) SetRolePermissions(ctx context.Context, roleID string, ids []string) error {
 	return mapNotFound(r.client.Role.UpdateOneID(roleID).ClearPermissions().AddPermissionIDs(ids...).Exec(ctx))
 }
@@ -324,27 +428,45 @@ func (r *entAdminRepository) SetManagedBy(ctx context.Context, kind, id, managed
 // --- clients --------------------------------------------------------------------
 
 func (r *entAdminRepository) ClientGrants(ctx context.Context, clientRef string) (repository.ClientGrants, error) {
-	out := repository.ClientGrants{RoleIDs: []string{}, GroupIDs: []string{}, Scopes: []repository.ScopeMapping{}}
-	roles, err := r.client.ClientRole.Query().Where(clientrole.ClientAppID(clientRef)).All(ctx)
+	out := repository.ClientGrants{RoleIDs: []string{}, GroupIDs: []string{}, Scopes: []repository.ScopeMapping{},
+		Names: map[string]string{}}
+	// Each link is loaded with the name of what it points to (Ent eager
+	// loading: one more query per kind, not one per role, group or scope).
+	roles, err := r.client.ClientRole.Query().Where(clientrole.ClientAppID(clientRef)).
+		WithRole(func(q *ent.RoleQuery) { q.Select(role.FieldID, role.FieldName) }).All(ctx)
 	if err != nil {
 		return out, err
 	}
 	for _, x := range roles {
 		out.RoleIDs = append(out.RoleIDs, x.RoleID)
+		if x.Edges.Role != nil {
+			out.Names[x.RoleID] = x.Edges.Role.Name
+		}
 	}
-	groups, err := r.client.ClientGroup.Query().Where(clientgroup.ClientAppID(clientRef)).All(ctx)
+	groups, err := r.client.ClientGroup.Query().Where(clientgroup.ClientAppID(clientRef)).
+		WithGroup(func(q *ent.GroupQuery) { q.Select(group.FieldID, group.FieldName) }).All(ctx)
 	if err != nil {
 		return out, err
 	}
 	for _, x := range groups {
 		out.GroupIDs = append(out.GroupIDs, x.GroupID)
+		if x.Edges.Group != nil {
+			out.Names[x.GroupID] = x.Edges.Group.Name
+		}
 	}
-	maps, err := r.client.ClientScopeMapping.Query().Where(clientscopemapping.ClientAppID(clientRef)).All(ctx)
+	maps, err := r.client.ClientScopeMapping.Query().Where(clientscopemapping.ClientAppID(clientRef)).
+		WithClientScope(func(q *ent.ClientScopeQuery) {
+			q.Select(clientscope.FieldID, clientscope.FieldName, clientscope.FieldProtocol)
+		}).All(ctx)
 	if err != nil {
 		return out, err
 	}
 	for _, x := range maps {
-		out.Scopes = append(out.Scopes, repository.ScopeMapping{ClientScopeID: x.ClientScopeID, Required: x.Required})
+		m := repository.ScopeMapping{ClientScopeID: x.ClientScopeID, Required: x.Required}
+		if cs := x.Edges.ClientScope; cs != nil {
+			m.Name, m.Protocol = cs.Name, string(cs.Protocol)
+		}
+		out.Scopes = append(out.Scopes, m)
 	}
 	return out, nil
 }
@@ -475,7 +597,7 @@ func liveToken(now time.Time) predicate.Token {
 	return token.And(token.Revoked(false), token.ExpiresAtGT(now))
 }
 
-func (r *entAdminRepository) SearchSessions(ctx context.Context, f repository.SessionSearch) ([]*domain.Session, int, error) {
+func sessionPredicates(f repository.SessionSearch) []predicate.Session {
 	preds := []predicate.Session{
 		session.RealmID(f.RealmID),
 		session.Status(activeStatus),
@@ -488,13 +610,21 @@ func (r *entAdminRepository) SearchSessions(ctx context.Context, f repository.Se
 	if f.ClientRef != "" {
 		preds = append(preds, session.HasTokensWith(token.ClientRefID(f.ClientRef), liveToken(f.Now)))
 	}
-	q := r.client.Session.Query().Where(preds...)
-	total, err := q.Clone().Count(ctx)
+	return preds
+}
+
+func (r *entAdminRepository) CountSessions(ctx context.Context, f repository.SessionSearch) (int, error) {
+	return r.client.Session.Query().Where(sessionPredicates(f)...).Count(ctx)
+}
+
+func (r *entAdminRepository) SearchSessions(ctx context.Context, f repository.SessionSearch) ([]*domain.Session, int, error) {
+	q := r.client.Session.Query().Where(sessionPredicates(f)...)
+	offset, limit := clampPage(f.Page)
+	rows, err := q.Clone().Order(ent.Desc(session.FieldLastActivityAt)).Offset(offset).Limit(limit).All(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
-	offset, limit := clampPage(f.Page)
-	rows, err := q.Order(ent.Desc(session.FieldLastActivityAt)).Offset(offset).Limit(limit).All(ctx)
+	total, err := pageTotal(ctx, f.Page, offset, limit, len(rows), q.Count)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -549,6 +679,13 @@ func (r *entAdminRepository) SearchAuditLogs(ctx context.Context, f repository.A
 	if f.Status != "" {
 		preds = append(preds, auditlog.StatusEQ(entschema.AuditLogStatus(f.Status)))
 	}
+	if len(f.Levels) > 0 {
+		levels := make([]entschema.AuditLogLevel, 0, len(f.Levels))
+		for _, l := range f.Levels {
+			levels = append(levels, entschema.AuditLogLevel(l))
+		}
+		preds = append(preds, auditlog.LevelIn(levels...))
+	}
 	if !f.From.IsZero() {
 		preds = append(preds, auditlog.TimestampGTE(f.From))
 	}
@@ -556,31 +693,42 @@ func (r *entAdminRepository) SearchAuditLogs(ctx context.Context, f repository.A
 		preds = append(preds, auditlog.TimestampLT(f.To))
 	}
 	q := r.client.AuditLog.Query().Where(preds...)
-	total, err := q.Clone().Count(ctx)
+	offset, limit := clampPage(f.Page)
+	rows, err := q.Clone().Order(ent.Desc(auditlog.FieldTimestamp), ent.Desc(auditlog.FieldID)).Offset(offset).Limit(limit).All(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
-	offset, limit := clampPage(f.Page)
-	rows, err := q.Order(ent.Desc(auditlog.FieldTimestamp), ent.Desc(auditlog.FieldID)).Offset(offset).Limit(limit).All(ctx)
+	total, err := pageTotal(ctx, f.Page, offset, limit, len(rows), q.Count)
 	if err != nil {
 		return nil, 0, err
 	}
 	return toDomainAuditLogs(rows), total, nil
 }
 
+// LoginCounts: successes and failures since a time, in one query
+// (SELECT status, COUNT(*) ... GROUP BY status).
 func (r *entAdminRepository) LoginCounts(ctx context.Context, realmID string, since time.Time) (int, int, error) {
-	base := func(st entschema.LoginAttemptStatus) (int, error) {
-		return r.client.LoginAttempt.Query().
-			Where(loginattempt.RealmID(realmID), loginattempt.CreatedAtGTE(since), loginattempt.StatusEQ(st)).
-			Count(ctx)
+	var rows []struct {
+		Status string `json:"status"`
+		Count  int    `json:"count"`
 	}
-	ok, err := base(entschema.LoginAttemptSuccess)
+	err := r.client.LoginAttempt.Query().
+		Where(loginattempt.RealmID(realmID), loginattempt.CreatedAtGTE(since),
+			loginattempt.StatusIn(entschema.LoginAttemptSuccess, entschema.LoginAttemptFailure)).
+		GroupBy(loginattempt.FieldStatus).
+		Aggregate(ent.Count()).
+		Scan(ctx, &rows)
 	if err != nil {
 		return 0, 0, err
 	}
-	ko, err := base(entschema.LoginAttemptFailure)
-	if err != nil {
-		return 0, 0, err
+	var ok, ko int
+	for _, row := range rows {
+		switch entschema.LoginAttemptStatus(row.Status) {
+		case entschema.LoginAttemptSuccess:
+			ok = row.Count
+		case entschema.LoginAttemptFailure:
+			ko = row.Count
+		}
 	}
 	return ok, ko, nil
 }
@@ -602,17 +750,33 @@ func (r *entAdminRepository) LoginAttemptsByUser(ctx context.Context, userID str
 
 // --- MFA, timeouts ----------------------------------------------------------------
 
+// MFACoverage: active users, and how many of them have a real factor, in
+// one query:
+//
+//	SELECT COUNT(*) AS "count",
+//	       COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM "mfa_methods" AS m
+//	           WHERE m."user_id" = "users"."id" AND m."status" = 'active'
+//	           AND m."type" <> 'backup_codes') THEN 1 ELSE 0 END), 0) AS "enrolled"
+//	FROM "users" WHERE realm_id = $1 AND deleted_at IS NULL AND status = 'active'
 func (r *entAdminRepository) MFACoverage(ctx context.Context, realmID string) (int, int, error) {
-	active := []predicate.User{user.RealmID(realmID), user.DeletedAtIsNil(), user.StatusEQ(entschema.UserActive)}
-	total, err := r.client.User.Query().Where(active...).Count(ctx)
-	if err != nil {
+	var rows []struct {
+		Count    int `json:"count"`
+		Enrolled int `json:"enrolled"`
+	}
+	err := r.client.User.Query().
+		Where(user.RealmID(realmID), user.DeletedAtIsNil(), user.StatusEQ(entschema.UserActive)).
+		Aggregate(ent.Count(), func(s *sql.Selector) string {
+			return fmt.Sprintf(`COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM %s AS m WHERE m.%s = %s AND m.%s = %s AND m.%s <> %s) THEN 1 ELSE 0 END), 0) AS %s`,
+				quoteIdent(mfamethod.Table), quoteIdent(mfamethod.FieldUserID), s.C(user.FieldID),
+				quoteIdent(mfamethod.FieldStatus), quoteLiteral(string(domain.MfaMethodActive)),
+				quoteIdent(mfamethod.FieldType), quoteLiteral(string(domain.MfaMethodBackupCodes)),
+				quoteIdent("enrolled"))
+		}).
+		Scan(ctx, &rows)
+	if err != nil || len(rows) == 0 {
 		return 0, 0, err
 	}
-	enrolled, err := r.client.User.Query().Where(append(active, user.HasMfaMethodsWith(realFactor()))...).Count(ctx)
-	if err != nil {
-		return 0, 0, err
-	}
-	return enrolled, total, nil
+	return rows[0].Enrolled, rows[0].Count, nil
 }
 
 func (r *entAdminRepository) ListTimeouts(ctx context.Context, realmID string) ([]*domain.Timeout, error) {

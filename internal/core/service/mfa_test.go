@@ -23,13 +23,8 @@ import (
 	"sso.internal/sso/internal/storage/memstore"
 )
 
-// Step 9a tests: the whole MFA stack in memory (real TOTP maths, real
-// envelope encryption with the local_dev KMS, real Argon2id), no Postgres,
-// no Valkey. The Definition of Done is TestMFA_DefinitionOfDone.
 
-// --- extra fakes -------------------------------------------------------------
 
-// mfaSettingsRepo stores InstanceSettings per realm (fakeSettingsRepo always misses).
 type mfaSettingsRepo struct {
 	repository.InstanceSettingsRepository
 	mu     sync.Mutex
@@ -187,7 +182,7 @@ type mfaFixture struct {
 	users      *fakeUserRepo
 	core       *service.IdentityCoreService
 	passkeys   service.PasskeyProvider
-	notifier   *recordingNotifier // Step 12
+	notifier   *recordingNotifier
 }
 
 // Relying party used by the passkey tests (the software authenticator of
@@ -798,8 +793,6 @@ func TestMFA_FactorManagement(t *testing.T) {
 	})
 }
 
-// Step 12: every change of the user's factors is told to the notifier
-// (the dispatcher turns it into an e-mail when the realm wants alerts).
 func TestMFA_Notifications(t *testing.T) {
 	ctx := context.Background()
 	f := newMFAFixture(t)
@@ -839,8 +832,6 @@ func TestMFA_Notifications(t *testing.T) {
 	require.Len(t, f.notifier.kinds(), 5)
 }
 
-// Step 12: the device fingerprint given at the password step ends up on the
-// session created after the second factor.
 func TestMFA_DeviceFingerprintKept(t *testing.T) {
 	f := newMFAFixture(t)
 	secret, _ := f.enrollTOTP(t, aliceID)

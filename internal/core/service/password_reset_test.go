@@ -14,10 +14,6 @@ import (
 	"sso.internal/sso/internal/lockoutstore"
 )
 
-// Step 12, Definition of Done (service level): valid token, expired token,
-// token already used, unknown e-mail. The HTTP side ("same answer for an
-// unknown e-mail", AuditLog notification_sent) is tested in
-// internal/httpserver and internal/notify.
 
 const resetRealm = "realm-reset"
 

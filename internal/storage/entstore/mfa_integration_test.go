@@ -14,8 +14,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// Step 9a: the guarantees the MFA services rely on, checked against a real
-// Postgres (conditional updates, transactions, the partial unique index).
 
 func newMFATestUser(t *testing.T, ctx context.Context, realmID string) *domain.User {
 	t.Helper()

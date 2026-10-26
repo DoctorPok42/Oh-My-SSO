@@ -22,5 +22,5 @@ type User struct {
 	Status       UserStatus
 	LastLoginAt  *time.Time
 	Profile      map[string]interface{}
-	Lockout      LockoutState // Step 12: failed passwords and temporary lock
+	Lockout      LockoutState
 }

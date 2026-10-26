@@ -17,16 +17,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-// "idp consents ..." (Step 13): the consent screen setting of a client, and
-// the consents users gave. Same service as the admin and user panels of
-// Step 14 will use.
-//
-//	idp consents set-client --realm demo --client partner --required=true
-//	idp consents list       --realm demo --user alice
-//	idp consents revoke     --realm demo --user alice --client partner --reason "asked by the user"
-//
-// Revoking also revokes the tokens the client holds for the user: its next
-// refresh fails, and the next sign-in shows the consent screen again.
 
 const consentsUsage = `usage:
   idp consents set-client --realm <name> --client <client_id|entity_id> --required=true|false
