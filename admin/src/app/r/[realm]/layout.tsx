@@ -54,7 +54,7 @@ export default async function ConsoleLayout({
 
   return (
     <StepUpProvider freshUntil={me.data.step_up_fresh_until} initialFresh={stepUpFresh(me.data)}>
-      {/* The thin bar at the top while a page, a filter or a drawer loads. */}
+      {/* The top bar (NextTopLoader, root layout) also shows for searches, drawers and reloads. */}
       <NavigationProgress />
       <DrawerNavProvider>
         <Header me={me.data} realms={realmList} realm={realm} theme={theme} canReadAudit={can(me.data, "audit_log")} />

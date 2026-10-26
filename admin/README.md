@@ -59,11 +59,12 @@ e2e/                    Playwright + run.sh (the stack for the tests)
 
 Every click shows something at once, whatever the network:
 
-- **progress bar** at the top and **dimmed content** while a page, a filter or a search loads
-  (`components/console/navigation-progress.tsx`; links use `NavLink`, forms `SearchForm`). The bar
-  is drawn by a **Web Worker** on an `OffscreenCanvas` (`progress-bar.ts`, `progress-worker.ts`):
-  its animation runs on its own thread and keeps moving while the page's main thread is busy.
-  Browsers without `OffscreenCanvas` in workers get the CSS bar instead;
+- **progress bar** at the top: [nextjs-toploader](https://github.com/TheSGJ/nextjs-toploader),
+  mounted once in `app/layout.tsx`. It starts on every link click and ends when Next.js shows the
+  page; the console's other waits (a search, a drawer, the reload after a change) start it too
+  (`components/console/navigation-progress.tsx`);
+- **dimmed content** while a page, a filter or a search loads (links use `NavLink`, forms
+  `SearchForm`);
 - **skeleton** of each page (`loading.tsx`: real title and column headers, grey rows); a new filter
   or page of results reloads only the table (`<Suspense key=…>` around it);
 - **drawers** (640 px, 760 px for clients) open and close at the click, with a skeleton until the

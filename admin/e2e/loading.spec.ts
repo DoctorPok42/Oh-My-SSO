@@ -80,13 +80,13 @@ test("a filter keeps the page: progress bar, dimmed content, then the new table"
   await slowDown(page, (url) => url.searchParams.get("protocol") === "oidc");
   await page.getByRole("link", { name: "OIDC", exact: true }).click();
 
-  await expect(page.locator('[data-nav-progress="on"]')).toBeAttached({ timeout: 1_000 });
+  await expect(page.locator("#nprogress")).toBeAttached({ timeout: 1_000 });
   await expect(page.locator('[data-pending-content="true"]')).toBeAttached();
   await expect(page.getByRole("heading", { level: 1, name: "Clients" })).toBeVisible();
 
   await expect(page).toHaveURL(/protocol=oidc/, { timeout: 10_000 });
   await expect(page.locator("tbody tr").first()).toContainText("Admin console");
-  await expect(page.locator('[data-nav-progress="on"]')).toHaveCount(0);
+  await expect(page.locator("#nprogress")).toHaveCount(0);
   await expect(page.locator('[data-pending-content="true"]')).toHaveCount(0);
 });
 
@@ -98,7 +98,7 @@ test("a search goes through the console (no full reload) and only the table wait
   await page.locator("main").getByLabel("Search users").fill("e2e");
   await page.getByRole("button", { name: "Search", exact: true }).click();
 
-  await expect(page.locator('[data-nav-progress="on"]')).toBeAttached({ timeout: 1_000 });
+  await expect(page.locator("#nprogress")).toBeAttached({ timeout: 1_000 });
   await expect(page).toHaveURL(/q=e2e/, { timeout: 10_000 });
   await expect(page.locator("tbody tr").first()).toContainText("e2e-admin");
   expect(await page.evaluate(() => (window as unknown as { __kept?: boolean }).__kept)).toBe(true);
@@ -128,37 +128,4 @@ test("every console page has a skeleton shaped like it", async ({ page }) => {
     await page.unrouteAll({ behavior: "ignoreErrors" });
     await page.waitForLoadState("networkidle");
   }
-});
-
-test("the progress bar keeps moving while the page is busy (drawn by a worker)", async ({ page }) => {
-  await page.goto("/r/master/clients");
-  await page.waitForLoadState("networkidle");
-  await expect(page.locator("html")).toHaveAttribute("data-progress-renderer", "worker");
-  await expect(page.locator("canvas[data-progress-canvas]")).toBeAttached();
-
-  await slowDown(page, (url) => url.searchParams.get("protocol") === "oidc");
-  await page.getByRole("link", { name: "OIDC", exact: true }).click();
-  await expect(page.locator('[data-nav-progress="on"]')).toBeAttached({ timeout: 1_000 });
-  await page.waitForTimeout(300); // past the 150 ms delay: the bar is visible
-
-  // Frames as the screen shows them (CDP screencast), while the page's main
-  // thread is blocked for 1.2 s: the worker's bar must keep changing.
-  const cdp = await page.context().newCDPSession(page);
-  const frames: string[] = [];
-  let blocked = false;
-  cdp.on("Page.screencastFrame", (f) => {
-    if (blocked) frames.push(f.data);
-    void cdp.send("Page.screencastFrameAck", { sessionId: f.sessionId }).catch(() => undefined);
-  });
-  await cdp.send("Page.startScreencast", { format: "png", maxWidth: 1280, maxHeight: 720 });
-  blocked = true;
-  await page.evaluate(() => {
-    const t = performance.now();
-    while (performance.now() - t < 1_200) {
-      /* a long script */
-    }
-  });
-  blocked = false;
-  await cdp.send("Page.stopScreencast");
-  expect(new Set(frames).size).toBeGreaterThanOrEqual(8);
 });

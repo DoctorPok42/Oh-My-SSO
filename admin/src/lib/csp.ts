@@ -11,15 +11,13 @@ export function buildCsp(opts: { nonce: string; idpOrigin: string; dev: boolean;
     // 'strict-dynamic': scripts loaded by a trusted (nonced) script are
     // trusted too (Next.js chunks). React needs eval in development only.
     ["script-src", "'self'", `'nonce-${nonce}'`, "'strict-dynamic'", ...(dev ? ["'unsafe-eval'"] : [])],
-    // Inline styles: server-rendered style="" attributes (progress bars) and
-    // the toast library. CSS cannot run code; the risk accepted is small.
+    // Inline styles: server-rendered style="" attributes (progress bars), the
+    // toast library and the top bar's <style> (nextjs-toploader). CSS cannot
+    // run code; the risk accepted is small.
     ["style-src", "'self'", "'unsafe-inline'"],
     ["img-src", "'self'", "data:", "blob:"],
     ["font-src", "'self'"],
     ["connect-src", "'self'", ...(dev ? ["ws:"] : [])],
-    // The progress bar is drawn by a Web Worker (navigation-progress.tsx),
-    // loaded from this server only.
-    ["worker-src", "'self'"],
     // Sign-out is a form POST that ends with a redirect to the IdP:
     // form-action also covers that redirect.
     ["form-action", "'self'", idpOrigin],
