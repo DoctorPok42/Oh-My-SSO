@@ -65,6 +65,10 @@ func (Session) Fields() []ent.Field {
 		// mfa_step_up_max_age_minutes.
 		field.Time("mfa_verified_at").Optional(),
 		field.String("auth_method").Default(string(SessionAuthPassword)),
+		// The user ticked "Keep me signed in": the session follows the
+		// realm's remember_me_* durations and its cookie survives a browser
+		// restart. Otherwise the cookie is gone when the browser closes.
+		field.Bool("remember_me").Default(false),
 		field.String("status").GoType(SessionStatus("")).Default(string(SessionActive)),
 		field.String("revoked_reason").Optional(),
 		field.String("token_hash").NotEmpty().Unique().Immutable().Sensitive(),

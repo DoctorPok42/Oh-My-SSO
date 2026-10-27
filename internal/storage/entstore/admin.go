@@ -598,11 +598,22 @@ func liveToken(now time.Time) predicate.Token {
 }
 
 func sessionPredicates(f repository.SessionSearch) []predicate.Session {
+	rememberIdle := f.RememberIdleSince
+	if rememberIdle.IsZero() {
+		rememberIdle = f.IdleSince
+	}
+	remembered := []predicate.Session{session.RememberMe(true), session.LastActivityAtGT(rememberIdle)}
+	if !f.RememberCreatedSince.IsZero() {
+		remembered = append(remembered, session.CreatedAtGT(f.RememberCreatedSince))
+	}
 	preds := []predicate.Session{
 		session.RealmID(f.RealmID),
 		session.Status(activeStatus),
 		session.ExpiresAtGT(f.Now),
-		session.LastActivityAtGT(f.IdleSince),
+		session.Or(
+			session.And(session.RememberMe(false), session.LastActivityAtGT(f.IdleSince)),
+			session.And(remembered...),
+		),
 	}
 	if f.UserID != "" {
 		preds = append(preds, session.UserID(f.UserID))

@@ -18,6 +18,9 @@ type LoginChallenge struct {
 	Methods   []string  `json:"m"`             // methods that may answer this challenge
 	CreatedAt time.Time `json:"cat"`
 	ExpiresAt time.Time `json:"exp"`
+	// RememberMe: "Keep me signed in" was ticked with the password; the
+	// session created after the second factor is a remembered one.
+	RememberMe bool `json:"rm,omitempty"`
 }
 
 type Ceremony struct {

@@ -23,6 +23,9 @@ type UpdateInstanceSettingsParams struct {
 	PasswordExpiryDays          *int
 	SessionIdleMinutes          *int
 	SessionMaxHours             *int
+	RememberMeEnabled           *bool
+	RememberMeIdleDays          *int
+	RememberMeMaxDays           *int
 	LockoutThreshold            *int
 	LockoutDurationMinutes      *int
 	IPAllowlist                 []string

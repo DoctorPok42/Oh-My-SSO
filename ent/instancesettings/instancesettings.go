@@ -27,6 +27,12 @@ const (
 	FieldSessionIdleMinutes = "session_idle_minutes"
 	// FieldSessionMaxHours holds the string denoting the session_max_hours field in the database.
 	FieldSessionMaxHours = "session_max_hours"
+	// FieldRememberMeEnabled holds the string denoting the remember_me_enabled field in the database.
+	FieldRememberMeEnabled = "remember_me_enabled"
+	// FieldRememberMeIdleDays holds the string denoting the remember_me_idle_days field in the database.
+	FieldRememberMeIdleDays = "remember_me_idle_days"
+	// FieldRememberMeMaxDays holds the string denoting the remember_me_max_days field in the database.
+	FieldRememberMeMaxDays = "remember_me_max_days"
 	// FieldLockoutThreshold holds the string denoting the lockout_threshold field in the database.
 	FieldLockoutThreshold = "lockout_threshold"
 	// FieldLockoutDurationMinutes holds the string denoting the lockout_duration_minutes field in the database.
@@ -71,6 +77,9 @@ var Columns = []string{
 	FieldPasswordExpiryDays,
 	FieldSessionIdleMinutes,
 	FieldSessionMaxHours,
+	FieldRememberMeEnabled,
+	FieldRememberMeIdleDays,
+	FieldRememberMeMaxDays,
 	FieldLockoutThreshold,
 	FieldLockoutDurationMinutes,
 	FieldIPAllowlist,
@@ -107,6 +116,12 @@ var (
 	DefaultSessionIdleMinutes int
 	// DefaultSessionMaxHours holds the default value on creation for the "session_max_hours" field.
 	DefaultSessionMaxHours int
+	// DefaultRememberMeEnabled holds the default value on creation for the "remember_me_enabled" field.
+	DefaultRememberMeEnabled bool
+	// DefaultRememberMeIdleDays holds the default value on creation for the "remember_me_idle_days" field.
+	DefaultRememberMeIdleDays int
+	// DefaultRememberMeMaxDays holds the default value on creation for the "remember_me_max_days" field.
+	DefaultRememberMeMaxDays int
 	// DefaultLockoutThreshold holds the default value on creation for the "lockout_threshold" field.
 	DefaultLockoutThreshold int
 	// DefaultLockoutDurationMinutes holds the default value on creation for the "lockout_duration_minutes" field.
@@ -169,6 +184,21 @@ func BySessionIdleMinutes(opts ...sql.OrderTermOption) OrderOption {
 // BySessionMaxHours orders the results by the session_max_hours field.
 func BySessionMaxHours(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSessionMaxHours, opts...).ToFunc()
+}
+
+// ByRememberMeEnabled orders the results by the remember_me_enabled field.
+func ByRememberMeEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRememberMeEnabled, opts...).ToFunc()
+}
+
+// ByRememberMeIdleDays orders the results by the remember_me_idle_days field.
+func ByRememberMeIdleDays(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRememberMeIdleDays, opts...).ToFunc()
+}
+
+// ByRememberMeMaxDays orders the results by the remember_me_max_days field.
+func ByRememberMeMaxDays(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRememberMeMaxDays, opts...).ToFunc()
 }
 
 // ByLockoutThreshold orders the results by the lockout_threshold field.

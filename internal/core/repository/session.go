@@ -35,5 +35,6 @@ type CreateSessionParams struct {
 	MFAMethodType     string
 	MFAVerifiedAt     time.Time
 	AuthMethod        string
+	RememberMe        bool
 	TokenHash         string
 }

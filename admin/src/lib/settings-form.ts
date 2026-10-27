@@ -11,6 +11,9 @@ export type SettingsPatch = Partial<
     | "password_reset_ttl_minutes"
     | "session_idle_minutes"
     | "session_max_hours"
+    | "remember_me_enabled"
+    | "remember_me_idle_days"
+    | "remember_me_max_days"
     | "lockout_threshold"
     | "lockout_duration_minutes"
     | "ip_allowlist"
@@ -26,19 +29,27 @@ export const NUMBERS = [
   "password_reset_ttl_minutes",
   "session_idle_minutes",
   "session_max_hours",
+  "remember_me_idle_days",
+  "remember_me_max_days",
   "lockout_threshold",
   "lockout_duration_minutes",
   "key_rotation_grace_hours",
 ] as const;
 export type NumberKey = (typeof NUMBERS)[number];
 
+/** The on/off settings of the form. */
+export type SettingsToggles = {
+  notif: boolean;
+  suspicious: boolean;
+  remember: boolean;
+};
+
 /** The changed fields only (PATCH). */
 export function settingsDiff(
   before: Settings,
   form: Record<NumberKey, string>,
   allowlist: string,
-  notif: boolean,
-  suspicious: boolean,
+  toggles: SettingsToggles,
 ): SettingsPatch {
   const patch: SettingsPatch = {};
   for (const k of NUMBERS) {
@@ -47,7 +58,9 @@ export function settingsDiff(
   }
   const ips = lines(allowlist);
   if (ips.join("\n") !== (before.ip_allowlist ?? []).join("\n")) patch.ip_allowlist = ips;
-  if (notif !== before.notification_email_enabled) patch.notification_email_enabled = notif;
-  if (suspicious !== before.suspicious_login_email_enabled) patch.suspicious_login_email_enabled = suspicious;
+  if (toggles.notif !== before.notification_email_enabled) patch.notification_email_enabled = toggles.notif;
+  if (toggles.suspicious !== before.suspicious_login_email_enabled)
+    patch.suspicious_login_email_enabled = toggles.suspicious;
+  if (toggles.remember !== before.remember_me_enabled) patch.remember_me_enabled = toggles.remember;
   return patch;
 }

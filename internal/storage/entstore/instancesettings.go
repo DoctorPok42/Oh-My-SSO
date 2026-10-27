@@ -51,6 +51,9 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 		SetNillablePasswordExpiryDays(p.PasswordExpiryDays).
 		SetNillableSessionIdleMinutes(p.SessionIdleMinutes).
 		SetNillableSessionMaxHours(p.SessionMaxHours).
+		SetNillableRememberMeEnabled(p.RememberMeEnabled).
+		SetNillableRememberMeIdleDays(p.RememberMeIdleDays).
+		SetNillableRememberMeMaxDays(p.RememberMeMaxDays).
 		SetNillableLockoutThreshold(p.LockoutThreshold).
 		SetNillableLockoutDurationMinutes(p.LockoutDurationMinutes).
 		SetNillableMfaRequiredGlobally(p.MFARequiredGlobally).
@@ -84,6 +87,9 @@ func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings 
 		PasswordExpiryDays:          e.PasswordExpiryDays,
 		SessionIdleMinutes:          e.SessionIdleMinutes,
 		SessionMaxHours:             e.SessionMaxHours,
+		RememberMeEnabled:           e.RememberMeEnabled,
+		RememberMeIdleDays:          e.RememberMeIdleDays,
+		RememberMeMaxDays:           e.RememberMeMaxDays,
 		LockoutThreshold:            e.LockoutThreshold,
 		LockoutDurationMinutes:      e.LockoutDurationMinutes,
 		IPAllowlist:                 e.IPAllowlist,

@@ -48,4 +48,7 @@ type Session struct {
 	Status            SessionStatus
 	RevokedReason     SessionRevokedReason
 	TokenHash         string
+	// RememberMe: the user ticked "Keep me signed in". The session follows
+	// the realm's remember-me durations and its cookie is persistent.
+	RememberMe bool
 }

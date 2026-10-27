@@ -185,5 +185,6 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, p *pending
 	if a.cfg.PasswordReset {
 		page.ForgotPasswordURL = base + "/auth/forgot-password"
 	}
+	page.RememberMe, page.RememberMeDays = loginui.RememberMeOffer(a.core.SessionOptions(r.Context(), realm.ID))
 	a.pages.RenderLogin(w, http.StatusOK, page)
 }

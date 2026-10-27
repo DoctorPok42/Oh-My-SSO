@@ -110,13 +110,19 @@ type UserSearch struct {
 }
 
 // SessionSearch filters the live sessions of one realm: status active, not
-// past expires_at, and used after IdleSince.
+// past expires_at, and used after IdleSince (RememberIdleSince for the
+// sessions where the user ticked "Keep me signed in").
 type SessionSearch struct {
 	RealmID   string
 	UserID    string // empty: any
 	ClientRef string // empty: any; else sessions with a live token for it
 	Now       time.Time
 	IdleSince time.Time
+	// RememberIdleSince: zero means IdleSince. RememberCreatedSince, when
+	// set, also requires remembered sessions to be created after it (the
+	// realm turned the option off: they are held to the normal lifetime).
+	RememberIdleSince    time.Time
+	RememberCreatedSince time.Time
 	Page
 }
 

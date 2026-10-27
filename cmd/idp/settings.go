@@ -21,8 +21,10 @@ const settingsUsage = `usage:
   idp settings set  --realm <name> [--notification-email=true|false] [--suspicious-login-email=true|false]
                     [--min-password-length <n>] [--lockout-threshold <n>] [--lockout-duration <duration>]
                     [--password-reset-ttl <duration>]
+                    [--remember-me=true|false] [--remember-me-idle-days <n>] [--remember-me-max-days <n>]
 
 --lockout-threshold 0 turns the account lockout off. Durations: 15m, 1h...
+--remember-me offers "Keep me signed in" on the sign-in page (days: 1 to 365).
 `
 
 func runSettingsCommand(args []string) int {
@@ -90,6 +92,9 @@ func printSettings(out io.Writer, s *domain.InstanceSettings) {
 	fmt.Fprintf(out, "lockout threshold:           %d (0 = off)\n", s.LockoutThreshold)
 	fmt.Fprintf(out, "lockout duration:            %d min (doubles on repeat, max 24 h)\n", s.LockoutDurationMinutes)
 	fmt.Fprintf(out, "password reset link valid:   %d min\n", s.PasswordResetTTLMinutes)
+	fmt.Fprintf(out, "session:                     %d min idle, %d h max\n", s.SessionIdleMinutes, s.SessionMaxHours)
+	fmt.Fprintf(out, "keep me signed in:           %t (%d days idle, %d days max)\n",
+		s.RememberMeEnabled, s.RememberMeIdleDays, s.RememberMeMaxDays)
 	fmt.Fprintf(out, "managed by:                  %s\n", s.ManagedBy)
 }
 
@@ -102,6 +107,9 @@ func settingsSet(ctx context.Context, args []string, out io.Writer) error {
 	threshold := fs.Int("lockout-threshold", -1, "wrong passwords before a lock (0 = off)")
 	duration := fs.Duration("lockout-duration", 0, "first lock duration, e.g. 15m")
 	resetTTL := fs.Duration("password-reset-ttl", 0, "validity of reset links, e.g. 30m")
+	remember := fs.String("remember-me", "", `true|false: offer "Keep me signed in"`)
+	rememberIdle := fs.Int("remember-me-idle-days", -1, "a remembered session ends after this many days unused")
+	rememberMax := fs.Int("remember-me-max-days", -1, "a remembered session lasts this many days at most")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -137,6 +145,15 @@ func settingsSet(ctx context.Context, args []string, out io.Writer) error {
 		}
 		p.PasswordResetTTLMinutes = &m
 	}
+	if p.RememberMeEnabled, err = optionalBool("remember-me", *remember); err != nil {
+		return err
+	}
+	if p.RememberMeIdleDays, err = optionalDays("remember-me-idle-days", *rememberIdle); err != nil {
+		return err
+	}
+	if p.RememberMeMaxDays, err = optionalDays("remember-me-max-days", *rememberMax); err != nil {
+		return err
+	}
 	actor := cliActor()
 	p.UpdatedBy = &actor
 
@@ -156,6 +173,23 @@ func settingsSet(ctx context.Context, args []string, out io.Writer) error {
 	}
 	if s.ManagedBy == domain.InstanceSettingsManagedByConfig {
 		return errors.New("these settings are managed by the configuration file (managed_by=config): change the file instead")
+	}
+	merged := *s
+	if p.RememberMeEnabled != nil {
+		merged.RememberMeEnabled = *p.RememberMeEnabled
+	}
+	if p.RememberMeIdleDays != nil {
+		merged.RememberMeIdleDays = *p.RememberMeIdleDays
+	}
+	if p.RememberMeMaxDays != nil {
+		merged.RememberMeMaxDays = *p.RememberMeMaxDays
+	}
+	if err := service.ValidateSessionDurations(&merged); err != nil {
+		var ae *service.AdminError
+		if errors.As(err, &ae) {
+			return usageError{ae.Message}
+		}
+		return err
 	}
 	s, err = repo.Update(ctx, s.ID, p)
 	if err != nil {
@@ -179,6 +213,17 @@ func optionalBool(name, v string) (*bool, error) {
 	default:
 		return nil, usageError{fmt.Sprintf("--%s: true or false", name)}
 	}
+}
+
+// optionalDays: -1 (flag not given) is nil, else 1 to 365 days.
+func optionalDays(name string, v int) (*int, error) {
+	if v < 0 {
+		return nil, nil
+	}
+	if v < 1 || v > 365 {
+		return nil, usageError{fmt.Sprintf("--%s: between 1 and 365 days", name)}
+	}
+	return &v, nil
 }
 
 func wholeMinutes(name string, d time.Duration) (int, error) {

@@ -138,6 +138,11 @@ async function SessionsTable({
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-text-secondary" title={formatDateTime(s.expires_at)}>
                   {formatRelative(s.expires_at)}
+                  {s.remember_me && (
+                    <Badge tone="info" className="ml-2" title="Keep me signed in was ticked">
+                      Kept signed in
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
                   {revocable && <RevokeSessionButton realm={realm} id={s.id} user={s.user.name} />}

@@ -44,6 +44,8 @@ type Session struct {
 	MfaVerifiedAt time.Time `json:"mfa_verified_at,omitempty"`
 	// AuthMethod holds the value of the "auth_method" field.
 	AuthMethod string `json:"auth_method,omitempty"`
+	// RememberMe holds the value of the "remember_me" field.
+	RememberMe bool `json:"remember_me,omitempty"`
 	// Status holds the value of the "status" field.
 	Status schema.SessionStatus `json:"status,omitempty"`
 	// RevokedReason holds the value of the "revoked_reason" field.
@@ -105,7 +107,7 @@ func (*Session) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case session.FieldMfaVerified:
+		case session.FieldMfaVerified, session.FieldRememberMe:
 			values[i] = new(sql.NullBool)
 		case session.FieldID, session.FieldRealmID, session.FieldUserID, session.FieldIPAddress, session.FieldUserAgent, session.FieldDeviceFingerprint, session.FieldMfaMethodType, session.FieldAuthMethod, session.FieldStatus, session.FieldRevokedReason, session.FieldTokenHash:
 			values[i] = new(sql.NullString)
@@ -203,6 +205,12 @@ func (_m *Session) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field auth_method", values[i])
 			} else if value.Valid {
 				_m.AuthMethod = value.String
+			}
+		case session.FieldRememberMe:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field remember_me", values[i])
+			} else if value.Valid {
+				_m.RememberMe = value.Bool
 			}
 		case session.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -308,6 +316,9 @@ func (_m *Session) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("auth_method=")
 	builder.WriteString(_m.AuthMethod)
+	builder.WriteString(", ")
+	builder.WriteString("remember_me=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RememberMe))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
