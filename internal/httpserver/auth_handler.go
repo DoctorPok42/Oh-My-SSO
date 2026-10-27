@@ -28,6 +28,9 @@ type loginRequest struct {
 	Password   string `json:"password"`
 	ClientID string `json:"client_id,omitempty"`
 	EntityID string `json:"entity_id,omitempty"`
+	// RememberMe: "Keep me signed in" is ticked. Ignored when the realm
+	// does not offer it.
+	RememberMe bool `json:"remember_me,omitempty"`
 }
 
 // loginResponse. "status" tells the next step:
@@ -43,6 +46,8 @@ type loginResponse struct {
 	AllowedMethods     []string `json:"allowed_methods,omitempty"`
 	ExpiresAt          string   `json:"expires_at,omitempty"`
 	MFAEnrollmentDueAt string   `json:"mfa_enrollment_due_at,omitempty"`
+	// RememberMe: the session is a remembered one (persistent cookie).
+	RememberMe bool `json:"remember_me,omitempty"`
 }
 
 type errorResponse struct {
@@ -56,6 +61,7 @@ type sessionResponse struct {
 	MFAVerified   bool       `json:"mfa_verified"`
 	MFAMethod     string     `json:"mfa_method,omitempty"`
 	MFAVerifiedAt *time.Time `json:"mfa_verified_at,omitempty"`
+	RememberMe    bool       `json:"remember_me"`
 	ExpiresAt     time.Time  `json:"expires_at"`
 }
 
@@ -136,6 +142,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			IPAddress:         ip,
 			UserAgent:         r.UserAgent(),
 			DeviceFingerprint: device,
+			RememberMe:        req.RememberMe,
 		})
 		if err != nil {
 			s.writeMFAError(w, err)
@@ -166,13 +173,15 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		UserAgent:         r.UserAgent(),
 		AuthMethod:        domain.AuthMethodPassword,
 		DeviceFingerprint: device,
+		RememberMe:        req.RememberMe,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error")
 		return
 	}
 
-	setSessionCookie(w, realm.Name, rawToken, sess.ExpiresAt)
+	setSessionCookie(w, realm.Name, rawToken, sess)
+	resp.RememberMe = sess.RememberMe
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -195,6 +204,7 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		AuthMethod:  sess.AuthMethod,
 		MFAVerified: sess.MFAVerified,
 		MFAMethod:   sess.MFAMethodType,
+		RememberMe:  sess.RememberMe,
 		ExpiresAt:   sess.ExpiresAt,
 	}
 	if !sess.MFAVerifiedAt.IsZero() {

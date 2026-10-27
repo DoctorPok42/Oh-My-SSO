@@ -24,7 +24,8 @@ type SessionView struct {
 	AuthMethod     string    `json:"auth_method"` // RFC 8176 value: pwd, hwk, swk, otp, mfa
 	MFAVerified    bool      `json:"mfa_verified"`
 	MFAMethod      string    `json:"mfa_method"`
-	Clients        []NameRef `json:"clients"` // applications holding a live token
+	RememberMe     bool      `json:"remember_me"` // "Keep me signed in" was ticked
+	Clients        []NameRef `json:"clients"`     // applications holding a live token
 	CreatedAt      time.Time `json:"created_at"`
 	LastActivityAt time.Time `json:"last_activity_at"`
 	ExpiresAt      time.Time `json:"expires_at"`
@@ -38,13 +39,13 @@ type SessionFilter struct {
 }
 
 func (s *AdminService) ListSessions(ctx context.Context, realm *domain.Realm, f SessionFilter) ([]SessionView, int, error) {
-	now, idleSince, err := s.activeWindow(ctx, realm)
+	win, err := s.activeWindow(ctx, realm)
 	if err != nil {
 		return nil, 0, err
 	}
-	sessions, total, err := s.d.Admin.SearchSessions(ctx, repository.SessionSearch{
-		RealmID: realm.ID, UserID: f.UserID, ClientRef: f.ClientRef, Now: now, IdleSince: idleSince, Page: f.Page,
-	})
+	now := win.Now
+	win.UserID, win.ClientRef, win.Page = f.UserID, f.ClientRef, f.Page
+	sessions, total, err := s.d.Admin.SearchSessions(ctx, win)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -72,7 +73,7 @@ func (s *AdminService) ListSessions(ctx context.Context, realm *domain.Realm, f 
 	out := make([]SessionView, 0, len(sessions))
 	for _, se := range sessions {
 		v := SessionView{ID: se.ID, User: NameRef{ID: se.UserID}, IPAddress: se.IPAddress, UserAgent: se.UserAgent,
-			AuthMethod: se.AuthMethod, MFAVerified: se.MFAVerified, MFAMethod: se.MFAMethodType, Clients: []NameRef{},
+			AuthMethod: se.AuthMethod, MFAVerified: se.MFAVerified, MFAMethod: se.MFAMethodType, RememberMe: se.RememberMe, Clients: []NameRef{},
 			CreatedAt: se.CreatedAt, LastActivityAt: se.LastActivityAt, ExpiresAt: se.ExpiresAt}
 		if u := byID[se.UserID]; u != nil {
 			v.User.Name, v.UserEmail = u.Username, u.Email
@@ -289,27 +290,32 @@ func (s *AdminService) Dashboard(ctx context.Context, realm *domain.Realm) (*Das
 }
 
 // activeWindow: a session is active when it has not expired and was used
-// within the realm's idle timeout.
-func (s *AdminService) activeWindow(ctx context.Context, realm *domain.Realm) (now, idleSince time.Time, err error) {
+// within the realm's idle timeout, with the same rules as the public
+// server (SessionDurations.Limits) for remembered sessions.
+func (s *AdminService) activeWindow(ctx context.Context, realm *domain.Realm) (repository.SessionSearch, error) {
 	st, err := s.settingsOf(ctx, realm.ID)
 	if err != nil {
-		return time.Time{}, time.Time{}, err
+		return repository.SessionSearch{}, err
 	}
-	idle := time.Duration(st.SessionIdleMinutes) * time.Minute
-	if idle <= 0 {
-		idle = defaultSessionIdleTimeout
+	d := SessionDurationsOf(st)
+	now := s.d.Now()
+	win := repository.SessionSearch{RealmID: realm.ID, Now: now, IdleSince: now.Add(-d.IdleTimeout)}
+	if d.RememberMe {
+		win.RememberIdleSince = now.Add(-d.RememberMeIdleTimeout)
+	} else {
+		win.RememberIdleSince = win.IdleSince
+		win.RememberCreatedSince = now.Add(-d.MaxLifetime)
 	}
-	now = s.d.Now()
-	return now, now.Add(-idle), nil
+	return win, nil
 }
 
 // countActiveSessions: the total of ListSessions, one COUNT query.
 func (s *AdminService) countActiveSessions(ctx context.Context, realm *domain.Realm) (int, error) {
-	now, idleSince, err := s.activeWindow(ctx, realm)
+	win, err := s.activeWindow(ctx, realm)
 	if err != nil {
 		return 0, err
 	}
-	return s.d.Admin.CountSessions(ctx, repository.SessionSearch{RealmID: realm.ID, Now: now, IdleSince: idleSince})
+	return s.d.Admin.CountSessions(ctx, win)
 }
 
 func round1(v float64) float64 { return float64(int(v*10+0.5)) / 10 }

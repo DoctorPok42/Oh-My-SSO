@@ -177,6 +177,9 @@ type SettingsView struct {
 	PasswordResetTTLMinutes     int       `json:"password_reset_ttl_minutes"`
 	SessionIdleMinutes          int       `json:"session_idle_minutes"`
 	SessionMaxHours             int       `json:"session_max_hours"`
+	RememberMeEnabled           bool      `json:"remember_me_enabled"`
+	RememberMeIdleDays          int       `json:"remember_me_idle_days"`
+	RememberMeMaxDays           int       `json:"remember_me_max_days"`
 	LockoutThreshold            int       `json:"lockout_threshold"`
 	LockoutDurationMinutes      int       `json:"lockout_duration_minutes"`
 	IPAllowlist                 []string  `json:"ip_allowlist"`
@@ -214,7 +217,8 @@ func (s *AdminService) GetSettings(ctx context.Context, realm *domain.Realm) (*S
 	return &SettingsView{
 		ManagedBy: string(st.ManagedBy), MinPasswordLength: st.MinPasswordLength, PasswordExpiryDays: st.PasswordExpiryDays,
 		PasswordResetTTLMinutes: st.PasswordResetTTLMinutes, SessionIdleMinutes: st.SessionIdleMinutes,
-		SessionMaxHours: st.SessionMaxHours, LockoutThreshold: st.LockoutThreshold, LockoutDurationMinutes: st.LockoutDurationMinutes,
+		SessionMaxHours: st.SessionMaxHours, RememberMeEnabled: st.RememberMeEnabled, RememberMeIdleDays: st.RememberMeIdleDays,
+		RememberMeMaxDays: st.RememberMeMaxDays, LockoutThreshold: st.LockoutThreshold, LockoutDurationMinutes: st.LockoutDurationMinutes,
 		IPAllowlist: allow, MFARequiredGlobally: st.MFARequiredGlobally, MFAStepUpMaxAgeMinutes: st.MFAStepUpMaxAgeMinutes,
 		KeyRotationGraceHours: st.KeyRotationGraceHours, NotificationEmailEnabled: st.NotificationEmailEnabled,
 		SuspiciousLoginEmailEnabled: st.SuspiciousLoginEmailEnabled, UpdatedAt: st.UpdatedAt, UpdatedBy: st.UpdatedBy,
@@ -228,6 +232,9 @@ type SettingsPatch struct {
 	PasswordResetTTLMinutes     *int
 	SessionIdleMinutes          *int
 	SessionMaxHours             *int
+	RememberMeEnabled           *bool
+	RememberMeIdleDays          *int
+	RememberMeMaxDays           *int
 	LockoutThreshold            *int
 	LockoutDurationMinutes      *int
 	IPAllowlist                 *[]string
@@ -257,6 +264,8 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		{"password_reset_ttl_minutes", p.PasswordResetTTLMinutes, 5, 24 * 60},
 		{"session_idle_minutes", p.SessionIdleMinutes, 1, 7 * 24 * 60},
 		{"session_max_hours", p.SessionMaxHours, 1, 90 * 24},
+		{"remember_me_idle_days", p.RememberMeIdleDays, 1, maxRememberMeDays},
+		{"remember_me_max_days", p.RememberMeMaxDays, 1, maxRememberMeDays},
 		{"lockout_threshold", p.LockoutThreshold, 0, 100},
 		{"lockout_duration_minutes", p.LockoutDurationMinutes, 1, 7 * 24 * 60},
 		{"mfa_step_up_max_age_minutes", p.MFAStepUpMaxAgeMinutes, int(minMFAStepUpMaxAge / time.Minute), int(maxMFAStepUpMaxAge / time.Minute)},
@@ -294,11 +303,21 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 	if st.ManagedBy == domain.InstanceSettingsManagedByConfig {
 		return nil, errManagedByConfig
 	}
+	merged := *st
+	setIfNotNil(&merged.SessionIdleMinutes, p.SessionIdleMinutes)
+	setIfNotNil(&merged.SessionMaxHours, p.SessionMaxHours)
+	setIfNotNil(&merged.RememberMeEnabled, p.RememberMeEnabled)
+	setIfNotNil(&merged.RememberMeIdleDays, p.RememberMeIdleDays)
+	setIfNotNil(&merged.RememberMeMaxDays, p.RememberMeMaxDays)
+	if err := ValidateSessionDurations(&merged); err != nil {
+		return nil, err
+	}
 	by := actor.By()
 	upd := repository.UpdateInstanceSettingsParams{
 		MinPasswordLength: p.MinPasswordLength, PasswordExpiryDays: p.PasswordExpiryDays,
 		PasswordResetTTLMinutes: p.PasswordResetTTLMinutes, SessionIdleMinutes: p.SessionIdleMinutes,
-		SessionMaxHours: p.SessionMaxHours, LockoutThreshold: p.LockoutThreshold,
+		SessionMaxHours: p.SessionMaxHours, RememberMeEnabled: p.RememberMeEnabled,
+		RememberMeIdleDays: p.RememberMeIdleDays, RememberMeMaxDays: p.RememberMeMaxDays, LockoutThreshold: p.LockoutThreshold,
 		LockoutDurationMinutes: p.LockoutDurationMinutes, IPAllowlist: allow,
 		MFARequiredGlobally: p.MFARequiredGlobally, MFAStepUpMaxAgeMinutes: p.MFAStepUpMaxAgeMinutes,
 		KeyRotationGraceHours: p.KeyRotationGraceHours, NotificationEmailEnabled: p.NotificationEmailEnabled,
@@ -320,7 +339,8 @@ func settingsChanges(p SettingsPatch) map[string]interface{} {
 	ints := map[string]*int{
 		"min_password_length": p.MinPasswordLength, "password_expiry_days": p.PasswordExpiryDays,
 		"password_reset_ttl_minutes": p.PasswordResetTTLMinutes, "session_idle_minutes": p.SessionIdleMinutes,
-		"session_max_hours": p.SessionMaxHours, "lockout_threshold": p.LockoutThreshold,
+		"session_max_hours": p.SessionMaxHours, "remember_me_idle_days": p.RememberMeIdleDays,
+		"remember_me_max_days": p.RememberMeMaxDays, "lockout_threshold": p.LockoutThreshold,
 		"lockout_duration_minutes": p.LockoutDurationMinutes, "mfa_step_up_max_age_minutes": p.MFAStepUpMaxAgeMinutes,
 		"key_rotation_grace_hours": p.KeyRotationGraceHours,
 	}
@@ -331,7 +351,7 @@ func settingsChanges(p SettingsPatch) map[string]interface{} {
 	}
 	bools := map[string]*bool{
 		"mfa_required_globally": p.MFARequiredGlobally, "notification_email_enabled": p.NotificationEmailEnabled,
-		"suspicious_login_email_enabled": p.SuspiciousLoginEmailEnabled,
+		"suspicious_login_email_enabled": p.SuspiciousLoginEmailEnabled, "remember_me_enabled": p.RememberMeEnabled,
 	}
 	for k, v := range bools {
 		if v != nil {
@@ -342,4 +362,38 @@ func settingsChanges(p SettingsPatch) map[string]interface{} {
 		out["ip_allowlist"] = *p.IPAllowlist
 	}
 	return out
+}
+
+func setIfNotNil[T any](dst *T, v *T) {
+	if v != nil {
+		*dst = *v
+	}
+}
+
+// ValidateSessionDurations checks the session durations of a realm as they
+// will be saved. When "Keep me signed in" is on, a remembered session can
+// neither stay idle longer than it lives, nor be shorter or end sooner
+// when idle than a normal session (the option would then shorten
+// sessions). Used by the Admin API and by `idp settings set`.
+func ValidateSessionDurations(st *domain.InstanceSettings) error {
+	if !st.RememberMeEnabled {
+		return nil
+	}
+	d := SessionDurationsOf(st)
+	const day = 24 * time.Hour
+	switch {
+	case d.RememberMeIdleTimeout > d.RememberMeMaxLifetime:
+		return adminInvalid("remember_me_idle_days",
+			"the idle timeout of a remembered session (%d days) cannot be longer than its maximum duration (%d days)",
+			d.RememberMeIdleTimeout/day, d.RememberMeMaxLifetime/day)
+	case d.RememberMeMaxLifetime < d.MaxLifetime:
+		return adminInvalid("remember_me_max_days",
+			"a remembered session (%d days) cannot be shorter than a normal session (%d hours)",
+			d.RememberMeMaxLifetime/day, d.MaxLifetime/time.Hour)
+	case d.RememberMeIdleTimeout < d.IdleTimeout:
+		return adminInvalid("remember_me_idle_days",
+			"the idle timeout of a remembered session (%d days) cannot be shorter than the one of a normal session (%d minutes)",
+			d.RememberMeIdleTimeout/day, d.IdleTimeout/time.Minute)
+	}
+	return nil
 }

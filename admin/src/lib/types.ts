@@ -192,6 +192,8 @@ export type SessionRow = {
   auth_method: string;
   mfa_verified: boolean;
   mfa_method: string;
+  /** "Keep me signed in" was ticked: long-lived session, persistent cookie. */
+  remember_me: boolean;
   clients: NameRef[];
   created_at: string;
   last_activity_at: string;
@@ -308,6 +310,9 @@ export type Settings = {
   password_reset_ttl_minutes: number;
   session_idle_minutes: number;
   session_max_hours: number;
+  remember_me_enabled: boolean;
+  remember_me_idle_days: number;
+  remember_me_max_days: number;
   lockout_threshold: number;
   lockout_duration_minutes: number;
   ip_allowlist: string[];

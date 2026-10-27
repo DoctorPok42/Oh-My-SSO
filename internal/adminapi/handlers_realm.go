@@ -474,6 +474,9 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		PasswordResetTTLMinutes     *int      `json:"password_reset_ttl_minutes"`
 		SessionIdleMinutes          *int      `json:"session_idle_minutes"`
 		SessionMaxHours             *int      `json:"session_max_hours"`
+		RememberMeEnabled           *bool     `json:"remember_me_enabled"`
+		RememberMeIdleDays          *int      `json:"remember_me_idle_days"`
+		RememberMeMaxDays           *int      `json:"remember_me_max_days"`
 		LockoutThreshold            *int      `json:"lockout_threshold"`
 		LockoutDurationMinutes      *int      `json:"lockout_duration_minutes"`
 		IPAllowlist                 *[]string `json:"ip_allowlist"`

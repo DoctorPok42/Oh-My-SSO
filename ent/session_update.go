@@ -186,6 +186,20 @@ func (_u *SessionUpdate) SetNillableAuthMethod(v *string) *SessionUpdate {
 	return _u
 }
 
+// SetRememberMe sets the "remember_me" field.
+func (_u *SessionUpdate) SetRememberMe(v bool) *SessionUpdate {
+	_u.mutation.SetRememberMe(v)
+	return _u
+}
+
+// SetNillableRememberMe sets the "remember_me" field if the given value is not nil.
+func (_u *SessionUpdate) SetNillableRememberMe(v *bool) *SessionUpdate {
+	if v != nil {
+		_u.SetRememberMe(*v)
+	}
+	return _u
+}
+
 // SetStatus sets the "status" field.
 func (_u *SessionUpdate) SetStatus(v schema.SessionStatus) *SessionUpdate {
 	_u.mutation.SetStatus(v)
@@ -352,6 +366,9 @@ func (_u *SessionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AuthMethod(); ok {
 		_spec.SetField(session.FieldAuthMethod, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RememberMe(); ok {
+		_spec.SetField(session.FieldRememberMe, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(session.FieldStatus, field.TypeString, value)
@@ -583,6 +600,20 @@ func (_u *SessionUpdateOne) SetNillableAuthMethod(v *string) *SessionUpdateOne {
 	return _u
 }
 
+// SetRememberMe sets the "remember_me" field.
+func (_u *SessionUpdateOne) SetRememberMe(v bool) *SessionUpdateOne {
+	_u.mutation.SetRememberMe(v)
+	return _u
+}
+
+// SetNillableRememberMe sets the "remember_me" field if the given value is not nil.
+func (_u *SessionUpdateOne) SetNillableRememberMe(v *bool) *SessionUpdateOne {
+	if v != nil {
+		_u.SetRememberMe(*v)
+	}
+	return _u
+}
+
 // SetStatus sets the "status" field.
 func (_u *SessionUpdateOne) SetStatus(v schema.SessionStatus) *SessionUpdateOne {
 	_u.mutation.SetStatus(v)
@@ -779,6 +810,9 @@ func (_u *SessionUpdateOne) sqlSave(ctx context.Context) (_node *Session, err er
 	}
 	if value, ok := _u.mutation.AuthMethod(); ok {
 		_spec.SetField(session.FieldAuthMethod, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RememberMe(); ok {
+		_spec.SetField(session.FieldRememberMe, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(session.FieldStatus, field.TypeString, value)

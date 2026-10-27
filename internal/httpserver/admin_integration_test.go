@@ -388,6 +388,24 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	status, out = e.call(t, tok.AccessToken, http.MethodPost, "/api/v1/realms/demo/groups", map[string]any{"name": "contractors"})
 	require.Equal(t, http.StatusCreated, status, "%v", out)
 
+	// "Keep me signed in": off in master after the bootstrap, on in a new
+	// realm, and its durations are checked against each other.
+	status, out = e.call(t, tok.AccessToken, http.MethodGet, "/api/v1/realms/master/settings", nil)
+	require.Equal(t, http.StatusOK, status, "%v", out)
+	require.Equal(t, false, out["remember_me_enabled"])
+	status, out = e.call(t, tok.AccessToken, http.MethodGet, "/api/v1/realms/demo/settings", nil)
+	require.Equal(t, http.StatusOK, status, "%v", out)
+	require.Equal(t, true, out["remember_me_enabled"])
+	require.EqualValues(t, 30, out["remember_me_max_days"])
+	require.EqualValues(t, 7, out["remember_me_idle_days"])
+	status, out = e.call(t, tok.AccessToken, http.MethodPatch, "/api/v1/realms/demo/settings", map[string]any{"remember_me_idle_days": 40})
+	require.Equal(t, http.StatusBadRequest, status, "%v", out)
+	require.Equal(t, "remember_me_idle_days", out["field"])
+	status, out = e.call(t, tok.AccessToken, http.MethodPatch, "/api/v1/realms/demo/settings",
+		map[string]any{"remember_me_max_days": 14, "remember_me_idle_days": 3})
+	require.Equal(t, http.StatusOK, status, "%v", out)
+	require.EqualValues(t, 14, out["remember_me_max_days"])
+
 	// --- 6. tokens ---
 	// A revoked session cuts the API at once (the JWT itself is still valid).
 	claims := jwtClaims(t, tok.AccessToken)

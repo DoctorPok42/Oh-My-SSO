@@ -9,6 +9,9 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
+
+	"sso.internal/sso/internal/core"
 )
 
 //go:embed web/*.html web/*.js web/*.css
@@ -55,6 +58,10 @@ type Login struct {
 	CancelURL   string
 	EnrollURL   string // dev pages only
 	ForgotPasswordURL string
+	// RememberMe shows "Keep me signed in" under the password, for at
+	// most RememberMeDays days.
+	RememberMe     bool
+	RememberMeDays int
 }
 
 type ForgotPassword struct {
@@ -117,6 +124,13 @@ type AutoPost struct {
 type Field struct {
 	Name  string
 	Value string
+}
+
+// RememberMeOffer turns the session options of a realm into the two
+// remember-me fields of Login: show "Keep me signed in", for how many days.
+func RememberMeOffer(o core.SessionOptions) (show bool, days int) {
+	days = int(o.RememberMeMaxAge / (24 * time.Hour))
+	return o.RememberMe && days > 0, days
 }
 
 // RenderLogin writes the sign-in page.

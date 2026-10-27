@@ -40,6 +40,9 @@ func DefaultInstanceSettings(realmID string) *domain.InstanceSettings {
 		PasswordResetTTLMinutes: defaultPasswordResetTTLMinutes,
 		SessionIdleMinutes:      int(defaultSessionIdleTimeout / time.Minute),
 		SessionMaxHours:         int(defaultSessionMaxLifetime / time.Hour),
+		RememberMeEnabled:       true,
+		RememberMeIdleDays:      defaultRememberMeIdleDays,
+		RememberMeMaxDays:       defaultRememberMeMaxDays,
 	}
 }
 

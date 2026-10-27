@@ -144,11 +144,17 @@ func (s *IdentityCoreService) CreateSession(ctx context.Context, userID string, 
 		AuthMethod:    ac.AuthMethod,
 		MFAVerified:   ac.MFAVerified,
 		MFAMethodType: ac.MFAMethodType,
+		RememberMe:    ac.RememberMe,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &core.IssuedSession{RawToken: raw, Session: sess}, nil
+}
+
+func (s *IdentityCoreService) SessionOptions(ctx context.Context, realmID string) core.SessionOptions {
+	allowed, maxAge := s.sessions.RememberMeOption(ctx, realmID)
+	return core.SessionOptions{RememberMe: allowed, RememberMeMaxAge: maxAge}
 }
 
 func (s *IdentityCoreService) ValidateSession(ctx context.Context, realmID, rawToken string) (*domain.Session, error) {

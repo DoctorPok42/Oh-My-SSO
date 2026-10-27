@@ -30,6 +30,9 @@ describe("settings form", () => {
     password_reset_ttl_minutes: 30,
     session_idle_minutes: 30,
     session_max_hours: 8,
+    remember_me_enabled: true,
+    remember_me_idle_days: 7,
+    remember_me_max_days: 30,
     lockout_threshold: 5,
     lockout_duration_minutes: 15,
     ip_allowlist: ["10.0.0.0/8"],
@@ -48,28 +51,39 @@ describe("settings form", () => {
     password_reset_ttl_minutes: "30",
     session_idle_minutes: "30",
     session_max_hours: "8",
+    remember_me_idle_days: "7",
+    remember_me_max_days: "30",
     lockout_threshold: "5",
     lockout_duration_minutes: "15",
     key_rotation_grace_hours: "24",
   };
 
   it("sends nothing when nothing changed", () => {
-    expect(settingsDiff(before, form, "10.0.0.0/8\n", true, false)).toEqual({});
+    const toggles = { notif: true, suspicious: false, remember: true };
+    expect(settingsDiff(before, form, "10.0.0.0/8\n", toggles)).toEqual({});
   });
 
   it("sends the changed fields only", () => {
     expect(
-      settingsDiff(
-        before,
-        { ...form, min_password_length: "14", lockout_threshold: "" },
-        "10.0.0.0/8\n192.168.1.1",
-        true,
-        true,
-      ),
+      settingsDiff(before, { ...form, min_password_length: "14", lockout_threshold: "" }, "10.0.0.0/8\n192.168.1.1", {
+        notif: true,
+        suspicious: true,
+        remember: true,
+      }),
     ).toEqual({
       min_password_length: 14,
       ip_allowlist: ["10.0.0.0/8", "192.168.1.1"],
       suspicious_login_email_enabled: true,
     });
+  });
+
+  it("sends the keep-me-signed-in switch and its durations", () => {
+    expect(
+      settingsDiff(before, { ...form, remember_me_idle_days: "14", remember_me_max_days: "30" }, "10.0.0.0/8", {
+        notif: true,
+        suspicious: false,
+        remember: false,
+      }),
+    ).toEqual({ remember_me_enabled: false, remember_me_idle_days: 14 });
   });
 });

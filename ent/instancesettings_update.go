@@ -128,6 +128,62 @@ func (_u *InstanceSettingsUpdate) AddSessionMaxHours(v int) *InstanceSettingsUpd
 	return _u
 }
 
+// SetRememberMeEnabled sets the "remember_me_enabled" field.
+func (_u *InstanceSettingsUpdate) SetRememberMeEnabled(v bool) *InstanceSettingsUpdate {
+	_u.mutation.SetRememberMeEnabled(v)
+	return _u
+}
+
+// SetNillableRememberMeEnabled sets the "remember_me_enabled" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableRememberMeEnabled(v *bool) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetRememberMeEnabled(*v)
+	}
+	return _u
+}
+
+// SetRememberMeIdleDays sets the "remember_me_idle_days" field.
+func (_u *InstanceSettingsUpdate) SetRememberMeIdleDays(v int) *InstanceSettingsUpdate {
+	_u.mutation.ResetRememberMeIdleDays()
+	_u.mutation.SetRememberMeIdleDays(v)
+	return _u
+}
+
+// SetNillableRememberMeIdleDays sets the "remember_me_idle_days" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableRememberMeIdleDays(v *int) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetRememberMeIdleDays(*v)
+	}
+	return _u
+}
+
+// AddRememberMeIdleDays adds value to the "remember_me_idle_days" field.
+func (_u *InstanceSettingsUpdate) AddRememberMeIdleDays(v int) *InstanceSettingsUpdate {
+	_u.mutation.AddRememberMeIdleDays(v)
+	return _u
+}
+
+// SetRememberMeMaxDays sets the "remember_me_max_days" field.
+func (_u *InstanceSettingsUpdate) SetRememberMeMaxDays(v int) *InstanceSettingsUpdate {
+	_u.mutation.ResetRememberMeMaxDays()
+	_u.mutation.SetRememberMeMaxDays(v)
+	return _u
+}
+
+// SetNillableRememberMeMaxDays sets the "remember_me_max_days" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableRememberMeMaxDays(v *int) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetRememberMeMaxDays(*v)
+	}
+	return _u
+}
+
+// AddRememberMeMaxDays adds value to the "remember_me_max_days" field.
+func (_u *InstanceSettingsUpdate) AddRememberMeMaxDays(v int) *InstanceSettingsUpdate {
+	_u.mutation.AddRememberMeMaxDays(v)
+	return _u
+}
+
 // SetLockoutThreshold sets the "lockout_threshold" field.
 func (_u *InstanceSettingsUpdate) SetLockoutThreshold(v int) *InstanceSettingsUpdate {
 	_u.mutation.ResetLockoutThreshold()
@@ -407,6 +463,21 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if value, ok := _u.mutation.AddedSessionMaxHours(); ok {
 		_spec.AddField(instancesettings.FieldSessionMaxHours, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.RememberMeEnabled(); ok {
+		_spec.SetField(instancesettings.FieldRememberMeEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.RememberMeIdleDays(); ok {
+		_spec.SetField(instancesettings.FieldRememberMeIdleDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRememberMeIdleDays(); ok {
+		_spec.AddField(instancesettings.FieldRememberMeIdleDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.RememberMeMaxDays(); ok {
+		_spec.SetField(instancesettings.FieldRememberMeMaxDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRememberMeMaxDays(); ok {
+		_spec.AddField(instancesettings.FieldRememberMeMaxDays, field.TypeInt, value)
+	}
 	if value, ok := _u.mutation.LockoutThreshold(); ok {
 		_spec.SetField(instancesettings.FieldLockoutThreshold, field.TypeInt, value)
 	}
@@ -581,6 +652,62 @@ func (_u *InstanceSettingsUpdateOne) SetNillableSessionMaxHours(v *int) *Instanc
 // AddSessionMaxHours adds value to the "session_max_hours" field.
 func (_u *InstanceSettingsUpdateOne) AddSessionMaxHours(v int) *InstanceSettingsUpdateOne {
 	_u.mutation.AddSessionMaxHours(v)
+	return _u
+}
+
+// SetRememberMeEnabled sets the "remember_me_enabled" field.
+func (_u *InstanceSettingsUpdateOne) SetRememberMeEnabled(v bool) *InstanceSettingsUpdateOne {
+	_u.mutation.SetRememberMeEnabled(v)
+	return _u
+}
+
+// SetNillableRememberMeEnabled sets the "remember_me_enabled" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableRememberMeEnabled(v *bool) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetRememberMeEnabled(*v)
+	}
+	return _u
+}
+
+// SetRememberMeIdleDays sets the "remember_me_idle_days" field.
+func (_u *InstanceSettingsUpdateOne) SetRememberMeIdleDays(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.ResetRememberMeIdleDays()
+	_u.mutation.SetRememberMeIdleDays(v)
+	return _u
+}
+
+// SetNillableRememberMeIdleDays sets the "remember_me_idle_days" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableRememberMeIdleDays(v *int) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetRememberMeIdleDays(*v)
+	}
+	return _u
+}
+
+// AddRememberMeIdleDays adds value to the "remember_me_idle_days" field.
+func (_u *InstanceSettingsUpdateOne) AddRememberMeIdleDays(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.AddRememberMeIdleDays(v)
+	return _u
+}
+
+// SetRememberMeMaxDays sets the "remember_me_max_days" field.
+func (_u *InstanceSettingsUpdateOne) SetRememberMeMaxDays(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.ResetRememberMeMaxDays()
+	_u.mutation.SetRememberMeMaxDays(v)
+	return _u
+}
+
+// SetNillableRememberMeMaxDays sets the "remember_me_max_days" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableRememberMeMaxDays(v *int) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetRememberMeMaxDays(*v)
+	}
+	return _u
+}
+
+// AddRememberMeMaxDays adds value to the "remember_me_max_days" field.
+func (_u *InstanceSettingsUpdateOne) AddRememberMeMaxDays(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.AddRememberMeMaxDays(v)
 	return _u
 }
 
@@ -892,6 +1019,21 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.AddedSessionMaxHours(); ok {
 		_spec.AddField(instancesettings.FieldSessionMaxHours, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.RememberMeEnabled(); ok {
+		_spec.SetField(instancesettings.FieldRememberMeEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.RememberMeIdleDays(); ok {
+		_spec.SetField(instancesettings.FieldRememberMeIdleDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRememberMeIdleDays(); ok {
+		_spec.AddField(instancesettings.FieldRememberMeIdleDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.RememberMeMaxDays(); ok {
+		_spec.SetField(instancesettings.FieldRememberMeMaxDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRememberMeMaxDays(); ok {
+		_spec.AddField(instancesettings.FieldRememberMeMaxDays, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.LockoutThreshold(); ok {
 		_spec.SetField(instancesettings.FieldLockoutThreshold, field.TypeInt, value)

@@ -168,6 +168,20 @@ func (_c *SessionCreate) SetNillableAuthMethod(v *string) *SessionCreate {
 	return _c
 }
 
+// SetRememberMe sets the "remember_me" field.
+func (_c *SessionCreate) SetRememberMe(v bool) *SessionCreate {
+	_c.mutation.SetRememberMe(v)
+	return _c
+}
+
+// SetNillableRememberMe sets the "remember_me" field if the given value is not nil.
+func (_c *SessionCreate) SetNillableRememberMe(v *bool) *SessionCreate {
+	if v != nil {
+		_c.SetRememberMe(*v)
+	}
+	return _c
+}
+
 // SetStatus sets the "status" field.
 func (_c *SessionCreate) SetStatus(v schema.SessionStatus) *SessionCreate {
 	_c.mutation.SetStatus(v)
@@ -298,6 +312,10 @@ func (_c *SessionCreate) defaults() {
 		v := session.DefaultAuthMethod
 		_c.mutation.SetAuthMethod(v)
 	}
+	if _, ok := _c.mutation.RememberMe(); !ok {
+		v := session.DefaultRememberMe
+		_c.mutation.SetRememberMe(v)
+	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := session.DefaultStatus
 		_c.mutation.SetStatus(v)
@@ -340,6 +358,9 @@ func (_c *SessionCreate) check() error {
 	}
 	if _, ok := _c.mutation.AuthMethod(); !ok {
 		return &ValidationError{Name: "auth_method", err: errors.New(`ent: missing required field "Session.auth_method"`)}
+	}
+	if _, ok := _c.mutation.RememberMe(); !ok {
+		return &ValidationError{Name: "remember_me", err: errors.New(`ent: missing required field "Session.remember_me"`)}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Session.status"`)}
@@ -437,6 +458,10 @@ func (_c *SessionCreate) createSpec() (*Session, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.AuthMethod(); ok {
 		_spec.SetField(session.FieldAuthMethod, field.TypeString, value)
 		_node.AuthMethod = value
+	}
+	if value, ok := _c.mutation.RememberMe(); ok {
+		_spec.SetField(session.FieldRememberMe, field.TypeBool, value)
+		_node.RememberMe = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(session.FieldStatus, field.TypeString, value)

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"sso.internal/sso/internal/core/domain"
@@ -255,6 +256,43 @@ func TestAdminRepository_Integration(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, rows, 2)
 		require.Equal(t, 3, total)
+	})
+
+	t.Run("sessions: remembered ones follow their own idle timeout", func(t *testing.T) {
+		realm := newTestRealm(t, ctx, f.client)
+		sessions := entstore.NewSessionRepository(f.client)
+		now := time.Now()
+		create := func(created time.Time, remember bool) *domain.Session {
+			s, err := sessions.Create(ctx, repository.CreateSessionParams{RealmID: realm.ID, UserID: alice.ID,
+				TokenHash: "hash-" + uuid.NewString(), CreatedAt: created, ExpiresAt: now.Add(24 * time.Hour),
+				AuthMethod: domain.AuthMethodPassword, RememberMe: remember})
+			require.NoError(t, err)
+			return s
+		}
+		create(now.Add(-time.Hour), false)          // normal, idle for an hour: gone
+		create(now.Add(-48*time.Hour), true)        // remembered, idle for two days
+		busy := create(now.Add(-9*time.Hour), true) // remembered, 9 hours old, just used
+		require.NoError(t, sessions.Touch(ctx, busy.ID, now.Add(-time.Minute)))
+
+		on := repository.SessionSearch{RealmID: realm.ID, Now: now, IdleSince: now.Add(-10 * time.Minute),
+			RememberIdleSince: now.Add(-7 * 24 * time.Hour)}
+		rows, total, err := admin.SearchSessions(ctx, on)
+		require.NoError(t, err)
+		require.Equal(t, 2, total)
+		for _, r := range rows {
+			require.True(t, r.RememberMe)
+		}
+
+		// The realm turned the option off: normal idle timeout and lifetime.
+		off := repository.SessionSearch{RealmID: realm.ID, Now: now, IdleSince: now.Add(-10 * time.Minute),
+			RememberIdleSince: now.Add(-10 * time.Minute), RememberCreatedSince: now.Add(-8 * time.Hour)}
+		n, err := admin.CountSessions(ctx, off)
+		require.NoError(t, err)
+		require.Zero(t, n)
+		create(now, true)
+		n, err = admin.CountSessions(ctx, off)
+		require.NoError(t, err)
+		require.Equal(t, 1, n)
 	})
 
 	t.Run("the master realm is created only here", func(t *testing.T) {

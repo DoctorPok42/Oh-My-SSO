@@ -19,6 +19,9 @@ type Entry struct {
 	MFAMethodType  string               `json:"mfat,omitempty"`
 	MFAVerifiedAt  time.Time            `json:"mfaat"`
 	AuthMethod     string               `json:"am"`
+	// RememberMe picks the idle timeout. An entry written before this field
+	// existed reads as false: the short timeout, never a longer one.
+	RememberMe bool `json:"rm,omitempty"`
 }
 
 type Result struct {
@@ -46,6 +49,7 @@ func EntryFromSession(s *domain.Session) Entry {
 		MFAMethodType:  s.MFAMethodType,
 		MFAVerifiedAt:  s.MFAVerifiedAt,
 		AuthMethod:     s.AuthMethod,
+		RememberMe:     s.RememberMe,
 	}
 }
 
@@ -63,5 +67,6 @@ func (e Entry) ToSession(tokenHash string) *domain.Session {
 		MFAMethodType:  e.MFAMethodType,
 		MFAVerifiedAt:  e.MFAVerifiedAt,
 		AuthMethod:     e.AuthMethod,
+		RememberMe:     e.RememberMe,
 	}
 }

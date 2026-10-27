@@ -126,6 +126,11 @@ func AuthMethod(v string) predicate.Session {
 	return predicate.Session(sql.FieldEQ(FieldAuthMethod, v))
 }
 
+// RememberMe applies equality check predicate on the "remember_me" field. It's identical to RememberMeEQ.
+func RememberMe(v bool) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldRememberMe, v))
+}
+
 // Status applies equality check predicate on the "status" field. It's identical to StatusEQ.
 func Status(v schema.SessionStatus) predicate.Session {
 	vc := string(v)
@@ -815,6 +820,16 @@ func AuthMethodEqualFold(v string) predicate.Session {
 // AuthMethodContainsFold applies the ContainsFold predicate on the "auth_method" field.
 func AuthMethodContainsFold(v string) predicate.Session {
 	return predicate.Session(sql.FieldContainsFold(FieldAuthMethod, v))
+}
+
+// RememberMeEQ applies the EQ predicate on the "remember_me" field.
+func RememberMeEQ(v bool) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldRememberMe, v))
+}
+
+// RememberMeNEQ applies the NEQ predicate on the "remember_me" field.
+func RememberMeNEQ(v bool) predicate.Session {
+	return predicate.Session(sql.FieldNEQ(FieldRememberMe, v))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.

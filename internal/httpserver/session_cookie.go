@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"net/http"
 	"time"
+
+	"sso.internal/sso/internal/core/domain"
 )
 
 const SessionCookieName = "sso_session"
@@ -14,21 +16,32 @@ func sessionCookiePath(realmName string) string {
 	return "/r/" + realmName
 }
 
-func setSessionCookie(w http.ResponseWriter, realmName, rawToken string, expiresAt time.Time) {
-	maxAge := int(time.Until(expiresAt).Seconds())
-	if maxAge < 1 {
-		maxAge = 1
-	}
-	http.SetCookie(w, &http.Cookie{
+// setSessionCookie writes the cookie of a new session.
+//
+// A remembered session ("Keep me signed in") gets a persistent cookie that
+// expires with the session. Any other session gets a browser-session cookie
+// (no Expires, no Max-Age): the browser drops it when it closes, like
+// Microsoft Entra ID and Keycloak do without their "stay signed in" option.
+// Browsers that restore the previous session on start-up may keep it; the
+// server-side idle timeout and lifetime still apply either way.
+func setSessionCookie(w http.ResponseWriter, realmName, rawToken string, sess *domain.Session) {
+	c := &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    rawToken,
 		Path:     sessionCookiePath(realmName),
-		Expires:  expiresAt,
-		MaxAge:   maxAge,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
-	})
+	}
+	if sess.RememberMe {
+		maxAge := int(time.Until(sess.ExpiresAt).Seconds())
+		if maxAge < 1 {
+			maxAge = 1
+		}
+		c.Expires = sess.ExpiresAt
+		c.MaxAge = maxAge
+	}
+	http.SetCookie(w, c)
 }
 
 func clearSessionCookie(w http.ResponseWriter, realmName string) {

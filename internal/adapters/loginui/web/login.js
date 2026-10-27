@@ -71,9 +71,11 @@
     clearError();
     const form = ev.currentTarget;
     busy(form, true);
+    const remember = $("remember-me");
     const { status, data } = await post("/auth/login", {
       identifier: $("identifier").value,
       password: $("password").value,
+      remember_me: !!(remember && remember.checked),
       [clientParam]: clientId,
     });
     busy(form, false);

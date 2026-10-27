@@ -21,12 +21,13 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
   const [allowlist, setAllowlist] = useState((settings.ip_allowlist ?? []).join("\n"));
   const [notif, setNotif] = useState(settings.notification_email_enabled);
   const [suspicious, setSuspicious] = useState(settings.suspicious_login_email_enabled);
+  const [remember, setRemember] = useState(settings.remember_me_enabled);
   const [error, setError] = useState<{ field?: string; message: string } | null>(null);
   const [to, setTo] = useState("");
   const { locked, banner } = useEditLock({ canWrite: writable, managedByConfig: settings.managed_by === "config" });
   const { run, pending } = useAction();
   const testMail = useAction(); // its own spinner, apart from "Save changes"
-  const patch = settingsDiff(settings, form, allowlist, notif, suspicious);
+  const patch = settingsDiff(settings, form, allowlist, { notif, suspicious, remember });
   const dirty = Object.keys(patch).length > 0;
 
   const num = (k: NumberKey, label: string, hint?: string) => (
@@ -70,6 +71,27 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
           <div className="mt-4 space-y-4">
             {num("session_idle_minutes", "Idle timeout (minutes)")}
             {num("session_max_hours", "Maximum session duration (hours)")}
+            <Toggle
+              label="Keep me signed in"
+              hint="Offer the option on the sign-in page: the session then survives a browser restart."
+              checked={remember}
+              onChange={setRemember}
+              locked={locked}
+            />
+            {remember && (
+              <>
+                {num(
+                  "remember_me_idle_days",
+                  "Kept signed in: idle timeout (days)",
+                  "The session ends after this many days without use.",
+                )}
+                {num(
+                  "remember_me_max_days",
+                  "Kept signed in: maximum duration (days)",
+                  "30 at most is advised (NIST SP 800-63B, AAL1). 1 to 365.",
+                )}
+              </>
+            )}
           </div>
         </Card>
         <Card>

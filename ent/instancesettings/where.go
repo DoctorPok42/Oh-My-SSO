@@ -97,6 +97,21 @@ func SessionMaxHours(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldSessionMaxHours, v))
 }
 
+// RememberMeEnabled applies equality check predicate on the "remember_me_enabled" field. It's identical to RememberMeEnabledEQ.
+func RememberMeEnabled(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldRememberMeEnabled, v))
+}
+
+// RememberMeIdleDays applies equality check predicate on the "remember_me_idle_days" field. It's identical to RememberMeIdleDaysEQ.
+func RememberMeIdleDays(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldRememberMeIdleDays, v))
+}
+
+// RememberMeMaxDays applies equality check predicate on the "remember_me_max_days" field. It's identical to RememberMeMaxDaysEQ.
+func RememberMeMaxDays(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldRememberMeMaxDays, v))
+}
+
 // LockoutThreshold applies equality check predicate on the "lockout_threshold" field. It's identical to LockoutThresholdEQ.
 func LockoutThreshold(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldLockoutThreshold, v))
@@ -454,6 +469,96 @@ func SessionMaxHoursLT(v int) predicate.InstanceSettings {
 // SessionMaxHoursLTE applies the LTE predicate on the "session_max_hours" field.
 func SessionMaxHoursLTE(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldLTE(FieldSessionMaxHours, v))
+}
+
+// RememberMeEnabledEQ applies the EQ predicate on the "remember_me_enabled" field.
+func RememberMeEnabledEQ(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldRememberMeEnabled, v))
+}
+
+// RememberMeEnabledNEQ applies the NEQ predicate on the "remember_me_enabled" field.
+func RememberMeEnabledNEQ(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldRememberMeEnabled, v))
+}
+
+// RememberMeIdleDaysEQ applies the EQ predicate on the "remember_me_idle_days" field.
+func RememberMeIdleDaysEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldRememberMeIdleDays, v))
+}
+
+// RememberMeIdleDaysNEQ applies the NEQ predicate on the "remember_me_idle_days" field.
+func RememberMeIdleDaysNEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldRememberMeIdleDays, v))
+}
+
+// RememberMeIdleDaysIn applies the In predicate on the "remember_me_idle_days" field.
+func RememberMeIdleDaysIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldRememberMeIdleDays, vs...))
+}
+
+// RememberMeIdleDaysNotIn applies the NotIn predicate on the "remember_me_idle_days" field.
+func RememberMeIdleDaysNotIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldRememberMeIdleDays, vs...))
+}
+
+// RememberMeIdleDaysGT applies the GT predicate on the "remember_me_idle_days" field.
+func RememberMeIdleDaysGT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldRememberMeIdleDays, v))
+}
+
+// RememberMeIdleDaysGTE applies the GTE predicate on the "remember_me_idle_days" field.
+func RememberMeIdleDaysGTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldRememberMeIdleDays, v))
+}
+
+// RememberMeIdleDaysLT applies the LT predicate on the "remember_me_idle_days" field.
+func RememberMeIdleDaysLT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldRememberMeIdleDays, v))
+}
+
+// RememberMeIdleDaysLTE applies the LTE predicate on the "remember_me_idle_days" field.
+func RememberMeIdleDaysLTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldRememberMeIdleDays, v))
+}
+
+// RememberMeMaxDaysEQ applies the EQ predicate on the "remember_me_max_days" field.
+func RememberMeMaxDaysEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldRememberMeMaxDays, v))
+}
+
+// RememberMeMaxDaysNEQ applies the NEQ predicate on the "remember_me_max_days" field.
+func RememberMeMaxDaysNEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldRememberMeMaxDays, v))
+}
+
+// RememberMeMaxDaysIn applies the In predicate on the "remember_me_max_days" field.
+func RememberMeMaxDaysIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldRememberMeMaxDays, vs...))
+}
+
+// RememberMeMaxDaysNotIn applies the NotIn predicate on the "remember_me_max_days" field.
+func RememberMeMaxDaysNotIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldRememberMeMaxDays, vs...))
+}
+
+// RememberMeMaxDaysGT applies the GT predicate on the "remember_me_max_days" field.
+func RememberMeMaxDaysGT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldRememberMeMaxDays, v))
+}
+
+// RememberMeMaxDaysGTE applies the GTE predicate on the "remember_me_max_days" field.
+func RememberMeMaxDaysGTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldRememberMeMaxDays, v))
+}
+
+// RememberMeMaxDaysLT applies the LT predicate on the "remember_me_max_days" field.
+func RememberMeMaxDaysLT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldRememberMeMaxDays, v))
+}
+
+// RememberMeMaxDaysLTE applies the LTE predicate on the "remember_me_max_days" field.
+func RememberMeMaxDaysLTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldRememberMeMaxDays, v))
 }
 
 // LockoutThresholdEQ applies the EQ predicate on the "lockout_threshold" field.

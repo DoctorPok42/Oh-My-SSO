@@ -362,13 +362,16 @@ func (s *AdminService) ensureMasterSettings(ctx context.Context, realmID, actor 
 	if err != nil {
 		return false, fmt.Errorf("bootstrap: settings: %w", err)
 	}
-	yes := true
+	yes, no := true, false
 	stepUpMaxAge := int(AdminConsoleStepUpMaxAge / time.Minute)
 	_, err = s.d.Settings.Update(ctx, st.ID, repository.UpdateInstanceSettingsParams{
 		MFARequiredGlobally:      &yes,
 		MFAStepUpMaxAgeMinutes:   &stepUpMaxAge,
 		NotificationEmailEnabled: &yes,
-		UpdatedBy:                &actor,
+		// Accounts of master administer the whole instance: no
+		// remembered sessions there by default ("Keep me signed in" off).
+		RememberMeEnabled: &no,
+		UpdatedBy:         &actor,
 	})
 	return true, err
 }

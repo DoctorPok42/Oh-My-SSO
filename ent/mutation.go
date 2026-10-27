@@ -13232,6 +13232,11 @@ type InstanceSettingsMutation struct {
 	addsession_idle_minutes        *int
 	session_max_hours              *int
 	addsession_max_hours           *int
+	remember_me_enabled            *bool
+	remember_me_idle_days          *int
+	addremember_me_idle_days       *int
+	remember_me_max_days           *int
+	addremember_me_max_days        *int
 	lockout_threshold              *int
 	addlockout_threshold           *int
 	lockout_duration_minutes       *int
@@ -13655,6 +13660,154 @@ func (m *InstanceSettingsMutation) AddedSessionMaxHours() (r int, exists bool) {
 func (m *InstanceSettingsMutation) ResetSessionMaxHours() {
 	m.session_max_hours = nil
 	m.addsession_max_hours = nil
+}
+
+// SetRememberMeEnabled sets the "remember_me_enabled" field.
+func (m *InstanceSettingsMutation) SetRememberMeEnabled(b bool) {
+	m.remember_me_enabled = &b
+}
+
+// RememberMeEnabled returns the value of the "remember_me_enabled" field in the mutation.
+func (m *InstanceSettingsMutation) RememberMeEnabled() (r bool, exists bool) {
+	v := m.remember_me_enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRememberMeEnabled returns the old "remember_me_enabled" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldRememberMeEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRememberMeEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRememberMeEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRememberMeEnabled: %w", err)
+	}
+	return oldValue.RememberMeEnabled, nil
+}
+
+// ResetRememberMeEnabled resets all changes to the "remember_me_enabled" field.
+func (m *InstanceSettingsMutation) ResetRememberMeEnabled() {
+	m.remember_me_enabled = nil
+}
+
+// SetRememberMeIdleDays sets the "remember_me_idle_days" field.
+func (m *InstanceSettingsMutation) SetRememberMeIdleDays(i int) {
+	m.remember_me_idle_days = &i
+	m.addremember_me_idle_days = nil
+}
+
+// RememberMeIdleDays returns the value of the "remember_me_idle_days" field in the mutation.
+func (m *InstanceSettingsMutation) RememberMeIdleDays() (r int, exists bool) {
+	v := m.remember_me_idle_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRememberMeIdleDays returns the old "remember_me_idle_days" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldRememberMeIdleDays(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRememberMeIdleDays is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRememberMeIdleDays requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRememberMeIdleDays: %w", err)
+	}
+	return oldValue.RememberMeIdleDays, nil
+}
+
+// AddRememberMeIdleDays adds i to the "remember_me_idle_days" field.
+func (m *InstanceSettingsMutation) AddRememberMeIdleDays(i int) {
+	if m.addremember_me_idle_days != nil {
+		*m.addremember_me_idle_days += i
+	} else {
+		m.addremember_me_idle_days = &i
+	}
+}
+
+// AddedRememberMeIdleDays returns the value that was added to the "remember_me_idle_days" field in this mutation.
+func (m *InstanceSettingsMutation) AddedRememberMeIdleDays() (r int, exists bool) {
+	v := m.addremember_me_idle_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRememberMeIdleDays resets all changes to the "remember_me_idle_days" field.
+func (m *InstanceSettingsMutation) ResetRememberMeIdleDays() {
+	m.remember_me_idle_days = nil
+	m.addremember_me_idle_days = nil
+}
+
+// SetRememberMeMaxDays sets the "remember_me_max_days" field.
+func (m *InstanceSettingsMutation) SetRememberMeMaxDays(i int) {
+	m.remember_me_max_days = &i
+	m.addremember_me_max_days = nil
+}
+
+// RememberMeMaxDays returns the value of the "remember_me_max_days" field in the mutation.
+func (m *InstanceSettingsMutation) RememberMeMaxDays() (r int, exists bool) {
+	v := m.remember_me_max_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRememberMeMaxDays returns the old "remember_me_max_days" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldRememberMeMaxDays(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRememberMeMaxDays is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRememberMeMaxDays requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRememberMeMaxDays: %w", err)
+	}
+	return oldValue.RememberMeMaxDays, nil
+}
+
+// AddRememberMeMaxDays adds i to the "remember_me_max_days" field.
+func (m *InstanceSettingsMutation) AddRememberMeMaxDays(i int) {
+	if m.addremember_me_max_days != nil {
+		*m.addremember_me_max_days += i
+	} else {
+		m.addremember_me_max_days = &i
+	}
+}
+
+// AddedRememberMeMaxDays returns the value that was added to the "remember_me_max_days" field in this mutation.
+func (m *InstanceSettingsMutation) AddedRememberMeMaxDays() (r int, exists bool) {
+	v := m.addremember_me_max_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRememberMeMaxDays resets all changes to the "remember_me_max_days" field.
+func (m *InstanceSettingsMutation) ResetRememberMeMaxDays() {
+	m.remember_me_max_days = nil
+	m.addremember_me_max_days = nil
 }
 
 // SetLockoutThreshold sets the "lockout_threshold" field.
@@ -14256,7 +14409,7 @@ func (m *InstanceSettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstanceSettingsMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 20)
 	if m.realm != nil {
 		fields = append(fields, instancesettings.FieldRealmID)
 	}
@@ -14274,6 +14427,15 @@ func (m *InstanceSettingsMutation) Fields() []string {
 	}
 	if m.session_max_hours != nil {
 		fields = append(fields, instancesettings.FieldSessionMaxHours)
+	}
+	if m.remember_me_enabled != nil {
+		fields = append(fields, instancesettings.FieldRememberMeEnabled)
+	}
+	if m.remember_me_idle_days != nil {
+		fields = append(fields, instancesettings.FieldRememberMeIdleDays)
+	}
+	if m.remember_me_max_days != nil {
+		fields = append(fields, instancesettings.FieldRememberMeMaxDays)
 	}
 	if m.lockout_threshold != nil {
 		fields = append(fields, instancesettings.FieldLockoutThreshold)
@@ -14328,6 +14490,12 @@ func (m *InstanceSettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.SessionIdleMinutes()
 	case instancesettings.FieldSessionMaxHours:
 		return m.SessionMaxHours()
+	case instancesettings.FieldRememberMeEnabled:
+		return m.RememberMeEnabled()
+	case instancesettings.FieldRememberMeIdleDays:
+		return m.RememberMeIdleDays()
+	case instancesettings.FieldRememberMeMaxDays:
+		return m.RememberMeMaxDays()
 	case instancesettings.FieldLockoutThreshold:
 		return m.LockoutThreshold()
 	case instancesettings.FieldLockoutDurationMinutes:
@@ -14371,6 +14539,12 @@ func (m *InstanceSettingsMutation) OldField(ctx context.Context, name string) (e
 		return m.OldSessionIdleMinutes(ctx)
 	case instancesettings.FieldSessionMaxHours:
 		return m.OldSessionMaxHours(ctx)
+	case instancesettings.FieldRememberMeEnabled:
+		return m.OldRememberMeEnabled(ctx)
+	case instancesettings.FieldRememberMeIdleDays:
+		return m.OldRememberMeIdleDays(ctx)
+	case instancesettings.FieldRememberMeMaxDays:
+		return m.OldRememberMeMaxDays(ctx)
 	case instancesettings.FieldLockoutThreshold:
 		return m.OldLockoutThreshold(ctx)
 	case instancesettings.FieldLockoutDurationMinutes:
@@ -14443,6 +14617,27 @@ func (m *InstanceSettingsMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSessionMaxHours(v)
+		return nil
+	case instancesettings.FieldRememberMeEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRememberMeEnabled(v)
+		return nil
+	case instancesettings.FieldRememberMeIdleDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRememberMeIdleDays(v)
+		return nil
+	case instancesettings.FieldRememberMeMaxDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRememberMeMaxDays(v)
 		return nil
 	case instancesettings.FieldLockoutThreshold:
 		v, ok := value.(int)
@@ -14541,6 +14736,12 @@ func (m *InstanceSettingsMutation) AddedFields() []string {
 	if m.addsession_max_hours != nil {
 		fields = append(fields, instancesettings.FieldSessionMaxHours)
 	}
+	if m.addremember_me_idle_days != nil {
+		fields = append(fields, instancesettings.FieldRememberMeIdleDays)
+	}
+	if m.addremember_me_max_days != nil {
+		fields = append(fields, instancesettings.FieldRememberMeMaxDays)
+	}
 	if m.addlockout_threshold != nil {
 		fields = append(fields, instancesettings.FieldLockoutThreshold)
 	}
@@ -14572,6 +14773,10 @@ func (m *InstanceSettingsMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedSessionIdleMinutes()
 	case instancesettings.FieldSessionMaxHours:
 		return m.AddedSessionMaxHours()
+	case instancesettings.FieldRememberMeIdleDays:
+		return m.AddedRememberMeIdleDays()
+	case instancesettings.FieldRememberMeMaxDays:
+		return m.AddedRememberMeMaxDays()
 	case instancesettings.FieldLockoutThreshold:
 		return m.AddedLockoutThreshold()
 	case instancesettings.FieldLockoutDurationMinutes:
@@ -14618,6 +14823,20 @@ func (m *InstanceSettingsMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddSessionMaxHours(v)
+		return nil
+	case instancesettings.FieldRememberMeIdleDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRememberMeIdleDays(v)
+		return nil
+	case instancesettings.FieldRememberMeMaxDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRememberMeMaxDays(v)
 		return nil
 	case instancesettings.FieldLockoutThreshold:
 		v, ok := value.(int)
@@ -14713,6 +14932,15 @@ func (m *InstanceSettingsMutation) ResetField(name string) error {
 		return nil
 	case instancesettings.FieldSessionMaxHours:
 		m.ResetSessionMaxHours()
+		return nil
+	case instancesettings.FieldRememberMeEnabled:
+		m.ResetRememberMeEnabled()
+		return nil
+	case instancesettings.FieldRememberMeIdleDays:
+		m.ResetRememberMeIdleDays()
+		return nil
+	case instancesettings.FieldRememberMeMaxDays:
+		m.ResetRememberMeMaxDays()
 		return nil
 	case instancesettings.FieldLockoutThreshold:
 		m.ResetLockoutThreshold()
@@ -24722,6 +24950,7 @@ type SessionMutation struct {
 	mfa_method_type    *string
 	mfa_verified_at    *time.Time
 	auth_method        *string
+	remember_me        *bool
 	status             *schema.SessionStatus
 	revoked_reason     *string
 	token_hash         *string
@@ -25339,6 +25568,42 @@ func (m *SessionMutation) ResetAuthMethod() {
 	m.auth_method = nil
 }
 
+// SetRememberMe sets the "remember_me" field.
+func (m *SessionMutation) SetRememberMe(b bool) {
+	m.remember_me = &b
+}
+
+// RememberMe returns the value of the "remember_me" field in the mutation.
+func (m *SessionMutation) RememberMe() (r bool, exists bool) {
+	v := m.remember_me
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRememberMe returns the old "remember_me" field's value of the Session entity.
+// If the Session object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SessionMutation) OldRememberMe(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRememberMe is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRememberMe requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRememberMe: %w", err)
+	}
+	return oldValue.RememberMe, nil
+}
+
+// ResetRememberMe resets all changes to the "remember_me" field.
+func (m *SessionMutation) ResetRememberMe() {
+	m.remember_me = nil
+}
+
 // SetStatus sets the "status" field.
 func (m *SessionMutation) SetStatus(ss schema.SessionStatus) {
 	m.status = &ss
@@ -25615,7 +25880,7 @@ func (m *SessionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SessionMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.realm != nil {
 		fields = append(fields, session.FieldRealmID)
 	}
@@ -25651,6 +25916,9 @@ func (m *SessionMutation) Fields() []string {
 	}
 	if m.auth_method != nil {
 		fields = append(fields, session.FieldAuthMethod)
+	}
+	if m.remember_me != nil {
+		fields = append(fields, session.FieldRememberMe)
 	}
 	if m.status != nil {
 		fields = append(fields, session.FieldStatus)
@@ -25693,6 +25961,8 @@ func (m *SessionMutation) Field(name string) (ent.Value, bool) {
 		return m.MfaVerifiedAt()
 	case session.FieldAuthMethod:
 		return m.AuthMethod()
+	case session.FieldRememberMe:
+		return m.RememberMe()
 	case session.FieldStatus:
 		return m.Status()
 	case session.FieldRevokedReason:
@@ -25732,6 +26002,8 @@ func (m *SessionMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldMfaVerifiedAt(ctx)
 	case session.FieldAuthMethod:
 		return m.OldAuthMethod(ctx)
+	case session.FieldRememberMe:
+		return m.OldRememberMe(ctx)
 	case session.FieldStatus:
 		return m.OldStatus(ctx)
 	case session.FieldRevokedReason:
@@ -25830,6 +26102,13 @@ func (m *SessionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAuthMethod(v)
+		return nil
+	case session.FieldRememberMe:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRememberMe(v)
 		return nil
 	case session.FieldStatus:
 		v, ok := value.(schema.SessionStatus)
@@ -25975,6 +26254,9 @@ func (m *SessionMutation) ResetField(name string) error {
 		return nil
 	case session.FieldAuthMethod:
 		m.ResetAuthMethod()
+		return nil
+	case session.FieldRememberMe:
+		m.ResetRememberMe()
 		return nil
 	case session.FieldStatus:
 		m.ResetStatus()

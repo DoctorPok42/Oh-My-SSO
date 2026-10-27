@@ -59,6 +59,17 @@ type AuthContext struct {
 	AuthMethod    string // RFC 8176 value, e.g. domain.AuthMethodPassword ("pwd")
 	MFAVerified   bool
 	MFAMethodType string
+	// RememberMe asks for a remembered session ("Keep me signed in");
+	// ignored when the realm does not offer it.
+	RememberMe bool
+}
+
+// SessionOptions is what the sign-in page of a realm may offer.
+type SessionOptions struct {
+	// RememberMe: show "Keep me signed in". A remembered session lasts
+	// RememberMeMaxAge at most.
+	RememberMe       bool
+	RememberMeMaxAge time.Duration
 }
 
 // IssuedSession is returned once, at session creation.
@@ -293,6 +304,8 @@ type IdentityCore interface {
 	GetSession(ctx context.Context, sessionID string) (*domain.Session, error)
 	// RevokeSession also revokes every token issued for that session.
 	RevokeSession(ctx context.Context, sessionID string, reason domain.SessionRevokedReason) error
+	// SessionOptions tells the sign-in page what it may offer in a realm.
+	SessionOptions(ctx context.Context, realmID string) SessionOptions
 
 	// --- Identity assertions (format-agnostic) ---
 

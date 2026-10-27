@@ -33,6 +33,13 @@ func (InstanceSettings) Fields() []ent.Field {
 		field.Int("password_expiry_days").Default(90),
 		field.Int("session_idle_minutes").Default(10),
 		field.Int("session_max_hours").Default(8),
+		// "Keep me signed in" on the sign-in page. A remembered session
+		// lasts remember_me_max_days at most and ends after
+		// remember_me_idle_days without use. Off in the master realm (set
+		// by its bootstrap and by the migration that added these columns).
+		field.Bool("remember_me_enabled").Default(true),
+		field.Int("remember_me_idle_days").Default(7),
+		field.Int("remember_me_max_days").Default(30),
 		field.Int("lockout_threshold").Default(5),
 		field.Int("lockout_duration_minutes").Default(15),
 		field.JSON("ip_allowlist", []string{}).Optional(),

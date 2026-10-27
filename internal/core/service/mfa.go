@@ -189,6 +189,9 @@ type BeginLoginInput struct {
 	IPAddress string
 	UserAgent string
 	DeviceFingerprint string
+	// RememberMe ("Keep me signed in") is kept in the challenge, for the
+	// session created after the second factor.
+	RememberMe bool
 }
 
 // LoginDecision tells the caller what to do after a correct password.
@@ -265,14 +268,15 @@ func (s *MFAService) saveChallenge(ctx context.Context, in BeginLoginInput, meth
 	token := newRandomToken()
 	now := s.now()
 	c := mfastore.LoginChallenge{
-		RealmID:   in.User.RealmID,
-		UserID:    in.User.ID,
-		IPAddress: in.IPAddress,
-		UserAgent: in.UserAgent,
-		Device:    in.DeviceFingerprint,
-		Methods:   methodNames(methods),
-		CreatedAt: now,
-		ExpiresAt: now.Add(loginChallengeTTL),
+		RealmID:    in.User.RealmID,
+		UserID:     in.User.ID,
+		IPAddress:  in.IPAddress,
+		UserAgent:  in.UserAgent,
+		Device:     in.DeviceFingerprint,
+		Methods:    methodNames(methods),
+		RememberMe: in.RememberMe,
+		CreatedAt:  now,
+		ExpiresAt:  now.Add(loginChallengeTTL),
 	}
 	if in.Client != nil {
 		c.ClientRef = in.Client.ID
@@ -401,6 +405,7 @@ func (s *MFAService) finishLogin(ctx context.Context, lc *openedChallenge, user 
 		MFAVerified:       true,
 		MFAMethodType:     string(method),
 		DeviceFingerprint: lc.c.Device,
+		RememberMe:        lc.c.RememberMe,
 	})
 	if err != nil {
 		return nil, err

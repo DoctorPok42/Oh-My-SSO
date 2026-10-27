@@ -100,7 +100,8 @@ func TestSessions_Integration(t *testing.T) {
 		require.True(t, c.Secure)
 		require.Equal(t, http.SameSiteLaxMode, c.SameSite)
 		require.Equal(t, "/r/"+realm.Name, c.Path)
-		require.Greater(t, c.MaxAge, 0)
+		// Without "Keep me signed in": a browser-session cookie.
+		requireBrowserSession(t, c)
 	})
 
 	t.Run("valid cookie gives access and fills the cache", func(t *testing.T) {

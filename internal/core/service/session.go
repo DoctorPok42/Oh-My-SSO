@@ -26,6 +26,14 @@ const (
 	defaultSessionMaxLifetime = 8 * time.Hour
 	defaultSessionIdleTimeout = 10 * time.Minute
 
+	// "Keep me signed in". 30 days is the NIST SP 800-63B-4 ceiling for
+	// reauthentication at AAL1; the idle timeout ends a session forgotten
+	// on a device. https://pages.nist.gov/800-63-4/sp800-63b/aal
+	defaultRememberMeMaxDays  = 30
+	defaultRememberMeIdleDays = 7
+	// maxRememberMeDays: browsers cap a cookie's lifetime at 400 days.
+	maxRememberMeDays = 365
+
 	touchInterval  = time.Minute
 	policyCacheTTL = time.Minute
 )
@@ -101,6 +109,10 @@ type CreateSessionInput struct {
 	// MFAVerifiedAt defaults to "now" when MFAVerified is true.
 	MFAVerifiedAt time.Time
 	DeviceFingerprint string
+	// RememberMe asks for a remembered session ("Keep me signed in"). It is
+	// ignored when the realm does not allow it: check the RememberMe field
+	// of the session that Create returns.
+	RememberMe bool
 }
 
 // DeviceFingerprint turns the random id of the sso_device cookie into what
@@ -126,13 +138,20 @@ func (s *SessionService) Create(ctx context.Context, in CreateSessionInput) (raw
 		mfaAt = s.now()
 	}
 
+	remember := in.RememberMe && policy.rememberMe
+	lifetime := policy.MaxLifetime
+	if remember {
+		lifetime = policy.RememberMeMaxLifetime
+	}
+
 	now := s.now()
 	sess, err = s.sessions.Create(ctx, repository.CreateSessionParams{
 		CreatedAt:         now,
 		TokenHash:         HashSessionToken(rawToken),
 		RealmID:           in.RealmID,
 		UserID:            in.UserID,
-		ExpiresAt:         now.Add(policy.maxLifetime),
+		ExpiresAt:         now.Add(lifetime),
+		RememberMe:        remember,
 		IPAddress:         in.IPAddress,
 		UserAgent:         in.UserAgent,
 		MFAVerified:       in.MFAVerified,
@@ -169,11 +188,11 @@ func ClientSessionLimitsFromMinutes(idleMinutes, maxMinutes *int) ClientSessionL
 
 func (s *SessionService) CheckClientSessionLimits(ctx context.Context, realmID string, limits ClientSessionLimits) error {
 	policy := s.policy(ctx, realmID)
-	if limits.IdleTimeout > policy.idleTimeout {
-		return fmt.Errorf("%w: idle %s > realm %s", ErrClientSessionLimitTooLong, limits.IdleTimeout, policy.idleTimeout)
+	if limits.IdleTimeout > policy.IdleTimeout {
+		return fmt.Errorf("%w: idle %s > realm %s", ErrClientSessionLimitTooLong, limits.IdleTimeout, policy.IdleTimeout)
 	}
-	if limits.MaxLifetime > policy.maxLifetime {
-		return fmt.Errorf("%w: max %s > realm %s", ErrClientSessionLimitTooLong, limits.MaxLifetime, policy.maxLifetime)
+	if limits.MaxLifetime > policy.MaxLifetime {
+		return fmt.Errorf("%w: max %s > realm %s", ErrClientSessionLimitTooLong, limits.MaxLifetime, policy.MaxLifetime)
 	}
 	return nil
 }
@@ -208,7 +227,7 @@ func (s *SessionService) validate(ctx context.Context, realmID, rawToken string,
 	now := s.now()
 	policy := s.policy(ctx, realmID)
 
-	if !now.Before(sess.ExpiresAt) || !now.Before(sess.LastActivityAt.Add(policy.idleTimeout)) {
+	if policy.Expired(sess, now) {
 		s.expire(ctx, sess)
 		return nil, ErrSessionInvalid
 	}
@@ -251,11 +270,18 @@ func (s *SessionService) GetActive(ctx context.Context, sessionID string) (*doma
 
 	now := s.now()
 	policy := s.policy(ctx, sess.RealmID)
-	if !now.Before(sess.ExpiresAt) || !now.Before(sess.LastActivityAt.Add(policy.idleTimeout)) {
+	if policy.Expired(sess, now) {
 		s.expire(ctx, sess)
 		return nil, ErrSessionInvalid
 	}
 	return sess, nil
+}
+
+// RememberMeOption tells the sign-in page whether to offer "Keep me signed
+// in" in this realm, and for how long a remembered session lasts at most.
+func (s *SessionService) RememberMeOption(ctx context.Context, realmID string) (allowed bool, maxLifetime time.Duration) {
+	p := s.policy(ctx, realmID)
+	return p.rememberMe, p.RememberMeMaxLifetime
 }
 
 func (s *SessionService) TouchActive(ctx context.Context, sessionID string) (*domain.Session, error) {
@@ -388,11 +414,81 @@ func HashSessionToken(rawToken string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// SessionDurations are the session lifetimes of one realm.
+type SessionDurations struct {
+	MaxLifetime time.Duration
+	IdleTimeout time.Duration
+	// RememberMe: the realm offers "Keep me signed in". A remembered session
+	// lasts RememberMeMaxLifetime at most and ends after
+	// RememberMeIdleTimeout without use.
+	RememberMe            bool
+	RememberMeMaxLifetime time.Duration
+	RememberMeIdleTimeout time.Duration
+}
+
+// SessionDurationsOf reads the durations of a realm from its settings. nil
+// (no settings row yet) gives the defaults, which are also what the admin
+// console shows for such a realm. A zero or negative value falls back to its
+// default.
+func SessionDurationsOf(st *domain.InstanceSettings) SessionDurations {
+	d := SessionDurations{
+		MaxLifetime:           defaultSessionMaxLifetime,
+		IdleTimeout:           defaultSessionIdleTimeout,
+		RememberMe:            true,
+		RememberMeMaxLifetime: defaultRememberMeMaxDays * 24 * time.Hour,
+		RememberMeIdleTimeout: defaultRememberMeIdleDays * 24 * time.Hour,
+	}
+	if st == nil {
+		return d
+	}
+	if st.SessionMaxHours > 0 {
+		d.MaxLifetime = time.Duration(st.SessionMaxHours) * time.Hour
+	}
+	if st.SessionIdleMinutes > 0 {
+		d.IdleTimeout = time.Duration(st.SessionIdleMinutes) * time.Minute
+	}
+	d.RememberMe = st.RememberMeEnabled
+	if st.RememberMeMaxDays > 0 {
+		d.RememberMeMaxLifetime = time.Duration(st.RememberMeMaxDays) * 24 * time.Hour
+	}
+	if st.RememberMeIdleDays > 0 {
+		d.RememberMeIdleTimeout = time.Duration(st.RememberMeIdleDays) * 24 * time.Hour
+	}
+	return d
+}
+
+// Limits returns the idle timeout and the absolute end that apply to sess.
+//
+// A remembered session keeps its long durations only while the realm
+// offers "Keep me signed in". Once an administrator turns the option off,
+// it is held to the normal durations, counted from its creation: it fails
+// closed, it never lasts longer than the realm now allows.
+func (d SessionDurations) Limits(sess *domain.Session) (idle time.Duration, end time.Time) {
+	if sess.RememberMe && d.RememberMe {
+		return d.RememberMeIdleTimeout, sess.ExpiresAt
+	}
+	end = sess.ExpiresAt
+	if normal := sess.CreatedAt.Add(d.MaxLifetime); sess.RememberMe && normal.Before(end) {
+		end = normal
+	}
+	return d.IdleTimeout, end
+}
+
+// Expired: sess is past its absolute end, or was idle for too long.
+func (d SessionDurations) Expired(sess *domain.Session, now time.Time) bool {
+	idle, end := d.Limits(sess)
+	return !now.Before(end) || !now.Before(sess.LastActivityAt.Add(idle))
+}
+
 // --- internals ---------------------------------------------------------------
 
 type sessionPolicy struct {
-	maxLifetime time.Duration
-	idleTimeout time.Duration
+	SessionDurations
+	// rememberMe: new sessions may be remembered. Same as RememberMe, except
+	// when the settings could not be read: a database hiccup must neither
+	// end the remembered sessions (RememberMe stays on for them) nor start
+	// new ones.
+	rememberMe bool
 }
 
 func (s *SessionService) policy(ctx context.Context, realmID string) sessionPolicy {
@@ -413,25 +509,18 @@ func (s *SessionService) policy(ctx context.Context, realmID string) sessionPoli
 }
 
 func (s *SessionService) loadPolicy(ctx context.Context, realmID string) sessionPolicy {
-	p := sessionPolicy{
-		maxLifetime: defaultSessionMaxLifetime,
-		idleTimeout: defaultSessionIdleTimeout,
-	}
 	settings, err := s.settings.GetByRealmID(ctx, realmID)
 	if err != nil {
-		if !errors.Is(err, repository.ErrNotFound) {
-			s.logger.WarnContext(ctx, "session policy: cannot read instance settings, using defaults",
-				"realm_id", realmID, "error", err)
+		if errors.Is(err, repository.ErrNotFound) {
+			d := SessionDurationsOf(nil)
+			return sessionPolicy{SessionDurations: d, rememberMe: d.RememberMe}
 		}
-		return p
+		s.logger.WarnContext(ctx, "session policy: cannot read instance settings, using defaults",
+			"realm_id", realmID, "error", err)
+		return sessionPolicy{SessionDurations: SessionDurationsOf(nil), rememberMe: false}
 	}
-	if settings.SessionMaxHours > 0 {
-		p.maxLifetime = time.Duration(settings.SessionMaxHours) * time.Hour
-	}
-	if settings.SessionIdleMinutes > 0 {
-		p.idleTimeout = time.Duration(settings.SessionIdleMinutes) * time.Minute
-	}
-	return p
+	d := SessionDurationsOf(settings)
+	return sessionPolicy{SessionDurations: d, rememberMe: d.RememberMe}
 }
 
 func (s *SessionService) lookup(ctx context.Context, tokenHash string) (*domain.Session, bool, error) {

@@ -456,6 +456,9 @@ var (
 		{Name: "password_expiry_days", Type: field.TypeInt, Default: 90},
 		{Name: "session_idle_minutes", Type: field.TypeInt, Default: 10},
 		{Name: "session_max_hours", Type: field.TypeInt, Default: 8},
+		{Name: "remember_me_enabled", Type: field.TypeBool, Default: true},
+		{Name: "remember_me_idle_days", Type: field.TypeInt, Default: 7},
+		{Name: "remember_me_max_days", Type: field.TypeInt, Default: 30},
 		{Name: "lockout_threshold", Type: field.TypeInt, Default: 5},
 		{Name: "lockout_duration_minutes", Type: field.TypeInt, Default: 15},
 		{Name: "ip_allowlist", Type: field.TypeJSON, Nullable: true},
@@ -477,7 +480,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instance_settings_realms_instance_settings",
-				Columns:    []*schema.Column{InstanceSettingsColumns[17]},
+				Columns:    []*schema.Column{InstanceSettingsColumns[20]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -832,6 +835,7 @@ var (
 		{Name: "mfa_method_type", Type: field.TypeString, Nullable: true},
 		{Name: "mfa_verified_at", Type: field.TypeTime, Nullable: true},
 		{Name: "auth_method", Type: field.TypeString, Default: "pwd"},
+		{Name: "remember_me", Type: field.TypeBool, Default: false},
 		{Name: "status", Type: field.TypeString, Default: "active"},
 		{Name: "revoked_reason", Type: field.TypeString, Nullable: true},
 		{Name: "token_hash", Type: field.TypeString, Unique: true},
@@ -846,13 +850,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "sessions_realms_sessions",
-				Columns:    []*schema.Column{SessionsColumns[14]},
+				Columns:    []*schema.Column{SessionsColumns[15]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
 			{
 				Symbol:     "sessions_users_sessions",
-				Columns:    []*schema.Column{SessionsColumns[15]},
+				Columns:    []*schema.Column{SessionsColumns[16]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -861,7 +865,7 @@ var (
 			{
 				Name:    "session_user_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{SessionsColumns[15], SessionsColumns[11]},
+				Columns: []*schema.Column{SessionsColumns[16], SessionsColumns[12]},
 			},
 		},
 	}

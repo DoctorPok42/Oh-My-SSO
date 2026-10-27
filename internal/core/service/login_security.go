@@ -143,6 +143,10 @@ func (s *LoginSecurityService) record(ctx context.Context, sess *domain.Session,
 		if len(a.Reasons) > 0 {
 			details["reasons"] = a.Reasons
 		}
+		if sess.RememberMe {
+			// A long-lived session on an unusual device is worth knowing about.
+			details["remember_me"] = true
+		}
 		_, _ = s.audit.Create(ctx, repository.CreateAuditLogParams{
 			RealmID:      sess.RealmID,
 			UserID:       sess.UserID,

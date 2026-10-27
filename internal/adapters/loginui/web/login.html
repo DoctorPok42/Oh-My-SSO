@@ -27,6 +27,10 @@
     <label for="password">Password</label>
     <input id="password" name="password" type="password" autocomplete="current-password" required>
     {{if .ForgotPasswordURL}}<p class="aside"><a href="{{.ForgotPasswordURL}}">Forgot password?</a></p>{{end}}
+    {{if .RememberMe}}
+    <label class="check" for="remember-me"><input id="remember-me" name="remember_me" type="checkbox" aria-describedby="remember-me-hint"> Keep me signed in</label>
+    <p class="note" id="remember-me-hint">Stay signed in on this device for up to {{.RememberMeDays}} days. Leave this unchecked on a shared or public computer.</p>
+    {{end}}
     <button type="submit">Sign in</button>
   </form>
 

@@ -32,6 +32,12 @@ type InstanceSettings struct {
 	SessionIdleMinutes int `json:"session_idle_minutes,omitempty"`
 	// SessionMaxHours holds the value of the "session_max_hours" field.
 	SessionMaxHours int `json:"session_max_hours,omitempty"`
+	// RememberMeEnabled holds the value of the "remember_me_enabled" field.
+	RememberMeEnabled bool `json:"remember_me_enabled,omitempty"`
+	// RememberMeIdleDays holds the value of the "remember_me_idle_days" field.
+	RememberMeIdleDays int `json:"remember_me_idle_days,omitempty"`
+	// RememberMeMaxDays holds the value of the "remember_me_max_days" field.
+	RememberMeMaxDays int `json:"remember_me_max_days,omitempty"`
 	// LockoutThreshold holds the value of the "lockout_threshold" field.
 	LockoutThreshold int `json:"lockout_threshold,omitempty"`
 	// LockoutDurationMinutes holds the value of the "lockout_duration_minutes" field.
@@ -87,9 +93,9 @@ func (*InstanceSettings) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case instancesettings.FieldIPAllowlist:
 			values[i] = new([]byte)
-		case instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled, instancesettings.FieldSuspiciousLoginEmailEnabled:
+		case instancesettings.FieldRememberMeEnabled, instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled, instancesettings.FieldSuspiciousLoginEmailEnabled:
 			values[i] = new(sql.NullBool)
-		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldPasswordResetTTLMinutes:
+		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldPasswordResetTTLMinutes:
 			values[i] = new(sql.NullInt64)
 		case instancesettings.FieldID, instancesettings.FieldRealmID, instancesettings.FieldManagedBy, instancesettings.FieldUpdatedBy:
 			values[i] = new(sql.NullString)
@@ -151,6 +157,24 @@ func (_m *InstanceSettings) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field session_max_hours", values[i])
 			} else if value.Valid {
 				_m.SessionMaxHours = int(value.Int64)
+			}
+		case instancesettings.FieldRememberMeEnabled:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field remember_me_enabled", values[i])
+			} else if value.Valid {
+				_m.RememberMeEnabled = value.Bool
+			}
+		case instancesettings.FieldRememberMeIdleDays:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field remember_me_idle_days", values[i])
+			} else if value.Valid {
+				_m.RememberMeIdleDays = int(value.Int64)
+			}
+		case instancesettings.FieldRememberMeMaxDays:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field remember_me_max_days", values[i])
+			} else if value.Valid {
+				_m.RememberMeMaxDays = int(value.Int64)
 			}
 		case instancesettings.FieldLockoutThreshold:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -278,6 +302,15 @@ func (_m *InstanceSettings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("session_max_hours=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SessionMaxHours))
+	builder.WriteString(", ")
+	builder.WriteString("remember_me_enabled=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RememberMeEnabled))
+	builder.WriteString(", ")
+	builder.WriteString("remember_me_idle_days=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RememberMeIdleDays))
+	builder.WriteString(", ")
+	builder.WriteString("remember_me_max_days=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RememberMeMaxDays))
 	builder.WriteString(", ")
 	builder.WriteString("lockout_threshold=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LockoutThreshold))

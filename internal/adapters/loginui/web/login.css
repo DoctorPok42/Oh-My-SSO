@@ -27,7 +27,7 @@ label { display: block; margin: 12px 0 4px; font-weight: 600; font-size: .95rem;
 fieldset { border: 0; margin: 0 0 4px; padding: 0; }
 fieldset label { display: inline-flex; gap: 6px; font-weight: 400; margin-right: 16px; }
 legend { font-weight: 600; font-size: .95rem; }
-input:not([type=radio]) {
+input:not([type=radio]):not([type=checkbox]) {
   width: 100%; padding: 10px 12px; font: inherit; color: inherit; background: transparent;
   border: 1px solid var(--border); border-radius: 8px;
 }
@@ -45,6 +45,9 @@ footer { margin-top: 24px; font-size: .9rem; }
 a { color: var(--accent); }
 [hidden] { display: none !important; }
 .aside { margin: 8px 0 0; text-align: right; font-size: .9rem; }
+label.check { display: flex; align-items: center; gap: 8px; margin: 16px 0 0; font-weight: 400; cursor: pointer; }
+label.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+.note { margin: 4px 0 0 26px; color: var(--muted); font-size: .85rem; }
 .warn { margin: 0 0 4px; padding: 10px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: .95rem; }
 .notice { margin: 0 0 16px; padding: 10px 12px; border-radius: 8px; background: var(--ok-bg); color: var(--ok); }
 .links { margin: 20px 0 0; text-align: center; font-size: .9rem; }
