@@ -148,12 +148,14 @@ func (s *Server) handleMFAVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.writeVerifiedLogin(w, realm.Name, res)
+	s.writeVerifiedLogin(w, r, res)
 }
 
 // writeVerifiedLogin ends the second step of a login (code or passkey).
-func (s *Server) writeVerifiedLogin(w http.ResponseWriter, realmName string, res *service.VerifiedLogin) {
+func (s *Server) writeVerifiedLogin(w http.ResponseWriter, r *http.Request, res *service.VerifiedLogin) {
+	realmName := realmFromContext(r).Name
 	clearMFAChallengeCookie(w, realmName)
+	s.endPreviousSession(r, res.Session)
 	setSessionCookie(w, realmName, res.RawToken, res.Session)
 	out := mfaVerifyResponse{
 		Status:    string(res.Outcome),

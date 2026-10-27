@@ -72,6 +72,44 @@ type SessionOptions struct {
 	RememberMeMaxAge time.Duration
 }
 
+// Account is an account shown on the sign-in page ("Pick an account").
+type Account struct {
+	// ID of the known account ("Forget" needs it). Empty for the account of
+	// the current session when it is not remembered on this device.
+	ID       string
+	Name     string // display name: given + family name, else the username
+	Email    string
+	Username string
+	// Identifier pre-fills the "Username or e-mail" field: the e-mail when
+	// the account has one, else the username.
+	Identifier string
+	// SignedIn: the browser's current session belongs to this account.
+	SignedIn bool
+}
+
+// AccountQuery asks for the accounts to show on a device.
+type AccountQuery struct {
+	RealmID string
+	// DeviceID is the raw value of the sso_device cookie ("" or malformed:
+	// no remembered account).
+	DeviceID string
+	// Current is the browser's valid session, or nil. Its account comes
+	// first, signed in, even when it is not remembered.
+	Current *domain.Session
+}
+
+// LogoutRequest ends a session at the user's request, and records it in the
+// audit log.
+type LogoutRequest struct {
+	SessionID string
+	Via       domain.LogoutVia
+	ClientID  string // client_id (OIDC) or entity ID (SAML) that asked, if any
+	IPAddress string
+	UserAgent string
+	// Confirmed: the user answered "Sign out" on the confirmation page.
+	Confirmed bool
+}
+
 // IssuedSession is returned once, at session creation.
 //
 // RawToken only exists in memory: the database stores its hash. The caller
@@ -306,6 +344,19 @@ type IdentityCore interface {
 	RevokeSession(ctx context.Context, sessionID string, reason domain.SessionRevokedReason) error
 	// SessionOptions tells the sign-in page what it may offer in a realm.
 	SessionOptions(ctx context.Context, realmID string) SessionOptions
+	// Logout ends a session the user asked to leave and writes the audit
+	// entry. A session that is already over is not an error.
+	Logout(ctx context.Context, req LogoutRequest) error
+
+	// --- "Pick an account" ---
+
+	// KnownAccounts returns the accounts to show on a device: the current
+	// session's first, then the remembered ones, most recently used first.
+	// Disabled or deleted accounts are never shown.
+	KnownAccounts(ctx context.Context, q AccountQuery) ([]Account, error)
+	// SessionAccount describes the account of an active session (ID empty,
+	// SignedIn false). ErrSessionInvalid if the session is over.
+	SessionAccount(ctx context.Context, sessionID string) (*Account, error)
 
 	// --- Identity assertions (format-agnostic) ---
 

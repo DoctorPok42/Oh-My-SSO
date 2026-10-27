@@ -11,15 +11,34 @@
 <body>
 <main class="card" id="app"
       data-base="{{.Base}}" data-client-param="{{.ClientParam}}" data-client-id="{{.ClientID}}" data-mode="{{.Mode}}"
-      data-methods="{{.Methods}}" data-passkeys="{{if .Passkeys}}on{{end}}">
+      data-methods="{{.Methods}}" data-passkeys="{{if .Passkeys}}on{{end}}"
+      data-continue-url="{{.ContinueURL}}" data-continue-token="{{.ContinueToken}}" data-request-id="{{.RequestID}}">
   <header>
     <p class="realm">{{.RealmDisplay}}</p>
-    <h1 id="title">{{if eq .Mode "login"}}Sign in{{else if eq .Mode "stepup"}}Confirm it's you{{else}}One more step{{end}}</h1>
+    <h1 id="title">{{if eq .Mode "login"}}Sign in{{else if eq .Mode "pick"}}Pick an account{{else if eq .Mode "stepup"}}Confirm it's you{{else}}One more step{{end}}</h1>
     <p class="client">to continue to <strong>{{.ClientName}}</strong></p>
   </header>
 
   <p class="alert" id="error" role="alert" hidden></p>
   <noscript><p class="alert">This page needs JavaScript to sign you in.</p></noscript>
+
+  <section id="accounts" {{if ne .Mode "pick"}}hidden{{end}}>
+    <ul class="accounts">
+      {{- range .Accounts}}
+      <li class="account">
+        <button type="button" class="account-pick" data-identifier="{{.Identifier}}" data-signed-in="{{if .SignedIn}}on{{end}}">
+          <span class="avatar" aria-hidden="true">{{.Initials}}</span>
+          <span class="who"><strong>{{.Name}}</strong>{{if .Label}}<span>{{.Label}}</span>{{end}}</span>
+          <span class="state{{if .SignedIn}} on{{end}}">{{if .SignedIn}}Signed in{{else}}Signed out{{end}}</span>
+        </button>
+        {{- if .ID}}
+        <button type="button" class="link forget" data-account="{{.ID}}" data-signed-in="{{if .SignedIn}}on{{end}}">{{if .SignedIn}}Sign out and forget{{else}}Forget{{end}}</button>
+        {{- end}}
+      </li>
+      {{- end}}
+    </ul>
+    <button type="button" class="secondary" id="other-account">Use another account</button>
+  </section>
 
   <form id="password-form" {{if ne .Mode "login"}}hidden{{end}}>
     <label for="identifier">Username or e-mail</label>
@@ -32,6 +51,7 @@
     <p class="note" id="remember-me-hint">Stay signed in on this device for up to {{.RememberMeDays}} days. Leave this unchecked on a shared or public computer.</p>
     {{end}}
     <button type="submit">Sign in</button>
+    {{if .Accounts}}<p class="links"><button type="button" id="back-to-accounts">Choose another account</button></p>{{end}}
   </form>
 
   <form id="code-form" hidden>

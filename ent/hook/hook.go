@@ -165,6 +165,18 @@ func (f KeyRotationLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.KeyRotationLogMutation", m)
 }
 
+// The KnownAccountFunc type is an adapter to allow the use of ordinary
+// function as KnownAccount mutator.
+type KnownAccountFunc func(context.Context, *ent.KnownAccountMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f KnownAccountFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.KnownAccountMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.KnownAccountMutation", m)
+}
+
 // The LoginAttemptFunc type is an adapter to allow the use of ordinary
 // function as LoginAttempt mutator.
 type LoginAttemptFunc func(context.Context, *ent.LoginAttemptMutation) (ent.Value, error)

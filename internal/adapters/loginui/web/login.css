@@ -61,3 +61,20 @@ label.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ac
 .tag { font-style: normal; font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; background: var(--warn-bg); color: var(--warn); }
 button.deny { margin-top: 12px; }
 .small { margin: 20px 0 0; color: var(--muted); font-size: .85rem; }
+.accounts { margin: 0 0 16px; padding: 0; list-style: none; }
+.account { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; margin: 0 0 10px; }
+.account-pick {
+  display: flex; align-items: center; gap: 12px; width: 100%; margin: 0; padding: 10px 12px; text-align: left;
+  font-weight: 400; color: var(--text); background: transparent; border: 1px solid var(--border);
+}
+.account-pick:hover { border-color: var(--accent); }
+.avatar {
+  flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent); color: var(--accent-text); font-weight: 600; font-size: .9rem;
+}
+.who { flex: 1; min-width: 0; }
+.who strong, .who span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who span { color: var(--muted); font-size: .9rem; }
+.state { flex: none; font-size: .8rem; color: var(--muted); }
+.state.on { color: var(--ok); font-weight: 600; }
+button.link { width: auto; margin: 0; padding: 2px 0; border: 0; background: none; color: var(--accent); font-weight: 400; font-size: .85rem; text-decoration: underline; }

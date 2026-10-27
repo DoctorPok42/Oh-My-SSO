@@ -56,6 +56,7 @@ type Core struct {
 	MFA           *service.MFAService
 	PasswordReset *service.PasswordResetService
 	Consent       *service.ConsentService
+	KnownAccounts *service.KnownAccountService
 	IdentityCore  *service.IdentityCoreService
 	OIDCClients   *service.OIDCClientService
 	SAMLClients   *service.SAMLClientService
@@ -124,12 +125,20 @@ func BuildCore() *Core {
 		GeoIP:    GeoIP(),
 	})
 
+	c.KnownAccounts = service.NewKnownAccountService(service.KnownAccountDeps{
+		Accounts: entstore.NewKnownAccountRepository(client),
+		Users:    c.Users,
+		Audit:    c.Audit,
+	})
+
 	c.Sessions = service.NewSessionService(
 		sessionRepo,
 		c.Settings,
 		c.Tokens,
 		valkeycache.NewSessionCache(c.Valkey),
 		service.WithLoginObserver(loginSecurity),
+		service.WithLoginObserver(c.KnownAccounts), // "Pick an account"
+		service.WithAuditLog(c.Audit),
 	)
 
 	c.RBAC = service.NewRBACService(entstore.NewAccessRepository(client), c.Audit)
@@ -206,6 +215,7 @@ func BuildCore() *Core {
 		MFA:         c.MFA,
 		Consent:     c.Consent,
 		Audit:       c.Audit,
+		Accounts:    c.KnownAccounts,
 	})
 
 	c.OIDCClients = service.NewOIDCClientService(c.Clients, c.Scopes, c.Roles, c.Groups)

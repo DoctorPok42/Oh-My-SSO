@@ -45,6 +45,9 @@ type InstanceSettings func(*sql.Selector)
 // KeyRotationLog is the predicate function for keyrotationlog builders.
 type KeyRotationLog func(*sql.Selector)
 
+// KnownAccount is the predicate function for knownaccount builders.
+type KnownAccount func(*sql.Selector)
+
 // LoginAttempt is the predicate function for loginattempt builders.
 type LoginAttempt func(*sql.Selector)
 

@@ -509,6 +509,42 @@ var (
 			},
 		},
 	}
+	// KnownAccountsColumns holds the columns for the "known_accounts" table.
+	KnownAccountsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "device_hash", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "last_used_at", Type: field.TypeTime},
+		{Name: "realm_id", Type: field.TypeString},
+		{Name: "user_id", Type: field.TypeString},
+	}
+	// KnownAccountsTable holds the schema information for the "known_accounts" table.
+	KnownAccountsTable = &schema.Table{
+		Name:       "known_accounts",
+		Columns:    KnownAccountsColumns,
+		PrimaryKey: []*schema.Column{KnownAccountsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "known_accounts_realms_known_accounts",
+				Columns:    []*schema.Column{KnownAccountsColumns[4]},
+				RefColumns: []*schema.Column{RealmsColumns[0]},
+				OnDelete:   schema.Restrict,
+			},
+			{
+				Symbol:     "known_accounts_users_known_accounts",
+				Columns:    []*schema.Column{KnownAccountsColumns[5]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "knownaccount_device_hash_user_id",
+				Unique:  true,
+				Columns: []*schema.Column{KnownAccountsColumns[1], KnownAccountsColumns[5]},
+			},
+		},
+	}
 	// LoginAttemptsColumns holds the columns for the "login_attempts" table.
 	LoginAttemptsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
@@ -1149,6 +1185,7 @@ var (
 		IdentityProvidersTable,
 		InstanceSettingsTable,
 		KeyRotationLogsTable,
+		KnownAccountsTable,
 		LoginAttemptsTable,
 		MfaBackupCodesTable,
 		MfaMethodsTable,
@@ -1190,6 +1227,8 @@ func init() {
 	IdentityProvidersTable.ForeignKeys[0].RefTable = RealmsTable
 	InstanceSettingsTable.ForeignKeys[0].RefTable = RealmsTable
 	KeyRotationLogsTable.ForeignKeys[0].RefTable = SigningKeysTable
+	KnownAccountsTable.ForeignKeys[0].RefTable = RealmsTable
+	KnownAccountsTable.ForeignKeys[1].RefTable = UsersTable
 	MfaBackupCodesTable.ForeignKeys[0].RefTable = UsersTable
 	MfaMethodsTable.ForeignKeys[0].RefTable = UsersTable
 	MfaPoliciesTable.ForeignKeys[0].RefTable = RealmsTable

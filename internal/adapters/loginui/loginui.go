@@ -10,6 +10,7 @@ import (
 	"path"
 	"strings"
 	"time"
+	"unicode"
 
 	"sso.internal/sso/internal/core"
 )
@@ -62,6 +63,75 @@ type Login struct {
 	// most RememberMeDays days.
 	RememberMe     bool
 	RememberMeDays int
+
+	// "Pick an account" (Mode "pick"): the accounts of this device, the
+	// signed-in one first.
+	Accounts []Account
+	// ContinueURL and ContinueToken let the signed-in tile go on with its
+	// session (OIDC prompt=select_account). Empty when no tile is signed in.
+	ContinueURL   string
+	ContinueToken string
+	RequestID     string
+}
+
+// Account is one tile of "Pick an account".
+type Account struct {
+	ID         string // "": not remembered, no "Forget" button
+	Name       string
+	Label      string // second line: e-mail, else username
+	Identifier string // pre-fills the username field
+	Initials   string
+	SignedIn   bool
+}
+
+// AccountsFrom turns the core's accounts into tiles.
+func AccountsFrom(in []core.Account) []Account {
+	out := make([]Account, 0, len(in))
+	for _, a := range in {
+		label := a.Email
+		if label == "" || label == a.Name {
+			label = a.Username
+		}
+		if label == a.Name {
+			label = ""
+		}
+		out = append(out, Account{
+			ID: a.ID, Name: a.Name, Label: label, Identifier: a.Identifier,
+			Initials: initials(a.Name), SignedIn: a.SignedIn,
+		})
+	}
+	return out
+}
+
+// initials: first letter of the first two words ("Alice Martin" -> "AM").
+func initials(name string) string {
+	var out []rune
+	for _, w := range strings.Fields(name) {
+		for _, r := range w {
+			out = append(out, unicode.ToUpper(r))
+			break
+		}
+		if len(out) == 2 {
+			break
+		}
+	}
+	if len(out) == 0 {
+		return "?"
+	}
+	return string(out)
+}
+
+// LogoutConfirm is the "Sign out of <realm>?" page: an application asked to
+// end a session that is not the one of this browser (OIDC RP-Initiated
+// Logout 1.0, section 2: the OP must ask in that case).
+type LogoutConfirm struct {
+	RealmDisplay string
+	ClientName   string
+	Account      string // e-mail or username of the session's account
+	Action       string // form action
+	RequestID    string
+	Token        string // one-time anti-CSRF token
+	Assets       string
 }
 
 type ForgotPassword struct {
@@ -153,10 +223,23 @@ func (p *Pages) RenderResetPassword(w http.ResponseWriter, data ResetPassword) {
 	p.render(w, http.StatusOK, "reset.html", PageCSP, data)
 }
 
-// RenderConsent writes the consent page (no script: PageCSP allows the form
-// to post to this site only).
+// RenderConsent writes the consent page (no script). After the answer the
+// browser is redirected to the application (OIDC: its redirect_uri, another
+// site). Browsers apply form-action to the redirects that follow a form
+// submission, so PageCSP's form-action 'self' blocked "Allow" and "Deny" in
+// Chromium: the page uses redirectCSP. The form itself has a fixed action
+// on this server.
 func (p *Pages) RenderConsent(w http.ResponseWriter, data Consent) {
-	p.render(w, http.StatusOK, "consent.html", PageCSP, data)
+	p.render(w, http.StatusOK, "consent.html", redirectCSP, data)
+}
+
+// RenderLogoutConfirm writes the sign-out confirmation page. After the
+// answer the browser leaves for the application (its registered
+// post_logout_redirect_uri): like the auto-post form, the page has no
+// form-action rule, which browsers also apply to the redirects that follow
+// a submission. The form itself only posts to this server (fixed action).
+func (p *Pages) RenderLogoutConfirm(w http.ResponseWriter, data LogoutConfirm) {
+	p.render(w, http.StatusOK, "logout.html", redirectCSP, data)
 }
 
 // RenderMessage writes a message page. assets: where Asset is mounted.
@@ -173,6 +256,10 @@ func (p *Pages) RenderMessage(w http.ResponseWriter, status int, m Message, asse
 // another host would be blocked. The action itself is checked by the caller
 // (a registered ACS URL) and escaped by html/template.
 var autoPostCSP = strings.Replace(PageCSP, " form-action 'self';", "", 1)
+
+// redirectCSP: the same rule for our own forms whose answer redirects to an
+// application (consent, sign-out confirmation).
+var redirectCSP = autoPostCSP
 
 // RenderAutoPost writes a self-submitting form to f.Action, which must be an
 // absolute http(s) URL.

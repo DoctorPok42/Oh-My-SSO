@@ -13,6 +13,7 @@ import (
 	"sso.internal/sso/ent/consent"
 	"sso.internal/sso/ent/federatedidentity"
 	"sso.internal/sso/ent/group"
+	"sso.internal/sso/ent/knownaccount"
 	"sso.internal/sso/ent/mfabackupcode"
 	"sso.internal/sso/ent/mfamethod"
 	"sso.internal/sso/ent/passwordresettoken"
@@ -315,6 +316,21 @@ func (_c *UserCreate) AddPasswordResetTokens(v ...*PasswordResetToken) *UserCrea
 		ids[i] = v[i].ID
 	}
 	return _c.AddPasswordResetTokenIDs(ids...)
+}
+
+// AddKnownAccountIDs adds the "known_accounts" edge to the KnownAccount entity by IDs.
+func (_c *UserCreate) AddKnownAccountIDs(ids ...string) *UserCreate {
+	_c.mutation.AddKnownAccountIDs(ids...)
+	return _c
+}
+
+// AddKnownAccounts adds the "known_accounts" edges to the KnownAccount entity.
+func (_c *UserCreate) AddKnownAccounts(v ...*KnownAccount) *UserCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddKnownAccountIDs(ids...)
 }
 
 // AddConsentIDs adds the "consents" edge to the Consent entity by IDs.
@@ -654,6 +670,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(passwordresettoken.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.KnownAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.KnownAccountsTable,
+			Columns: []string{user.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

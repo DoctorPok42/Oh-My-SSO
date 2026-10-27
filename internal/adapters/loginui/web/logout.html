@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Sign out · {{.RealmDisplay}}</title>
+<link rel="stylesheet" href="{{.Assets}}/login.css">
+</head>
+<body>
+<main class="card">
+  <header>
+    <p class="realm">{{.RealmDisplay}}</p>
+    <h1>Sign out of {{.RealmDisplay}}?</h1>
+    <p class="client"><strong>{{.ClientName}}</strong> asked to sign out <strong>{{.Account}}</strong>.</p>
+  </header>
+
+  <p class="lead">This browser is not using that session, so we ask you first.</p>
+
+  <form method="post" action="{{.Action}}">
+    <input type="hidden" name="id" value="{{.RequestID}}">
+    <input type="hidden" name="logout_token" value="{{.Token}}">
+    <button type="submit" name="decision" value="signout">Sign out</button>
+    <button type="submit" name="decision" value="cancel" class="secondary deny">Cancel</button>
+  </form>
+
+  <p class="small">Cancel keeps that session open. You are already signed out of {{.ClientName}} either way.</p>
+</main>
+</body>
+</html>

@@ -15,6 +15,7 @@ import (
 	"sso.internal/sso/ent/consent"
 	"sso.internal/sso/ent/federatedidentity"
 	"sso.internal/sso/ent/group"
+	"sso.internal/sso/ent/knownaccount"
 	"sso.internal/sso/ent/mfabackupcode"
 	"sso.internal/sso/ent/mfamethod"
 	"sso.internal/sso/ent/passwordresettoken"
@@ -39,6 +40,7 @@ type UserQuery struct {
 	withMfaMethods          *MfaMethodQuery
 	withMfaBackupCodes      *MfaBackupCodeQuery
 	withPasswordResetTokens *PasswordResetTokenQuery
+	withKnownAccounts       *KnownAccountQuery
 	withConsents            *ConsentQuery
 	withFederatedIdentities *FederatedIdentityQuery
 	// intermediate query (i.e. traversal path).
@@ -224,6 +226,28 @@ func (_q *UserQuery) QueryPasswordResetTokens() *PasswordResetTokenQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(passwordresettoken.Table, passwordresettoken.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.PasswordResetTokensTable, user.PasswordResetTokensColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryKnownAccounts chains the current query on the "known_accounts" edge.
+func (_q *UserQuery) QueryKnownAccounts() *KnownAccountQuery {
+	query := (&KnownAccountClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(knownaccount.Table, knownaccount.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.KnownAccountsTable, user.KnownAccountsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -474,6 +498,7 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withMfaMethods:          _q.withMfaMethods.Clone(),
 		withMfaBackupCodes:      _q.withMfaBackupCodes.Clone(),
 		withPasswordResetTokens: _q.withPasswordResetTokens.Clone(),
+		withKnownAccounts:       _q.withKnownAccounts.Clone(),
 		withConsents:            _q.withConsents.Clone(),
 		withFederatedIdentities: _q.withFederatedIdentities.Clone(),
 		// clone intermediate query.
@@ -556,6 +581,17 @@ func (_q *UserQuery) WithPasswordResetTokens(opts ...func(*PasswordResetTokenQue
 		opt(query)
 	}
 	_q.withPasswordResetTokens = query
+	return _q
+}
+
+// WithKnownAccounts tells the query-builder to eager-load the nodes that are connected to
+// the "known_accounts" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithKnownAccounts(opts ...func(*KnownAccountQuery)) *UserQuery {
+	query := (&KnownAccountClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withKnownAccounts = query
 	return _q
 }
 
@@ -659,7 +695,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [9]bool{
+		loadedTypes = [10]bool{
 			_q.withRealm != nil,
 			_q.withRoles != nil,
 			_q.withGroups != nil,
@@ -667,6 +703,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withMfaMethods != nil,
 			_q.withMfaBackupCodes != nil,
 			_q.withPasswordResetTokens != nil,
+			_q.withKnownAccounts != nil,
 			_q.withConsents != nil,
 			_q.withFederatedIdentities != nil,
 		}
@@ -736,6 +773,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			func(n *User, e *PasswordResetToken) {
 				n.Edges.PasswordResetTokens = append(n.Edges.PasswordResetTokens, e)
 			}); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withKnownAccounts; query != nil {
+		if err := _q.loadKnownAccounts(ctx, query, nodes,
+			func(n *User) { n.Edges.KnownAccounts = []*KnownAccount{} },
+			func(n *User, e *KnownAccount) { n.Edges.KnownAccounts = append(n.Edges.KnownAccounts, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1014,6 +1058,36 @@ func (_q *UserQuery) loadPasswordResetTokens(ctx context.Context, query *Passwor
 	}
 	query.Where(predicate.PasswordResetToken(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.PasswordResetTokensColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadKnownAccounts(ctx context.Context, query *KnownAccountQuery, nodes []*User, init func(*User), assign func(*User, *KnownAccount)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(knownaccount.FieldUserID)
+	}
+	query.Where(predicate.KnownAccount(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.KnownAccountsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

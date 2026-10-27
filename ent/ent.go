@@ -25,6 +25,7 @@ import (
 	"sso.internal/sso/ent/identityprovider"
 	"sso.internal/sso/ent/instancesettings"
 	"sso.internal/sso/ent/keyrotationlog"
+	"sso.internal/sso/ent/knownaccount"
 	"sso.internal/sso/ent/loginattempt"
 	"sso.internal/sso/ent/mfabackupcode"
 	"sso.internal/sso/ent/mfamethod"
@@ -112,6 +113,7 @@ func checkColumn(t, c string) error {
 			identityprovider.Table:   identityprovider.ValidColumn,
 			instancesettings.Table:   instancesettings.ValidColumn,
 			keyrotationlog.Table:     keyrotationlog.ValidColumn,
+			knownaccount.Table:       knownaccount.ValidColumn,
 			loginattempt.Table:       loginattempt.ValidColumn,
 			mfabackupcode.Table:      mfabackupcode.ValidColumn,
 			mfamethod.Table:          mfamethod.ValidColumn,

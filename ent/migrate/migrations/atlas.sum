@@ -1,4 +1,4 @@
-h1:52JrYTdRYwYzSTYrGHJiwm9ga4BIpl2bSXLDrz8SpeI=
+h1:M6cFEI9179hc9lgIhbp5ANg9USsOzI/tz8q6INT1WOU=
 20260911235655_unnamed_migration.sql h1:T9jMdh02PzNWOEBxR23qkTvS3ASuXIdCln0XXX+ZPrI=
 20260924144340_sessions.sql h1:BaRgGUAxm3O7Z1hNUDew1IQ4fl0JLAzo0miODlR7tAw=
 20261005191224_pairwise_subject_and_amr.sql h1:qt5P4RmPSXWuYPWctJV5/qMKs1D+nXuIf577rG8Iucc=
@@ -13,3 +13,4 @@ h1:52JrYTdRYwYzSTYrGHJiwm9ga4BIpl2bSXLDrz8SpeI=
 20261025150000_admin_console_session_policy.sql h1:J9MYSM6Jl1XccoWj+UFdK6HxJ3PlY7G/bEqFEMR3DE8=
 20261026120000_remember_me.sql h1:53GrN8sNLrRxV0rJM4hC9rF1nXLNTFiRX8sE/biaJ2k=
 20261026120100_remember_me_master_off.sql h1:h1CN9vmhvEii7iEihWenDHm9jkkswGJELGy5Ra28vAU=
+20261027120000_known_accounts.sql h1:qb+xNaMpbmeM7MEAcbrr6LxbhsVRONGnRDnz4UQDf+Y=

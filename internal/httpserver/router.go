@@ -31,6 +31,8 @@ type Server struct {
 
 	passwordReset *service.PasswordResetService
 	forgotPassword bool
+
+	accounts *service.KnownAccountService
 }
 
 // OIDCProvider is the OIDC adapter as the router sees it (implemented by
@@ -51,6 +53,12 @@ type SAMLProvider interface {
 
 // Option configures optional parts of the Server.
 type Option func(*Server)
+
+// WithKnownAccounts mounts POST /r/{realm}/auth/accounts/forget, the
+// "Forget" button of "Pick an account".
+func WithKnownAccounts(k *service.KnownAccountService) Option {
+	return func(s *Server) { s.accounts = k }
+}
 
 // WithJWKS mounts GET /r/{realm}/.well-known/jwks.json.
 func WithJWKS(src PublicKeySource) Option {

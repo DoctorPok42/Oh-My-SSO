@@ -14,6 +14,7 @@ import (
 	"sso.internal/sso/ent/consent"
 	"sso.internal/sso/ent/federatedidentity"
 	"sso.internal/sso/ent/group"
+	"sso.internal/sso/ent/knownaccount"
 	"sso.internal/sso/ent/mfabackupcode"
 	"sso.internal/sso/ent/mfamethod"
 	"sso.internal/sso/ent/passwordresettoken"
@@ -349,6 +350,21 @@ func (_u *UserUpdate) AddPasswordResetTokens(v ...*PasswordResetToken) *UserUpda
 	return _u.AddPasswordResetTokenIDs(ids...)
 }
 
+// AddKnownAccountIDs adds the "known_accounts" edge to the KnownAccount entity by IDs.
+func (_u *UserUpdate) AddKnownAccountIDs(ids ...string) *UserUpdate {
+	_u.mutation.AddKnownAccountIDs(ids...)
+	return _u
+}
+
+// AddKnownAccounts adds the "known_accounts" edges to the KnownAccount entity.
+func (_u *UserUpdate) AddKnownAccounts(v ...*KnownAccount) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddKnownAccountIDs(ids...)
+}
+
 // AddConsentIDs adds the "consents" edge to the Consent entity by IDs.
 func (_u *UserUpdate) AddConsentIDs(ids ...string) *UserUpdate {
 	_u.mutation.AddConsentIDs(ids...)
@@ -508,6 +524,27 @@ func (_u *UserUpdate) RemovePasswordResetTokens(v ...*PasswordResetToken) *UserU
 		ids[i] = v[i].ID
 	}
 	return _u.RemovePasswordResetTokenIDs(ids...)
+}
+
+// ClearKnownAccounts clears all "known_accounts" edges to the KnownAccount entity.
+func (_u *UserUpdate) ClearKnownAccounts() *UserUpdate {
+	_u.mutation.ClearKnownAccounts()
+	return _u
+}
+
+// RemoveKnownAccountIDs removes the "known_accounts" edge to KnownAccount entities by IDs.
+func (_u *UserUpdate) RemoveKnownAccountIDs(ids ...string) *UserUpdate {
+	_u.mutation.RemoveKnownAccountIDs(ids...)
+	return _u
+}
+
+// RemoveKnownAccounts removes "known_accounts" edges to KnownAccount entities.
+func (_u *UserUpdate) RemoveKnownAccounts(v ...*KnownAccount) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveKnownAccountIDs(ids...)
 }
 
 // ClearConsents clears all "consents" edges to the Consent entity.
@@ -954,6 +991,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.KnownAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.KnownAccountsTable,
+			Columns: []string{user.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedKnownAccountsIDs(); len(nodes) > 0 && !_u.mutation.KnownAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.KnownAccountsTable,
+			Columns: []string{user.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.KnownAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.KnownAccountsTable,
+			Columns: []string{user.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ConsentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1376,6 +1458,21 @@ func (_u *UserUpdateOne) AddPasswordResetTokens(v ...*PasswordResetToken) *UserU
 	return _u.AddPasswordResetTokenIDs(ids...)
 }
 
+// AddKnownAccountIDs adds the "known_accounts" edge to the KnownAccount entity by IDs.
+func (_u *UserUpdateOne) AddKnownAccountIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.AddKnownAccountIDs(ids...)
+	return _u
+}
+
+// AddKnownAccounts adds the "known_accounts" edges to the KnownAccount entity.
+func (_u *UserUpdateOne) AddKnownAccounts(v ...*KnownAccount) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddKnownAccountIDs(ids...)
+}
+
 // AddConsentIDs adds the "consents" edge to the Consent entity by IDs.
 func (_u *UserUpdateOne) AddConsentIDs(ids ...string) *UserUpdateOne {
 	_u.mutation.AddConsentIDs(ids...)
@@ -1535,6 +1632,27 @@ func (_u *UserUpdateOne) RemovePasswordResetTokens(v ...*PasswordResetToken) *Us
 		ids[i] = v[i].ID
 	}
 	return _u.RemovePasswordResetTokenIDs(ids...)
+}
+
+// ClearKnownAccounts clears all "known_accounts" edges to the KnownAccount entity.
+func (_u *UserUpdateOne) ClearKnownAccounts() *UserUpdateOne {
+	_u.mutation.ClearKnownAccounts()
+	return _u
+}
+
+// RemoveKnownAccountIDs removes the "known_accounts" edge to KnownAccount entities by IDs.
+func (_u *UserUpdateOne) RemoveKnownAccountIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.RemoveKnownAccountIDs(ids...)
+	return _u
+}
+
+// RemoveKnownAccounts removes "known_accounts" edges to KnownAccount entities.
+func (_u *UserUpdateOne) RemoveKnownAccounts(v ...*KnownAccount) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveKnownAccountIDs(ids...)
 }
 
 // ClearConsents clears all "consents" edges to the Consent entity.
@@ -2004,6 +2122,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(passwordresettoken.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.KnownAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.KnownAccountsTable,
+			Columns: []string{user.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedKnownAccountsIDs(); len(nodes) > 0 && !_u.mutation.KnownAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.KnownAccountsTable,
+			Columns: []string{user.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.KnownAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.KnownAccountsTable,
+			Columns: []string{user.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

@@ -41,6 +41,8 @@ const (
 	SessionRevokedExpired        SessionRevokedReason = "expired"
 	SessionRevokedPasswordReset  SessionRevokedReason = "password_reset"
 	SessionRevokedMFAReset       SessionRevokedReason = "mfa_reset"
+	// Another account signed in in the same browser ("Use another account").
+	SessionRevokedAccountSwitch SessionRevokedReason = "account_switch"
 )
 
 func (Session) Fields() []ent.Field {

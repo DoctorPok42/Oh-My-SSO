@@ -33,6 +33,9 @@ type Config struct {
 	AllowInsecureHTTP bool
 	// SessionCookieName is the SSO session cookie (httpserver.SessionCookieName).
 	SessionCookieName string
+	// DeviceCookieName identifies the browser (httpserver.DeviceCookieName):
+	// the accounts of "Pick an account" are remembered per device.
+	DeviceCookieName string
 	// PasskeysEnabled shows the passkey buttons on the login page.
 	PasskeysEnabled bool
 	// DevPages links to /r/{realm}/dev/mfa when a user must enroll a factor
@@ -80,6 +83,9 @@ func New(cfg Config, idp core.IdentityCore, store oidcstore.Store) (*Adapter, er
 	}
 	if cfg.SessionCookieName == "" {
 		cfg.SessionCookieName = "sso_session"
+	}
+	if cfg.DeviceCookieName == "" {
+		cfg.DeviceCookieName = "sso_device"
 	}
 	a := &Adapter{cfg: cfg, base: base, core: idp, store: store, logger: cfg.Logger, now: cfg.Now}
 	if a.logger == nil {
@@ -148,10 +154,17 @@ func (a *Adapter) routes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(a.requireRealm, securityHeaders)
 	r.Get("/oidc/login", a.handleLogin)
+	r.Post("/oidc/login/continue", a.handleContinue)
 	r.Post("/oidc/consent", a.handleConsent)
 	r.Get("/oidc/logged-out", a.handleLoggedOut)
+	r.Get("/oidc/logout/confirm", a.handleLogoutConfirmPage)
+	r.Post("/oidc/logout/confirm", a.handleLogoutConfirm)
 	r.Get("/oidc/assets/{file}", handleAsset)
 	r.With(a.bindBrowser).Handle("/oidc/authorize", a.provider)
+	// RP-initiated logout: the library validates the request, then calls
+	// storage.TerminateSessionFromRequest, which needs the browser (its
+	// session cookie, a binding for the confirmation page).
+	r.With(a.bindBrowser, a.logoutContext).Handle("/oidc/logout", a.provider)
 	r.With(a.checkBrowser).Handle("/oidc/authorize/callback", a.provider)
 	r.Handle("/oidc/*", a.provider)
 	return r

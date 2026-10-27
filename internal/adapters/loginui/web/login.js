@@ -31,8 +31,10 @@
   }
   const clearError = () => { $("error").hidden = true; };
 
-  async function post(path, body) {
-    const res = await fetch(base + path, {
+  const post = (path, body) => postURL(base + path, body);
+
+  async function postURL(url, body) {
+    const res = await fetch(url, {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -108,6 +110,69 @@
     $("code").value = "";
     showError(data.error, data.attempts_remaining);
   });
+
+  // --- "Pick an account" ----------------------------------------------------
+  // A signed-out tile opens the password form with the account filled in
+  // (and "Keep me signed in" ticked: it was ticked on this device before).
+  // The signed-in tile goes on with this browser's session.
+  const accounts = $("accounts");
+
+  function showPassword(identifier, remember) {
+    clearError();
+    accounts.hidden = true;
+    $("password-form").hidden = false;
+    $("title").textContent = "Sign in";
+    $("identifier").value = identifier || "";
+    const box = $("remember-me");
+    if (box) box.checked = !!remember;
+    (identifier ? $("password") : $("identifier")).focus();
+  }
+
+  function showAccounts() {
+    clearError();
+    $("password-form").hidden = true;
+    accounts.hidden = false;
+    $("title").textContent = "Pick an account";
+  }
+
+  for (const btn of document.querySelectorAll(".account-pick")) {
+    btn.addEventListener("click", async () => {
+      if (btn.dataset.signedIn !== "on") return showPassword(btn.dataset.identifier, true);
+      clearError();
+      btn.disabled = true;
+      const { status, data } = await postURL(app.dataset.continueUrl, {
+        id: app.dataset.requestId,
+        token: app.dataset.continueToken,
+      });
+      if (status === 204) return done();
+      btn.disabled = false;
+      showError(data.error);
+    });
+  }
+
+  for (const btn of document.querySelectorAll(".forget")) {
+    btn.addEventListener("click", async () => {
+      clearError();
+      btn.disabled = true;
+      const { status, data } = await post("/auth/accounts/forget", { account_id: btn.dataset.account });
+      if (status !== 204 && status !== 404) {
+        btn.disabled = false;
+        return showError(data.error);
+      }
+      if (btn.dataset.signedIn === "on") return done(); // signed out too
+      btn.closest("li").remove();
+      if (!document.querySelector(".account")) {
+        const back = $("back-to-accounts");
+        if (back) back.closest("p").hidden = true;
+        showPassword("", false);
+      }
+    });
+  }
+
+  const other = $("other-account");
+  if (other) other.addEventListener("click", () => showPassword("", false));
+  const back = $("back-to-accounts");
+  if (back) back.addEventListener("click", showAccounts);
 
   // --- passkeys: the server speaks base64url JSON, the browser API wants
   // ArrayBuffers (same helpers as the /dev/mfa page).

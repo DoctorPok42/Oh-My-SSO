@@ -3,6 +3,7 @@ package httpserver
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"math"
 	"net"
 	"net/http"
@@ -69,6 +70,9 @@ func (s *Server) mountAuth(r chi.Router) {
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/login", s.handleLogin)
 		r.Post("/logout", s.handleLogout)
+		if s.accounts != nil {
+			r.With(requireJSON).Post("/accounts/forget", s.handleForgetAccount)
+		}
 
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireSession)
@@ -180,15 +184,79 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.endPreviousSession(r, sess)
 	setSessionCookie(w, realm.Name, rawToken, sess)
 	resp.RememberMe = sess.RememberMe
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// endPreviousSession: one signed-in account per browser and realm. When
+// another account signs in ("Use another account"), the browser's previous
+// session is ended: it would otherwise stay signed in where nobody sees it.
+// The same user signing in again (prompt=login) keeps it: its other
+// applications' refresh tokens are bound to it.
+func (s *Server) endPreviousSession(r *http.Request, next *domain.Session) {
+	raw := sessionTokenFromRequest(r)
+	if raw == "" {
+		return
+	}
+	prev, err := s.sessions.Validate(r.Context(), next.RealmID, raw)
+	if err != nil || prev.ID == next.ID || prev.UserID == next.UserID {
+		return
+	}
+	if err := s.sessions.EndSession(r.Context(), prev, domain.SessionRevokedAccountSwitch, service.LogoutEvent{
+		Via: domain.LogoutViaAccountSwitch, IPAddress: clientIP(r), UserAgent: r.UserAgent(),
+	}); err != nil {
+		slog.WarnContext(r.Context(), "end the previous session of the browser", "session_id", prev.ID, "error", err)
+	}
+}
+
+type forgetAccountRequest struct {
+	AccountID string `json:"account_id"`
+}
+
+// handleForgetAccount: "Forget" (or "Sign out and forget") on a tile of
+// "Pick an account". Only the accounts of this browser's device can be
+// removed. When the account is the one signed in here, it is signed out.
+func (s *Server) handleForgetAccount(w http.ResponseWriter, r *http.Request) {
+	realm := realmFromContext(r)
+	var req forgetAccountRequest
+	if !decodeSmallJSON(w, r, &req) || req.AccountID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request")
+		return
+	}
+	acc, err := s.accounts.Forget(r.Context(), service.ForgetAccountInput{
+		RealmID: realm.ID, DeviceID: deviceIDFromRequest(r), AccountID: req.AccountID,
+		IPAddress: clientIP(r), UserAgent: r.UserAgent(),
+	})
+	if errors.Is(err, service.ErrKnownAccountNotFound) {
+		writeError(w, http.StatusNotFound, "not_found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error")
+		return
+	}
+	if raw := sessionTokenFromRequest(r); raw != "" {
+		if sess, err := s.sessions.Validate(r.Context(), realm.ID, raw); err == nil && sess.UserID == acc.UserID {
+			if err := s.sessions.EndSession(r.Context(), sess, domain.SessionRevokedUserLogout, service.LogoutEvent{
+				Via: domain.LogoutViaForget, IPAddress: clientIP(r), UserAgent: r.UserAgent(),
+			}); err != nil {
+				writeError(w, http.StatusInternalServerError, "internal_error")
+				return
+			}
+			clearSessionCookie(w, realm.Name)
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	realm := realmFromContext(r)
 
-	if err := s.sessions.Logout(r.Context(), sessionTokenFromRequest(r)); err != nil {
+	if err := s.sessions.Logout(r.Context(), sessionTokenFromRequest(r), service.LogoutEvent{
+		Via: domain.LogoutViaAPI, IPAddress: clientIP(r), UserAgent: r.UserAgent(),
+	}); err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error")
 		return
 	}

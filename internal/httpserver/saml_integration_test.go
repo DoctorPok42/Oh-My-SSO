@@ -92,8 +92,11 @@ func setupSAMLTestEnv(t *testing.T) *samlTestEnv {
 	limiter := valkeycache.NewRateLimiter(valkeyClient)
 	km := localdev.New("test")
 
+	known := service.NewKnownAccountService(service.KnownAccountDeps{
+		Accounts: entstore.NewKnownAccountRepository(client), Users: users, Audit: audit,
+	})
 	sessions := service.NewSessionService(entstore.NewSessionRepository(client), settings, tokens,
-		valkeycache.NewSessionCache(valkeyClient))
+		valkeycache.NewSessionCache(valkeyClient), service.WithLoginObserver(known), service.WithAuditLog(audit))
 	policy := service.NewMFAPolicyService(service.MFAPolicyDeps{
 		Settings: settings, Clients: clients, Roles: entstore.NewRoleRepository(client),
 		Policies: entstore.NewMfaPolicyRepository(client), Access: access, Audit: audit,
@@ -112,6 +115,7 @@ func setupSAMLTestEnv(t *testing.T) *samlTestEnv {
 	idp := service.NewIdentityCore(service.IdentityCoreDeps{
 		Auth: auth, Sessions: sessions, RBAC: rbac, Users: users, Clients: clients, Realms: realms,
 		Tokens: tokens, SigningKeys: signingKeys, KeyManager: km, MFA: mfa, Consent: consent, Audit: audit,
+		Accounts: known,
 	})
 
 	var router http.Handler
@@ -123,7 +127,8 @@ func setupSAMLTestEnv(t *testing.T) *samlTestEnv {
 	samlA, err := samladapter.New(samladapter.Config{PublicURL: ts.URL, SessionCookieName: httpserver.SessionCookieName}, idp, store)
 	require.NoError(t, err)
 	router = httpserver.New(auth, sessions, rbac, realms, clients, limiter,
-		httpserver.WithMFA(mfa), httpserver.WithJWKS(idp), httpserver.WithOIDC(oidcA), httpserver.WithSAML(samlA)).Router()
+		httpserver.WithMFA(mfa), httpserver.WithJWKS(idp), httpserver.WithOIDC(oidcA), httpserver.WithSAML(samlA),
+		httpserver.WithKnownAccounts(known)).Router()
 
 	realm, err := realms.Create(ctx, repository.CreateRealmParams{Name: samlRealm, DisplayName: "Acme Corp"})
 	require.NoError(t, err)

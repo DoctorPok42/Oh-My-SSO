@@ -18,6 +18,7 @@ import (
 	"sso.internal/sso/ent/identityprovider"
 	"sso.internal/sso/ent/instancesettings"
 	"sso.internal/sso/ent/keyrotationlog"
+	"sso.internal/sso/ent/knownaccount"
 	"sso.internal/sso/ent/loginattempt"
 	"sso.internal/sso/ent/mfabackupcode"
 	"sso.internal/sso/ent/mfamethod"
@@ -497,6 +498,34 @@ func init() {
 	keyrotationlog.DefaultID = keyrotationlogDescID.Default.(func() string)
 	// keyrotationlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	keyrotationlog.IDValidator = keyrotationlogDescID.Validators[0].(func(string) error)
+	knownaccountFields := schema.KnownAccount{}.Fields()
+	_ = knownaccountFields
+	// knownaccountDescRealmID is the schema descriptor for realm_id field.
+	knownaccountDescRealmID := knownaccountFields[1].Descriptor()
+	// knownaccount.RealmIDValidator is a validator for the "realm_id" field. It is called by the builders before save.
+	knownaccount.RealmIDValidator = knownaccountDescRealmID.Validators[0].(func(string) error)
+	// knownaccountDescUserID is the schema descriptor for user_id field.
+	knownaccountDescUserID := knownaccountFields[2].Descriptor()
+	// knownaccount.UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
+	knownaccount.UserIDValidator = knownaccountDescUserID.Validators[0].(func(string) error)
+	// knownaccountDescDeviceHash is the schema descriptor for device_hash field.
+	knownaccountDescDeviceHash := knownaccountFields[3].Descriptor()
+	// knownaccount.DeviceHashValidator is a validator for the "device_hash" field. It is called by the builders before save.
+	knownaccount.DeviceHashValidator = knownaccountDescDeviceHash.Validators[0].(func(string) error)
+	// knownaccountDescCreatedAt is the schema descriptor for created_at field.
+	knownaccountDescCreatedAt := knownaccountFields[4].Descriptor()
+	// knownaccount.DefaultCreatedAt holds the default value on creation for the created_at field.
+	knownaccount.DefaultCreatedAt = knownaccountDescCreatedAt.Default.(func() time.Time)
+	// knownaccountDescLastUsedAt is the schema descriptor for last_used_at field.
+	knownaccountDescLastUsedAt := knownaccountFields[5].Descriptor()
+	// knownaccount.DefaultLastUsedAt holds the default value on creation for the last_used_at field.
+	knownaccount.DefaultLastUsedAt = knownaccountDescLastUsedAt.Default.(func() time.Time)
+	// knownaccountDescID is the schema descriptor for id field.
+	knownaccountDescID := knownaccountFields[0].Descriptor()
+	// knownaccount.DefaultID holds the default value on creation for the id field.
+	knownaccount.DefaultID = knownaccountDescID.Default.(func() string)
+	// knownaccount.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	knownaccount.IDValidator = knownaccountDescID.Validators[0].(func(string) error)
 	loginattemptFields := schema.LoginAttempt{}.Fields()
 	_ = loginattemptFields
 	// loginattemptDescIdentifier is the schema descriptor for identifier field.

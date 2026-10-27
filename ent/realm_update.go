@@ -17,6 +17,7 @@ import (
 	"sso.internal/sso/ent/group"
 	"sso.internal/sso/ent/identityprovider"
 	"sso.internal/sso/ent/instancesettings"
+	"sso.internal/sso/ent/knownaccount"
 	"sso.internal/sso/ent/mfapolicy"
 	"sso.internal/sso/ent/permission"
 	"sso.internal/sso/ent/predicate"
@@ -315,6 +316,21 @@ func (_u *RealmUpdate) AddMfaPolicies(v ...*MfaPolicy) *RealmUpdate {
 	return _u.AddMfaPolicyIDs(ids...)
 }
 
+// AddKnownAccountIDs adds the "known_accounts" edge to the KnownAccount entity by IDs.
+func (_u *RealmUpdate) AddKnownAccountIDs(ids ...string) *RealmUpdate {
+	_u.mutation.AddKnownAccountIDs(ids...)
+	return _u
+}
+
+// AddKnownAccounts adds the "known_accounts" edges to the KnownAccount entity.
+func (_u *RealmUpdate) AddKnownAccounts(v ...*KnownAccount) *RealmUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddKnownAccountIDs(ids...)
+}
+
 // Mutation returns the RealmMutation object of the builder.
 func (_u *RealmUpdate) Mutation() *RealmMutation {
 	return _u.mutation
@@ -576,6 +592,27 @@ func (_u *RealmUpdate) RemoveMfaPolicies(v ...*MfaPolicy) *RealmUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveMfaPolicyIDs(ids...)
+}
+
+// ClearKnownAccounts clears all "known_accounts" edges to the KnownAccount entity.
+func (_u *RealmUpdate) ClearKnownAccounts() *RealmUpdate {
+	_u.mutation.ClearKnownAccounts()
+	return _u
+}
+
+// RemoveKnownAccountIDs removes the "known_accounts" edge to KnownAccount entities by IDs.
+func (_u *RealmUpdate) RemoveKnownAccountIDs(ids ...string) *RealmUpdate {
+	_u.mutation.RemoveKnownAccountIDs(ids...)
+	return _u
+}
+
+// RemoveKnownAccounts removes "known_accounts" edges to KnownAccount entities.
+func (_u *RealmUpdate) RemoveKnownAccounts(v ...*KnownAccount) *RealmUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveKnownAccountIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -1226,6 +1263,51 @@ func (_u *RealmUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.KnownAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.KnownAccountsTable,
+			Columns: []string{realm.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedKnownAccountsIDs(); len(nodes) > 0 && !_u.mutation.KnownAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.KnownAccountsTable,
+			Columns: []string{realm.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.KnownAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.KnownAccountsTable,
+			Columns: []string{realm.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{realm.Label}
@@ -1519,6 +1601,21 @@ func (_u *RealmUpdateOne) AddMfaPolicies(v ...*MfaPolicy) *RealmUpdateOne {
 	return _u.AddMfaPolicyIDs(ids...)
 }
 
+// AddKnownAccountIDs adds the "known_accounts" edge to the KnownAccount entity by IDs.
+func (_u *RealmUpdateOne) AddKnownAccountIDs(ids ...string) *RealmUpdateOne {
+	_u.mutation.AddKnownAccountIDs(ids...)
+	return _u
+}
+
+// AddKnownAccounts adds the "known_accounts" edges to the KnownAccount entity.
+func (_u *RealmUpdateOne) AddKnownAccounts(v ...*KnownAccount) *RealmUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddKnownAccountIDs(ids...)
+}
+
 // Mutation returns the RealmMutation object of the builder.
 func (_u *RealmUpdateOne) Mutation() *RealmMutation {
 	return _u.mutation
@@ -1780,6 +1877,27 @@ func (_u *RealmUpdateOne) RemoveMfaPolicies(v ...*MfaPolicy) *RealmUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveMfaPolicyIDs(ids...)
+}
+
+// ClearKnownAccounts clears all "known_accounts" edges to the KnownAccount entity.
+func (_u *RealmUpdateOne) ClearKnownAccounts() *RealmUpdateOne {
+	_u.mutation.ClearKnownAccounts()
+	return _u
+}
+
+// RemoveKnownAccountIDs removes the "known_accounts" edge to KnownAccount entities by IDs.
+func (_u *RealmUpdateOne) RemoveKnownAccountIDs(ids ...string) *RealmUpdateOne {
+	_u.mutation.RemoveKnownAccountIDs(ids...)
+	return _u
+}
+
+// RemoveKnownAccounts removes "known_accounts" edges to KnownAccount entities.
+func (_u *RealmUpdateOne) RemoveKnownAccounts(v ...*KnownAccount) *RealmUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveKnownAccountIDs(ids...)
 }
 
 // Where appends a list predicates to the RealmUpdate builder.
@@ -2453,6 +2571,51 @@ func (_u *RealmUpdateOne) sqlSave(ctx context.Context) (_node *Realm, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(mfapolicy.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.KnownAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.KnownAccountsTable,
+			Columns: []string{realm.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedKnownAccountsIDs(); len(nodes) > 0 && !_u.mutation.KnownAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.KnownAccountsTable,
+			Columns: []string{realm.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.KnownAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.KnownAccountsTable,
+			Columns: []string{realm.KnownAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

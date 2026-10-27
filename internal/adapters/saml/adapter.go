@@ -28,6 +28,9 @@ type Config struct {
 	AllowInsecureHTTP bool
 	// SessionCookieName is the SSO session cookie (httpserver.SessionCookieName).
 	SessionCookieName string
+	// DeviceCookieName identifies the browser (httpserver.DeviceCookieName):
+	// the accounts of "Pick an account" are remembered per device.
+	DeviceCookieName string
 	// PasskeysEnabled shows the passkey buttons on the sign-in page.
 	PasskeysEnabled bool
 	// DevPages links to /r/{realm}/dev/mfa when a factor must be enrolled
@@ -62,6 +65,9 @@ func New(cfg Config, idp core.IdentityCore, store oidcstore.Store) (*Adapter, er
 	}
 	if cfg.SessionCookieName == "" {
 		cfg.SessionCookieName = "sso_session"
+	}
+	if cfg.DeviceCookieName == "" {
+		cfg.DeviceCookieName = "sso_device"
 	}
 	a := &Adapter{cfg: cfg, base: base, core: idp, store: store, logger: cfg.Logger, now: cfg.Now}
 	if a.logger == nil {

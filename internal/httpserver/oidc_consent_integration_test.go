@@ -98,7 +98,12 @@ func TestOIDC_Integration_Consent(t *testing.T) {
 		require.Contains(t, page, "partner.example.test", "where the user goes next")
 		require.NotContains(t, page, `class="tag"`, "first use: nothing is marked new")
 		require.Equal(t, "no-store", resp.Header.Get("Cache-Control"))
-		require.Contains(t, resp.Header.Get("Content-Security-Policy"), "form-action 'self'")
+		// No form-action rule: browsers apply it to the redirect to the
+		// application that follows the answer (Chromium blocked Allow and
+		// Deny with form-action 'self'). The rest of the policy stays strict.
+		csp := resp.Header.Get("Content-Security-Policy")
+		require.Contains(t, csp, "default-src 'none'")
+		require.NotContains(t, csp, "form-action")
 
 		code := codeFromRedirect(t, e.answer(t, b, page, "allow"), partnerRedirectURI, "c1")
 		tok, err := partner.Exchange(e.ctx(), code, oauth2.VerifierOption(verifier))
