@@ -790,6 +790,29 @@ func HasMfaPoliciesWith(preds ...predicate.MfaPolicy) predicate.Realm {
 	})
 }
 
+// HasKnownAccounts applies the HasEdge predicate on the "known_accounts" edge.
+func HasKnownAccounts() predicate.Realm {
+	return predicate.Realm(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, KnownAccountsTable, KnownAccountsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasKnownAccountsWith applies the HasEdge predicate on the "known_accounts" edge with a given conditions (other predicates).
+func HasKnownAccountsWith(preds ...predicate.KnownAccount) predicate.Realm {
+	return predicate.Realm(func(s *sql.Selector) {
+		step := newKnownAccountsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Realm) predicate.Realm {
 	return predicate.Realm(sql.AndPredicates(predicates...))

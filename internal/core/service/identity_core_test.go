@@ -904,7 +904,7 @@ func TestIdentityCore_RevokeSessionCascadesToTokens(t *testing.T) {
 		issued := f.aliceSession(t)
 		addTokens(f, issued.Session.ID)
 
-		require.NoError(t, f.sessionSvc.Logout(ctx, issued.RawToken))
+		require.NoError(t, f.sessionSvc.Logout(ctx, issued.RawToken, service.LogoutEvent{Via: domain.LogoutViaAPI}))
 		require.True(t, revoked(t, f, "jti-a"))
 		require.True(t, revoked(t, f, "jti-b"))
 		require.False(t, revoked(t, f, "jti-other"))

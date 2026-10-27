@@ -43,6 +43,8 @@ type IdentityCoreService struct {
 	timeouts TimeoutChecker
 	mfa      *MFAService                   // nil: MFA not configured (no policy enforced)
 	consent  *ConsentService
+	// accounts: nil means no remembered account, only the current one.
+	accounts *KnownAccountService
 	audit    repository.AuditLogRepository // nil: refresh token replays are only logged
 	logger   *slog.Logger
 	now      func() time.Time
@@ -70,6 +72,9 @@ type IdentityCoreDeps struct {
 	MFA *MFAService
 	Consent *ConsentService
 	Audit repository.AuditLogRepository
+
+	// Accounts: "Pick an account". nil shows the current account only.
+	Accounts *KnownAccountService
 }
 
 type IdentityCoreOption func(*IdentityCoreService)
@@ -98,6 +103,7 @@ func NewIdentityCore(d IdentityCoreDeps, opts ...IdentityCoreOption) *IdentityCo
 		timeouts: d.Timeouts,
 		mfa:      d.MFA,
 		consent:  d.Consent,
+		accounts: d.Accounts,
 		audit:    d.Audit,
 		logger:   slog.Default(),
 		now:      time.Now,
@@ -150,6 +156,43 @@ func (s *IdentityCoreService) CreateSession(ctx context.Context, userID string, 
 		return nil, err
 	}
 	return &core.IssuedSession{RawToken: raw, Session: sess}, nil
+}
+
+func (s *IdentityCoreService) Logout(ctx context.Context, req core.LogoutRequest) error {
+	sess, err := s.sessions.GetActive(ctx, req.SessionID)
+	if errors.Is(err, core.ErrSessionInvalid) {
+		return nil // already over
+	}
+	if err != nil {
+		return err
+	}
+	return s.sessions.EndSession(ctx, sess, domain.SessionRevokedUserLogout, LogoutEvent{
+		Via: req.Via, ClientID: req.ClientID, IPAddress: req.IPAddress, UserAgent: req.UserAgent, Confirmed: req.Confirmed,
+	})
+}
+
+func (s *IdentityCoreService) KnownAccounts(ctx context.Context, q core.AccountQuery) ([]core.Account, error) {
+	if s.accounts == nil {
+		q.DeviceID = "" // nothing remembered: only the current account
+		return NewKnownAccountService(KnownAccountDeps{Users: s.users, Logger: s.logger}).List(ctx, q)
+	}
+	return s.accounts.List(ctx, q)
+}
+
+func (s *IdentityCoreService) SessionAccount(ctx context.Context, sessionID string) (*core.Account, error) {
+	sess, err := s.sessions.GetActive(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	u, err := s.users.GetByID(ctx, sess.UserID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, core.ErrSessionInvalid
+	}
+	if err != nil {
+		return nil, fmt.Errorf("session account: %w", err)
+	}
+	acc := AccountOf(u)
+	return &acc, nil
 }
 
 func (s *IdentityCoreService) SessionOptions(ctx context.Context, realmID string) core.SessionOptions {

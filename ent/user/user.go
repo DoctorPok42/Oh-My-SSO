@@ -59,6 +59,8 @@ const (
 	EdgeMfaBackupCodes = "mfa_backup_codes"
 	// EdgePasswordResetTokens holds the string denoting the password_reset_tokens edge name in mutations.
 	EdgePasswordResetTokens = "password_reset_tokens"
+	// EdgeKnownAccounts holds the string denoting the known_accounts edge name in mutations.
+	EdgeKnownAccounts = "known_accounts"
 	// EdgeConsents holds the string denoting the consents edge name in mutations.
 	EdgeConsents = "consents"
 	// EdgeFederatedIdentities holds the string denoting the federated_identities edge name in mutations.
@@ -110,6 +112,13 @@ const (
 	PasswordResetTokensInverseTable = "password_reset_tokens"
 	// PasswordResetTokensColumn is the table column denoting the password_reset_tokens relation/edge.
 	PasswordResetTokensColumn = "user_id"
+	// KnownAccountsTable is the table that holds the known_accounts relation/edge.
+	KnownAccountsTable = "known_accounts"
+	// KnownAccountsInverseTable is the table name for the KnownAccount entity.
+	// It exists in this package in order to avoid circular dependency with the "knownaccount" package.
+	KnownAccountsInverseTable = "known_accounts"
+	// KnownAccountsColumn is the table column denoting the known_accounts relation/edge.
+	KnownAccountsColumn = "user_id"
 	// ConsentsTable is the table that holds the consents relation/edge.
 	ConsentsTable = "consents"
 	// ConsentsInverseTable is the table name for the Consent entity.
@@ -359,6 +368,20 @@ func ByPasswordResetTokens(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOpti
 	}
 }
 
+// ByKnownAccountsCount orders the results by known_accounts count.
+func ByKnownAccountsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newKnownAccountsStep(), opts...)
+	}
+}
+
+// ByKnownAccounts orders the results by known_accounts terms.
+func ByKnownAccounts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newKnownAccountsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByConsentsCount orders the results by consents count.
 func ByConsentsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -433,6 +456,13 @@ func newPasswordResetTokensStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PasswordResetTokensInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, PasswordResetTokensTable, PasswordResetTokensColumn),
+	)
+}
+func newKnownAccountsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(KnownAccountsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, KnownAccountsTable, KnownAccountsColumn),
 	)
 }
 func newConsentsStep() *sqlgraph.Step {

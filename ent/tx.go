@@ -38,6 +38,8 @@ type Tx struct {
 	InstanceSettings *InstanceSettingsClient
 	// KeyRotationLog is the client for interacting with the KeyRotationLog builders.
 	KeyRotationLog *KeyRotationLogClient
+	// KnownAccount is the client for interacting with the KnownAccount builders.
+	KnownAccount *KnownAccountClient
 	// LoginAttempt is the client for interacting with the LoginAttempt builders.
 	LoginAttempt *LoginAttemptClient
 	// MfaBackupCode is the client for interacting with the MfaBackupCode builders.
@@ -210,6 +212,7 @@ func (tx *Tx) init() {
 	tx.IdentityProvider = NewIdentityProviderClient(tx.config)
 	tx.InstanceSettings = NewInstanceSettingsClient(tx.config)
 	tx.KeyRotationLog = NewKeyRotationLogClient(tx.config)
+	tx.KnownAccount = NewKnownAccountClient(tx.config)
 	tx.LoginAttempt = NewLoginAttemptClient(tx.config)
 	tx.MfaBackupCode = NewMfaBackupCodeClient(tx.config)
 	tx.MfaMethod = NewMfaMethodClient(tx.config)

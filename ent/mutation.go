@@ -24,6 +24,7 @@ import (
 	"sso.internal/sso/ent/identityprovider"
 	"sso.internal/sso/ent/instancesettings"
 	"sso.internal/sso/ent/keyrotationlog"
+	"sso.internal/sso/ent/knownaccount"
 	"sso.internal/sso/ent/loginattempt"
 	"sso.internal/sso/ent/mfabackupcode"
 	"sso.internal/sso/ent/mfamethod"
@@ -64,6 +65,7 @@ const (
 	TypeIdentityProvider   = "IdentityProvider"
 	TypeInstanceSettings   = "InstanceSettings"
 	TypeKeyRotationLog     = "KeyRotationLog"
+	TypeKnownAccount       = "KnownAccount"
 	TypeLoginAttempt       = "LoginAttempt"
 	TypeMfaBackupCode      = "MfaBackupCode"
 	TypeMfaMethod          = "MfaMethod"
@@ -15677,6 +15679,654 @@ func (m *KeyRotationLogMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown KeyRotationLog edge %s", name)
 }
 
+// KnownAccountMutation represents an operation that mutates the KnownAccount nodes in the graph.
+type KnownAccountMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *string
+	device_hash   *string
+	created_at    *time.Time
+	last_used_at  *time.Time
+	clearedFields map[string]struct{}
+	realm         *string
+	clearedrealm  bool
+	user          *string
+	cleareduser   bool
+	done          bool
+	oldValue      func(context.Context) (*KnownAccount, error)
+	predicates    []predicate.KnownAccount
+}
+
+var _ ent.Mutation = (*KnownAccountMutation)(nil)
+
+// knownaccountOption allows management of the mutation configuration using functional options.
+type knownaccountOption func(*KnownAccountMutation)
+
+// newKnownAccountMutation creates new mutation for the KnownAccount entity.
+func newKnownAccountMutation(c config, op Op, opts ...knownaccountOption) *KnownAccountMutation {
+	m := &KnownAccountMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeKnownAccount,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withKnownAccountID sets the ID field of the mutation.
+func withKnownAccountID(id string) knownaccountOption {
+	return func(m *KnownAccountMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *KnownAccount
+		)
+		m.oldValue = func(ctx context.Context) (*KnownAccount, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().KnownAccount.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withKnownAccount sets the old KnownAccount of the mutation.
+func withKnownAccount(node *KnownAccount) knownaccountOption {
+	return func(m *KnownAccountMutation) {
+		m.oldValue = func(context.Context) (*KnownAccount, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m KnownAccountMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m KnownAccountMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of KnownAccount entities.
+func (m *KnownAccountMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *KnownAccountMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *KnownAccountMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().KnownAccount.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetRealmID sets the "realm_id" field.
+func (m *KnownAccountMutation) SetRealmID(s string) {
+	m.realm = &s
+}
+
+// RealmID returns the value of the "realm_id" field in the mutation.
+func (m *KnownAccountMutation) RealmID() (r string, exists bool) {
+	v := m.realm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRealmID returns the old "realm_id" field's value of the KnownAccount entity.
+// If the KnownAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnownAccountMutation) OldRealmID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRealmID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRealmID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRealmID: %w", err)
+	}
+	return oldValue.RealmID, nil
+}
+
+// ResetRealmID resets all changes to the "realm_id" field.
+func (m *KnownAccountMutation) ResetRealmID() {
+	m.realm = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *KnownAccountMutation) SetUserID(s string) {
+	m.user = &s
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *KnownAccountMutation) UserID() (r string, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the KnownAccount entity.
+// If the KnownAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnownAccountMutation) OldUserID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *KnownAccountMutation) ResetUserID() {
+	m.user = nil
+}
+
+// SetDeviceHash sets the "device_hash" field.
+func (m *KnownAccountMutation) SetDeviceHash(s string) {
+	m.device_hash = &s
+}
+
+// DeviceHash returns the value of the "device_hash" field in the mutation.
+func (m *KnownAccountMutation) DeviceHash() (r string, exists bool) {
+	v := m.device_hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeviceHash returns the old "device_hash" field's value of the KnownAccount entity.
+// If the KnownAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnownAccountMutation) OldDeviceHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeviceHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeviceHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeviceHash: %w", err)
+	}
+	return oldValue.DeviceHash, nil
+}
+
+// ResetDeviceHash resets all changes to the "device_hash" field.
+func (m *KnownAccountMutation) ResetDeviceHash() {
+	m.device_hash = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *KnownAccountMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *KnownAccountMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the KnownAccount entity.
+// If the KnownAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnownAccountMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *KnownAccountMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetLastUsedAt sets the "last_used_at" field.
+func (m *KnownAccountMutation) SetLastUsedAt(t time.Time) {
+	m.last_used_at = &t
+}
+
+// LastUsedAt returns the value of the "last_used_at" field in the mutation.
+func (m *KnownAccountMutation) LastUsedAt() (r time.Time, exists bool) {
+	v := m.last_used_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastUsedAt returns the old "last_used_at" field's value of the KnownAccount entity.
+// If the KnownAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnownAccountMutation) OldLastUsedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastUsedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastUsedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastUsedAt: %w", err)
+	}
+	return oldValue.LastUsedAt, nil
+}
+
+// ResetLastUsedAt resets all changes to the "last_used_at" field.
+func (m *KnownAccountMutation) ResetLastUsedAt() {
+	m.last_used_at = nil
+}
+
+// ClearRealm clears the "realm" edge to the Realm entity.
+func (m *KnownAccountMutation) ClearRealm() {
+	m.clearedrealm = true
+	m.clearedFields[knownaccount.FieldRealmID] = struct{}{}
+}
+
+// RealmCleared reports if the "realm" edge to the Realm entity was cleared.
+func (m *KnownAccountMutation) RealmCleared() bool {
+	return m.clearedrealm
+}
+
+// RealmIDs returns the "realm" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// RealmID instead. It exists only for internal usage by the builders.
+func (m *KnownAccountMutation) RealmIDs() (ids []string) {
+	if id := m.realm; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRealm resets all changes to the "realm" edge.
+func (m *KnownAccountMutation) ResetRealm() {
+	m.realm = nil
+	m.clearedrealm = false
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *KnownAccountMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[knownaccount.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *KnownAccountMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *KnownAccountMutation) UserIDs() (ids []string) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *KnownAccountMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// Where appends a list predicates to the KnownAccountMutation builder.
+func (m *KnownAccountMutation) Where(ps ...predicate.KnownAccount) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the KnownAccountMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *KnownAccountMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.KnownAccount, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *KnownAccountMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *KnownAccountMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (KnownAccount).
+func (m *KnownAccountMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *KnownAccountMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.realm != nil {
+		fields = append(fields, knownaccount.FieldRealmID)
+	}
+	if m.user != nil {
+		fields = append(fields, knownaccount.FieldUserID)
+	}
+	if m.device_hash != nil {
+		fields = append(fields, knownaccount.FieldDeviceHash)
+	}
+	if m.created_at != nil {
+		fields = append(fields, knownaccount.FieldCreatedAt)
+	}
+	if m.last_used_at != nil {
+		fields = append(fields, knownaccount.FieldLastUsedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *KnownAccountMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case knownaccount.FieldRealmID:
+		return m.RealmID()
+	case knownaccount.FieldUserID:
+		return m.UserID()
+	case knownaccount.FieldDeviceHash:
+		return m.DeviceHash()
+	case knownaccount.FieldCreatedAt:
+		return m.CreatedAt()
+	case knownaccount.FieldLastUsedAt:
+		return m.LastUsedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *KnownAccountMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case knownaccount.FieldRealmID:
+		return m.OldRealmID(ctx)
+	case knownaccount.FieldUserID:
+		return m.OldUserID(ctx)
+	case knownaccount.FieldDeviceHash:
+		return m.OldDeviceHash(ctx)
+	case knownaccount.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case knownaccount.FieldLastUsedAt:
+		return m.OldLastUsedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown KnownAccount field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *KnownAccountMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case knownaccount.FieldRealmID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRealmID(v)
+		return nil
+	case knownaccount.FieldUserID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case knownaccount.FieldDeviceHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeviceHash(v)
+		return nil
+	case knownaccount.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case knownaccount.FieldLastUsedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastUsedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown KnownAccount field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *KnownAccountMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *KnownAccountMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *KnownAccountMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown KnownAccount numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *KnownAccountMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *KnownAccountMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *KnownAccountMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown KnownAccount nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *KnownAccountMutation) ResetField(name string) error {
+	switch name {
+	case knownaccount.FieldRealmID:
+		m.ResetRealmID()
+		return nil
+	case knownaccount.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case knownaccount.FieldDeviceHash:
+		m.ResetDeviceHash()
+		return nil
+	case knownaccount.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case knownaccount.FieldLastUsedAt:
+		m.ResetLastUsedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown KnownAccount field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *KnownAccountMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.realm != nil {
+		edges = append(edges, knownaccount.EdgeRealm)
+	}
+	if m.user != nil {
+		edges = append(edges, knownaccount.EdgeUser)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *KnownAccountMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case knownaccount.EdgeRealm:
+		if id := m.realm; id != nil {
+			return []ent.Value{*id}
+		}
+	case knownaccount.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *KnownAccountMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *KnownAccountMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *KnownAccountMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedrealm {
+		edges = append(edges, knownaccount.EdgeRealm)
+	}
+	if m.cleareduser {
+		edges = append(edges, knownaccount.EdgeUser)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *KnownAccountMutation) EdgeCleared(name string) bool {
+	switch name {
+	case knownaccount.EdgeRealm:
+		return m.clearedrealm
+	case knownaccount.EdgeUser:
+		return m.cleareduser
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *KnownAccountMutation) ClearEdge(name string) error {
+	switch name {
+	case knownaccount.EdgeRealm:
+		m.ClearRealm()
+		return nil
+	case knownaccount.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
+	return fmt.Errorf("unknown KnownAccount unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *KnownAccountMutation) ResetEdge(name string) error {
+	switch name {
+	case knownaccount.EdgeRealm:
+		m.ResetRealm()
+		return nil
+	case knownaccount.EdgeUser:
+		m.ResetUser()
+		return nil
+	}
+	return fmt.Errorf("unknown KnownAccount edge %s", name)
+}
+
 // LoginAttemptMutation represents an operation that mutates the LoginAttempt nodes in the graph.
 type LoginAttemptMutation struct {
 	config
@@ -21393,6 +22043,9 @@ type RealmMutation struct {
 	mfa_policies              map[string]struct{}
 	removedmfa_policies       map[string]struct{}
 	clearedmfa_policies       bool
+	known_accounts            map[string]struct{}
+	removedknown_accounts     map[string]struct{}
+	clearedknown_accounts     bool
 	done                      bool
 	oldValue                  func(context.Context) (*Realm, error)
 	predicates                []predicate.Realm
@@ -22467,6 +23120,60 @@ func (m *RealmMutation) ResetMfaPolicies() {
 	m.removedmfa_policies = nil
 }
 
+// AddKnownAccountIDs adds the "known_accounts" edge to the KnownAccount entity by ids.
+func (m *RealmMutation) AddKnownAccountIDs(ids ...string) {
+	if m.known_accounts == nil {
+		m.known_accounts = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.known_accounts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearKnownAccounts clears the "known_accounts" edge to the KnownAccount entity.
+func (m *RealmMutation) ClearKnownAccounts() {
+	m.clearedknown_accounts = true
+}
+
+// KnownAccountsCleared reports if the "known_accounts" edge to the KnownAccount entity was cleared.
+func (m *RealmMutation) KnownAccountsCleared() bool {
+	return m.clearedknown_accounts
+}
+
+// RemoveKnownAccountIDs removes the "known_accounts" edge to the KnownAccount entity by IDs.
+func (m *RealmMutation) RemoveKnownAccountIDs(ids ...string) {
+	if m.removedknown_accounts == nil {
+		m.removedknown_accounts = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.known_accounts, ids[i])
+		m.removedknown_accounts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedKnownAccounts returns the removed IDs of the "known_accounts" edge to the KnownAccount entity.
+func (m *RealmMutation) RemovedKnownAccountsIDs() (ids []string) {
+	for id := range m.removedknown_accounts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// KnownAccountsIDs returns the "known_accounts" edge IDs in the mutation.
+func (m *RealmMutation) KnownAccountsIDs() (ids []string) {
+	for id := range m.known_accounts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetKnownAccounts resets all changes to the "known_accounts" edge.
+func (m *RealmMutation) ResetKnownAccounts() {
+	m.known_accounts = nil
+	m.clearedknown_accounts = false
+	m.removedknown_accounts = nil
+}
+
 // Where appends a list predicates to the RealmMutation builder.
 func (m *RealmMutation) Where(ps ...predicate.Realm) {
 	m.predicates = append(m.predicates, ps...)
@@ -22717,7 +23424,7 @@ func (m *RealmMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RealmMutation) AddedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 14)
 	if m.users != nil {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -22756,6 +23463,9 @@ func (m *RealmMutation) AddedEdges() []string {
 	}
 	if m.mfa_policies != nil {
 		edges = append(edges, realm.EdgeMfaPolicies)
+	}
+	if m.known_accounts != nil {
+		edges = append(edges, realm.EdgeKnownAccounts)
 	}
 	return edges
 }
@@ -22840,13 +23550,19 @@ func (m *RealmMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case realm.EdgeKnownAccounts:
+		ids := make([]ent.Value, 0, len(m.known_accounts))
+		for id := range m.known_accounts {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RealmMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 14)
 	if m.removedusers != nil {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -22882,6 +23598,9 @@ func (m *RealmMutation) RemovedEdges() []string {
 	}
 	if m.removedmfa_policies != nil {
 		edges = append(edges, realm.EdgeMfaPolicies)
+	}
+	if m.removedknown_accounts != nil {
+		edges = append(edges, realm.EdgeKnownAccounts)
 	}
 	return edges
 }
@@ -22962,13 +23681,19 @@ func (m *RealmMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case realm.EdgeKnownAccounts:
+		ids := make([]ent.Value, 0, len(m.removedknown_accounts))
+		for id := range m.removedknown_accounts {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RealmMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 14)
 	if m.clearedusers {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -23008,6 +23733,9 @@ func (m *RealmMutation) ClearedEdges() []string {
 	if m.clearedmfa_policies {
 		edges = append(edges, realm.EdgeMfaPolicies)
 	}
+	if m.clearedknown_accounts {
+		edges = append(edges, realm.EdgeKnownAccounts)
+	}
 	return edges
 }
 
@@ -23041,6 +23769,8 @@ func (m *RealmMutation) EdgeCleared(name string) bool {
 		return m.clearedtimeouts
 	case realm.EdgeMfaPolicies:
 		return m.clearedmfa_policies
+	case realm.EdgeKnownAccounts:
+		return m.clearedknown_accounts
 	}
 	return false
 }
@@ -23098,6 +23828,9 @@ func (m *RealmMutation) ResetEdge(name string) error {
 		return nil
 	case realm.EdgeMfaPolicies:
 		m.ResetMfaPolicies()
+		return nil
+	case realm.EdgeKnownAccounts:
+		m.ResetKnownAccounts()
 		return nil
 	}
 	return fmt.Errorf("unknown Realm edge %s", name)
@@ -29645,6 +30378,9 @@ type UserMutation struct {
 	password_reset_tokens        map[string]struct{}
 	removedpassword_reset_tokens map[string]struct{}
 	clearedpassword_reset_tokens bool
+	known_accounts               map[string]struct{}
+	removedknown_accounts        map[string]struct{}
+	clearedknown_accounts        bool
 	consents                     map[string]struct{}
 	removedconsents              map[string]struct{}
 	clearedconsents              bool
@@ -30782,6 +31518,60 @@ func (m *UserMutation) ResetPasswordResetTokens() {
 	m.removedpassword_reset_tokens = nil
 }
 
+// AddKnownAccountIDs adds the "known_accounts" edge to the KnownAccount entity by ids.
+func (m *UserMutation) AddKnownAccountIDs(ids ...string) {
+	if m.known_accounts == nil {
+		m.known_accounts = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.known_accounts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearKnownAccounts clears the "known_accounts" edge to the KnownAccount entity.
+func (m *UserMutation) ClearKnownAccounts() {
+	m.clearedknown_accounts = true
+}
+
+// KnownAccountsCleared reports if the "known_accounts" edge to the KnownAccount entity was cleared.
+func (m *UserMutation) KnownAccountsCleared() bool {
+	return m.clearedknown_accounts
+}
+
+// RemoveKnownAccountIDs removes the "known_accounts" edge to the KnownAccount entity by IDs.
+func (m *UserMutation) RemoveKnownAccountIDs(ids ...string) {
+	if m.removedknown_accounts == nil {
+		m.removedknown_accounts = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.known_accounts, ids[i])
+		m.removedknown_accounts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedKnownAccounts returns the removed IDs of the "known_accounts" edge to the KnownAccount entity.
+func (m *UserMutation) RemovedKnownAccountsIDs() (ids []string) {
+	for id := range m.removedknown_accounts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// KnownAccountsIDs returns the "known_accounts" edge IDs in the mutation.
+func (m *UserMutation) KnownAccountsIDs() (ids []string) {
+	for id := range m.known_accounts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetKnownAccounts resets all changes to the "known_accounts" edge.
+func (m *UserMutation) ResetKnownAccounts() {
+	m.known_accounts = nil
+	m.clearedknown_accounts = false
+	m.removedknown_accounts = nil
+}
+
 // AddConsentIDs adds the "consents" edge to the Consent entity by ids.
 func (m *UserMutation) AddConsentIDs(ids ...string) {
 	if m.consents == nil {
@@ -31333,7 +32123,7 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.realm != nil {
 		edges = append(edges, user.EdgeRealm)
 	}
@@ -31354,6 +32144,9 @@ func (m *UserMutation) AddedEdges() []string {
 	}
 	if m.password_reset_tokens != nil {
 		edges = append(edges, user.EdgePasswordResetTokens)
+	}
+	if m.known_accounts != nil {
+		edges = append(edges, user.EdgeKnownAccounts)
 	}
 	if m.consents != nil {
 		edges = append(edges, user.EdgeConsents)
@@ -31408,6 +32201,12 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeKnownAccounts:
+		ids := make([]ent.Value, 0, len(m.known_accounts))
+		for id := range m.known_accounts {
+			ids = append(ids, id)
+		}
+		return ids
 	case user.EdgeConsents:
 		ids := make([]ent.Value, 0, len(m.consents))
 		for id := range m.consents {
@@ -31426,7 +32225,7 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.removedroles != nil {
 		edges = append(edges, user.EdgeRoles)
 	}
@@ -31444,6 +32243,9 @@ func (m *UserMutation) RemovedEdges() []string {
 	}
 	if m.removedpassword_reset_tokens != nil {
 		edges = append(edges, user.EdgePasswordResetTokens)
+	}
+	if m.removedknown_accounts != nil {
+		edges = append(edges, user.EdgeKnownAccounts)
 	}
 	if m.removedconsents != nil {
 		edges = append(edges, user.EdgeConsents)
@@ -31494,6 +32296,12 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeKnownAccounts:
+		ids := make([]ent.Value, 0, len(m.removedknown_accounts))
+		for id := range m.removedknown_accounts {
+			ids = append(ids, id)
+		}
+		return ids
 	case user.EdgeConsents:
 		ids := make([]ent.Value, 0, len(m.removedconsents))
 		for id := range m.removedconsents {
@@ -31512,7 +32320,7 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.clearedrealm {
 		edges = append(edges, user.EdgeRealm)
 	}
@@ -31533,6 +32341,9 @@ func (m *UserMutation) ClearedEdges() []string {
 	}
 	if m.clearedpassword_reset_tokens {
 		edges = append(edges, user.EdgePasswordResetTokens)
+	}
+	if m.clearedknown_accounts {
+		edges = append(edges, user.EdgeKnownAccounts)
 	}
 	if m.clearedconsents {
 		edges = append(edges, user.EdgeConsents)
@@ -31561,6 +32372,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedmfa_backup_codes
 	case user.EdgePasswordResetTokens:
 		return m.clearedpassword_reset_tokens
+	case user.EdgeKnownAccounts:
+		return m.clearedknown_accounts
 	case user.EdgeConsents:
 		return m.clearedconsents
 	case user.EdgeFederatedIdentities:
@@ -31604,6 +32417,9 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgePasswordResetTokens:
 		m.ResetPasswordResetTokens()
+		return nil
+	case user.EdgeKnownAccounts:
+		m.ResetKnownAccounts()
 		return nil
 	case user.EdgeConsents:
 		m.ResetConsents()

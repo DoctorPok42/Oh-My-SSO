@@ -1072,6 +1072,29 @@ func HasPasswordResetTokensWith(preds ...predicate.PasswordResetToken) predicate
 	})
 }
 
+// HasKnownAccounts applies the HasEdge predicate on the "known_accounts" edge.
+func HasKnownAccounts() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, KnownAccountsTable, KnownAccountsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasKnownAccountsWith applies the HasEdge predicate on the "known_accounts" edge with a given conditions (other predicates).
+func HasKnownAccountsWith(preds ...predicate.KnownAccount) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newKnownAccountsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasConsents applies the HasEdge predicate on the "consents" edge.
 func HasConsents() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

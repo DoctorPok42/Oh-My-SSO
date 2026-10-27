@@ -49,16 +49,24 @@ type SessionService struct {
 	policyMu    sync.Mutex
 	policyCache map[string]cachedPolicy
 
-	observer LoginObserver
+	observers []LoginObserver
+	audit     repository.AuditLogRepository // nil: sign-outs are not audited
 }
 
 type LoginObserver interface {
 	SessionCreated(ctx context.Context, sess *domain.Session)
 }
 
-// WithLoginObserver plugs a LoginObserver into Create.
+// WithLoginObserver plugs a LoginObserver into Create. Several can be
+// plugged: they are called in order.
 func WithLoginObserver(o LoginObserver) SessionOption {
-	return func(s *SessionService) { s.observer = o }
+	return func(s *SessionService) { s.observers = append(s.observers, o) }
+}
+
+// WithAuditLog records the sign-outs the users ask for (EndSession, Logout)
+// in the audit log.
+func WithAuditLog(a repository.AuditLogRepository) SessionOption {
+	return func(s *SessionService) { s.audit = a }
 }
 
 type cachedPolicy struct {
@@ -164,8 +172,8 @@ func (s *SessionService) Create(ctx context.Context, in CreateSessionInput) (raw
 		return "", nil, fmt.Errorf("create session: %w", err)
 	}
 
-	if s.observer != nil {
-		s.observer.SessionCreated(ctx, sess)
+	for _, o := range s.observers {
+		o.SessionCreated(ctx, sess)
 	}
 	return rawToken, sess, nil
 }
@@ -354,7 +362,18 @@ func (s *SessionService) Revoke(ctx context.Context, sessionID string, reason do
 	return s.revokeSessionTokens(ctx, sess.ID)
 }
 
-func (s *SessionService) Logout(ctx context.Context, rawToken string) error {
+// LogoutEvent says how a user signed out, for the audit log.
+type LogoutEvent struct {
+	Via       domain.LogoutVia
+	ClientID  string // client_id or entity ID that asked, if any
+	IPAddress string
+	UserAgent string
+	Confirmed bool // answered "Sign out" on the confirmation page
+}
+
+// Logout ends the session of a browser (its raw cookie token). An unknown
+// token is not an error: the browser is signed out either way.
+func (s *SessionService) Logout(ctx context.Context, rawToken string, ev LogoutEvent) error {
 	if rawToken == "" {
 		return nil
 	}
@@ -365,13 +384,54 @@ func (s *SessionService) Logout(ctx context.Context, rawToken string) error {
 		}
 		return fmt.Errorf("logout: %w", err)
 	}
-	if err := s.sessions.Revoke(ctx, sess.ID, domain.SessionRevokedUserLogout); err != nil && !errors.Is(err, repository.ErrNotFound) {
-		return fmt.Errorf("logout: %w", err)
+	return s.EndSession(ctx, sess, domain.SessionRevokedUserLogout, ev)
+}
+
+// EndSession revokes a session the user asked to leave (sign-out, another
+// account signing in...) with its tokens, and records it in the audit log
+// when the session was still active.
+func (s *SessionService) EndSession(ctx context.Context, sess *domain.Session, reason domain.SessionRevokedReason, ev LogoutEvent) error {
+	wasActive := sess.Status == domain.SessionActive
+	if err := s.sessions.Revoke(ctx, sess.ID, reason); err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return fmt.Errorf("end session: %w", err)
 	}
 	if err := s.markRevoked(ctx, sess); err != nil {
 		return err
 	}
-	return s.revokeSessionTokens(ctx, sess.ID)
+	if err := s.revokeSessionTokens(ctx, sess.ID); err != nil {
+		return err
+	}
+	if wasActive {
+		s.auditLogout(ctx, sess, ev)
+	}
+	return nil
+}
+
+func (s *SessionService) auditLogout(ctx context.Context, sess *domain.Session, ev LogoutEvent) {
+	if s.audit == nil {
+		return
+	}
+	details := map[string]interface{}{"via": string(ev.Via), "remember_me": sess.RememberMe}
+	if ev.ClientID != "" {
+		details["client_id"] = ev.ClientID
+	}
+	if ev.Confirmed {
+		details["confirmed"] = true
+	}
+	if _, err := s.audit.Create(ctx, repository.CreateAuditLogParams{
+		RealmID:      sess.RealmID,
+		UserID:       sess.UserID,
+		Action:       "logout",
+		ResourceType: "Session",
+		ResourceID:   sess.ID,
+		IPAddress:    ev.IPAddress,
+		UserAgent:    ev.UserAgent,
+		Level:        domain.AuditLogInfo,
+		Status:       domain.AuditLogSuccess,
+		Details:      details,
+	}); err != nil {
+		s.logger.WarnContext(ctx, "audit: record sign-out", "session_id", sess.ID, "error", err)
+	}
 }
 
 func (s *SessionService) RevokeAllForUser(ctx context.Context, userID string, reason domain.SessionRevokedReason) error {

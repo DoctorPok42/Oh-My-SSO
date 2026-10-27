@@ -107,7 +107,10 @@ func (a *Adapter) handleLogoutRequest(w http.ResponseWriter, r *http.Request, in
 		var unreachable bool
 		run.Pending, unreachable = a.peersToLogOut(r, parts, app.ID)
 		run.Partial = run.Partial || unreachable
-		if err := a.core.RevokeSession(ctx, sessionID, domain.SessionRevokedUserLogout); err != nil && !errors.Is(err, core.ErrSessionInvalid) {
+		if err := a.core.Logout(ctx, core.LogoutRequest{
+			SessionID: sessionID, Via: domain.LogoutViaSAML, ClientID: app.EntityID,
+			IPAddress: remoteIP(r), UserAgent: r.UserAgent(),
+		}); err != nil && !errors.Is(err, core.ErrSessionInvalid) {
 			// The one thing that must not fail silently: the IdP session
 			// would stay valid while we tell the service provider it is over.
 			a.logger.ErrorContext(ctx, "saml: revoke session", "error", err, "session_id", sessionID)

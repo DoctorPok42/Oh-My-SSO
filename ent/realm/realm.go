@@ -55,6 +55,8 @@ const (
 	EdgeTimeouts = "timeouts"
 	// EdgeMfaPolicies holds the string denoting the mfa_policies edge name in mutations.
 	EdgeMfaPolicies = "mfa_policies"
+	// EdgeKnownAccounts holds the string denoting the known_accounts edge name in mutations.
+	EdgeKnownAccounts = "known_accounts"
 	// Table holds the table name of the realm in the database.
 	Table = "realms"
 	// UsersTable is the table that holds the users relation/edge.
@@ -148,6 +150,13 @@ const (
 	MfaPoliciesInverseTable = "mfa_policies"
 	// MfaPoliciesColumn is the table column denoting the mfa_policies relation/edge.
 	MfaPoliciesColumn = "realm_id"
+	// KnownAccountsTable is the table that holds the known_accounts relation/edge.
+	KnownAccountsTable = "known_accounts"
+	// KnownAccountsInverseTable is the table name for the KnownAccount entity.
+	// It exists in this package in order to avoid circular dependency with the "knownaccount" package.
+	KnownAccountsInverseTable = "known_accounts"
+	// KnownAccountsColumn is the table column denoting the known_accounts relation/edge.
+	KnownAccountsColumn = "realm_id"
 )
 
 // Columns holds all SQL columns for realm fields.
@@ -408,6 +417,20 @@ func ByMfaPolicies(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newMfaPoliciesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByKnownAccountsCount orders the results by known_accounts count.
+func ByKnownAccountsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newKnownAccountsStep(), opts...)
+	}
+}
+
+// ByKnownAccounts orders the results by known_accounts terms.
+func ByKnownAccounts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newKnownAccountsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUsersStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -497,5 +520,12 @@ func newMfaPoliciesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(MfaPoliciesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, MfaPoliciesTable, MfaPoliciesColumn),
+	)
+}
+func newKnownAccountsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(KnownAccountsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, KnownAccountsTable, KnownAccountsColumn),
 	)
 }

@@ -34,6 +34,7 @@ func buildOIDC(publicURL string, idp core.IdentityCore, store oidcstore.Store, p
 		PublicURL:         publicURL,
 		AllowInsecureHTTP: appEnv != "production",
 		SessionCookieName: httpserver.SessionCookieName,
+		DeviceCookieName:  httpserver.DeviceCookieName,
 		PasskeysEnabled:   passkeys,
 		DevPages:          appEnv == "development",
 		PasswordReset:     passwordReset,
@@ -51,6 +52,7 @@ func buildSAML(publicURL string, idp core.IdentityCore, store oidcstore.Store, p
 		PublicURL:         publicURL,
 		AllowInsecureHTTP: appEnv != "production",
 		SessionCookieName: httpserver.SessionCookieName,
+		DeviceCookieName:  httpserver.DeviceCookieName,
 		PasskeysEnabled:   passkeys,
 		DevPages:          appEnv == "development",
 		PasswordReset:     passwordReset,
@@ -128,6 +130,7 @@ func serve() {
 		httpserver.WithSAML(samlProvider),
 		httpserver.WithPasswordReset(c.PasswordReset),
 		httpserver.WithForgotPassword(c.EmailEnabled()),
+		httpserver.WithKnownAccounts(c.KnownAccounts),
 	}
 	srv := httpserver.New(
 		c.Auth,

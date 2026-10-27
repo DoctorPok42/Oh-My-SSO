@@ -72,13 +72,15 @@ type UserEdges struct {
 	MfaBackupCodes []*MfaBackupCode `json:"mfa_backup_codes,omitempty"`
 	// PasswordResetTokens holds the value of the password_reset_tokens edge.
 	PasswordResetTokens []*PasswordResetToken `json:"password_reset_tokens,omitempty"`
+	// KnownAccounts holds the value of the known_accounts edge.
+	KnownAccounts []*KnownAccount `json:"known_accounts,omitempty"`
 	// Consents holds the value of the consents edge.
 	Consents []*Consent `json:"consents,omitempty"`
 	// FederatedIdentities holds the value of the federated_identities edge.
 	FederatedIdentities []*FederatedIdentity `json:"federated_identities,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [9]bool
+	loadedTypes [10]bool
 }
 
 // RealmOrErr returns the Realm value or an error if the edge
@@ -146,10 +148,19 @@ func (e UserEdges) PasswordResetTokensOrErr() ([]*PasswordResetToken, error) {
 	return nil, &NotLoadedError{edge: "password_reset_tokens"}
 }
 
+// KnownAccountsOrErr returns the KnownAccounts value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) KnownAccountsOrErr() ([]*KnownAccount, error) {
+	if e.loadedTypes[7] {
+		return e.KnownAccounts, nil
+	}
+	return nil, &NotLoadedError{edge: "known_accounts"}
+}
+
 // ConsentsOrErr returns the Consents value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) ConsentsOrErr() ([]*Consent, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[8] {
 		return e.Consents, nil
 	}
 	return nil, &NotLoadedError{edge: "consents"}
@@ -158,7 +169,7 @@ func (e UserEdges) ConsentsOrErr() ([]*Consent, error) {
 // FederatedIdentitiesOrErr returns the FederatedIdentities value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) FederatedIdentitiesOrErr() ([]*FederatedIdentity, error) {
-	if e.loadedTypes[8] {
+	if e.loadedTypes[9] {
 		return e.FederatedIdentities, nil
 	}
 	return nil, &NotLoadedError{edge: "federated_identities"}
@@ -341,6 +352,11 @@ func (_m *User) QueryMfaBackupCodes() *MfaBackupCodeQuery {
 // QueryPasswordResetTokens queries the "password_reset_tokens" edge of the User entity.
 func (_m *User) QueryPasswordResetTokens() *PasswordResetTokenQuery {
 	return NewUserClient(_m.config).QueryPasswordResetTokens(_m)
+}
+
+// QueryKnownAccounts queries the "known_accounts" edge of the User entity.
+func (_m *User) QueryKnownAccounts() *KnownAccountQuery {
+	return NewUserClient(_m.config).QueryKnownAccounts(_m)
 }
 
 // QueryConsents queries the "consents" edge of the User entity.

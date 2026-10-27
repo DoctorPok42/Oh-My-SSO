@@ -69,7 +69,7 @@ func (s *Server) handlePasskeyLoginVerify(w http.ResponseWriter, r *http.Request
 		s.writeMFAError(w, err)
 		return
 	}
-	s.writeVerifiedLogin(w, realm.Name, res)
+	s.writeVerifiedLogin(w, r, res)
 }
 
 func (s *Server) handlePasskeyStepUpOptions(w http.ResponseWriter, r *http.Request) {

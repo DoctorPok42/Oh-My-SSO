@@ -70,6 +70,12 @@ type authRequest struct {
 	// Set when the code is issued.
 	CodeHash string `json:"ch,omitempty"`
 
+	// "Pick an account" with prompt=select_account: the one-time token of
+	// the page on screen, and whether the user chose to go on with the
+	// browser's session.
+	PickTokenHash string `json:"pt,omitempty"`
+	AccountChosen bool   `json:"ac,omitempty"`
+
 	ConsentTokenHash string             `json:"ct,omitempty"`
 	ConsentItems     []core.ConsentItem `json:"ci,omitempty"`
 	ConsentDone      bool               `json:"cd,omitempty"`

@@ -306,8 +306,9 @@ func (s *storage) TerminateSession(context.Context, string, string) error {
 // TerminateSessionFromRequest is RP-initiated logout. The library already
 // verified the id_token_hint (our signature, our issuer; an expired hint is
 // accepted) and the post_logout_redirect_uri. The hint's "sid" tells which
-// SSO session to end. Without a hint we refuse: anyone could otherwise log a
-// user out with a simple link (logout CSRF).
+// SSO session to end; endSession (logout.go) decides whether to ask first.
+// Without a hint we refuse: anyone could otherwise log a user out with a
+// simple link (logout CSRF).
 func (s *storage) TerminateSessionFromRequest(ctx context.Context, req *op.EndSessionRequest) (string, error) {
 	realm, err := s.realm(ctx)
 	if err != nil {
@@ -316,18 +317,17 @@ func (s *storage) TerminateSessionFromRequest(ctx context.Context, req *op.EndSe
 	if req.IDTokenHintClaims == nil || req.IDTokenHintClaims.SessionID == "" {
 		return "", oidc.ErrInvalidRequest().WithDescription("id_token_hint is required to log out")
 	}
-	sid := req.IDTokenHintClaims.SessionID
-	if sess, err := s.a.core.GetSession(ctx, sid); err == nil && sess.RealmID == realm.ID {
-		if err := s.a.core.RevokeSession(ctx, sid, domain.SessionRevokedUserLogout); err != nil && !errors.Is(err, core.ErrSessionInvalid) {
-			return "", err
-		}
-	}
 	// No (valid) post_logout_redirect_uri: our own "signed out" page. The
 	// library leaves either "" or just "?state=..." in that case.
-	if req.RedirectURI == "" || strings.HasPrefix(req.RedirectURI, "?") {
-		return s.a.issuer(realm.Name) + "/oidc/logged-out", nil
+	redirect := req.RedirectURI
+	if redirect == "" || strings.HasPrefix(redirect, "?") {
+		redirect = s.a.issuer(realm.Name) + "/oidc/logged-out"
 	}
-	return req.RedirectURI, nil
+	clientID := req.ClientID
+	if clientID == "" && len(req.IDTokenHintClaims.Audience) > 0 {
+		clientID = req.IDTokenHintClaims.Audience[0]
+	}
+	return s.a.endSession(ctx, realm, req.IDTokenHintClaims.SessionID, clientID, redirect)
 }
 
 // RevokeToken (RFC 7009). tokenOrTokenID is a jti here: the library first

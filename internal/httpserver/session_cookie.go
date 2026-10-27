@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"sso.internal/sso/internal/core/domain"
+	"sso.internal/sso/internal/core/service"
 )
 
 const SessionCookieName = "sso_session"
@@ -110,7 +111,12 @@ func mfaChallengeTokenFromRequest(r *http.Request) string {
 }
 
 
-const deviceCookieName = "sso_device"
+// DeviceCookieName is the cookie that identifies a browser in a realm (new
+// device alerts, "Pick an account"). The adapters read it to list the
+// accounts remembered on the device.
+const DeviceCookieName = "sso_device"
+
+const deviceCookieName = DeviceCookieName
 
 // deviceCookieMaxAge: one year (browsers cap cookie lifetimes at 400 days).
 const deviceCookieMaxAge = 365 * 24 * time.Hour
@@ -120,13 +126,8 @@ const deviceCookieMaxAge = 365 * 24 * time.Hour
 // of base32), so a crafted cookie cannot inject anything.
 func deviceIDFromRequest(r *http.Request) string {
 	c, err := r.Cookie(deviceCookieName)
-	if err != nil || len(c.Value) != 26 {
+	if err != nil || !service.IsDeviceID(c.Value) {
 		return ""
-	}
-	for _, ch := range c.Value {
-		if !(ch >= 'A' && ch <= 'Z') && !(ch >= '2' && ch <= '7') {
-			return ""
-		}
 	}
 	return c.Value
 }
