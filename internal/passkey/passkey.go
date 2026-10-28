@@ -233,6 +233,103 @@ func (p *Provider) FinishLogin(u *domain.User, credentials []*domain.MfaMethod, 
 	}, nil
 }
 
+// BeginPasswordlessLogin builds the options of a sign-in without password
+// (Step 18c). The passkey (or security key) is then the only proof, so the
+// authenticator must verify the user (biometrics or PIN): "required".
+//
+//   - u nil: discoverable login, allowCredentials stays empty and the
+//     browser offers every passkey it has for this RP ID. The
+//     authenticator says whose passkey answered (the user handle).
+//   - u set (a tile of "Pick an account"): only that user's credentials,
+//     which also lets a security key that is not discoverable answer.
+func (p *Provider) BeginPasswordlessLogin(u *domain.User, credentials []*domain.MfaMethod) ([]byte, []byte, error) {
+	uv := webauthn.WithUserVerification(protocol.VerificationRequired)
+	if u == nil {
+		assertion, session, err := p.wa.BeginDiscoverableLogin(uv)
+		if err != nil {
+			return nil, nil, fmt.Errorf("passkey: begin passwordless login: %w", err)
+		}
+		return marshalPair(assertion, session)
+	}
+	wu, err := newUser(u, credentials)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(wu.creds) == 0 {
+		return nil, nil, errors.New("passkey: no credential to sign in with")
+	}
+	assertion, session, err := p.wa.BeginLogin(wu, uv)
+	if err != nil {
+		return nil, nil, fmt.Errorf("passkey: begin passwordless login: %w", err)
+	}
+	return marshalPair(assertion, session)
+}
+
+// FinishPasswordlessLogin verifies the AuthenticationResponseJSON of a
+// sign-in without password. owner loads the user a credential belongs to:
+// the user of the options, or (discoverable login) the user handle the
+// authenticator returned. The library checks the signature, the challenge,
+// the origin, the RP ID and, because the options required it, the UV flag.
+// On a refused answer, the user is returned when it was found (for the
+// LoginAttempt record), with the error.
+func (p *Provider) FinishPasswordlessLogin(state, response []byte, owner service.PasskeyOwnerFunc) (*domain.User, *service.PasskeyAssertion, error) {
+	var session webauthn.SessionData
+	if err := json.Unmarshal(state, &session); err != nil {
+		return nil, nil, fmt.Errorf("passkey: bad session state: %w", err)
+	}
+	parsed, err := protocol.ParseCredentialRequestResponseBytes(response)
+	if err != nil {
+		return nil, nil, fmt.Errorf("passkey: parse assertion: %w", describe(err))
+	}
+
+	var who *domain.User
+	load := func(userID []byte) (*user, error) {
+		u, creds, err := owner(string(userID))
+		if err != nil {
+			return nil, err
+		}
+		wu, err := newUser(u, creds)
+		if err != nil {
+			return nil, err
+		}
+		who = u
+		return wu, nil
+	}
+
+	var cred *webauthn.Credential
+	if len(session.UserID) > 0 {
+		wu, err := load(session.UserID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("passkey: %w", err)
+		}
+		cred, err = p.wa.ValidateLogin(wu, session, parsed)
+		if err != nil {
+			return who, nil, fmt.Errorf("passkey: verify assertion: %w", describe(err))
+		}
+	} else {
+		cred, err = p.wa.ValidateDiscoverableLogin(func(_, userHandle []byte) (webauthn.User, error) {
+			wu, err := load(userHandle)
+			if err != nil {
+				return nil, err // a nil interface, not a nil *user
+			}
+			return wu, nil
+		}, session, parsed)
+		if err != nil {
+			return who, nil, fmt.Errorf("passkey: verify assertion: %w", describe(err))
+		}
+	}
+	raw, err := json.Marshal(cred)
+	if err != nil {
+		return nil, nil, err
+	}
+	return who, &service.PasskeyAssertion{
+		CredentialID:   base64.RawURLEncoding.EncodeToString(cred.ID),
+		CredentialJSON: string(raw),
+		CloneWarning:   cred.Authenticator.CloneWarning,
+		UserVerified:   parsed.Response.AuthenticatorData.Flags.HasUserVerified(),
+	}, nil
+}
+
 func marshalPair(options, session any) ([]byte, []byte, error) {
 	o, err := json.Marshal(options)
 	if err != nil {

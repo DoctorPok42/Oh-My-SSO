@@ -26,7 +26,7 @@
     <ul class="accounts">
       {{- range .Accounts}}
       <li class="account">
-        <button type="button" class="account-pick" data-identifier="{{.Identifier}}" data-signed-in="{{if .SignedIn}}on{{end}}">
+        <button type="button" class="account-pick" data-identifier="{{.Identifier}}" data-account="{{.ID}}" data-methods="{{.Methods}}" data-signed-in="{{if .SignedIn}}on{{end}}">
           <span class="avatar" aria-hidden="true">{{.Initials}}</span>
           <span class="who"><strong>{{.Name}}</strong>{{if .Label}}<span>{{.Label}}</span>{{end}}</span>
           <span class="state{{if .SignedIn}} on{{end}}">{{if .SignedIn}}Signed in{{else}}Signed out{{end}}</span>
@@ -47,29 +47,38 @@
     <input id="password" name="password" type="password" autocomplete="current-password" required>
     {{if .ForgotPasswordURL}}<p class="aside"><a href="{{.ForgotPasswordURL}}">Forgot password?</a></p>{{end}}
     {{if .RememberMe}}
-    <label class="check" for="remember-me"><input id="remember-me" name="remember_me" type="checkbox" aria-describedby="remember-me-hint"> Keep me signed in</label>
-    <p class="note" id="remember-me-hint">Stay signed in on this device for up to {{.RememberMeDays}} days. Leave this unchecked on a shared or public computer.</p>
+    <div id="remember">
+      <label class="check" for="remember-me"><input id="remember-me" name="remember_me" type="checkbox" aria-describedby="remember-me-hint"> Keep me signed in</label>
+      <p class="note" id="remember-me-hint">Stay signed in on this device for up to {{.RememberMeDays}} days. Leave this unchecked on a shared or public computer.</p>
+    </div>
     {{end}}
-    <button type="submit">Sign in</button>
-    {{if .Accounts}}<p class="links"><button type="button" id="back-to-accounts">Choose another account</button></p>{{end}}
+    <button type="submit" id="password-submit">Sign in</button>
   </form>
+
+  <section id="passkey-step" hidden>
+    <p class="hint" id="passkey-hint">Use your passkey or security key.</p>
+    <p class="prompt-status" id="passkey-status" role="status" hidden></p>
+    <button type="button" id="passkey-btn">Continue</button>
+  </section>
 
   <form id="code-form" hidden>
     <p class="hint" id="code-hint">Enter the code from your authenticator app.</p>
-    <fieldset id="method-choice" hidden>
-      <legend>Method</legend>
-      <label><input type="radio" name="method" value="totp" checked> Authenticator app</label>
-      <label><input type="radio" name="method" value="backup_code"> Backup code</label>
-    </fieldset>
-    <label for="code">Code</label>
+    <label for="code" id="code-label">Code</label>
     <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" required>
     <button type="submit">Verify</button>
   </form>
 
-  <div id="passkey" hidden>
-    <p class="or"><span>or</span></p>
-    <button type="button" class="secondary" id="passkey-btn">Use a passkey or security key</button>
-  </div>
+  <section id="other-ways" hidden>
+    <p class="hint" id="ways-hint">Choose how you want to sign in:</p>
+    <ul class="ways" id="ways"></ul>
+  </section>
+
+  <p class="links" id="step-links" {{if ne .Mode "login"}}hidden{{end}}>
+    <button type="button" id="try-another" hidden>Try another way</button>
+    {{- if .Accounts}}
+    <button type="button" id="back-to-accounts" hidden>Choose another account</button>
+    {{- end}}
+  </p>
 
   <section id="enroll" {{if ne .Mode "enroll"}}hidden{{end}}>
     <p>This application requires a second factor (authenticator app or passkey), and your account does not have one that it accepts yet.</p>

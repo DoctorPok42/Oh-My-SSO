@@ -194,3 +194,88 @@ func TestDeviceFingerprint(t *testing.T) {
 	require.Equal(t, a, service.DeviceFingerprint("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 	require.NotEqual(t, a, service.DeviceFingerprint("ABCDEFGHIJKLMNOPQRSTUVWXY2"))
 }
+
+// Step 18c: a sign-in with a factor the user has not used in the history
+// window, while they use other ones, is suspicious.
+func TestAnalyzeLogin_NewSignInMethod(t *testing.T) {
+	usual := day0.AddDate(0, 0, 20)
+	withMethod := func(s *domain.Session, method string) *domain.Session {
+		s.MFAVerified, s.MFAMethodType = method != "", method
+		return s
+	}
+	totpHistory := func() []*domain.Session {
+		h := history(15)
+		for _, s := range h {
+			withMethod(s, "totp")
+		}
+		return h
+	}
+
+	t.Run("the usual authenticator app: normal", func(t *testing.T) {
+		a := service.AnalyzeLogin(withMethod(login(usual, "203.0.113.10", "laptop"), "totp"), totpHistory(), fakeGeo{})
+		require.False(t, a.Suspicious())
+		require.Empty(t, a.NewSignInMethod)
+	})
+
+	t.Run("a backup code instead of the usual app: suspicious", func(t *testing.T) {
+		a := service.AnalyzeLogin(withMethod(login(usual, "203.0.113.10", "laptop"), "backup_codes"), totpHistory(), fakeGeo{})
+		require.Equal(t, []string{domain.SuspiciousNewSignInMethod}, a.Reasons)
+		require.Equal(t, "backup_codes", a.NewSignInMethod)
+	})
+
+	t.Run("a security key never seen before: suspicious", func(t *testing.T) {
+		cur := withMethod(login(usual, "203.0.113.10", "laptop"), "webauthn")
+		cur.AuthMethod = domain.AuthMethodHardwareKey // sign-in without password
+		a := service.AnalyzeLogin(cur, totpHistory(), fakeGeo{})
+		require.Equal(t, []string{domain.SuspiciousNewSignInMethod}, a.Reasons)
+	})
+
+	t.Run("used once in the window: normal", func(t *testing.T) {
+		h := totpHistory()
+		withMethod(h[3], "backup_codes")
+		a := service.AnalyzeLogin(withMethod(login(usual, "203.0.113.10", "laptop"), "backup_codes"), h, fakeGeo{})
+		require.False(t, a.Suspicious())
+	})
+
+	t.Run("the first factor of a user who only used a password: normal", func(t *testing.T) {
+		a := service.AnalyzeLogin(withMethod(login(usual, "203.0.113.10", "laptop"), "totp"), history(15), fakeGeo{})
+		require.False(t, a.Suspicious())
+	})
+
+	t.Run("a password alone is not a method change", func(t *testing.T) {
+		a := service.AnalyzeLogin(login(usual, "203.0.113.10", "laptop"), totpHistory(), fakeGeo{})
+		require.False(t, a.Suspicious())
+	})
+
+	t.Run("a factor added recently: its first use is normal", func(t *testing.T) {
+		cur := withMethod(login(usual, "203.0.113.10", "laptop"), "passkey")
+		factors := []*domain.MfaMethod{
+			{Type: domain.MfaMethodTOTP, CreatedAt: day0.AddDate(0, -6, 0)},
+			{Type: domain.MfaMethodPasskey, CreatedAt: usual.AddDate(0, 0, -2)},
+		}
+		a := service.AnalyzeLoginWithFactors(cur, totpHistory(), fakeGeo{}, factors)
+		require.False(t, a.Suspicious())
+
+		factors[1].CreatedAt = usual.AddDate(0, 0, -45)
+		a = service.AnalyzeLoginWithFactors(cur, totpHistory(), fakeGeo{}, factors)
+		require.Equal(t, []string{domain.SuspiciousNewSignInMethod}, a.Reasons, "added 45 days ago, never used: suspicious")
+	})
+
+	t.Run("recorded with the method, e-mail data names it", func(t *testing.T) {
+		hist := &memSessionHistory{}
+		for _, s := range totpHistory() {
+			hist.add(s)
+		}
+		audit, notifier := &fakeAuditRepo{}, &recordingNotifier{}
+		svc := service.NewLoginSecurityService(service.LoginSecurityDeps{
+			Sessions: hist, Audit: audit, Notifier: notifier, GeoIP: fakeGeo{}, Synchronous: true,
+		})
+		svc.SessionCreated(context.Background(), withMethod(login(usual, "203.0.113.10", "laptop"), "backup_codes"))
+		require.Equal(t, []string{"suspicious_login"}, audit.actions())
+		require.Equal(t, domain.AuditLogSuspicious, audit.entries[0].Level)
+		require.Equal(t, "backup_codes", audit.entries[0].Details["sign_in_method"])
+		e := notifier.last()
+		require.Equal(t, []string{domain.SuspiciousNewSignInMethod}, e.SuspiciousReasons)
+		require.Equal(t, domain.MfaMethodBackupCodes, e.MfaMethodType)
+	})
+}

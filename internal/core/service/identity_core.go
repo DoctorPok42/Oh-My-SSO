@@ -172,11 +172,32 @@ func (s *IdentityCoreService) Logout(ctx context.Context, req core.LogoutRequest
 }
 
 func (s *IdentityCoreService) KnownAccounts(ctx context.Context, q core.AccountQuery) ([]core.Account, error) {
-	if s.accounts == nil {
+	accounts := s.accounts
+	if accounts == nil {
 		q.DeviceID = "" // nothing remembered: only the current account
-		return NewKnownAccountService(KnownAccountDeps{Users: s.users, Logger: s.logger}).List(ctx, q)
+		accounts = NewKnownAccountService(KnownAccountDeps{Users: s.users, Logger: s.logger})
 	}
-	return s.accounts.List(ctx, q)
+	if s.mfa == nil {
+		return accounts.List(ctx, q)
+	}
+	// Each tile starts with the best method of its account for this
+	// application (Step 18c).
+	var client *domain.ClientApp
+	if q.ClientRef != "" {
+		c, err := s.clients.GetByID(ctx, q.ClientRef)
+		if err != nil {
+			return nil, fmt.Errorf("known accounts: client: %w", err)
+		}
+		client = c
+	}
+	return accounts.ListWithMethods(ctx, q, func(ctx context.Context, u *domain.User) []core.SignInMethod {
+		m, err := s.mfa.SignInMethods(ctx, u, client)
+		if err != nil {
+			s.logger.WarnContext(ctx, "known accounts: sign-in methods", "user_id", u.ID, "error", err)
+			return nil // password only
+		}
+		return m
+	})
 }
 
 func (s *IdentityCoreService) SessionAccount(ctx context.Context, sessionID string) (*core.Account, error) {

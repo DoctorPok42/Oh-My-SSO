@@ -187,7 +187,7 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, p *pending
 	}
 	page.RememberMe, page.RememberMeDays = loginui.RememberMeOffer(a.core.SessionOptions(r.Context(), realm.ID))
 	if mode == "login" {
-		page.LoginHint, page.Accounts = a.signInChoices(r, realm)
+		page.LoginHint, page.Accounts = a.signInChoices(r, realm, app.ID)
 		if len(page.Accounts) > 0 {
 			page.Mode = "pick"
 		}
@@ -197,7 +197,7 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, p *pending
 
 // signInChoices: with a session (ForceAuthn), its account pre-filled;
 // without one, the accounts remembered on this device ("Pick an account").
-func (a *Adapter) signInChoices(r *http.Request, realm Realm) (string, []loginui.Account) {
+func (a *Adapter) signInChoices(r *http.Request, realm Realm, clientRef string) (string, []loginui.Account) {
 	ctx := r.Context()
 	if sess := a.currentSession(r, realm); sess != nil {
 		if acc, err := a.core.SessionAccount(ctx, sess.ID); err == nil {
@@ -209,7 +209,7 @@ func (a *Adapter) signInChoices(r *http.Request, realm Realm) (string, []loginui
 	if c, err := r.Cookie(a.cfg.DeviceCookieName); err == nil {
 		device = c.Value
 	}
-	accounts, err := a.core.KnownAccounts(ctx, core.AccountQuery{RealmID: realm.ID, DeviceID: device})
+	accounts, err := a.core.KnownAccounts(ctx, core.AccountQuery{RealmID: realm.ID, DeviceID: device, ClientRef: clientRef})
 	if err != nil {
 		a.logger.WarnContext(ctx, "saml: known accounts", "error", err)
 		return "", nil

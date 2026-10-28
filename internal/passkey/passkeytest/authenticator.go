@@ -39,6 +39,10 @@ type Authenticator struct {
 	// Discoverable: honour residentKey requests and report credProps.rk.
 	// Default true. Set false to mimic an old security key.
 	Discoverable bool
+	// IgnoreUserVerification: with UserVerification false, still answer a
+	// request that requires it (a broken or tampered client). The UV flag
+	// stays off: the server must refuse the answer.
+	IgnoreUserVerification bool
 }
 
 type credential struct {
@@ -217,7 +221,7 @@ func (a *Authenticator) Get(optionsJSON []byte) ([]byte, error) {
 	if c == nil {
 		return nil, errors.New("passkeytest: NotAllowedError: no matching credential on this authenticator")
 	}
-	if pk.UserVerification == "required" && !a.UserVerification {
+	if pk.UserVerification == "required" && !a.UserVerification && !a.IgnoreUserVerification {
 		return nil, errors.New("passkeytest: NotAllowedError: user verification required but not available")
 	}
 

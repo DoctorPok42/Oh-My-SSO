@@ -85,7 +85,23 @@ type Account struct {
 	Identifier string
 	// SignedIn: the browser's current session belongs to this account.
 	SignedIn bool
+	// Methods: how this account can sign in to the application, best first.
+	// A click on the tile starts Methods[0]; the others are behind "Try
+	// another way". Empty for the signed-in account (it goes on with its
+	// session).
+	Methods []SignInMethod
 }
+
+// SignInMethod is a first step of a sign-in.
+type SignInMethod string
+
+const (
+	// SignInPasskey: a passkey or a security key with user verification
+	// (biometrics or PIN), without password. It counts as two factors.
+	SignInPasskey SignInMethod = "passkey"
+	// SignInPassword: the password, then a second factor when needed.
+	SignInPassword SignInMethod = "password"
+)
 
 // AccountQuery asks for the accounts to show on a device.
 type AccountQuery struct {
@@ -96,6 +112,9 @@ type AccountQuery struct {
 	// Current is the browser's valid session, or nil. Its account comes
 	// first, signed in, even when it is not remembered.
 	Current *domain.Session
+	// ClientRef is the ClientApp.ID of the application the sign-in is for:
+	// its MFA policy decides which methods each tile offers.
+	ClientRef string
 }
 
 // LogoutRequest ends a session at the user's request, and records it in the

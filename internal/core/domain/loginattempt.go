@@ -20,6 +20,11 @@ const (
 	LoginFailureAccessDenied       LoginAttemptFailureReason = "access_denied"
 )
 
+// LoginFailurePasskeyRejected: a sign-in without password whose passkey or
+// security key answer was refused (bad signature, no user verification,
+// cloned authenticator...).
+const LoginFailurePasskeyRejected LoginAttemptFailureReason = "passkey_rejected"
+
 type LoginAttempt struct {
 	ID            string
 	RealmID       string

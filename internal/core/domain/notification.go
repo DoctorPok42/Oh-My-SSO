@@ -44,6 +44,9 @@ const (
 	SuspiciousNewCountry          = "new_country"            // country never seen for this user
 	SuspiciousUnusualHour         = "unusual_hour"           // far from the user's usual sign-in hours
 	SuspiciousNewNetworkAndDevice = "new_network_and_device" // unknown browser on an unknown network
+	// SuspiciousNewSignInMethod: a second factor (or a passkey sign-in)
+	// the user has not used for a long time, while they use other ones.
+	SuspiciousNewSignInMethod = "new_sign_in_method"
 )
 
 // NotificationEvent is what the core hands to the notification dispatcher.
@@ -62,7 +65,8 @@ type NotificationEvent struct {
 	// password_reset: when the link expires. account_locked: when the lock ends.
 	ExpiresAt time.Time
 
-	// mfa_method_added / mfa_method_removed.
+	// mfa_method_added / mfa_method_removed. suspicious_login: the method
+	// of the sign-in, when it is the reason (SuspiciousNewSignInMethod).
 	MfaMethodType MfaMethodType
 	MfaMethodName string
 

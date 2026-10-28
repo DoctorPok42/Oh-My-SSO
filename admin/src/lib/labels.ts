@@ -16,7 +16,7 @@ export const AUTH_METHOD_LABELS: Record<string, string> = {
   pwd: "Password",
   otp: "Password + code",
   mfa: "Multi-factor",
-  hwk: "Security key",
+  hwk: "Passkey or security key",
   swk: "Passkey",
   sms: "SMS",
 };

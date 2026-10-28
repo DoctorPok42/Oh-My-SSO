@@ -32,6 +32,7 @@ import (
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/httpserver"
 	localdev "sso.internal/sso/internal/keymanager/local_dev"
+	"sso.internal/sso/internal/passkey"
 	"sso.internal/sso/internal/storage/entstore"
 )
 
@@ -124,13 +125,19 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 		Settings: settings, Clients: clients, Roles: entstore.NewRoleRepository(client),
 		Policies: entstore.NewMfaPolicyRepository(client), Access: access, Audit: audit, Now: clock.Now,
 	})
+	// Passkeys (Step 18c): the software authenticator answers from this origin.
+	passkeys, err := passkey.New(passkey.Config{RPID: "sso.test", RPOrigins: []string{passkeyTestOrigin}})
+	require.NoError(t, err)
 	mfa := service.NewMFAService(service.MFADeps{
 		Users: users, Methods: entstore.NewMfaMethodRepository(client), BackupCodes: entstore.NewMfaBackupCodeRepository(client),
 		Sessions: sessions, Policy: policy, Envelope: service.NewEnvelopeService(signingKeys, km, "local_dev"),
 		Store: valkeycache.NewMFAStore(valkeyClient), Limiter: limiter, LoginAttempts: attempts, Audit: audit,
-		Realms: realms, Clients: clients, Now: clock.Now,
+		Realms: realms, Clients: clients, Passkeys: passkeys, Now: clock.Now,
 	})
-	auth := service.NewAuthService(users, attempts)
+	lockout := service.NewLockoutService(service.LockoutDeps{
+		Users: users, Unknown: valkeycache.NewLockoutStore(valkeyClient), Settings: settings, Audit: audit, Now: clock.Now,
+	})
+	auth := service.NewAuthService(users, attempts, service.WithLockout(lockout))
 	rbac := service.NewRBACService(access, audit)
 	consent := service.NewConsentService(service.ConsentDeps{
 		Consents: entstore.NewConsentRepository(client), Clients: clients, Sessions: sessions,
@@ -150,6 +157,7 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 		PublicURL:         ts.URL,
 		SessionCookieName: httpserver.SessionCookieName,
 		DeviceCookieName:  httpserver.DeviceCookieName,
+		PasskeysEnabled:   true,
 		Now:               clock.Now,
 	}, idp, valkeycache.NewOIDCStore(valkeyClient))
 	require.NoError(t, err)
