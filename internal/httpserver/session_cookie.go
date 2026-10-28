@@ -111,6 +111,52 @@ func mfaChallengeTokenFromRequest(r *http.Request) string {
 }
 
 
+// passkeyCeremonyCookieName holds the token of a sign-in without password
+// (Step 18c) between POST /auth/passkey/options and /verify.
+const passkeyCeremonyCookieName = "sso_passkey"
+
+func passkeyCeremonyCookiePath(realmName string) string {
+	return "/r/" + realmName + "/auth/passkey"
+}
+
+func setPasskeyCeremonyCookie(w http.ResponseWriter, realmName, rawToken string, expiresAt time.Time) {
+	maxAge := int(time.Until(expiresAt).Seconds())
+	if maxAge < 1 {
+		maxAge = 1
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     passkeyCeremonyCookieName,
+		Value:    rawToken,
+		Path:     passkeyCeremonyCookiePath(realmName),
+		Expires:  expiresAt,
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		Secure:   true,
+		// Strict: both calls come from our own sign-in page.
+		SameSite: http.SameSiteStrictMode,
+	})
+}
+
+func clearPasskeyCeremonyCookie(w http.ResponseWriter, realmName string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     passkeyCeremonyCookieName,
+		Value:    "",
+		Path:     passkeyCeremonyCookiePath(realmName),
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
+}
+
+func passkeyCeremonyTokenFromRequest(r *http.Request) string {
+	c, err := r.Cookie(passkeyCeremonyCookieName)
+	if err != nil {
+		return ""
+	}
+	return c.Value
+}
+
 // DeviceCookieName is the cookie that identifies a browser in a realm (new
 // device alerts, "Pick an account"). The adapters read it to list the
 // accounts remembered on the device.

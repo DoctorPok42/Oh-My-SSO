@@ -19,7 +19,7 @@ type PasskeyKind string
 const (
 	// PasskeyKindPasskey: discoverable credential ("resident key") with user
 	// verification (biometrics or device PIN). Stored as type "passkey". It
-	// will also allow a passwordless login once authentication flows exist.
+	// also signs in without password (Step 18c, passwordless.go).
 	PasskeyKindPasskey PasskeyKind = "passkey"
 	// PasskeyKindSecurityKey: classic WebAuthn second factor (e.g. a YubiKey),
 	// not discoverable. Stored as type "webauthn".
@@ -54,7 +54,21 @@ type PasskeyProvider interface {
 	// BeginLogin: only the given credentials may answer.
 	BeginLogin(user *domain.User, credentials []*domain.MfaMethod) (options, state []byte, err error)
 	FinishLogin(user *domain.User, credentials []*domain.MfaMethod, state, response []byte) (*PasskeyAssertion, error)
+
+	// BeginPasswordlessLogin: a sign-in without password, user verification
+	// required. user nil: any discoverable passkey may answer (the
+	// authenticator tells whose it is); else only the given credentials.
+	BeginPasswordlessLogin(user *domain.User, credentials []*domain.MfaMethod) (options, state []byte, err error)
+	// FinishPasswordlessLogin verifies the answer. owner gives the user a
+	// credential belongs to and the credentials that may answer.
+	FinishPasswordlessLogin(state, response []byte, owner PasskeyOwnerFunc) (*domain.User, *PasskeyAssertion, error)
 }
+
+// PasskeyOwnerFunc loads the user of a sign-in without password, from the
+// user id of the options or the user handle of the authenticator (both are
+// User.ID), with the credentials that may answer. An error refuses the
+// answer.
+type PasskeyOwnerFunc func(userID string) (*domain.User, []*domain.MfaMethod, error)
 
 // NewPasskey is a verified registration, ready to store.
 type NewPasskey struct {
@@ -380,20 +394,27 @@ func (s *MFAService) verifyAssertion(ctx context.Context, user *domain.User, all
 		return nil, ErrInvalidMFACode
 	}
 	if a.CloneWarning {
-		if s.audit != nil {
-			_, _ = s.audit.Create(ctx, repository.CreateAuditLogParams{
-				RealmID: user.RealmID, UserID: user.ID, Action: "mfa_passkey_clone_warning",
-				ResourceType: "MfaMethod", ResourceID: m.ID,
-				Level: domain.AuditLogCritical, Status: domain.AuditLogFailure,
-				Details: map[string]interface{}{"type": string(m.Type)},
-			})
-		}
+		s.auditCloneWarning(ctx, user, m)
 		return nil, ErrInvalidMFACode
 	}
 	if err := s.methods.UpdateWebAuthnCredential(ctx, m.ID, a.CredentialJSON, s.now()); err != nil {
 		return nil, fmt.Errorf("passkey: store credential: %w", err)
 	}
 	return m, nil
+}
+
+// auditCloneWarning records a signature counter that went backwards: two
+// copies of the private key may exist.
+func (s *MFAService) auditCloneWarning(ctx context.Context, user *domain.User, m *domain.MfaMethod) {
+	if s.audit == nil {
+		return
+	}
+	_, _ = s.audit.Create(ctx, repository.CreateAuditLogParams{
+		RealmID: user.RealmID, UserID: user.ID, Action: "mfa_passkey_clone_warning",
+		ResourceType: "MfaMethod", ResourceID: m.ID,
+		Level: domain.AuditLogCritical, Status: domain.AuditLogFailure,
+		Details: map[string]interface{}{"type": string(m.Type)},
+	})
 }
 
 // webAuthnFactors returns the user's active passkeys / security keys,

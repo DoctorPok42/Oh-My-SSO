@@ -364,6 +364,13 @@ func (s *Server) writeMFAError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusConflict, "already_registered")
 	case errors.Is(err, service.ErrUnknownPasskeyKind):
 		writeError(w, http.StatusBadRequest, "invalid_request")
+	case errors.Is(err, service.ErrNoPasskeyForSignIn):
+		writeError(w, http.StatusConflict, "passkey_unavailable")
+	case errors.Is(err, service.ErrPasskeySignInFailed),
+		errors.Is(err, service.ErrAccountNotActive),
+		errors.Is(err, service.ErrTimeoutActive):
+		// One answer for all three, like a wrong password.
+		writeError(w, http.StatusUnauthorized, "passkey_rejected")
 	default:
 		writeError(w, http.StatusInternalServerError, "internal_error")
 	}

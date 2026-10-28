@@ -203,7 +203,7 @@ func TestKnownAccounts_List(t *testing.T) {
 		f.signIn(bobID, deviceA, true)
 		got := f.list(t, deviceA, nil)
 		require.Equal(t, core.Account{ID: got[1].ID, Name: "Alice Martin", Email: "alice@example.com", Username: "alice",
-			Identifier: "alice@example.com"}, got[1])
+			Identifier: "alice@example.com", Methods: []core.SignInMethod{core.SignInPassword}}, got[1])
 		require.Equal(t, "bob", got[0].Identifier, "no e-mail: the username")
 		require.NotEmpty(t, got[0].ID)
 	})

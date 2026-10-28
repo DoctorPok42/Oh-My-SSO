@@ -26,6 +26,10 @@ const (
 	usualHourMargin     = 2 // hours on each side
 )
 
+// newMethodGrace: a factor added less than this ago is expected to be used
+// for the first time soon (the user just set it up), not suspicious.
+const newMethodGrace = 30 * 24 * time.Hour
+
 // LoginAnalysis is the verdict on one sign-in.
 type LoginAnalysis struct {
 	FirstLogin  bool // nothing to compare with
@@ -33,6 +37,9 @@ type LoginAnalysis struct {
 	NewNetwork  bool
 	CountryCode string
 	CountryName string
+	// NewSignInMethod: the factor type of this sign-in when the user has not
+	// used it in the history window while using other ones (Step 18c).
+	NewSignInMethod string
 	// Reasons it looks suspicious (domain.Suspicious*); empty = normal.
 	Reasons []string
 }
@@ -43,6 +50,7 @@ func (a LoginAnalysis) Suspicious() bool { return len(a.Reasons) > 0 }
 // LoginSecurityService implements LoginObserver.
 type LoginSecurityService struct {
 	sessions repository.SessionRepository
+	methods  repository.MfaMethodRepository
 	audit    repository.AuditLogRepository
 	notifier Notifier
 	geo      GeoIPResolver
@@ -54,6 +62,9 @@ type LoginSecurityService struct {
 // LoginSecurityDeps groups the dependencies of NewLoginSecurityService.
 type LoginSecurityDeps struct {
 	Sessions repository.SessionRepository
+	// Methods (optional): the user's factors, so that the first use of a
+	// newly added one is not "a sign-in method never used".
+	Methods  repository.MfaMethodRepository
 	Audit    repository.AuditLogRepository // optional
 	Notifier Notifier                      // optional
 	GeoIP    GeoIPResolver                 // optional: no "new country" signal without it
@@ -66,6 +77,7 @@ type LoginSecurityDeps struct {
 func NewLoginSecurityService(d LoginSecurityDeps) *LoginSecurityService {
 	s := &LoginSecurityService{
 		sessions: d.Sessions,
+		methods:  d.Methods,
 		audit:    d.Audit,
 		notifier: d.Notifier,
 		geo:      d.GeoIP,
@@ -112,7 +124,13 @@ func (s *LoginSecurityService) Analyze(ctx context.Context, sess *domain.Session
 	if err != nil {
 		return LoginAnalysis{}, fmt.Errorf("login analysis: history: %w", err)
 	}
-	a := AnalyzeLogin(sess, history, s.geo)
+	var factors []*domain.MfaMethod
+	if s.methods != nil && signInMethod(sess) != "" {
+		if factors, err = s.methods.ListByUser(ctx, sess.UserID); err != nil {
+			return LoginAnalysis{}, fmt.Errorf("login analysis: factors: %w", err)
+		}
+	}
+	a := AnalyzeLoginWithFactors(sess, history, s.geo, factors)
 	s.record(ctx, sess, a)
 	return a, nil
 }
@@ -147,6 +165,9 @@ func (s *LoginSecurityService) record(ctx context.Context, sess *domain.Session,
 			// A long-lived session on an unusual device is worth knowing about.
 			details["remember_me"] = true
 		}
+		if a.NewSignInMethod != "" {
+			details["sign_in_method"] = a.NewSignInMethod
+		}
 		_, _ = s.audit.Create(ctx, repository.CreateAuditLogParams{
 			RealmID:      sess.RealmID,
 			UserID:       sess.UserID,
@@ -172,12 +193,20 @@ func (s *LoginSecurityService) record(ctx context.Context, sess *domain.Session,
 		CountryName:       a.CountryName,
 		SuspiciousReasons: a.Reasons,
 		NewDevice:         a.NewDevice,
+		MfaMethodType:     domain.MfaMethodType(a.NewSignInMethod),
 	})
 }
 
 // AnalyzeLogin is the pure decision: cur against the user's past sessions
 // (cur itself may be in history, it is skipped). geo may be nil.
 func AnalyzeLogin(cur *domain.Session, history []*domain.Session, geo GeoIPResolver) LoginAnalysis {
+	return AnalyzeLoginWithFactors(cur, history, geo, nil)
+}
+
+// AnalyzeLoginWithFactors is AnalyzeLogin knowing the user's factors (their
+// creation dates): a factor added less than newMethodGrace ago may be used
+// for the first time without being suspicious. factors may be nil.
+func AnalyzeLoginWithFactors(cur *domain.Session, history []*domain.Session, geo GeoIPResolver, factors []*domain.MfaMethod) LoginAnalysis {
 	var a LoginAnalysis
 	if geo != nil {
 		a.CountryCode, a.CountryName, _ = geo.Country(cur.IPAddress)
@@ -248,7 +277,54 @@ func AnalyzeLogin(cur *domain.Session, history []*domain.Session, geo GeoIPResol
 	if a.NewDevice && a.NewNetwork {
 		a.Reasons = append(a.Reasons, domain.SuspiciousNewNetworkAndDevice)
 	}
+
+	if isNewSignInMethod(cur, past, factors) {
+		a.NewSignInMethod = signInMethod(cur)
+		a.Reasons = append(a.Reasons, domain.SuspiciousNewSignInMethod)
+	}
 	return a
+}
+
+// signInMethod is the factor that proved a sign-in besides the password, or
+// the passkey of a sign-in without password ("" for a password alone). A
+// step-up updates it on the stored session: a factor used for a step-up
+// counts as used.
+func signInMethod(s *domain.Session) string {
+	if !s.MFAVerified {
+		return ""
+	}
+	return s.MFAMethodType
+}
+
+// isNewSignInMethod: cur uses a factor type that none of the past sessions
+// used, while some of them used another factor. The user suddenly signs in
+// another way: a backup code instead of the usual authenticator app, a
+// security key nobody saw before... A user whose history has no factor at
+// all (their first one) and a factor added recently are not suspicious.
+func isNewSignInMethod(cur *domain.Session, past []*domain.Session, factors []*domain.MfaMethod) bool {
+	m := signInMethod(cur)
+	if m == "" {
+		return false
+	}
+	usesFactors := false
+	for _, p := range past {
+		pm := signInMethod(p)
+		if pm == m {
+			return false
+		}
+		if pm != "" {
+			usesFactors = true
+		}
+	}
+	if !usesFactors {
+		return false
+	}
+	for _, f := range factors {
+		if string(f.Type) == m && cur.CreatedAt.Sub(f.CreatedAt) < newMethodGrace {
+			return false
+		}
+	}
+	return true
 }
 
 // ipNetwork groups addresses the way they are usually handed out: an IPv4

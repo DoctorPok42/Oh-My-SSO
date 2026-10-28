@@ -118,8 +118,10 @@ func BuildCore() *Core {
 		service.WithLockout(c.Lockout),
 	)
 
+	mfaMethods := entstore.NewMfaMethodRepository(client)
 	loginSecurity := service.NewLoginSecurityService(service.LoginSecurityDeps{
 		Sessions: sessionRepo,
+		Methods:  mfaMethods,
 		Audit:    c.Audit,
 		Notifier: c.Notifier,
 		GeoIP:    GeoIP(),
@@ -165,7 +167,7 @@ func BuildCore() *Core {
 	})
 	c.MFA = service.NewMFAService(service.MFADeps{
 		Users:         c.Users,
-		Methods:       entstore.NewMfaMethodRepository(client),
+		Methods:       mfaMethods,
 		BackupCodes:   entstore.NewMfaBackupCodeRepository(client),
 		Sessions:      c.Sessions,
 		Policy:        c.MFAPolicy,
@@ -178,6 +180,7 @@ func BuildCore() *Core {
 		Clients:       c.Clients,
 		Passkeys:      Passkeys(),
 		Notifier:      c.Notifier,
+		Timeouts:      c.Timeouts,
 		IssuerName:    os.Getenv("MFA_TOTP_ISSUER"),
 	})
 

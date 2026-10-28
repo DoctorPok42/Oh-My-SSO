@@ -82,6 +82,9 @@ type Account struct {
 	Identifier string // pre-fills the username field
 	Initials   string
 	SignedIn   bool
+	// Methods: the sign-in methods of the account, best first, comma
+	// separated ("passkey,password"). A click on the tile starts the first.
+	Methods string
 }
 
 // AccountsFrom turns the core's accounts into tiles.
@@ -95,9 +98,14 @@ func AccountsFrom(in []core.Account) []Account {
 		if label == a.Name {
 			label = ""
 		}
+		methods := make([]string, 0, len(a.Methods))
+		for _, m := range a.Methods {
+			methods = append(methods, string(m))
+		}
 		out = append(out, Account{
 			ID: a.ID, Name: a.Name, Label: label, Identifier: a.Identifier,
 			Initials: initials(a.Name), SignedIn: a.SignedIn,
+			Methods: strings.Join(methods, ","),
 		})
 	}
 	return out

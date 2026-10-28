@@ -69,6 +69,17 @@ func (s *KnownAccountService) SessionCreated(ctx context.Context, sess *domain.S
 
 // List returns the accounts to show on a device (core.IdentityCore.KnownAccounts).
 func (s *KnownAccountService) List(ctx context.Context, q core.AccountQuery) ([]core.Account, error) {
+	return s.ListWithMethods(ctx, q, nil)
+}
+
+// SignInMethodsFunc orders the sign-in methods of a user (MFAService.SignInMethods
+// for the application of the query).
+type SignInMethodsFunc func(ctx context.Context, u *domain.User) []core.SignInMethod
+
+// ListWithMethods is List with core.Account.Methods filled for every
+// signed-out account (the signed-in one goes on with its session). methods
+// nil: password only.
+func (s *KnownAccountService) ListWithMethods(ctx context.Context, q core.AccountQuery, methods SignInMethodsFunc) ([]core.Account, error) {
 	var out []core.Account
 	currentUser := ""
 	if q.Current != nil && q.Current.RealmID == q.RealmID {
@@ -99,9 +110,41 @@ func (s *KnownAccountService) List(ctx context.Context, q core.AccountQuery) ([]
 		}
 		acc := AccountOf(u)
 		acc.ID = row.ID
+		acc.Methods = []core.SignInMethod{core.SignInPassword}
+		if methods != nil {
+			if m := methods(ctx, u); len(m) > 0 {
+				acc.Methods = m
+			}
+		}
 		out = append(out, acc)
 	}
 	return out, nil
+}
+
+// Resolve returns a remembered account of a device, for the passkey of its
+// tile. Like Forget, only the device that shows it can use it: an id from
+// another device (or realm) is ErrKnownAccountNotFound.
+func (s *KnownAccountService) Resolve(ctx context.Context, realmID, deviceID, accountID string) (*domain.KnownAccount, error) {
+	return s.owned(ctx, realmID, deviceID, accountID)
+}
+
+// owned loads a known account of this device and realm.
+func (s *KnownAccountService) owned(ctx context.Context, realmID, deviceID, accountID string) (*domain.KnownAccount, error) {
+	hash := deviceHash(deviceID)
+	if hash == "" || accountID == "" {
+		return nil, ErrKnownAccountNotFound
+	}
+	row, err := s.accounts.GetByID(ctx, accountID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, ErrKnownAccountNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("known accounts: %w", err)
+	}
+	if row.RealmID != realmID || row.DeviceHash != hash {
+		return nil, ErrKnownAccountNotFound
+	}
+	return row, nil
 }
 
 // ForgetInput: "Forget" on a tile.
@@ -118,19 +161,9 @@ type ForgetAccountInput struct {
 // ErrKnownAccountNotFound, like an unknown one. The caller signs the
 // account out too when it is the browser's current one.
 func (s *KnownAccountService) Forget(ctx context.Context, in ForgetAccountInput) (*domain.KnownAccount, error) {
-	hash := deviceHash(in.DeviceID)
-	if hash == "" || in.AccountID == "" {
-		return nil, ErrKnownAccountNotFound
-	}
-	row, err := s.accounts.GetByID(ctx, in.AccountID)
-	if errors.Is(err, repository.ErrNotFound) {
-		return nil, ErrKnownAccountNotFound
-	}
+	row, err := s.owned(ctx, in.RealmID, in.DeviceID, in.AccountID)
 	if err != nil {
-		return nil, fmt.Errorf("known accounts: forget: %w", err)
-	}
-	if row.RealmID != in.RealmID || row.DeviceHash != hash {
-		return nil, ErrKnownAccountNotFound
+		return nil, err
 	}
 	if err := s.accounts.Delete(ctx, row.ID); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {

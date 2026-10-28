@@ -24,7 +24,7 @@ type LoginChallenge struct {
 }
 
 type Ceremony struct {
-	Purpose     string          `json:"p"` // "register", "login" or "step_up"
+	Purpose     string          `json:"p"` // "register", "login", "step_up" or "passwordless"
 	RealmID     string          `json:"rid"`
 	UserID      string          `json:"uid"`
 	SessionData json.RawMessage `json:"sd"`
@@ -34,6 +34,10 @@ type Ceremony struct {
 	// Login / step-up: which factor types may answer.
 	Methods   []string  `json:"m,omitempty"`
 	ExpiresAt time.Time `json:"exp"`
+	// Sign-in without password only ("passwordless"). UserID is then empty
+	// when the authenticator itself tells who signs in (discoverable
+	// passkey). ClientRef: the application the sign-in is for.
+	ClientRef string `json:"cref,omitempty"`
 }
 
 // Store is implemented by Valkey (production) and Memory (tests).

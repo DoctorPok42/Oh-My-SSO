@@ -288,7 +288,7 @@ func (d *Dispatcher) data(e domain.NotificationEvent, user *domain.User, realm *
 		out.FailedAttempts = e.FailedAttempts
 	case domain.NotificationSuspiciousLogin:
 		for _, r := range e.SuspiciousReasons {
-			out.Reasons = append(out.Reasons, reasonText(r, out.Location))
+			out.Reasons = append(out.Reasons, reasonText(r, out.Location, e.MfaMethodType))
 		}
 	case domain.NotificationAppConnected:
 		out.AppName = e.ClientName
@@ -354,8 +354,13 @@ func methodLabel(t domain.MfaMethodType) string {
 	}
 }
 
-func reasonText(reason, location string) string {
+func reasonText(reason, location string, method domain.MfaMethodType) string {
 	switch reason {
+	case domain.SuspiciousNewSignInMethod:
+		if method != "" {
+			return "it used a sign-in method you have not used recently (" + methodLabel(method) + ")"
+		}
+		return "it used a sign-in method you have not used recently"
 	case domain.SuspiciousNewCountry:
 		if location != "" {
 			return "it came from a country you have not signed in from before (" + location + ")"

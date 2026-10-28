@@ -103,6 +103,7 @@ type MFAService struct {
 	clients       repository.ClientRepository       // optional: client of a challenge
 	passkeys      PasskeyProvider
 	notifier      Notifier
+	timeouts      TimeoutChecker
 	issuerName    string                            // optional override
 	now           func() time.Time
 	logger        *slog.Logger
@@ -126,6 +127,9 @@ type MFADeps struct {
 	// security keys are disabled.
 	Passkeys PasskeyProvider
 	Notifier Notifier
+	// Timeouts is checked by the sign-in without password, like
+	// AuthenticateLocal does after a password. nil: NoActiveTimeouts.
+	Timeouts TimeoutChecker
 	// IssuerName overrides the name shown in authenticator apps
 	// (default: the realm display name, or "Oh-My-SSO (<realm>)").
 	IssuerName string
@@ -149,12 +153,16 @@ func NewMFAService(d MFADeps) *MFAService {
 		clients:       d.Clients,
 		passkeys:      d.Passkeys,
 		notifier:      d.Notifier,
+		timeouts:      d.Timeouts,
 		issuerName:    d.IssuerName,
 		now:           d.Now,
 		logger:        d.Logger,
 	}
 	if s.now == nil {
 		s.now = time.Now
+	}
+	if s.timeouts == nil {
+		s.timeouts = NoActiveTimeouts{}
 	}
 	if s.logger == nil {
 		s.logger = slog.Default()
@@ -785,8 +793,9 @@ func (s *MFAService) activeFactors(ctx context.Context, userID string) ([]*domai
 }
 
 // answerableMethods lists the method types the user can answer a challenge
-// with right now, in a stable order. Backup codes count only next to a real
-// factor (even one this server cannot verify) and when some are left.
+// with right now, best first (methodPriority, then backup codes): the
+// sign-in page starts with the first one. Backup codes count only next to a
+// real factor (even one this server cannot verify) and when some are left.
 func (s *MFAService) answerableMethods(ctx context.Context, userID string) ([]domain.MfaMethodType, error) {
 	factors, err := s.activeFactors(ctx, userID)
 	if err != nil {
@@ -798,7 +807,7 @@ func (s *MFAService) answerableMethods(ctx context.Context, userID string) ([]do
 // answerableFrom is answerableMethods with the active factors already loaded.
 func (s *MFAService) answerableFrom(ctx context.Context, userID string, factors []*domain.MfaMethod) ([]domain.MfaMethodType, error) {
 	var out []domain.MfaMethodType
-	for _, t := range []domain.MfaMethodType{domain.MfaMethodTOTP, domain.MfaMethodPasskey, domain.MfaMethodWebAuthn} {
+	for _, t := range methodPriority {
 		if hasType(factors, t) && s.canVerify(t) {
 			out = append(out, t)
 		}

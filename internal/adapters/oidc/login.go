@@ -246,7 +246,7 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, ar *authRe
 	page := a.loginPage(r, ar, pc, mode, allowed)
 	if mode == "login" {
 		realm, _ := realmFrom(r.Context())
-		page.LoginHint, page.Accounts = a.signInChoices(r, realm, ar.LoginHint)
+		page.LoginHint, page.Accounts = a.signInChoices(r, realm, ar.LoginHint, pc.App.ID)
 		if len(page.Accounts) > 0 {
 			page.Mode = "pick"
 		}
@@ -261,7 +261,7 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, ar *authRe
 //   - Else, with a login_hint: that hint, as before.
 //   - Else: the accounts remembered on this device ("Pick an account"),
 //     none of them signed in.
-func (a *Adapter) signInChoices(r *http.Request, realm Realm, loginHint string) (string, []loginui.Account) {
+func (a *Adapter) signInChoices(r *http.Request, realm Realm, loginHint, clientRef string) (string, []loginui.Account) {
 	ctx := r.Context()
 	if sess := a.currentSession(r, realm); sess != nil {
 		if loginHint == "" {
@@ -274,7 +274,7 @@ func (a *Adapter) signInChoices(r *http.Request, realm Realm, loginHint string) 
 	if loginHint != "" {
 		return loginHint, nil
 	}
-	accounts, err := a.core.KnownAccounts(ctx, core.AccountQuery{RealmID: realm.ID, DeviceID: a.deviceID(r)})
+	accounts, err := a.core.KnownAccounts(ctx, core.AccountQuery{RealmID: realm.ID, DeviceID: a.deviceID(r), ClientRef: clientRef})
 	if err != nil {
 		a.logger.WarnContext(ctx, "oidc: known accounts", "error", err)
 		return "", nil
@@ -288,7 +288,7 @@ func (a *Adapter) signInChoices(r *http.Request, realm Realm, loginHint string) 
 func (a *Adapter) renderPicker(w http.ResponseWriter, r *http.Request, ar *authRequest, pc *core.ProtocolClient, sess *domain.Session) {
 	ctx := r.Context()
 	realm, _ := realmFrom(ctx)
-	accounts, err := a.core.KnownAccounts(ctx, core.AccountQuery{RealmID: realm.ID, DeviceID: a.deviceID(r), Current: sess})
+	accounts, err := a.core.KnownAccounts(ctx, core.AccountQuery{RealmID: realm.ID, DeviceID: a.deviceID(r), Current: sess, ClientRef: pc.App.ID})
 	if err != nil {
 		a.logger.ErrorContext(ctx, "oidc: known accounts", "error", err)
 		a.authError(w, r, ar, oidc.ErrServerError())

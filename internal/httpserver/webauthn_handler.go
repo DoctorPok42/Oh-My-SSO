@@ -2,12 +2,14 @@ package httpserver
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/ratelimit"
 )
 
 
@@ -23,6 +25,13 @@ func (s *Server) mountWebAuthn(r chi.Router) {
 		r.Use(requireJSON)
 		r.Post("/options", s.handlePasskeyLoginOptions)
 		r.Post("/verify", s.handlePasskeyLoginVerify)
+	})
+	// Sign-in without password (Step 18c): a passkey or a security key with
+	// user verification replaces the password and the second factor.
+	r.Route("/auth/passkey", func(r chi.Router) {
+		r.Use(requireJSON)
+		r.Post("/options", s.handlePasskeySignInOptions)
+		r.Post("/verify", s.handlePasskeySignInVerify)
 	})
 	r.Route("/auth/step-up/webauthn", func(r chi.Router) {
 		r.Use(s.requireSession, requireJSON)
@@ -136,6 +145,133 @@ func (s *Server) handlePasskeyRegisterVerify(w http.ResponseWriter, r *http.Requ
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, enrollmentResponse{Method: toMFAMethodView(res.Method), BackupCodes: res.BackupCodes})
+}
+
+const (
+	routeAuthPasskeyOptions = "auth.passkey.options"
+	// passkeyOptionsPerIP: each call stores a ceremony for 5 minutes.
+	passkeyOptionsPerIP = 30
+)
+
+// passkeySignInOptionsRequest. AccountID: the tile of "Pick an account"
+// (only this device's tiles); empty: any passkey of the browser.
+type passkeySignInOptionsRequest struct {
+	AccountID string `json:"account_id,omitempty"`
+	ClientID  string `json:"client_id,omitempty"`
+	EntityID  string `json:"entity_id,omitempty"`
+}
+
+type passkeySignInVerifyRequest struct {
+	Credential json.RawMessage `json:"credential"`
+	RememberMe bool            `json:"remember_me,omitempty"`
+}
+
+// handlePasskeySignInOptions starts a sign-in without password. The
+// ceremony token goes in an HttpOnly cookie: only this browser can answer.
+func (s *Server) handlePasskeySignInOptions(w http.ResponseWriter, r *http.Request) {
+	realm := realmFromContext(r)
+	if s.mfa == nil || !s.mfa.PasskeysEnabled() {
+		writeError(w, http.StatusNotFound, "passkeys_disabled")
+		return
+	}
+	ok, err := s.rateLimiter.Allow(r.Context(),
+		ratelimit.Key(routeAuthPasskeyOptions, realm.ID, "ip", clientIP(r)),
+		passkeyOptionsPerIP, loginRateLimitWindow)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error")
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusTooManyRequests, "rate_limited")
+		return
+	}
+	var req passkeySignInOptionsRequest
+	if !decodeSmallJSON(w, r, &req) {
+		writeError(w, http.StatusBadRequest, "invalid_request")
+		return
+	}
+	client, ok := s.lookupAnyClient(w, r, realm.ID, req.ClientID, req.EntityID)
+	if !ok {
+		return
+	}
+
+	in := service.BeginPasswordlessInput{RealmID: realm.ID, Client: client}
+	if req.AccountID != "" {
+		if s.accounts == nil {
+			writeError(w, http.StatusNotFound, "not_found")
+			return
+		}
+		acc, err := s.accounts.Resolve(r.Context(), realm.ID, deviceIDFromRequest(r), req.AccountID)
+		if errors.Is(err, service.ErrKnownAccountNotFound) {
+			writeError(w, http.StatusNotFound, "not_found")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error")
+			return
+		}
+		if in.User, err = s.mfa.User(r.Context(), acc.UserID); err != nil {
+			writeError(w, http.StatusNotFound, "not_found")
+			return
+		}
+	}
+
+	c, err := s.mfa.BeginPasswordlessLogin(r.Context(), in)
+	if err != nil {
+		s.writeMFAError(w, err)
+		return
+	}
+	setPasskeyCeremonyCookie(w, realm.Name, c.Token, c.ExpiresAt)
+	writeRawJSON(w, c.Options)
+}
+
+// handlePasskeySignInVerify checks the answer and signs in: same response as
+// POST /auth/mfa/verify ("authenticated", or "mfa_enrollment_required" when
+// the application wants a method the user has not enrolled).
+func (s *Server) handlePasskeySignInVerify(w http.ResponseWriter, r *http.Request) {
+	realm := realmFromContext(r)
+	if s.mfa == nil || !s.mfa.PasskeysEnabled() {
+		writeError(w, http.StatusNotFound, "passkeys_disabled")
+		return
+	}
+	// The same budget as the passwords of this address.
+	ok, err := s.rateLimiter.Allow(r.Context(),
+		ratelimit.Key(routeAuthLogin, realm.ID, "ip", clientIP(r)),
+		loginAttemptsPerIP, loginRateLimitWindow)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error")
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusTooManyRequests, "rate_limited")
+		return
+	}
+	body, ok := readWebAuthnBody(w, r)
+	if !ok {
+		return
+	}
+	var req passkeySignInVerifyRequest
+	if err := json.Unmarshal(body, &req); err != nil || len(req.Credential) == 0 || req.Credential[0] != '{' {
+		writeError(w, http.StatusBadRequest, "invalid_request")
+		return
+	}
+	token := passkeyCeremonyTokenFromRequest(r)
+	clearPasskeyCeremonyCookie(w, realm.Name) // single use, whatever happens
+	device := service.DeviceFingerprint(ensureDeviceCookie(w, r, realm.Name))
+	res, err := s.mfa.FinishPasswordlessLogin(r.Context(), service.FinishPasswordlessInput{
+		RealmID:           realm.ID,
+		Token:             token,
+		Response:          req.Credential,
+		IPAddress:         clientIP(r),
+		UserAgent:         r.UserAgent(),
+		DeviceFingerprint: device,
+		RememberMe:        req.RememberMe,
+	})
+	if err != nil {
+		s.writeMFAError(w, err)
+		return
+	}
+	s.writeVerifiedLogin(w, r, res)
 }
 
 func readWebAuthnBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
