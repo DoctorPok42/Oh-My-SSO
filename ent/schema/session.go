@@ -71,6 +71,10 @@ func (Session) Fields() []ent.Field {
 		// realm's remember_me_* durations and its cookie survives a browser
 		// restart. Otherwise the cookie is gone when the browser closes.
 		field.Bool("remember_me").Default(false),
+		// The second factor was skipped: the device is trusted ("Don't ask
+		// again on this device") and no policy required MFA. Such a session
+		// is never MFA-verified.
+		field.Bool("trusted_device").Default(false),
 		field.String("status").GoType(SessionStatus("")).Default(string(SessionActive)),
 		field.String("revoked_reason").Optional(),
 		field.String("token_hash").NotEmpty().Unique().Immutable().Sensitive(),

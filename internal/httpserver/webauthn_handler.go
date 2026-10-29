@@ -64,12 +64,22 @@ func (s *Server) handlePasskeyLoginVerify(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
+	// The body is the credential itself, or {"credential": ..., "trust_device":
+	// true} when "Don't ask again on this device" is ticked (Step 18d).
+	var wrapped struct {
+		Credential  json.RawMessage `json:"credential"`
+		TrustDevice bool            `json:"trust_device"`
+	}
+	if json.Unmarshal(body, &wrapped) == nil && len(wrapped.Credential) > 0 {
+		body = wrapped.Credential
+	}
 	res, err := s.mfa.FinishPasskeyLogin(r.Context(), service.VerifyPasskeyLoginInput{
 		RealmID:        realm.ID,
 		ChallengeToken: mfaChallengeTokenFromRequest(r),
 		Response:       body,
 		IPAddress:      clientIP(r),
 		UserAgent:      r.UserAgent(),
+		TrustDevice:    wrapped.TrustDevice,
 	})
 	if err != nil {
 		if err == service.ErrMFAChallengeInvalid {
@@ -270,6 +280,10 @@ func (s *Server) handlePasskeySignInVerify(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		s.writeMFAError(w, err)
 		return
+	}
+	if s.accounts != nil {
+		// On this device, the tile starts with the passkey (Step 18e).
+		s.accounts.PasskeySignIn(r.Context(), realm.ID, device, res.User.ID)
 	}
 	s.writeVerifiedLogin(w, r, res)
 }

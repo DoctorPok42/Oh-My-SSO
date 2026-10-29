@@ -41,6 +41,8 @@ const (
 	FieldAuthMethod = "auth_method"
 	// FieldRememberMe holds the string denoting the remember_me field in the database.
 	FieldRememberMe = "remember_me"
+	// FieldTrustedDevice holds the string denoting the trusted_device field in the database.
+	FieldTrustedDevice = "trusted_device"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
 	// FieldRevokedReason holds the string denoting the revoked_reason field in the database.
@@ -94,6 +96,7 @@ var Columns = []string{
 	FieldMfaVerifiedAt,
 	FieldAuthMethod,
 	FieldRememberMe,
+	FieldTrustedDevice,
 	FieldStatus,
 	FieldRevokedReason,
 	FieldTokenHash,
@@ -124,6 +127,8 @@ var (
 	DefaultAuthMethod string
 	// DefaultRememberMe holds the default value on creation for the "remember_me" field.
 	DefaultRememberMe bool
+	// DefaultTrustedDevice holds the default value on creation for the "trusted_device" field.
+	DefaultTrustedDevice bool
 	// DefaultStatus holds the default value on creation for the "status" field.
 	DefaultStatus schema.SessionStatus
 	// TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
@@ -205,6 +210,11 @@ func ByAuthMethod(opts ...sql.OrderTermOption) OrderOption {
 // ByRememberMe orders the results by the remember_me field.
 func ByRememberMe(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRememberMe, opts...).ToFunc()
+}
+
+// ByTrustedDevice orders the results by the trusted_device field.
+func ByTrustedDevice(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTrustedDevice, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.

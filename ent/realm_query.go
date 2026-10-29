@@ -27,6 +27,7 @@ import (
 	"sso.internal/sso/ent/session"
 	"sso.internal/sso/ent/signingkey"
 	"sso.internal/sso/ent/timeout"
+	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
 )
 
@@ -51,6 +52,7 @@ type RealmQuery struct {
 	withTimeouts          *TimeoutQuery
 	withMfaPolicies       *MfaPolicyQuery
 	withKnownAccounts     *KnownAccountQuery
+	withTrustedDevices    *TrustedDeviceQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -395,6 +397,28 @@ func (_q *RealmQuery) QueryKnownAccounts() *KnownAccountQuery {
 	return query
 }
 
+// QueryTrustedDevices chains the current query on the "trusted_devices" edge.
+func (_q *RealmQuery) QueryTrustedDevices() *TrustedDeviceQuery {
+	query := (&TrustedDeviceClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(realm.Table, realm.FieldID, selector),
+			sqlgraph.To(trusteddevice.Table, trusteddevice.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, realm.TrustedDevicesTable, realm.TrustedDevicesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // First returns the first Realm entity from the query.
 // Returns a *NotFoundError when no Realm was found.
 func (_q *RealmQuery) First(ctx context.Context) (*Realm, error) {
@@ -601,6 +625,7 @@ func (_q *RealmQuery) Clone() *RealmQuery {
 		withTimeouts:          _q.withTimeouts.Clone(),
 		withMfaPolicies:       _q.withMfaPolicies.Clone(),
 		withKnownAccounts:     _q.withKnownAccounts.Clone(),
+		withTrustedDevices:    _q.withTrustedDevices.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -761,6 +786,17 @@ func (_q *RealmQuery) WithKnownAccounts(opts ...func(*KnownAccountQuery)) *Realm
 	return _q
 }
 
+// WithTrustedDevices tells the query-builder to eager-load the nodes that are connected to
+// the "trusted_devices" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *RealmQuery) WithTrustedDevices(opts ...func(*TrustedDeviceQuery)) *RealmQuery {
+	query := (&TrustedDeviceClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withTrustedDevices = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
@@ -839,7 +875,7 @@ func (_q *RealmQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Realm,
 	var (
 		nodes       = []*Realm{}
 		_spec       = _q.querySpec()
-		loadedTypes = [14]bool{
+		loadedTypes = [15]bool{
 			_q.withUsers != nil,
 			_q.withRoles != nil,
 			_q.withGroups != nil,
@@ -854,6 +890,7 @@ func (_q *RealmQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Realm,
 			_q.withTimeouts != nil,
 			_q.withMfaPolicies != nil,
 			_q.withKnownAccounts != nil,
+			_q.withTrustedDevices != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -968,6 +1005,13 @@ func (_q *RealmQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Realm,
 		if err := _q.loadKnownAccounts(ctx, query, nodes,
 			func(n *Realm) { n.Edges.KnownAccounts = []*KnownAccount{} },
 			func(n *Realm, e *KnownAccount) { n.Edges.KnownAccounts = append(n.Edges.KnownAccounts, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withTrustedDevices; query != nil {
+		if err := _q.loadTrustedDevices(ctx, query, nodes,
+			func(n *Realm) { n.Edges.TrustedDevices = []*TrustedDevice{} },
+			func(n *Realm, e *TrustedDevice) { n.Edges.TrustedDevices = append(n.Edges.TrustedDevices, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1376,6 +1420,36 @@ func (_q *RealmQuery) loadKnownAccounts(ctx context.Context, query *KnownAccount
 	}
 	query.Where(predicate.KnownAccount(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(realm.KnownAccountsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.RealmID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "realm_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *RealmQuery) loadTrustedDevices(ctx context.Context, query *TrustedDeviceQuery, nodes []*Realm, init func(*Realm), assign func(*Realm, *TrustedDevice)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*Realm)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(trusteddevice.FieldRealmID)
+	}
+	query.Where(predicate.TrustedDevice(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(realm.TrustedDevicesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

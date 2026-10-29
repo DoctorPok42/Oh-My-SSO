@@ -68,6 +68,34 @@ func (_c *KnownAccountCreate) SetNillableLastUsedAt(v *time.Time) *KnownAccountC
 	return _c
 }
 
+// SetLastMethod sets the "last_method" field.
+func (_c *KnownAccountCreate) SetLastMethod(v string) *KnownAccountCreate {
+	_c.mutation.SetLastMethod(v)
+	return _c
+}
+
+// SetNillableLastMethod sets the "last_method" field if the given value is not nil.
+func (_c *KnownAccountCreate) SetNillableLastMethod(v *string) *KnownAccountCreate {
+	if v != nil {
+		_c.SetLastMethod(*v)
+	}
+	return _c
+}
+
+// SetLastSecondFactor sets the "last_second_factor" field.
+func (_c *KnownAccountCreate) SetLastSecondFactor(v string) *KnownAccountCreate {
+	_c.mutation.SetLastSecondFactor(v)
+	return _c
+}
+
+// SetNillableLastSecondFactor sets the "last_second_factor" field if the given value is not nil.
+func (_c *KnownAccountCreate) SetNillableLastSecondFactor(v *string) *KnownAccountCreate {
+	if v != nil {
+		_c.SetLastSecondFactor(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *KnownAccountCreate) SetID(v string) *KnownAccountCreate {
 	_c.mutation.SetID(v)
@@ -230,6 +258,14 @@ func (_c *KnownAccountCreate) createSpec() (*KnownAccount, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.LastUsedAt(); ok {
 		_spec.SetField(knownaccount.FieldLastUsedAt, field.TypeTime, value)
 		_node.LastUsedAt = value
+	}
+	if value, ok := _c.mutation.LastMethod(); ok {
+		_spec.SetField(knownaccount.FieldLastMethod, field.TypeString, value)
+		_node.LastMethod = value
+	}
+	if value, ok := _c.mutation.LastSecondFactor(); ok {
+		_spec.SetField(knownaccount.FieldLastSecondFactor, field.TypeString, value)
+		_node.LastSecondFactor = value
 	}
 	if nodes := _c.mutation.RealmIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

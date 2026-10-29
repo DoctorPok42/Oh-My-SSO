@@ -21,6 +21,7 @@ import (
 	"sso.internal/sso/ent/role"
 	"sso.internal/sso/ent/schema"
 	"sso.internal/sso/ent/session"
+	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
 )
 
@@ -331,6 +332,21 @@ func (_c *UserCreate) AddKnownAccounts(v ...*KnownAccount) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddKnownAccountIDs(ids...)
+}
+
+// AddTrustedDeviceIDs adds the "trusted_devices" edge to the TrustedDevice entity by IDs.
+func (_c *UserCreate) AddTrustedDeviceIDs(ids ...string) *UserCreate {
+	_c.mutation.AddTrustedDeviceIDs(ids...)
+	return _c
+}
+
+// AddTrustedDevices adds the "trusted_devices" edges to the TrustedDevice entity.
+func (_c *UserCreate) AddTrustedDevices(v ...*TrustedDevice) *UserCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddTrustedDeviceIDs(ids...)
 }
 
 // AddConsentIDs adds the "consents" edge to the Consent entity by IDs.
@@ -686,6 +702,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TrustedDevicesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.TrustedDevicesTable,
+			Columns: []string{user.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

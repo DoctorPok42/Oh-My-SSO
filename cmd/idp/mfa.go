@@ -26,6 +26,7 @@ const mfaUsage = `usage:
   idp mfa reset  --realm <name> --user <username|email> --reason <text>
   idp mfa policy show        --realm <name>
   idp mfa policy set-realm   --realm <name> [--required=true|false] [--step-up-max-age <duration>]
+                             [--trusted-devices=true|false] [--trusted-device-days <1-90>]
   idp mfa policy set-client  --realm <name> --client <client_id|entity_id> --policy inherit|required [--methods <list>|any]
   idp mfa policy set-role    --realm <name> --role <name> [--required] [--methods <list>|any] [--grace-days <n>] [--step-up]
   idp mfa policy delete-role --realm <name> --role <name>
@@ -136,11 +137,18 @@ func (e *mfaEnv) mfaService(needSessions bool) (*service.MFAService, error) {
 			return nil, fmt.Errorf("valkey: %w", err)
 		}
 		e.closers = append(e.closers, vc.Close)
+		// An MFA reset also ends the user's trusted devices (Step 18d).
+		trusted := service.NewTrustedDeviceService(service.TrustedDeviceDeps{
+			Devices:  entstore.NewTrustedDeviceRepository(e.client),
+			Settings: entstore.NewInstanceSettingsRepository(e.client),
+			Audit:    entstore.NewAuditLogRepository(e.client),
+		})
 		deps.Sessions = service.NewSessionService(
 			entstore.NewSessionRepository(e.client),
 			entstore.NewInstanceSettingsRepository(e.client),
 			entstore.NewTokenRepository(e.client),
 			valkeycache.NewSessionCache(vc),
+			service.WithRevocationObserver(trusted),
 		)
 		deps.Notifier = cliNotifier(e.client)
 	}
@@ -270,7 +278,8 @@ func mfaPolicyShow(ctx context.Context, args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "realm %s: required globally=%t, step-up max age=%s\n\n", env.realm.Name, o.RequiredGlobally, o.StepUpMaxAge)
+	fmt.Fprintf(out, "realm %s: required globally=%t, step-up max age=%s\n", env.realm.Name, o.RequiredGlobally, o.StepUpMaxAge)
+	fmt.Fprintf(out, "trusted devices (\"Don't ask again on this device\"): %s\n\n", trustedDevicesLabel(o.TrustedDevices, o.TrustedDeviceDays))
 
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "ROLE\tREQUIRED\tMETHODS\tGRACE DAYS\tSTEP-UP\tMANAGED BY")
@@ -301,6 +310,8 @@ func mfaPolicySetRealm(ctx context.Context, args []string, out io.Writer) error 
 	realmName := fs.String("realm", "", "realm name (required)")
 	required := fs.String("required", "", "true or false: MFA required for every user of the realm")
 	maxAge := fs.Duration("step-up-max-age", 0, "how long an MFA verification counts as recent for sensitive actions (1m to 24h)")
+	trusted := fs.String("trusted-devices", "", `true or false: offer "Don't ask again on this device" after a second factor`)
+	trustedDays := fs.Int("trusted-device-days", 0, "how long a device stays trusted (1 to 90 days)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -318,8 +329,18 @@ func mfaPolicySetRealm(ctx context.Context, args []string, out io.Writer) error 
 	if set["step-up-max-age"] {
 		in.StepUpMaxAge = maxAge
 	}
-	if in.RequiredGlobally == nil && in.StepUpMaxAge == nil {
-		return usageError{"nothing to change: give --required and/or --step-up-max-age"}
+	if set["trusted-devices"] {
+		b, err := strconv.ParseBool(*trusted)
+		if err != nil {
+			return usageError{"--trusted-devices must be true or false"}
+		}
+		in.TrustedDevices = &b
+	}
+	if set["trusted-device-days"] {
+		in.TrustedDeviceDays = trustedDays
+	}
+	if in.RequiredGlobally == nil && in.StepUpMaxAge == nil && in.TrustedDevices == nil && in.TrustedDeviceDays == nil {
+		return usageError{"nothing to change: give --required, --step-up-max-age, --trusted-devices or --trusted-device-days"}
 	}
 
 	env, err := openMFAEnv(ctx, *realmName)
@@ -333,8 +354,16 @@ func mfaPolicySetRealm(ctx context.Context, args []string, out io.Writer) error 
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "realm %s: required globally=%t, step-up max age=%dm\n", env.realm.Name, s.MFARequiredGlobally, s.MFAStepUpMaxAgeMinutes)
+	fmt.Fprintf(out, "realm %s: required globally=%t, step-up max age=%dm, trusted devices: %s\n", env.realm.Name,
+		s.MFARequiredGlobally, s.MFAStepUpMaxAgeMinutes, trustedDevicesLabel(s.MFATrustedDeviceEnabled, s.MFATrustedDeviceDays))
 	return nil
+}
+
+func trustedDevicesLabel(on bool, days int) string {
+	if !on {
+		return "off"
+	}
+	return fmt.Sprintf("on, %d days", days)
 }
 
 func mfaPolicySetClient(ctx context.Context, args []string, out io.Writer) error {

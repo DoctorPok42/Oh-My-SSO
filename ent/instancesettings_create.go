@@ -230,6 +230,34 @@ func (_c *InstanceSettingsCreate) SetNillableMfaStepUpMaxAgeMinutes(v *int) *Ins
 	return _c
 }
 
+// SetMfaTrustedDeviceEnabled sets the "mfa_trusted_device_enabled" field.
+func (_c *InstanceSettingsCreate) SetMfaTrustedDeviceEnabled(v bool) *InstanceSettingsCreate {
+	_c.mutation.SetMfaTrustedDeviceEnabled(v)
+	return _c
+}
+
+// SetNillableMfaTrustedDeviceEnabled sets the "mfa_trusted_device_enabled" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableMfaTrustedDeviceEnabled(v *bool) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetMfaTrustedDeviceEnabled(*v)
+	}
+	return _c
+}
+
+// SetMfaTrustedDeviceDays sets the "mfa_trusted_device_days" field.
+func (_c *InstanceSettingsCreate) SetMfaTrustedDeviceDays(v int) *InstanceSettingsCreate {
+	_c.mutation.SetMfaTrustedDeviceDays(v)
+	return _c
+}
+
+// SetNillableMfaTrustedDeviceDays sets the "mfa_trusted_device_days" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableMfaTrustedDeviceDays(v *int) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetMfaTrustedDeviceDays(*v)
+	}
+	return _c
+}
+
 // SetPasswordResetTTLMinutes sets the "password_reset_ttl_minutes" field.
 func (_c *InstanceSettingsCreate) SetPasswordResetTTLMinutes(v int) *InstanceSettingsCreate {
 	_c.mutation.SetPasswordResetTTLMinutes(v)
@@ -396,6 +424,14 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultMfaStepUpMaxAgeMinutes
 		_c.mutation.SetMfaStepUpMaxAgeMinutes(v)
 	}
+	if _, ok := _c.mutation.MfaTrustedDeviceEnabled(); !ok {
+		v := instancesettings.DefaultMfaTrustedDeviceEnabled
+		_c.mutation.SetMfaTrustedDeviceEnabled(v)
+	}
+	if _, ok := _c.mutation.MfaTrustedDeviceDays(); !ok {
+		v := instancesettings.DefaultMfaTrustedDeviceDays
+		_c.mutation.SetMfaTrustedDeviceDays(v)
+	}
 	if _, ok := _c.mutation.PasswordResetTTLMinutes(); !ok {
 		v := instancesettings.DefaultPasswordResetTTLMinutes
 		_c.mutation.SetPasswordResetTTLMinutes(v)
@@ -465,6 +501,12 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.MfaStepUpMaxAgeMinutes(); !ok {
 		return &ValidationError{Name: "mfa_step_up_max_age_minutes", err: errors.New(`ent: missing required field "InstanceSettings.mfa_step_up_max_age_minutes"`)}
+	}
+	if _, ok := _c.mutation.MfaTrustedDeviceEnabled(); !ok {
+		return &ValidationError{Name: "mfa_trusted_device_enabled", err: errors.New(`ent: missing required field "InstanceSettings.mfa_trusted_device_enabled"`)}
+	}
+	if _, ok := _c.mutation.MfaTrustedDeviceDays(); !ok {
+		return &ValidationError{Name: "mfa_trusted_device_days", err: errors.New(`ent: missing required field "InstanceSettings.mfa_trusted_device_days"`)}
 	}
 	if _, ok := _c.mutation.PasswordResetTTLMinutes(); !ok {
 		return &ValidationError{Name: "password_reset_ttl_minutes", err: errors.New(`ent: missing required field "InstanceSettings.password_reset_ttl_minutes"`)}
@@ -577,6 +619,14 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.MfaStepUpMaxAgeMinutes(); ok {
 		_spec.SetField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)
 		_node.MfaStepUpMaxAgeMinutes = value
+	}
+	if value, ok := _c.mutation.MfaTrustedDeviceEnabled(); ok {
+		_spec.SetField(instancesettings.FieldMfaTrustedDeviceEnabled, field.TypeBool, value)
+		_node.MfaTrustedDeviceEnabled = value
+	}
+	if value, ok := _c.mutation.MfaTrustedDeviceDays(); ok {
+		_spec.SetField(instancesettings.FieldMfaTrustedDeviceDays, field.TypeInt, value)
+		_node.MfaTrustedDeviceDays = value
 	}
 	if value, ok := _c.mutation.PasswordResetTTLMinutes(); ok {
 		_spec.SetField(instancesettings.FieldPasswordResetTTLMinutes, field.TypeInt, value)

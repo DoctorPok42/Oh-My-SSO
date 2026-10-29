@@ -103,8 +103,27 @@ func (r *entKnownAccountRepository) Trim(ctx context.Context, realmID, deviceHas
 	return r.client.KnownAccount.Delete().Where(knownaccount.IDIn(extra...)).Exec(ctx)
 }
 
+func (r *entKnownAccountRepository) Find(ctx context.Context, realmID, deviceHash, userID string) (*domain.KnownAccount, error) {
+	e, err := r.client.KnownAccount.Query().
+		Where(knownaccount.RealmID(realmID), knownaccount.DeviceHash(deviceHash), knownaccount.UserID(userID)).
+		Only(ctx)
+	if err != nil {
+		return nil, mapNotFound(err)
+	}
+	return toDomainKnownAccount(e), nil
+}
+
+func (r *entKnownAccountRepository) SetLastMethods(ctx context.Context, realmID, deviceHash, userID string, p repository.LastMethodsParams) (bool, error) {
+	n, err := r.client.KnownAccount.Update().
+		Where(knownaccount.RealmID(realmID), knownaccount.DeviceHash(deviceHash), knownaccount.UserID(userID)).
+		SetNillableLastMethod(p.LastMethod).
+		SetNillableLastSecondFactor(p.LastSecondFactor).
+		Save(ctx)
+	return n > 0, err
+}
+
 func toDomainKnownAccount(e *ent.KnownAccount) *domain.KnownAccount {
-	return &domain.KnownAccount{
+	d := &domain.KnownAccount{
 		ID:         e.ID,
 		RealmID:    e.RealmID,
 		UserID:     e.UserID,
@@ -112,4 +131,6 @@ func toDomainKnownAccount(e *ent.KnownAccount) *domain.KnownAccount {
 		CreatedAt:  e.CreatedAt,
 		LastUsedAt: e.LastUsedAt,
 	}
+	d.LastMethod, d.LastSecondFactor = e.LastMethod, e.LastSecondFactor
+	return d
 }

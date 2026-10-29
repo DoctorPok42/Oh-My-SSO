@@ -29,6 +29,10 @@ type KnownAccount struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// LastUsedAt holds the value of the "last_used_at" field.
 	LastUsedAt time.Time `json:"last_used_at,omitempty"`
+	// LastMethod holds the value of the "last_method" field.
+	LastMethod string `json:"last_method,omitempty"`
+	// LastSecondFactor holds the value of the "last_second_factor" field.
+	LastSecondFactor string `json:"last_second_factor,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the KnownAccountQuery when eager-loading is set.
 	Edges        KnownAccountEdges `json:"edges"`
@@ -73,7 +77,7 @@ func (*KnownAccount) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case knownaccount.FieldID, knownaccount.FieldRealmID, knownaccount.FieldUserID, knownaccount.FieldDeviceHash:
+		case knownaccount.FieldID, knownaccount.FieldRealmID, knownaccount.FieldUserID, knownaccount.FieldDeviceHash, knownaccount.FieldLastMethod, knownaccount.FieldLastSecondFactor:
 			values[i] = new(sql.NullString)
 		case knownaccount.FieldCreatedAt, knownaccount.FieldLastUsedAt:
 			values[i] = new(sql.NullTime)
@@ -127,6 +131,18 @@ func (_m *KnownAccount) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field last_used_at", values[i])
 			} else if value.Valid {
 				_m.LastUsedAt = value.Time
+			}
+		case knownaccount.FieldLastMethod:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field last_method", values[i])
+			} else if value.Valid {
+				_m.LastMethod = value.String
+			}
+		case knownaccount.FieldLastSecondFactor:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field last_second_factor", values[i])
+			} else if value.Valid {
+				_m.LastSecondFactor = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -187,6 +203,12 @@ func (_m *KnownAccount) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("last_used_at=")
 	builder.WriteString(_m.LastUsedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("last_method=")
+	builder.WriteString(_m.LastMethod)
+	builder.WriteString(", ")
+	builder.WriteString("last_second_factor=")
+	builder.WriteString(_m.LastSecondFactor)
 	builder.WriteByte(')')
 	return builder.String()
 }

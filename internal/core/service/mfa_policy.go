@@ -323,6 +323,10 @@ type SetRealmMFAPolicyInput struct {
 	RequiredGlobally *bool
 	StepUpMaxAge     *time.Duration
 	Actor            PolicyActor
+	// "Don't ask again on this device" (Step 18d): offered or not, and for
+	// how many days (MinTrustedDeviceDays to MaxTrustedDeviceDays).
+	TrustedDevices    *bool
+	TrustedDeviceDays *int
 }
 
 // SetRealmPolicy changes the realm-wide settings, creating the realm's
@@ -336,6 +340,9 @@ func (s *MFAPolicyService) SetRealmPolicy(ctx context.Context, in SetRealmMFAPol
 		}
 		m := int(d / time.Minute)
 		maxAge = &m
+	}
+	if d := in.TrustedDeviceDays; d != nil && (*d < MinTrustedDeviceDays || *d > MaxTrustedDeviceDays) {
+		return nil, fmt.Errorf("%w: trusted device days must be between %d and %d", ErrInvalidMFAPolicy, MinTrustedDeviceDays, MaxTrustedDeviceDays)
 	}
 
 	settings, err := s.settings.GetByRealmID(ctx, in.RealmID)
@@ -351,9 +358,11 @@ func (s *MFAPolicyService) SetRealmPolicy(ctx context.Context, in SetRealmMFAPol
 
 	by := in.Actor.TriggeredBy
 	updated, err := s.settings.Update(ctx, settings.ID, repository.UpdateInstanceSettingsParams{
-		MFARequiredGlobally:    in.RequiredGlobally,
-		MFAStepUpMaxAgeMinutes: maxAge,
-		UpdatedBy:              &by,
+		MFARequiredGlobally:     in.RequiredGlobally,
+		MFAStepUpMaxAgeMinutes:  maxAge,
+		MFATrustedDeviceEnabled: in.TrustedDevices,
+		MFATrustedDeviceDays:    in.TrustedDeviceDays,
+		UpdatedBy:               &by,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("set realm mfa policy: %w", err)
@@ -361,6 +370,8 @@ func (s *MFAPolicyService) SetRealmPolicy(ctx context.Context, in SetRealmMFAPol
 	s.logPolicyChange(ctx, in.RealmID, "InstanceSettings", settings.ID, in.Actor, map[string]interface{}{
 		"mfa_required_globally":       updated.MFARequiredGlobally,
 		"mfa_step_up_max_age_minutes": updated.MFAStepUpMaxAgeMinutes,
+		"mfa_trusted_device_enabled":  updated.MFATrustedDeviceEnabled,
+		"mfa_trusted_device_days":     updated.MFATrustedDeviceDays,
 	})
 	return updated, nil
 }
@@ -511,6 +522,9 @@ type MFAPolicyOverview struct {
 	StepUpMaxAge     time.Duration
 	Roles            []RoleMFAPolicyView
 	Clients          []*domain.ClientApp // clients with a non-default policy
+	// "Don't ask again on this device": offered, for how many days.
+	TrustedDevices    bool
+	TrustedDeviceDays int
 }
 
 type RoleMFAPolicyView struct {
@@ -519,13 +533,15 @@ type RoleMFAPolicyView struct {
 }
 
 func (s *MFAPolicyService) Overview(ctx context.Context, realmID string) (*MFAPolicyOverview, error) {
-	out := &MFAPolicyOverview{StepUpMaxAge: s.StepUpMaxAge(ctx, realmID)}
+	out := &MFAPolicyOverview{StepUpMaxAge: s.StepUpMaxAge(ctx, realmID), TrustedDevices: true, TrustedDeviceDays: DefaultTrustedDeviceDays}
 	settings, err := s.realmSettings(ctx, realmID)
 	if err != nil {
 		return nil, err
 	}
 	if settings != nil {
 		out.RequiredGlobally = settings.MFARequiredGlobally
+		out.TrustedDevices = settings.MFATrustedDeviceEnabled
+		out.TrustedDeviceDays = clampTrustedDeviceDays(settings.MFATrustedDeviceDays)
 	}
 
 	policies, err := s.policies.ListByRealm(ctx, realmID)

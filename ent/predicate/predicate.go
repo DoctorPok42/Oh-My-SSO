@@ -87,5 +87,8 @@ type Timeout func(*sql.Selector)
 // Token is the predicate function for token builders.
 type Token func(*sql.Selector)
 
+// TrustedDevice is the predicate function for trusteddevice builders.
+type TrustedDevice func(*sql.Selector)
+
 // User is the predicate function for user builders.
 type User func(*sql.Selector)

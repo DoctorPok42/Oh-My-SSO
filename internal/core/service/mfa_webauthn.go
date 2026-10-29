@@ -262,6 +262,7 @@ type VerifyPasskeyLoginInput struct {
 	Response       []byte // the PublicKeyCredential JSON sent by the browser
 	IPAddress      string
 	UserAgent      string
+	TrustDevice    bool // "Don't ask again on this device" is ticked
 }
 
 // FinishPasskeyLogin verifies the assertion and, like VerifyLogin, creates
@@ -294,7 +295,7 @@ func (s *MFAService) FinishPasskeyLogin(ctx context.Context, in VerifyPasskeyLog
 		}
 		return nil, err
 	}
-	return s.finishLogin(ctx, lc, user, m.Type, in.IPAddress, in.UserAgent)
+	return s.finishLogin(ctx, lc, user, m.Type, in.IPAddress, in.UserAgent, in.TrustDevice)
 }
 
 // --- step-up --------------------------------------------------------------------

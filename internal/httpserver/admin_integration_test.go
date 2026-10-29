@@ -74,6 +74,7 @@ type adminTestEnv struct {
 	notifier *recordingNotifier
 	oidc     *oidcTestEnv // reuses its browser helpers and TOTP clock
 	valkey   vk.Client
+	devices  repository.TrustedDeviceRepository
 }
 
 func setupAdminTestEnv(t *testing.T) *adminTestEnv {
@@ -108,8 +109,10 @@ func setupAdminTestEnv(t *testing.T) *adminTestEnv {
 	scopes := entstore.NewClientScopeRepository(client)
 	limiter := valkeycache.NewRateLimiter(valkeyClient)
 
+	devices := entstore.NewTrustedDeviceRepository(client)
+	trusted := service.NewTrustedDeviceService(service.TrustedDeviceDeps{Devices: devices, Settings: settings, Audit: audit, Now: clock.Now})
 	sessions := service.NewSessionService(entstore.NewSessionRepository(client), settings, tokens,
-		valkeycache.NewSessionCache(valkeyClient), service.WithClock(clock.Now))
+		valkeycache.NewSessionCache(valkeyClient), service.WithClock(clock.Now), service.WithRevocationObserver(trusted))
 	policy := service.NewMFAPolicyService(service.MFAPolicyDeps{Settings: settings, Clients: clients, Roles: roles,
 		Policies: entstore.NewMfaPolicyRepository(client), Access: access, Audit: audit, Now: clock.Now})
 	mfa := service.NewMFAService(service.MFADeps{
@@ -150,6 +153,7 @@ func setupAdminTestEnv(t *testing.T) *adminTestEnv {
 		// The in-memory KeyManager is shared by everything in this test
 		// process, so realms may get their keys here (see ensureSigningKey).
 		KMSBackend: "test", Now: clock.Now,
+		TrustedDevices: trusted,
 	})
 	api := httptest.NewServer(adminapi.New(adminapi.Config{PublicURL: ts.URL, Now: clock.Now}, adminapi.Deps{
 		Admin: admin, Realms: realms, Users: users, Clients: clients, Tokens: tokens, Sessions: sessions,
@@ -159,7 +163,7 @@ func setupAdminTestEnv(t *testing.T) *adminTestEnv {
 
 	return &adminTestEnv{idp: ts, api: api, admin: admin, sessions: sessions, audit: audit, users: users,
 		clock: clock, notifier: notifier, oidc: &oidcTestEnv{ts: ts, clock: clock, realmURL: ts.URL + "/r/master"},
-		valkey: valkeyClient}
+		valkey: valkeyClient, devices: devices}
 }
 
 // call sends one Admin API request with the admin's access token.

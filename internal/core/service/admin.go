@@ -121,6 +121,8 @@ type AdminDeps struct {
 	OIDCClients   *OIDCClientService
 	SAMLClients   *SAMLClientService
 	Notifier      Notifier // nil: no e-mail
+	// TrustedDevices: the devices users trust (Step 18d). nil: none shown.
+	TrustedDevices *TrustedDeviceService
 
 	// PublicURL of cmd/idp: base of activation links.
 	PublicURL string

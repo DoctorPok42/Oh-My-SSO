@@ -90,6 +90,16 @@ func LastUsedAt(v time.Time) predicate.KnownAccount {
 	return predicate.KnownAccount(sql.FieldEQ(FieldLastUsedAt, v))
 }
 
+// LastMethod applies equality check predicate on the "last_method" field. It's identical to LastMethodEQ.
+func LastMethod(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldEQ(FieldLastMethod, v))
+}
+
+// LastSecondFactor applies equality check predicate on the "last_second_factor" field. It's identical to LastSecondFactorEQ.
+func LastSecondFactor(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldEQ(FieldLastSecondFactor, v))
+}
+
 // RealmIDEQ applies the EQ predicate on the "realm_id" field.
 func RealmIDEQ(v string) predicate.KnownAccount {
 	return predicate.KnownAccount(sql.FieldEQ(FieldRealmID, v))
@@ -363,6 +373,156 @@ func LastUsedAtLT(v time.Time) predicate.KnownAccount {
 // LastUsedAtLTE applies the LTE predicate on the "last_used_at" field.
 func LastUsedAtLTE(v time.Time) predicate.KnownAccount {
 	return predicate.KnownAccount(sql.FieldLTE(FieldLastUsedAt, v))
+}
+
+// LastMethodEQ applies the EQ predicate on the "last_method" field.
+func LastMethodEQ(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldEQ(FieldLastMethod, v))
+}
+
+// LastMethodNEQ applies the NEQ predicate on the "last_method" field.
+func LastMethodNEQ(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldNEQ(FieldLastMethod, v))
+}
+
+// LastMethodIn applies the In predicate on the "last_method" field.
+func LastMethodIn(vs ...string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldIn(FieldLastMethod, vs...))
+}
+
+// LastMethodNotIn applies the NotIn predicate on the "last_method" field.
+func LastMethodNotIn(vs ...string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldNotIn(FieldLastMethod, vs...))
+}
+
+// LastMethodGT applies the GT predicate on the "last_method" field.
+func LastMethodGT(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldGT(FieldLastMethod, v))
+}
+
+// LastMethodGTE applies the GTE predicate on the "last_method" field.
+func LastMethodGTE(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldGTE(FieldLastMethod, v))
+}
+
+// LastMethodLT applies the LT predicate on the "last_method" field.
+func LastMethodLT(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldLT(FieldLastMethod, v))
+}
+
+// LastMethodLTE applies the LTE predicate on the "last_method" field.
+func LastMethodLTE(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldLTE(FieldLastMethod, v))
+}
+
+// LastMethodContains applies the Contains predicate on the "last_method" field.
+func LastMethodContains(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldContains(FieldLastMethod, v))
+}
+
+// LastMethodHasPrefix applies the HasPrefix predicate on the "last_method" field.
+func LastMethodHasPrefix(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldHasPrefix(FieldLastMethod, v))
+}
+
+// LastMethodHasSuffix applies the HasSuffix predicate on the "last_method" field.
+func LastMethodHasSuffix(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldHasSuffix(FieldLastMethod, v))
+}
+
+// LastMethodIsNil applies the IsNil predicate on the "last_method" field.
+func LastMethodIsNil() predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldIsNull(FieldLastMethod))
+}
+
+// LastMethodNotNil applies the NotNil predicate on the "last_method" field.
+func LastMethodNotNil() predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldNotNull(FieldLastMethod))
+}
+
+// LastMethodEqualFold applies the EqualFold predicate on the "last_method" field.
+func LastMethodEqualFold(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldEqualFold(FieldLastMethod, v))
+}
+
+// LastMethodContainsFold applies the ContainsFold predicate on the "last_method" field.
+func LastMethodContainsFold(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldContainsFold(FieldLastMethod, v))
+}
+
+// LastSecondFactorEQ applies the EQ predicate on the "last_second_factor" field.
+func LastSecondFactorEQ(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldEQ(FieldLastSecondFactor, v))
+}
+
+// LastSecondFactorNEQ applies the NEQ predicate on the "last_second_factor" field.
+func LastSecondFactorNEQ(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldNEQ(FieldLastSecondFactor, v))
+}
+
+// LastSecondFactorIn applies the In predicate on the "last_second_factor" field.
+func LastSecondFactorIn(vs ...string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldIn(FieldLastSecondFactor, vs...))
+}
+
+// LastSecondFactorNotIn applies the NotIn predicate on the "last_second_factor" field.
+func LastSecondFactorNotIn(vs ...string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldNotIn(FieldLastSecondFactor, vs...))
+}
+
+// LastSecondFactorGT applies the GT predicate on the "last_second_factor" field.
+func LastSecondFactorGT(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldGT(FieldLastSecondFactor, v))
+}
+
+// LastSecondFactorGTE applies the GTE predicate on the "last_second_factor" field.
+func LastSecondFactorGTE(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldGTE(FieldLastSecondFactor, v))
+}
+
+// LastSecondFactorLT applies the LT predicate on the "last_second_factor" field.
+func LastSecondFactorLT(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldLT(FieldLastSecondFactor, v))
+}
+
+// LastSecondFactorLTE applies the LTE predicate on the "last_second_factor" field.
+func LastSecondFactorLTE(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldLTE(FieldLastSecondFactor, v))
+}
+
+// LastSecondFactorContains applies the Contains predicate on the "last_second_factor" field.
+func LastSecondFactorContains(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldContains(FieldLastSecondFactor, v))
+}
+
+// LastSecondFactorHasPrefix applies the HasPrefix predicate on the "last_second_factor" field.
+func LastSecondFactorHasPrefix(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldHasPrefix(FieldLastSecondFactor, v))
+}
+
+// LastSecondFactorHasSuffix applies the HasSuffix predicate on the "last_second_factor" field.
+func LastSecondFactorHasSuffix(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldHasSuffix(FieldLastSecondFactor, v))
+}
+
+// LastSecondFactorIsNil applies the IsNil predicate on the "last_second_factor" field.
+func LastSecondFactorIsNil() predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldIsNull(FieldLastSecondFactor))
+}
+
+// LastSecondFactorNotNil applies the NotNil predicate on the "last_second_factor" field.
+func LastSecondFactorNotNil() predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldNotNull(FieldLastSecondFactor))
+}
+
+// LastSecondFactorEqualFold applies the EqualFold predicate on the "last_second_factor" field.
+func LastSecondFactorEqualFold(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldEqualFold(FieldLastSecondFactor, v))
+}
+
+// LastSecondFactorContainsFold applies the ContainsFold predicate on the "last_second_factor" field.
+func LastSecondFactorContainsFold(v string) predicate.KnownAccount {
+	return predicate.KnownAccount(sql.FieldContainsFold(FieldLastSecondFactor, v))
 }
 
 // HasRealm applies the HasEdge predicate on the "realm" edge.

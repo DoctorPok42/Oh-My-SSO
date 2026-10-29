@@ -68,6 +68,11 @@
     <button type="submit">Verify</button>
   </form>
 
+  <div id="trust" hidden>
+    <label class="check" for="trust-device"><input id="trust-device" type="checkbox" aria-describedby="trust-device-hint"> Don't ask again on this device</label>
+    <p class="note" id="trust-device-hint"></p>
+  </div>
+
   <section id="other-ways" hidden>
     <p class="hint" id="ways-hint">Choose how you want to sign in:</p>
     <ul class="ways" id="ways"></ul>

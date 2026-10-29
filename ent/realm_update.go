@@ -27,6 +27,7 @@ import (
 	"sso.internal/sso/ent/session"
 	"sso.internal/sso/ent/signingkey"
 	"sso.internal/sso/ent/timeout"
+	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
 )
 
@@ -331,6 +332,21 @@ func (_u *RealmUpdate) AddKnownAccounts(v ...*KnownAccount) *RealmUpdate {
 	return _u.AddKnownAccountIDs(ids...)
 }
 
+// AddTrustedDeviceIDs adds the "trusted_devices" edge to the TrustedDevice entity by IDs.
+func (_u *RealmUpdate) AddTrustedDeviceIDs(ids ...string) *RealmUpdate {
+	_u.mutation.AddTrustedDeviceIDs(ids...)
+	return _u
+}
+
+// AddTrustedDevices adds the "trusted_devices" edges to the TrustedDevice entity.
+func (_u *RealmUpdate) AddTrustedDevices(v ...*TrustedDevice) *RealmUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddTrustedDeviceIDs(ids...)
+}
+
 // Mutation returns the RealmMutation object of the builder.
 func (_u *RealmUpdate) Mutation() *RealmMutation {
 	return _u.mutation
@@ -613,6 +629,27 @@ func (_u *RealmUpdate) RemoveKnownAccounts(v ...*KnownAccount) *RealmUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveKnownAccountIDs(ids...)
+}
+
+// ClearTrustedDevices clears all "trusted_devices" edges to the TrustedDevice entity.
+func (_u *RealmUpdate) ClearTrustedDevices() *RealmUpdate {
+	_u.mutation.ClearTrustedDevices()
+	return _u
+}
+
+// RemoveTrustedDeviceIDs removes the "trusted_devices" edge to TrustedDevice entities by IDs.
+func (_u *RealmUpdate) RemoveTrustedDeviceIDs(ids ...string) *RealmUpdate {
+	_u.mutation.RemoveTrustedDeviceIDs(ids...)
+	return _u
+}
+
+// RemoveTrustedDevices removes "trusted_devices" edges to TrustedDevice entities.
+func (_u *RealmUpdate) RemoveTrustedDevices(v ...*TrustedDevice) *RealmUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveTrustedDeviceIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -1308,6 +1345,51 @@ func (_u *RealmUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.TrustedDevicesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.TrustedDevicesTable,
+			Columns: []string{realm.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedTrustedDevicesIDs(); len(nodes) > 0 && !_u.mutation.TrustedDevicesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.TrustedDevicesTable,
+			Columns: []string{realm.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.TrustedDevicesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.TrustedDevicesTable,
+			Columns: []string{realm.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{realm.Label}
@@ -1616,6 +1698,21 @@ func (_u *RealmUpdateOne) AddKnownAccounts(v ...*KnownAccount) *RealmUpdateOne {
 	return _u.AddKnownAccountIDs(ids...)
 }
 
+// AddTrustedDeviceIDs adds the "trusted_devices" edge to the TrustedDevice entity by IDs.
+func (_u *RealmUpdateOne) AddTrustedDeviceIDs(ids ...string) *RealmUpdateOne {
+	_u.mutation.AddTrustedDeviceIDs(ids...)
+	return _u
+}
+
+// AddTrustedDevices adds the "trusted_devices" edges to the TrustedDevice entity.
+func (_u *RealmUpdateOne) AddTrustedDevices(v ...*TrustedDevice) *RealmUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddTrustedDeviceIDs(ids...)
+}
+
 // Mutation returns the RealmMutation object of the builder.
 func (_u *RealmUpdateOne) Mutation() *RealmMutation {
 	return _u.mutation
@@ -1898,6 +1995,27 @@ func (_u *RealmUpdateOne) RemoveKnownAccounts(v ...*KnownAccount) *RealmUpdateOn
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveKnownAccountIDs(ids...)
+}
+
+// ClearTrustedDevices clears all "trusted_devices" edges to the TrustedDevice entity.
+func (_u *RealmUpdateOne) ClearTrustedDevices() *RealmUpdateOne {
+	_u.mutation.ClearTrustedDevices()
+	return _u
+}
+
+// RemoveTrustedDeviceIDs removes the "trusted_devices" edge to TrustedDevice entities by IDs.
+func (_u *RealmUpdateOne) RemoveTrustedDeviceIDs(ids ...string) *RealmUpdateOne {
+	_u.mutation.RemoveTrustedDeviceIDs(ids...)
+	return _u
+}
+
+// RemoveTrustedDevices removes "trusted_devices" edges to TrustedDevice entities.
+func (_u *RealmUpdateOne) RemoveTrustedDevices(v ...*TrustedDevice) *RealmUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveTrustedDeviceIDs(ids...)
 }
 
 // Where appends a list predicates to the RealmUpdate builder.
@@ -2616,6 +2734,51 @@ func (_u *RealmUpdateOne) sqlSave(ctx context.Context) (_node *Realm, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.TrustedDevicesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.TrustedDevicesTable,
+			Columns: []string{realm.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedTrustedDevicesIDs(); len(nodes) > 0 && !_u.mutation.TrustedDevicesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.TrustedDevicesTable,
+			Columns: []string{realm.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.TrustedDevicesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.TrustedDevicesTable,
+			Columns: []string{realm.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

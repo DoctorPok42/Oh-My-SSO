@@ -25,6 +25,7 @@ import (
 	"sso.internal/sso/ent/session"
 	"sso.internal/sso/ent/signingkey"
 	"sso.internal/sso/ent/timeout"
+	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
 )
 
@@ -351,6 +352,21 @@ func (_c *RealmCreate) AddKnownAccounts(v ...*KnownAccount) *RealmCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddKnownAccountIDs(ids...)
+}
+
+// AddTrustedDeviceIDs adds the "trusted_devices" edge to the TrustedDevice entity by IDs.
+func (_c *RealmCreate) AddTrustedDeviceIDs(ids ...string) *RealmCreate {
+	_c.mutation.AddTrustedDeviceIDs(ids...)
+	return _c
+}
+
+// AddTrustedDevices adds the "trusted_devices" edges to the TrustedDevice entity.
+func (_c *RealmCreate) AddTrustedDevices(v ...*TrustedDevice) *RealmCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddTrustedDeviceIDs(ids...)
 }
 
 // Mutation returns the RealmMutation object of the builder.
@@ -717,6 +733,22 @@ func (_c *RealmCreate) createSpec() (*Realm, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TrustedDevicesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.TrustedDevicesTable,
+			Columns: []string{realm.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

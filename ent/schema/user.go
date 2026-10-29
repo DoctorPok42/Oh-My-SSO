@@ -69,6 +69,7 @@ func (User) Edges() []ent.Edge {
 		edge.To("mfa_backup_codes", MfaBackupCode.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("password_reset_tokens", PasswordResetToken.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("known_accounts", KnownAccount.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
+		edge.To("trusted_devices", TrustedDevice.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("consents", Consent.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("federated_identities", FederatedIdentity.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 	}

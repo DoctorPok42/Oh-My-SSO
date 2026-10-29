@@ -39,6 +39,7 @@ import (
 	"sso.internal/sso/ent/signingkey"
 	"sso.internal/sso/ent/timeout"
 	"sso.internal/sso/ent/token"
+	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
 )
 
@@ -127,6 +128,7 @@ func checkColumn(t, c string) error {
 			signingkey.Table:         signingkey.ValidColumn,
 			timeout.Table:            timeout.ValidColumn,
 			token.Table:              token.ValidColumn,
+			trusteddevice.Table:      trusteddevice.ValidColumn,
 			user.Table:               user.ValidColumn,
 		})
 	})

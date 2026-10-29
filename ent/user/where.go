@@ -1095,6 +1095,29 @@ func HasKnownAccountsWith(preds ...predicate.KnownAccount) predicate.User {
 	})
 }
 
+// HasTrustedDevices applies the HasEdge predicate on the "trusted_devices" edge.
+func HasTrustedDevices() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, TrustedDevicesTable, TrustedDevicesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasTrustedDevicesWith applies the HasEdge predicate on the "trusted_devices" edge with a given conditions (other predicates).
+func HasTrustedDevicesWith(preds ...predicate.TrustedDevice) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newTrustedDevicesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasConsents applies the HasEdge predicate on the "consents" edge.
 func HasConsents() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

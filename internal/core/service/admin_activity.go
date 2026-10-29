@@ -29,6 +29,9 @@ type SessionView struct {
 	CreatedAt      time.Time `json:"created_at"`
 	LastActivityAt time.Time `json:"last_activity_at"`
 	ExpiresAt      time.Time `json:"expires_at"`
+	// TrustedDevice: the second factor was skipped, the device is trusted
+	// ("Don't ask again on this device").
+	TrustedDevice bool `json:"trusted_device"`
 }
 
 // SessionFilter: the filters of the sessions screen.
@@ -75,6 +78,7 @@ func (s *AdminService) ListSessions(ctx context.Context, realm *domain.Realm, f 
 		v := SessionView{ID: se.ID, User: NameRef{ID: se.UserID}, IPAddress: se.IPAddress, UserAgent: se.UserAgent,
 			AuthMethod: se.AuthMethod, MFAVerified: se.MFAVerified, MFAMethod: se.MFAMethodType, RememberMe: se.RememberMe, Clients: []NameRef{},
 			CreatedAt: se.CreatedAt, LastActivityAt: se.LastActivityAt, ExpiresAt: se.ExpiresAt}
+		v.TrustedDevice = se.TrustedDevice
 		if u := byID[se.UserID]; u != nil {
 			v.User.Name, v.UserEmail = u.Username, u.Email
 		}
@@ -329,6 +333,9 @@ type MFAPoliciesView struct {
 	Roles               []RolePolicyView `json:"roles"`
 	Clients             []ClientPolicy   `json:"clients"`
 	KnownMethods        []string         `json:"known_methods"`
+	// "Don't ask again on this device" (Step 18d).
+	TrustedDevicesEnabled bool `json:"trusted_devices_enabled"`
+	TrustedDeviceDays     int  `json:"trusted_device_days"`
 }
 
 type RolePolicyView struct {
@@ -355,7 +362,8 @@ func (s *AdminService) MFAPolicies(ctx context.Context, realm *domain.Realm) (*M
 		return nil, err
 	}
 	v := &MFAPoliciesView{RequiredGlobally: ov.RequiredGlobally, StepUpMaxAgeMinutes: int(ov.StepUpMaxAge / time.Minute),
-		Roles: []RolePolicyView{}, Clients: []ClientPolicy{}, KnownMethods: methodNames(domain.KnownMfaMethodTypes)}
+		Roles: []RolePolicyView{}, Clients: []ClientPolicy{}, KnownMethods: methodNames(domain.KnownMfaMethodTypes),
+		TrustedDevicesEnabled: ov.TrustedDevices, TrustedDeviceDays: ov.TrustedDeviceDays}
 	byRole := map[string]*domain.MfaPolicy{}
 	for _, r := range ov.Roles {
 		byRole[r.Policy.RoleID] = r.Policy
@@ -380,18 +388,30 @@ func (s *AdminService) MFAPolicies(ctx context.Context, realm *domain.Realm) (*M
 	return v, nil
 }
 
+// RealmMFAInput: the realm-wide MFA settings (nil: unchanged).
+type RealmMFAInput struct {
+	Required          *bool
+	StepUpMinutes     *int
+	TrustedDevices    *bool
+	TrustedDeviceDays *int
+}
+
 // SetRealmMFA changes the realm-wide policy.
-func (s *AdminService) SetRealmMFA(ctx context.Context, actor AdminActor, realm *domain.Realm, required *bool, stepUpMinutes *int) (*MFAPoliciesView, error) {
-	if isMaster(realm) && required != nil && !*required {
+func (s *AdminService) SetRealmMFA(ctx context.Context, actor AdminActor, realm *domain.Realm, in RealmMFAInput) (*MFAPoliciesView, error) {
+	if isMaster(realm) && in.Required != nil && !*in.Required {
 		return nil, adminRefused("system_realm", "MFA stays required in the master realm")
 	}
+	if isMaster(realm) && in.TrustedDevices != nil && *in.TrustedDevices {
+		return nil, adminRefused("system_realm", "the master realm always asks for the second factor: its accounts administer the whole instance")
+	}
 	var maxAge *time.Duration
-	if stepUpMinutes != nil {
-		d := time.Duration(*stepUpMinutes) * time.Minute
+	if in.StepUpMinutes != nil {
+		d := time.Duration(*in.StepUpMinutes) * time.Minute
 		maxAge = &d
 	}
-	if _, err := s.d.MFAPolicy.SetRealmPolicy(ctx, SetRealmMFAPolicyInput{RealmID: realm.ID, RequiredGlobally: required,
-		StepUpMaxAge: maxAge, Actor: PolicyActor{TriggeredBy: actor.By()}}); err != nil {
+	if _, err := s.d.MFAPolicy.SetRealmPolicy(ctx, SetRealmMFAPolicyInput{RealmID: realm.ID, RequiredGlobally: in.Required,
+		StepUpMaxAge: maxAge, TrustedDevices: in.TrustedDevices, TrustedDeviceDays: in.TrustedDeviceDays,
+		Actor: PolicyActor{TriggeredBy: actor.By()}}); err != nil {
 		return nil, asAdminError(err)
 	}
 	return s.MFAPolicies(ctx, realm)

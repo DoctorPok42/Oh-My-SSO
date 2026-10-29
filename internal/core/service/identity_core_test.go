@@ -94,7 +94,7 @@ func (f *fakeSessionRepo) Create(_ context.Context, p repository.CreateSessionPa
 		IPAddress: p.IPAddress, UserAgent: p.UserAgent,
 		MFAVerified: p.MFAVerified, MFAMethodType: p.MFAMethodType, MFAVerifiedAt: p.MFAVerifiedAt,
 		AuthMethod: p.AuthMethod, Status: domain.SessionActive, TokenHash: p.TokenHash,
-		DeviceFingerprint: p.DeviceFingerprint, RememberMe: p.RememberMe,
+		DeviceFingerprint: p.DeviceFingerprint, RememberMe: p.RememberMe, TrustedDevice: p.TrustedDevice,
 	}
 	f.byID[s.ID] = s
 	cp := *s

@@ -131,6 +131,11 @@ func RememberMe(v bool) predicate.Session {
 	return predicate.Session(sql.FieldEQ(FieldRememberMe, v))
 }
 
+// TrustedDevice applies equality check predicate on the "trusted_device" field. It's identical to TrustedDeviceEQ.
+func TrustedDevice(v bool) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldTrustedDevice, v))
+}
+
 // Status applies equality check predicate on the "status" field. It's identical to StatusEQ.
 func Status(v schema.SessionStatus) predicate.Session {
 	vc := string(v)
@@ -830,6 +835,16 @@ func RememberMeEQ(v bool) predicate.Session {
 // RememberMeNEQ applies the NEQ predicate on the "remember_me" field.
 func RememberMeNEQ(v bool) predicate.Session {
 	return predicate.Session(sql.FieldNEQ(FieldRememberMe, v))
+}
+
+// TrustedDeviceEQ applies the EQ predicate on the "trusted_device" field.
+func TrustedDeviceEQ(v bool) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldTrustedDevice, v))
+}
+
+// TrustedDeviceNEQ applies the NEQ predicate on the "trusted_device" field.
+func TrustedDeviceNEQ(v bool) predicate.Session {
+	return predicate.Session(sql.FieldNEQ(FieldTrustedDevice, v))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.

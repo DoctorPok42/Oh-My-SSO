@@ -53,6 +53,12 @@ func (InstanceSettings) Fields() []ent.Field {
 		// sensitive actions (step-up), e.g. rotating a signing key or
 		// removing an MFA factor.
 		field.Int("mfa_step_up_max_age_minutes").Default(10),
+		// "Don't ask again on this device": after a second factor, the user
+		// may skip it on that device for mfa_trusted_device_days (1 to 90),
+		// when no policy requires MFA. Off in the master realm (bootstrap
+		// and the migration that added these columns).
+		field.Bool("mfa_trusted_device_enabled").Default(true),
+		field.Int("mfa_trusted_device_days").Default(30),
 		field.Int("password_reset_ttl_minutes").Default(30),
 		field.Bool("suspicious_login_email_enabled").Default(false),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),

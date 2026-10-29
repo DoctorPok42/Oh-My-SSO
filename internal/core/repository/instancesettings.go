@@ -35,5 +35,7 @@ type UpdateInstanceSettingsParams struct {
 	MFAStepUpMaxAgeMinutes      *int
 	PasswordResetTTLMinutes     *int
 	SuspiciousLoginEmailEnabled *bool
+	MFATrustedDeviceEnabled     *bool
+	MFATrustedDeviceDays        *int
 	UpdatedBy                   *string
 }

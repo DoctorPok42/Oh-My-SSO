@@ -314,6 +314,41 @@ func (_u *InstanceSettingsUpdate) AddMfaStepUpMaxAgeMinutes(v int) *InstanceSett
 	return _u
 }
 
+// SetMfaTrustedDeviceEnabled sets the "mfa_trusted_device_enabled" field.
+func (_u *InstanceSettingsUpdate) SetMfaTrustedDeviceEnabled(v bool) *InstanceSettingsUpdate {
+	_u.mutation.SetMfaTrustedDeviceEnabled(v)
+	return _u
+}
+
+// SetNillableMfaTrustedDeviceEnabled sets the "mfa_trusted_device_enabled" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableMfaTrustedDeviceEnabled(v *bool) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetMfaTrustedDeviceEnabled(*v)
+	}
+	return _u
+}
+
+// SetMfaTrustedDeviceDays sets the "mfa_trusted_device_days" field.
+func (_u *InstanceSettingsUpdate) SetMfaTrustedDeviceDays(v int) *InstanceSettingsUpdate {
+	_u.mutation.ResetMfaTrustedDeviceDays()
+	_u.mutation.SetMfaTrustedDeviceDays(v)
+	return _u
+}
+
+// SetNillableMfaTrustedDeviceDays sets the "mfa_trusted_device_days" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableMfaTrustedDeviceDays(v *int) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetMfaTrustedDeviceDays(*v)
+	}
+	return _u
+}
+
+// AddMfaTrustedDeviceDays adds value to the "mfa_trusted_device_days" field.
+func (_u *InstanceSettingsUpdate) AddMfaTrustedDeviceDays(v int) *InstanceSettingsUpdate {
+	_u.mutation.AddMfaTrustedDeviceDays(v)
+	return _u
+}
+
 // SetPasswordResetTTLMinutes sets the "password_reset_ttl_minutes" field.
 func (_u *InstanceSettingsUpdate) SetPasswordResetTTLMinutes(v int) *InstanceSettingsUpdate {
 	_u.mutation.ResetPasswordResetTTLMinutes()
@@ -518,6 +553,15 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.AddedMfaStepUpMaxAgeMinutes(); ok {
 		_spec.AddField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.MfaTrustedDeviceEnabled(); ok {
+		_spec.SetField(instancesettings.FieldMfaTrustedDeviceEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.MfaTrustedDeviceDays(); ok {
+		_spec.SetField(instancesettings.FieldMfaTrustedDeviceDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedMfaTrustedDeviceDays(); ok {
+		_spec.AddField(instancesettings.FieldMfaTrustedDeviceDays, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.PasswordResetTTLMinutes(); ok {
 		_spec.SetField(instancesettings.FieldPasswordResetTTLMinutes, field.TypeInt, value)
@@ -841,6 +885,41 @@ func (_u *InstanceSettingsUpdateOne) AddMfaStepUpMaxAgeMinutes(v int) *InstanceS
 	return _u
 }
 
+// SetMfaTrustedDeviceEnabled sets the "mfa_trusted_device_enabled" field.
+func (_u *InstanceSettingsUpdateOne) SetMfaTrustedDeviceEnabled(v bool) *InstanceSettingsUpdateOne {
+	_u.mutation.SetMfaTrustedDeviceEnabled(v)
+	return _u
+}
+
+// SetNillableMfaTrustedDeviceEnabled sets the "mfa_trusted_device_enabled" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableMfaTrustedDeviceEnabled(v *bool) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetMfaTrustedDeviceEnabled(*v)
+	}
+	return _u
+}
+
+// SetMfaTrustedDeviceDays sets the "mfa_trusted_device_days" field.
+func (_u *InstanceSettingsUpdateOne) SetMfaTrustedDeviceDays(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.ResetMfaTrustedDeviceDays()
+	_u.mutation.SetMfaTrustedDeviceDays(v)
+	return _u
+}
+
+// SetNillableMfaTrustedDeviceDays sets the "mfa_trusted_device_days" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableMfaTrustedDeviceDays(v *int) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetMfaTrustedDeviceDays(*v)
+	}
+	return _u
+}
+
+// AddMfaTrustedDeviceDays adds value to the "mfa_trusted_device_days" field.
+func (_u *InstanceSettingsUpdateOne) AddMfaTrustedDeviceDays(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.AddMfaTrustedDeviceDays(v)
+	return _u
+}
+
 // SetPasswordResetTTLMinutes sets the "password_reset_ttl_minutes" field.
 func (_u *InstanceSettingsUpdateOne) SetPasswordResetTTLMinutes(v int) *InstanceSettingsUpdateOne {
 	_u.mutation.ResetPasswordResetTTLMinutes()
@@ -1075,6 +1154,15 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.AddedMfaStepUpMaxAgeMinutes(); ok {
 		_spec.AddField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.MfaTrustedDeviceEnabled(); ok {
+		_spec.SetField(instancesettings.FieldMfaTrustedDeviceEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.MfaTrustedDeviceDays(); ok {
+		_spec.SetField(instancesettings.FieldMfaTrustedDeviceDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedMfaTrustedDeviceDays(); ok {
+		_spec.AddField(instancesettings.FieldMfaTrustedDeviceDays, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.PasswordResetTTLMinutes(); ok {
 		_spec.SetField(instancesettings.FieldPasswordResetTTLMinutes, field.TypeInt, value)

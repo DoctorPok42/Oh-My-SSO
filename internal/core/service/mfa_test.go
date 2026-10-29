@@ -44,7 +44,8 @@ func (f *mfaSettingsRepo) GetByRealmID(_ context.Context, realmID string) (*doma
 func (f *mfaSettingsRepo) Create(_ context.Context, p repository.CreateInstanceSettingsParams) (*domain.InstanceSettings, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	s := &domain.InstanceSettings{ID: "settings-" + p.RealmID, RealmID: p.RealmID, ManagedBy: domain.InstanceSettingsManagedByUI, MFAStepUpMaxAgeMinutes: 10}
+	s := &domain.InstanceSettings{ID: "settings-" + p.RealmID, RealmID: p.RealmID, ManagedBy: domain.InstanceSettingsManagedByUI, MFAStepUpMaxAgeMinutes: 10,
+		MFATrustedDeviceEnabled: true, MFATrustedDeviceDays: 30} // the database defaults
 	f.byRelm[p.RealmID] = s
 	cp := *s
 	return &cp, nil
@@ -63,6 +64,12 @@ func (f *mfaSettingsRepo) Update(_ context.Context, id string, p repository.Upda
 		if p.MFAStepUpMaxAgeMinutes != nil {
 			s.MFAStepUpMaxAgeMinutes = *p.MFAStepUpMaxAgeMinutes
 		}
+		if p.MFATrustedDeviceEnabled != nil {
+			s.MFATrustedDeviceEnabled = *p.MFATrustedDeviceEnabled
+		}
+		if p.MFATrustedDeviceDays != nil {
+			s.MFATrustedDeviceDays = *p.MFATrustedDeviceDays
+		}
 		cp := *s
 		return &cp, nil
 	}
@@ -74,7 +81,8 @@ func (f *mfaSettingsRepo) set(realmID string, mod func(*domain.InstanceSettings)
 	defer f.mu.Unlock()
 	s, ok := f.byRelm[realmID]
 	if !ok {
-		s = &domain.InstanceSettings{ID: "settings-" + realmID, RealmID: realmID, MFAStepUpMaxAgeMinutes: 10}
+		s = &domain.InstanceSettings{ID: "settings-" + realmID, RealmID: realmID, MFAStepUpMaxAgeMinutes: 10,
+			MFATrustedDeviceEnabled: true, MFATrustedDeviceDays: 30}
 		f.byRelm[realmID] = s
 	}
 	mod(s)
@@ -183,6 +191,13 @@ type mfaFixture struct {
 	core       *service.IdentityCoreService
 	passkeys   service.PasskeyProvider
 	notifier   *recordingNotifier
+	// "Don't ask again on this device" (Step 18d).
+	devices *memstore.TrustedDevices
+	trusted *service.TrustedDeviceService
+	risk    *fakeRisk
+	// How the user likes to sign in on a device (Step 18e).
+	known    *fakeKnownAccounts
+	accounts *service.KnownAccountService
 }
 
 // Relying party used by the passkey tests (the software authenticator of
@@ -253,6 +268,11 @@ func newMFAFixture(t *testing.T) *mfaFixture {
 	require.NoError(t, err)
 	f.passkeys = pk
 
+	f.devices = memstore.NewTrustedDevices()
+	f.trusted = service.NewTrustedDeviceService(service.TrustedDeviceDeps{Devices: f.devices, Settings: f.settings, Audit: f.audit, Now: clock})
+	f.risk = &fakeRisk{}
+	f.known = newFakeKnownAccounts()
+	f.accounts = service.NewKnownAccountService(service.KnownAccountDeps{Accounts: f.known, Users: f.users, Now: clock})
 	f.mfa = service.NewMFAService(service.MFADeps{
 		Users:         f.users,
 		Methods:       f.methods,
@@ -269,6 +289,10 @@ func newMFAFixture(t *testing.T) *mfaFixture {
 		Notifier:      f.notifier,
 		IssuerName:    "Oh-My-SSO test",
 		Now:           clock,
+		// Off until a test gives a device fingerprint.
+		TrustedDevices: f.trusted,
+		Risk:           f.risk,
+		Memory:         f.accounts,
 	})
 
 	rbac, _ := newRBAC(f.access)

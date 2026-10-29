@@ -23,4 +23,16 @@ type KnownAccountRepository interface {
 	// Trim keeps the keep most recently used accounts of a device and
 	// deletes the others. It returns how many rows it deleted.
 	Trim(ctx context.Context, realmID, deviceHash string, keep int) (int, error)
+	// Find returns the row of userID on a device, ErrNotFound if the device
+	// does not remember the account.
+	Find(ctx context.Context, realmID, deviceHash, userID string) (*domain.KnownAccount, error)
+	// SetLastMethods sets the fields of p that are not nil on the row of
+	// userID on a device. No row: nothing to do (false, nil).
+	SetLastMethods(ctx context.Context, realmID, deviceHash, userID string, p LastMethodsParams) (bool, error)
+}
+
+// LastMethodsParams: how the user signed in on a device (Step 18e).
+type LastMethodsParams struct {
+	LastMethod       *string
+	LastSecondFactor *string
 }

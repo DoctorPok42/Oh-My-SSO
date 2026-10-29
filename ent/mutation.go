@@ -40,6 +40,7 @@ import (
 	"sso.internal/sso/ent/signingkey"
 	"sso.internal/sso/ent/timeout"
 	"sso.internal/sso/ent/token"
+	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
 )
 
@@ -79,6 +80,7 @@ const (
 	TypeSigningKey         = "SigningKey"
 	TypeTimeout            = "Timeout"
 	TypeToken              = "Token"
+	TypeTrustedDevice      = "TrustedDevice"
 	TypeUser               = "User"
 )
 
@@ -13251,6 +13253,9 @@ type InstanceSettingsMutation struct {
 	addkey_rotation_grace_hours    *int
 	mfa_step_up_max_age_minutes    *int
 	addmfa_step_up_max_age_minutes *int
+	mfa_trusted_device_enabled     *bool
+	mfa_trusted_device_days        *int
+	addmfa_trusted_device_days     *int
 	password_reset_ttl_minutes     *int
 	addpassword_reset_ttl_minutes  *int
 	suspicious_login_email_enabled *bool
@@ -14173,6 +14178,98 @@ func (m *InstanceSettingsMutation) ResetMfaStepUpMaxAgeMinutes() {
 	m.addmfa_step_up_max_age_minutes = nil
 }
 
+// SetMfaTrustedDeviceEnabled sets the "mfa_trusted_device_enabled" field.
+func (m *InstanceSettingsMutation) SetMfaTrustedDeviceEnabled(b bool) {
+	m.mfa_trusted_device_enabled = &b
+}
+
+// MfaTrustedDeviceEnabled returns the value of the "mfa_trusted_device_enabled" field in the mutation.
+func (m *InstanceSettingsMutation) MfaTrustedDeviceEnabled() (r bool, exists bool) {
+	v := m.mfa_trusted_device_enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMfaTrustedDeviceEnabled returns the old "mfa_trusted_device_enabled" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldMfaTrustedDeviceEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMfaTrustedDeviceEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMfaTrustedDeviceEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMfaTrustedDeviceEnabled: %w", err)
+	}
+	return oldValue.MfaTrustedDeviceEnabled, nil
+}
+
+// ResetMfaTrustedDeviceEnabled resets all changes to the "mfa_trusted_device_enabled" field.
+func (m *InstanceSettingsMutation) ResetMfaTrustedDeviceEnabled() {
+	m.mfa_trusted_device_enabled = nil
+}
+
+// SetMfaTrustedDeviceDays sets the "mfa_trusted_device_days" field.
+func (m *InstanceSettingsMutation) SetMfaTrustedDeviceDays(i int) {
+	m.mfa_trusted_device_days = &i
+	m.addmfa_trusted_device_days = nil
+}
+
+// MfaTrustedDeviceDays returns the value of the "mfa_trusted_device_days" field in the mutation.
+func (m *InstanceSettingsMutation) MfaTrustedDeviceDays() (r int, exists bool) {
+	v := m.mfa_trusted_device_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMfaTrustedDeviceDays returns the old "mfa_trusted_device_days" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldMfaTrustedDeviceDays(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMfaTrustedDeviceDays is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMfaTrustedDeviceDays requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMfaTrustedDeviceDays: %w", err)
+	}
+	return oldValue.MfaTrustedDeviceDays, nil
+}
+
+// AddMfaTrustedDeviceDays adds i to the "mfa_trusted_device_days" field.
+func (m *InstanceSettingsMutation) AddMfaTrustedDeviceDays(i int) {
+	if m.addmfa_trusted_device_days != nil {
+		*m.addmfa_trusted_device_days += i
+	} else {
+		m.addmfa_trusted_device_days = &i
+	}
+}
+
+// AddedMfaTrustedDeviceDays returns the value that was added to the "mfa_trusted_device_days" field in this mutation.
+func (m *InstanceSettingsMutation) AddedMfaTrustedDeviceDays() (r int, exists bool) {
+	v := m.addmfa_trusted_device_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetMfaTrustedDeviceDays resets all changes to the "mfa_trusted_device_days" field.
+func (m *InstanceSettingsMutation) ResetMfaTrustedDeviceDays() {
+	m.mfa_trusted_device_days = nil
+	m.addmfa_trusted_device_days = nil
+}
+
 // SetPasswordResetTTLMinutes sets the "password_reset_ttl_minutes" field.
 func (m *InstanceSettingsMutation) SetPasswordResetTTLMinutes(i int) {
 	m.password_reset_ttl_minutes = &i
@@ -14411,7 +14508,7 @@ func (m *InstanceSettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstanceSettingsMutation) Fields() []string {
-	fields := make([]string, 0, 20)
+	fields := make([]string, 0, 22)
 	if m.realm != nil {
 		fields = append(fields, instancesettings.FieldRealmID)
 	}
@@ -14459,6 +14556,12 @@ func (m *InstanceSettingsMutation) Fields() []string {
 	}
 	if m.mfa_step_up_max_age_minutes != nil {
 		fields = append(fields, instancesettings.FieldMfaStepUpMaxAgeMinutes)
+	}
+	if m.mfa_trusted_device_enabled != nil {
+		fields = append(fields, instancesettings.FieldMfaTrustedDeviceEnabled)
+	}
+	if m.mfa_trusted_device_days != nil {
+		fields = append(fields, instancesettings.FieldMfaTrustedDeviceDays)
 	}
 	if m.password_reset_ttl_minutes != nil {
 		fields = append(fields, instancesettings.FieldPasswordResetTTLMinutes)
@@ -14512,6 +14615,10 @@ func (m *InstanceSettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.KeyRotationGraceHours()
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		return m.MfaStepUpMaxAgeMinutes()
+	case instancesettings.FieldMfaTrustedDeviceEnabled:
+		return m.MfaTrustedDeviceEnabled()
+	case instancesettings.FieldMfaTrustedDeviceDays:
+		return m.MfaTrustedDeviceDays()
 	case instancesettings.FieldPasswordResetTTLMinutes:
 		return m.PasswordResetTTLMinutes()
 	case instancesettings.FieldSuspiciousLoginEmailEnabled:
@@ -14561,6 +14668,10 @@ func (m *InstanceSettingsMutation) OldField(ctx context.Context, name string) (e
 		return m.OldKeyRotationGraceHours(ctx)
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		return m.OldMfaStepUpMaxAgeMinutes(ctx)
+	case instancesettings.FieldMfaTrustedDeviceEnabled:
+		return m.OldMfaTrustedDeviceEnabled(ctx)
+	case instancesettings.FieldMfaTrustedDeviceDays:
+		return m.OldMfaTrustedDeviceDays(ctx)
 	case instancesettings.FieldPasswordResetTTLMinutes:
 		return m.OldPasswordResetTTLMinutes(ctx)
 	case instancesettings.FieldSuspiciousLoginEmailEnabled:
@@ -14690,6 +14801,20 @@ func (m *InstanceSettingsMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetMfaStepUpMaxAgeMinutes(v)
 		return nil
+	case instancesettings.FieldMfaTrustedDeviceEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMfaTrustedDeviceEnabled(v)
+		return nil
+	case instancesettings.FieldMfaTrustedDeviceDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMfaTrustedDeviceDays(v)
+		return nil
 	case instancesettings.FieldPasswordResetTTLMinutes:
 		v, ok := value.(int)
 		if !ok {
@@ -14756,6 +14881,9 @@ func (m *InstanceSettingsMutation) AddedFields() []string {
 	if m.addmfa_step_up_max_age_minutes != nil {
 		fields = append(fields, instancesettings.FieldMfaStepUpMaxAgeMinutes)
 	}
+	if m.addmfa_trusted_device_days != nil {
+		fields = append(fields, instancesettings.FieldMfaTrustedDeviceDays)
+	}
 	if m.addpassword_reset_ttl_minutes != nil {
 		fields = append(fields, instancesettings.FieldPasswordResetTTLMinutes)
 	}
@@ -14787,6 +14915,8 @@ func (m *InstanceSettingsMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedKeyRotationGraceHours()
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		return m.AddedMfaStepUpMaxAgeMinutes()
+	case instancesettings.FieldMfaTrustedDeviceDays:
+		return m.AddedMfaTrustedDeviceDays()
 	case instancesettings.FieldPasswordResetTTLMinutes:
 		return m.AddedPasswordResetTTLMinutes()
 	}
@@ -14867,6 +14997,13 @@ func (m *InstanceSettingsMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddMfaStepUpMaxAgeMinutes(v)
+		return nil
+	case instancesettings.FieldMfaTrustedDeviceDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMfaTrustedDeviceDays(v)
 		return nil
 	case instancesettings.FieldPasswordResetTTLMinutes:
 		v, ok := value.(int)
@@ -14964,6 +15101,12 @@ func (m *InstanceSettingsMutation) ResetField(name string) error {
 		return nil
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		m.ResetMfaStepUpMaxAgeMinutes()
+		return nil
+	case instancesettings.FieldMfaTrustedDeviceEnabled:
+		m.ResetMfaTrustedDeviceEnabled()
+		return nil
+	case instancesettings.FieldMfaTrustedDeviceDays:
+		m.ResetMfaTrustedDeviceDays()
 		return nil
 	case instancesettings.FieldPasswordResetTTLMinutes:
 		m.ResetPasswordResetTTLMinutes()
@@ -15682,20 +15825,22 @@ func (m *KeyRotationLogMutation) ResetEdge(name string) error {
 // KnownAccountMutation represents an operation that mutates the KnownAccount nodes in the graph.
 type KnownAccountMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *string
-	device_hash   *string
-	created_at    *time.Time
-	last_used_at  *time.Time
-	clearedFields map[string]struct{}
-	realm         *string
-	clearedrealm  bool
-	user          *string
-	cleareduser   bool
-	done          bool
-	oldValue      func(context.Context) (*KnownAccount, error)
-	predicates    []predicate.KnownAccount
+	op                 Op
+	typ                string
+	id                 *string
+	device_hash        *string
+	created_at         *time.Time
+	last_used_at       *time.Time
+	last_method        *string
+	last_second_factor *string
+	clearedFields      map[string]struct{}
+	realm              *string
+	clearedrealm       bool
+	user               *string
+	cleareduser        bool
+	done               bool
+	oldValue           func(context.Context) (*KnownAccount, error)
+	predicates         []predicate.KnownAccount
 }
 
 var _ ent.Mutation = (*KnownAccountMutation)(nil)
@@ -15982,6 +16127,104 @@ func (m *KnownAccountMutation) ResetLastUsedAt() {
 	m.last_used_at = nil
 }
 
+// SetLastMethod sets the "last_method" field.
+func (m *KnownAccountMutation) SetLastMethod(s string) {
+	m.last_method = &s
+}
+
+// LastMethod returns the value of the "last_method" field in the mutation.
+func (m *KnownAccountMutation) LastMethod() (r string, exists bool) {
+	v := m.last_method
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastMethod returns the old "last_method" field's value of the KnownAccount entity.
+// If the KnownAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnownAccountMutation) OldLastMethod(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastMethod is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastMethod requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastMethod: %w", err)
+	}
+	return oldValue.LastMethod, nil
+}
+
+// ClearLastMethod clears the value of the "last_method" field.
+func (m *KnownAccountMutation) ClearLastMethod() {
+	m.last_method = nil
+	m.clearedFields[knownaccount.FieldLastMethod] = struct{}{}
+}
+
+// LastMethodCleared returns if the "last_method" field was cleared in this mutation.
+func (m *KnownAccountMutation) LastMethodCleared() bool {
+	_, ok := m.clearedFields[knownaccount.FieldLastMethod]
+	return ok
+}
+
+// ResetLastMethod resets all changes to the "last_method" field.
+func (m *KnownAccountMutation) ResetLastMethod() {
+	m.last_method = nil
+	delete(m.clearedFields, knownaccount.FieldLastMethod)
+}
+
+// SetLastSecondFactor sets the "last_second_factor" field.
+func (m *KnownAccountMutation) SetLastSecondFactor(s string) {
+	m.last_second_factor = &s
+}
+
+// LastSecondFactor returns the value of the "last_second_factor" field in the mutation.
+func (m *KnownAccountMutation) LastSecondFactor() (r string, exists bool) {
+	v := m.last_second_factor
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastSecondFactor returns the old "last_second_factor" field's value of the KnownAccount entity.
+// If the KnownAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnownAccountMutation) OldLastSecondFactor(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastSecondFactor is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastSecondFactor requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastSecondFactor: %w", err)
+	}
+	return oldValue.LastSecondFactor, nil
+}
+
+// ClearLastSecondFactor clears the value of the "last_second_factor" field.
+func (m *KnownAccountMutation) ClearLastSecondFactor() {
+	m.last_second_factor = nil
+	m.clearedFields[knownaccount.FieldLastSecondFactor] = struct{}{}
+}
+
+// LastSecondFactorCleared returns if the "last_second_factor" field was cleared in this mutation.
+func (m *KnownAccountMutation) LastSecondFactorCleared() bool {
+	_, ok := m.clearedFields[knownaccount.FieldLastSecondFactor]
+	return ok
+}
+
+// ResetLastSecondFactor resets all changes to the "last_second_factor" field.
+func (m *KnownAccountMutation) ResetLastSecondFactor() {
+	m.last_second_factor = nil
+	delete(m.clearedFields, knownaccount.FieldLastSecondFactor)
+}
+
 // ClearRealm clears the "realm" edge to the Realm entity.
 func (m *KnownAccountMutation) ClearRealm() {
 	m.clearedrealm = true
@@ -16070,7 +16313,7 @@ func (m *KnownAccountMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *KnownAccountMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 7)
 	if m.realm != nil {
 		fields = append(fields, knownaccount.FieldRealmID)
 	}
@@ -16085,6 +16328,12 @@ func (m *KnownAccountMutation) Fields() []string {
 	}
 	if m.last_used_at != nil {
 		fields = append(fields, knownaccount.FieldLastUsedAt)
+	}
+	if m.last_method != nil {
+		fields = append(fields, knownaccount.FieldLastMethod)
+	}
+	if m.last_second_factor != nil {
+		fields = append(fields, knownaccount.FieldLastSecondFactor)
 	}
 	return fields
 }
@@ -16104,6 +16353,10 @@ func (m *KnownAccountMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case knownaccount.FieldLastUsedAt:
 		return m.LastUsedAt()
+	case knownaccount.FieldLastMethod:
+		return m.LastMethod()
+	case knownaccount.FieldLastSecondFactor:
+		return m.LastSecondFactor()
 	}
 	return nil, false
 }
@@ -16123,6 +16376,10 @@ func (m *KnownAccountMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldCreatedAt(ctx)
 	case knownaccount.FieldLastUsedAt:
 		return m.OldLastUsedAt(ctx)
+	case knownaccount.FieldLastMethod:
+		return m.OldLastMethod(ctx)
+	case knownaccount.FieldLastSecondFactor:
+		return m.OldLastSecondFactor(ctx)
 	}
 	return nil, fmt.Errorf("unknown KnownAccount field %s", name)
 }
@@ -16167,6 +16424,20 @@ func (m *KnownAccountMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetLastUsedAt(v)
 		return nil
+	case knownaccount.FieldLastMethod:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastMethod(v)
+		return nil
+	case knownaccount.FieldLastSecondFactor:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastSecondFactor(v)
+		return nil
 	}
 	return fmt.Errorf("unknown KnownAccount field %s", name)
 }
@@ -16196,7 +16467,14 @@ func (m *KnownAccountMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *KnownAccountMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(knownaccount.FieldLastMethod) {
+		fields = append(fields, knownaccount.FieldLastMethod)
+	}
+	if m.FieldCleared(knownaccount.FieldLastSecondFactor) {
+		fields = append(fields, knownaccount.FieldLastSecondFactor)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -16209,6 +16487,14 @@ func (m *KnownAccountMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *KnownAccountMutation) ClearField(name string) error {
+	switch name {
+	case knownaccount.FieldLastMethod:
+		m.ClearLastMethod()
+		return nil
+	case knownaccount.FieldLastSecondFactor:
+		m.ClearLastSecondFactor()
+		return nil
+	}
 	return fmt.Errorf("unknown KnownAccount nullable field %s", name)
 }
 
@@ -16230,6 +16516,12 @@ func (m *KnownAccountMutation) ResetField(name string) error {
 		return nil
 	case knownaccount.FieldLastUsedAt:
 		m.ResetLastUsedAt()
+		return nil
+	case knownaccount.FieldLastMethod:
+		m.ResetLastMethod()
+		return nil
+	case knownaccount.FieldLastSecondFactor:
+		m.ResetLastSecondFactor()
 		return nil
 	}
 	return fmt.Errorf("unknown KnownAccount field %s", name)
@@ -22046,6 +22338,9 @@ type RealmMutation struct {
 	known_accounts            map[string]struct{}
 	removedknown_accounts     map[string]struct{}
 	clearedknown_accounts     bool
+	trusted_devices           map[string]struct{}
+	removedtrusted_devices    map[string]struct{}
+	clearedtrusted_devices    bool
 	done                      bool
 	oldValue                  func(context.Context) (*Realm, error)
 	predicates                []predicate.Realm
@@ -23174,6 +23469,60 @@ func (m *RealmMutation) ResetKnownAccounts() {
 	m.removedknown_accounts = nil
 }
 
+// AddTrustedDeviceIDs adds the "trusted_devices" edge to the TrustedDevice entity by ids.
+func (m *RealmMutation) AddTrustedDeviceIDs(ids ...string) {
+	if m.trusted_devices == nil {
+		m.trusted_devices = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.trusted_devices[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTrustedDevices clears the "trusted_devices" edge to the TrustedDevice entity.
+func (m *RealmMutation) ClearTrustedDevices() {
+	m.clearedtrusted_devices = true
+}
+
+// TrustedDevicesCleared reports if the "trusted_devices" edge to the TrustedDevice entity was cleared.
+func (m *RealmMutation) TrustedDevicesCleared() bool {
+	return m.clearedtrusted_devices
+}
+
+// RemoveTrustedDeviceIDs removes the "trusted_devices" edge to the TrustedDevice entity by IDs.
+func (m *RealmMutation) RemoveTrustedDeviceIDs(ids ...string) {
+	if m.removedtrusted_devices == nil {
+		m.removedtrusted_devices = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.trusted_devices, ids[i])
+		m.removedtrusted_devices[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTrustedDevices returns the removed IDs of the "trusted_devices" edge to the TrustedDevice entity.
+func (m *RealmMutation) RemovedTrustedDevicesIDs() (ids []string) {
+	for id := range m.removedtrusted_devices {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TrustedDevicesIDs returns the "trusted_devices" edge IDs in the mutation.
+func (m *RealmMutation) TrustedDevicesIDs() (ids []string) {
+	for id := range m.trusted_devices {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTrustedDevices resets all changes to the "trusted_devices" edge.
+func (m *RealmMutation) ResetTrustedDevices() {
+	m.trusted_devices = nil
+	m.clearedtrusted_devices = false
+	m.removedtrusted_devices = nil
+}
+
 // Where appends a list predicates to the RealmMutation builder.
 func (m *RealmMutation) Where(ps ...predicate.Realm) {
 	m.predicates = append(m.predicates, ps...)
@@ -23424,7 +23773,7 @@ func (m *RealmMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RealmMutation) AddedEdges() []string {
-	edges := make([]string, 0, 14)
+	edges := make([]string, 0, 15)
 	if m.users != nil {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -23466,6 +23815,9 @@ func (m *RealmMutation) AddedEdges() []string {
 	}
 	if m.known_accounts != nil {
 		edges = append(edges, realm.EdgeKnownAccounts)
+	}
+	if m.trusted_devices != nil {
+		edges = append(edges, realm.EdgeTrustedDevices)
 	}
 	return edges
 }
@@ -23556,13 +23908,19 @@ func (m *RealmMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case realm.EdgeTrustedDevices:
+		ids := make([]ent.Value, 0, len(m.trusted_devices))
+		for id := range m.trusted_devices {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RealmMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 14)
+	edges := make([]string, 0, 15)
 	if m.removedusers != nil {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -23601,6 +23959,9 @@ func (m *RealmMutation) RemovedEdges() []string {
 	}
 	if m.removedknown_accounts != nil {
 		edges = append(edges, realm.EdgeKnownAccounts)
+	}
+	if m.removedtrusted_devices != nil {
+		edges = append(edges, realm.EdgeTrustedDevices)
 	}
 	return edges
 }
@@ -23687,13 +24048,19 @@ func (m *RealmMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case realm.EdgeTrustedDevices:
+		ids := make([]ent.Value, 0, len(m.removedtrusted_devices))
+		for id := range m.removedtrusted_devices {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RealmMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 14)
+	edges := make([]string, 0, 15)
 	if m.clearedusers {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -23736,6 +24103,9 @@ func (m *RealmMutation) ClearedEdges() []string {
 	if m.clearedknown_accounts {
 		edges = append(edges, realm.EdgeKnownAccounts)
 	}
+	if m.clearedtrusted_devices {
+		edges = append(edges, realm.EdgeTrustedDevices)
+	}
 	return edges
 }
 
@@ -23771,6 +24141,8 @@ func (m *RealmMutation) EdgeCleared(name string) bool {
 		return m.clearedmfa_policies
 	case realm.EdgeKnownAccounts:
 		return m.clearedknown_accounts
+	case realm.EdgeTrustedDevices:
+		return m.clearedtrusted_devices
 	}
 	return false
 }
@@ -23831,6 +24203,9 @@ func (m *RealmMutation) ResetEdge(name string) error {
 		return nil
 	case realm.EdgeKnownAccounts:
 		m.ResetKnownAccounts()
+		return nil
+	case realm.EdgeTrustedDevices:
+		m.ResetTrustedDevices()
 		return nil
 	}
 	return fmt.Errorf("unknown Realm edge %s", name)
@@ -25684,6 +26059,7 @@ type SessionMutation struct {
 	mfa_verified_at    *time.Time
 	auth_method        *string
 	remember_me        *bool
+	trusted_device     *bool
 	status             *schema.SessionStatus
 	revoked_reason     *string
 	token_hash         *string
@@ -26337,6 +26713,42 @@ func (m *SessionMutation) ResetRememberMe() {
 	m.remember_me = nil
 }
 
+// SetTrustedDevice sets the "trusted_device" field.
+func (m *SessionMutation) SetTrustedDevice(b bool) {
+	m.trusted_device = &b
+}
+
+// TrustedDevice returns the value of the "trusted_device" field in the mutation.
+func (m *SessionMutation) TrustedDevice() (r bool, exists bool) {
+	v := m.trusted_device
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTrustedDevice returns the old "trusted_device" field's value of the Session entity.
+// If the Session object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SessionMutation) OldTrustedDevice(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTrustedDevice is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTrustedDevice requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTrustedDevice: %w", err)
+	}
+	return oldValue.TrustedDevice, nil
+}
+
+// ResetTrustedDevice resets all changes to the "trusted_device" field.
+func (m *SessionMutation) ResetTrustedDevice() {
+	m.trusted_device = nil
+}
+
 // SetStatus sets the "status" field.
 func (m *SessionMutation) SetStatus(ss schema.SessionStatus) {
 	m.status = &ss
@@ -26613,7 +27025,7 @@ func (m *SessionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SessionMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 17)
 	if m.realm != nil {
 		fields = append(fields, session.FieldRealmID)
 	}
@@ -26652,6 +27064,9 @@ func (m *SessionMutation) Fields() []string {
 	}
 	if m.remember_me != nil {
 		fields = append(fields, session.FieldRememberMe)
+	}
+	if m.trusted_device != nil {
+		fields = append(fields, session.FieldTrustedDevice)
 	}
 	if m.status != nil {
 		fields = append(fields, session.FieldStatus)
@@ -26696,6 +27111,8 @@ func (m *SessionMutation) Field(name string) (ent.Value, bool) {
 		return m.AuthMethod()
 	case session.FieldRememberMe:
 		return m.RememberMe()
+	case session.FieldTrustedDevice:
+		return m.TrustedDevice()
 	case session.FieldStatus:
 		return m.Status()
 	case session.FieldRevokedReason:
@@ -26737,6 +27154,8 @@ func (m *SessionMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldAuthMethod(ctx)
 	case session.FieldRememberMe:
 		return m.OldRememberMe(ctx)
+	case session.FieldTrustedDevice:
+		return m.OldTrustedDevice(ctx)
 	case session.FieldStatus:
 		return m.OldStatus(ctx)
 	case session.FieldRevokedReason:
@@ -26842,6 +27261,13 @@ func (m *SessionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRememberMe(v)
+		return nil
+	case session.FieldTrustedDevice:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTrustedDevice(v)
 		return nil
 	case session.FieldStatus:
 		v, ok := value.(schema.SessionStatus)
@@ -26990,6 +27416,9 @@ func (m *SessionMutation) ResetField(name string) error {
 		return nil
 	case session.FieldRememberMe:
 		m.ResetRememberMe()
+		return nil
+	case session.FieldTrustedDevice:
+		m.ResetTrustedDevice()
 		return nil
 	case session.FieldStatus:
 		m.ResetStatus()
@@ -30335,6 +30764,876 @@ func (m *TokenMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Token edge %s", name)
 }
 
+// TrustedDeviceMutation represents an operation that mutates the TrustedDevice nodes in the graph.
+type TrustedDeviceMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *string
+	device_hash   *string
+	ip_address    *string
+	user_agent    *string
+	created_at    *time.Time
+	expires_at    *time.Time
+	last_used_at  *time.Time
+	clearedFields map[string]struct{}
+	realm         *string
+	clearedrealm  bool
+	user          *string
+	cleareduser   bool
+	done          bool
+	oldValue      func(context.Context) (*TrustedDevice, error)
+	predicates    []predicate.TrustedDevice
+}
+
+var _ ent.Mutation = (*TrustedDeviceMutation)(nil)
+
+// trusteddeviceOption allows management of the mutation configuration using functional options.
+type trusteddeviceOption func(*TrustedDeviceMutation)
+
+// newTrustedDeviceMutation creates new mutation for the TrustedDevice entity.
+func newTrustedDeviceMutation(c config, op Op, opts ...trusteddeviceOption) *TrustedDeviceMutation {
+	m := &TrustedDeviceMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeTrustedDevice,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withTrustedDeviceID sets the ID field of the mutation.
+func withTrustedDeviceID(id string) trusteddeviceOption {
+	return func(m *TrustedDeviceMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *TrustedDevice
+		)
+		m.oldValue = func(ctx context.Context) (*TrustedDevice, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().TrustedDevice.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withTrustedDevice sets the old TrustedDevice of the mutation.
+func withTrustedDevice(node *TrustedDevice) trusteddeviceOption {
+	return func(m *TrustedDeviceMutation) {
+		m.oldValue = func(context.Context) (*TrustedDevice, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m TrustedDeviceMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m TrustedDeviceMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of TrustedDevice entities.
+func (m *TrustedDeviceMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *TrustedDeviceMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *TrustedDeviceMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().TrustedDevice.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetRealmID sets the "realm_id" field.
+func (m *TrustedDeviceMutation) SetRealmID(s string) {
+	m.realm = &s
+}
+
+// RealmID returns the value of the "realm_id" field in the mutation.
+func (m *TrustedDeviceMutation) RealmID() (r string, exists bool) {
+	v := m.realm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRealmID returns the old "realm_id" field's value of the TrustedDevice entity.
+// If the TrustedDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrustedDeviceMutation) OldRealmID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRealmID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRealmID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRealmID: %w", err)
+	}
+	return oldValue.RealmID, nil
+}
+
+// ResetRealmID resets all changes to the "realm_id" field.
+func (m *TrustedDeviceMutation) ResetRealmID() {
+	m.realm = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *TrustedDeviceMutation) SetUserID(s string) {
+	m.user = &s
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *TrustedDeviceMutation) UserID() (r string, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the TrustedDevice entity.
+// If the TrustedDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrustedDeviceMutation) OldUserID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *TrustedDeviceMutation) ResetUserID() {
+	m.user = nil
+}
+
+// SetDeviceHash sets the "device_hash" field.
+func (m *TrustedDeviceMutation) SetDeviceHash(s string) {
+	m.device_hash = &s
+}
+
+// DeviceHash returns the value of the "device_hash" field in the mutation.
+func (m *TrustedDeviceMutation) DeviceHash() (r string, exists bool) {
+	v := m.device_hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeviceHash returns the old "device_hash" field's value of the TrustedDevice entity.
+// If the TrustedDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrustedDeviceMutation) OldDeviceHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeviceHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeviceHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeviceHash: %w", err)
+	}
+	return oldValue.DeviceHash, nil
+}
+
+// ResetDeviceHash resets all changes to the "device_hash" field.
+func (m *TrustedDeviceMutation) ResetDeviceHash() {
+	m.device_hash = nil
+}
+
+// SetIPAddress sets the "ip_address" field.
+func (m *TrustedDeviceMutation) SetIPAddress(s string) {
+	m.ip_address = &s
+}
+
+// IPAddress returns the value of the "ip_address" field in the mutation.
+func (m *TrustedDeviceMutation) IPAddress() (r string, exists bool) {
+	v := m.ip_address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIPAddress returns the old "ip_address" field's value of the TrustedDevice entity.
+// If the TrustedDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrustedDeviceMutation) OldIPAddress(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIPAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIPAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIPAddress: %w", err)
+	}
+	return oldValue.IPAddress, nil
+}
+
+// ClearIPAddress clears the value of the "ip_address" field.
+func (m *TrustedDeviceMutation) ClearIPAddress() {
+	m.ip_address = nil
+	m.clearedFields[trusteddevice.FieldIPAddress] = struct{}{}
+}
+
+// IPAddressCleared returns if the "ip_address" field was cleared in this mutation.
+func (m *TrustedDeviceMutation) IPAddressCleared() bool {
+	_, ok := m.clearedFields[trusteddevice.FieldIPAddress]
+	return ok
+}
+
+// ResetIPAddress resets all changes to the "ip_address" field.
+func (m *TrustedDeviceMutation) ResetIPAddress() {
+	m.ip_address = nil
+	delete(m.clearedFields, trusteddevice.FieldIPAddress)
+}
+
+// SetUserAgent sets the "user_agent" field.
+func (m *TrustedDeviceMutation) SetUserAgent(s string) {
+	m.user_agent = &s
+}
+
+// UserAgent returns the value of the "user_agent" field in the mutation.
+func (m *TrustedDeviceMutation) UserAgent() (r string, exists bool) {
+	v := m.user_agent
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserAgent returns the old "user_agent" field's value of the TrustedDevice entity.
+// If the TrustedDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrustedDeviceMutation) OldUserAgent(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserAgent is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserAgent requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserAgent: %w", err)
+	}
+	return oldValue.UserAgent, nil
+}
+
+// ClearUserAgent clears the value of the "user_agent" field.
+func (m *TrustedDeviceMutation) ClearUserAgent() {
+	m.user_agent = nil
+	m.clearedFields[trusteddevice.FieldUserAgent] = struct{}{}
+}
+
+// UserAgentCleared returns if the "user_agent" field was cleared in this mutation.
+func (m *TrustedDeviceMutation) UserAgentCleared() bool {
+	_, ok := m.clearedFields[trusteddevice.FieldUserAgent]
+	return ok
+}
+
+// ResetUserAgent resets all changes to the "user_agent" field.
+func (m *TrustedDeviceMutation) ResetUserAgent() {
+	m.user_agent = nil
+	delete(m.clearedFields, trusteddevice.FieldUserAgent)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *TrustedDeviceMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *TrustedDeviceMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the TrustedDevice entity.
+// If the TrustedDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrustedDeviceMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *TrustedDeviceMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (m *TrustedDeviceMutation) SetExpiresAt(t time.Time) {
+	m.expires_at = &t
+}
+
+// ExpiresAt returns the value of the "expires_at" field in the mutation.
+func (m *TrustedDeviceMutation) ExpiresAt() (r time.Time, exists bool) {
+	v := m.expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExpiresAt returns the old "expires_at" field's value of the TrustedDevice entity.
+// If the TrustedDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrustedDeviceMutation) OldExpiresAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExpiresAt: %w", err)
+	}
+	return oldValue.ExpiresAt, nil
+}
+
+// ResetExpiresAt resets all changes to the "expires_at" field.
+func (m *TrustedDeviceMutation) ResetExpiresAt() {
+	m.expires_at = nil
+}
+
+// SetLastUsedAt sets the "last_used_at" field.
+func (m *TrustedDeviceMutation) SetLastUsedAt(t time.Time) {
+	m.last_used_at = &t
+}
+
+// LastUsedAt returns the value of the "last_used_at" field in the mutation.
+func (m *TrustedDeviceMutation) LastUsedAt() (r time.Time, exists bool) {
+	v := m.last_used_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastUsedAt returns the old "last_used_at" field's value of the TrustedDevice entity.
+// If the TrustedDevice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrustedDeviceMutation) OldLastUsedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastUsedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastUsedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastUsedAt: %w", err)
+	}
+	return oldValue.LastUsedAt, nil
+}
+
+// ClearLastUsedAt clears the value of the "last_used_at" field.
+func (m *TrustedDeviceMutation) ClearLastUsedAt() {
+	m.last_used_at = nil
+	m.clearedFields[trusteddevice.FieldLastUsedAt] = struct{}{}
+}
+
+// LastUsedAtCleared returns if the "last_used_at" field was cleared in this mutation.
+func (m *TrustedDeviceMutation) LastUsedAtCleared() bool {
+	_, ok := m.clearedFields[trusteddevice.FieldLastUsedAt]
+	return ok
+}
+
+// ResetLastUsedAt resets all changes to the "last_used_at" field.
+func (m *TrustedDeviceMutation) ResetLastUsedAt() {
+	m.last_used_at = nil
+	delete(m.clearedFields, trusteddevice.FieldLastUsedAt)
+}
+
+// ClearRealm clears the "realm" edge to the Realm entity.
+func (m *TrustedDeviceMutation) ClearRealm() {
+	m.clearedrealm = true
+	m.clearedFields[trusteddevice.FieldRealmID] = struct{}{}
+}
+
+// RealmCleared reports if the "realm" edge to the Realm entity was cleared.
+func (m *TrustedDeviceMutation) RealmCleared() bool {
+	return m.clearedrealm
+}
+
+// RealmIDs returns the "realm" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// RealmID instead. It exists only for internal usage by the builders.
+func (m *TrustedDeviceMutation) RealmIDs() (ids []string) {
+	if id := m.realm; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRealm resets all changes to the "realm" edge.
+func (m *TrustedDeviceMutation) ResetRealm() {
+	m.realm = nil
+	m.clearedrealm = false
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *TrustedDeviceMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[trusteddevice.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *TrustedDeviceMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *TrustedDeviceMutation) UserIDs() (ids []string) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *TrustedDeviceMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// Where appends a list predicates to the TrustedDeviceMutation builder.
+func (m *TrustedDeviceMutation) Where(ps ...predicate.TrustedDevice) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the TrustedDeviceMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *TrustedDeviceMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.TrustedDevice, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *TrustedDeviceMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *TrustedDeviceMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (TrustedDevice).
+func (m *TrustedDeviceMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *TrustedDeviceMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.realm != nil {
+		fields = append(fields, trusteddevice.FieldRealmID)
+	}
+	if m.user != nil {
+		fields = append(fields, trusteddevice.FieldUserID)
+	}
+	if m.device_hash != nil {
+		fields = append(fields, trusteddevice.FieldDeviceHash)
+	}
+	if m.ip_address != nil {
+		fields = append(fields, trusteddevice.FieldIPAddress)
+	}
+	if m.user_agent != nil {
+		fields = append(fields, trusteddevice.FieldUserAgent)
+	}
+	if m.created_at != nil {
+		fields = append(fields, trusteddevice.FieldCreatedAt)
+	}
+	if m.expires_at != nil {
+		fields = append(fields, trusteddevice.FieldExpiresAt)
+	}
+	if m.last_used_at != nil {
+		fields = append(fields, trusteddevice.FieldLastUsedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *TrustedDeviceMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case trusteddevice.FieldRealmID:
+		return m.RealmID()
+	case trusteddevice.FieldUserID:
+		return m.UserID()
+	case trusteddevice.FieldDeviceHash:
+		return m.DeviceHash()
+	case trusteddevice.FieldIPAddress:
+		return m.IPAddress()
+	case trusteddevice.FieldUserAgent:
+		return m.UserAgent()
+	case trusteddevice.FieldCreatedAt:
+		return m.CreatedAt()
+	case trusteddevice.FieldExpiresAt:
+		return m.ExpiresAt()
+	case trusteddevice.FieldLastUsedAt:
+		return m.LastUsedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *TrustedDeviceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case trusteddevice.FieldRealmID:
+		return m.OldRealmID(ctx)
+	case trusteddevice.FieldUserID:
+		return m.OldUserID(ctx)
+	case trusteddevice.FieldDeviceHash:
+		return m.OldDeviceHash(ctx)
+	case trusteddevice.FieldIPAddress:
+		return m.OldIPAddress(ctx)
+	case trusteddevice.FieldUserAgent:
+		return m.OldUserAgent(ctx)
+	case trusteddevice.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case trusteddevice.FieldExpiresAt:
+		return m.OldExpiresAt(ctx)
+	case trusteddevice.FieldLastUsedAt:
+		return m.OldLastUsedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown TrustedDevice field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TrustedDeviceMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case trusteddevice.FieldRealmID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRealmID(v)
+		return nil
+	case trusteddevice.FieldUserID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case trusteddevice.FieldDeviceHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeviceHash(v)
+		return nil
+	case trusteddevice.FieldIPAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIPAddress(v)
+		return nil
+	case trusteddevice.FieldUserAgent:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserAgent(v)
+		return nil
+	case trusteddevice.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case trusteddevice.FieldExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExpiresAt(v)
+		return nil
+	case trusteddevice.FieldLastUsedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastUsedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown TrustedDevice field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *TrustedDeviceMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *TrustedDeviceMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TrustedDeviceMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown TrustedDevice numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *TrustedDeviceMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(trusteddevice.FieldIPAddress) {
+		fields = append(fields, trusteddevice.FieldIPAddress)
+	}
+	if m.FieldCleared(trusteddevice.FieldUserAgent) {
+		fields = append(fields, trusteddevice.FieldUserAgent)
+	}
+	if m.FieldCleared(trusteddevice.FieldLastUsedAt) {
+		fields = append(fields, trusteddevice.FieldLastUsedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *TrustedDeviceMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *TrustedDeviceMutation) ClearField(name string) error {
+	switch name {
+	case trusteddevice.FieldIPAddress:
+		m.ClearIPAddress()
+		return nil
+	case trusteddevice.FieldUserAgent:
+		m.ClearUserAgent()
+		return nil
+	case trusteddevice.FieldLastUsedAt:
+		m.ClearLastUsedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown TrustedDevice nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *TrustedDeviceMutation) ResetField(name string) error {
+	switch name {
+	case trusteddevice.FieldRealmID:
+		m.ResetRealmID()
+		return nil
+	case trusteddevice.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case trusteddevice.FieldDeviceHash:
+		m.ResetDeviceHash()
+		return nil
+	case trusteddevice.FieldIPAddress:
+		m.ResetIPAddress()
+		return nil
+	case trusteddevice.FieldUserAgent:
+		m.ResetUserAgent()
+		return nil
+	case trusteddevice.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case trusteddevice.FieldExpiresAt:
+		m.ResetExpiresAt()
+		return nil
+	case trusteddevice.FieldLastUsedAt:
+		m.ResetLastUsedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown TrustedDevice field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *TrustedDeviceMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.realm != nil {
+		edges = append(edges, trusteddevice.EdgeRealm)
+	}
+	if m.user != nil {
+		edges = append(edges, trusteddevice.EdgeUser)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *TrustedDeviceMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case trusteddevice.EdgeRealm:
+		if id := m.realm; id != nil {
+			return []ent.Value{*id}
+		}
+	case trusteddevice.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *TrustedDeviceMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *TrustedDeviceMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *TrustedDeviceMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedrealm {
+		edges = append(edges, trusteddevice.EdgeRealm)
+	}
+	if m.cleareduser {
+		edges = append(edges, trusteddevice.EdgeUser)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *TrustedDeviceMutation) EdgeCleared(name string) bool {
+	switch name {
+	case trusteddevice.EdgeRealm:
+		return m.clearedrealm
+	case trusteddevice.EdgeUser:
+		return m.cleareduser
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *TrustedDeviceMutation) ClearEdge(name string) error {
+	switch name {
+	case trusteddevice.EdgeRealm:
+		m.ClearRealm()
+		return nil
+	case trusteddevice.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
+	return fmt.Errorf("unknown TrustedDevice unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *TrustedDeviceMutation) ResetEdge(name string) error {
+	switch name {
+	case trusteddevice.EdgeRealm:
+		m.ResetRealm()
+		return nil
+	case trusteddevice.EdgeUser:
+		m.ResetUser()
+		return nil
+	}
+	return fmt.Errorf("unknown TrustedDevice edge %s", name)
+}
+
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
@@ -30381,6 +31680,9 @@ type UserMutation struct {
 	known_accounts               map[string]struct{}
 	removedknown_accounts        map[string]struct{}
 	clearedknown_accounts        bool
+	trusted_devices              map[string]struct{}
+	removedtrusted_devices       map[string]struct{}
+	clearedtrusted_devices       bool
 	consents                     map[string]struct{}
 	removedconsents              map[string]struct{}
 	clearedconsents              bool
@@ -31572,6 +32874,60 @@ func (m *UserMutation) ResetKnownAccounts() {
 	m.removedknown_accounts = nil
 }
 
+// AddTrustedDeviceIDs adds the "trusted_devices" edge to the TrustedDevice entity by ids.
+func (m *UserMutation) AddTrustedDeviceIDs(ids ...string) {
+	if m.trusted_devices == nil {
+		m.trusted_devices = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.trusted_devices[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTrustedDevices clears the "trusted_devices" edge to the TrustedDevice entity.
+func (m *UserMutation) ClearTrustedDevices() {
+	m.clearedtrusted_devices = true
+}
+
+// TrustedDevicesCleared reports if the "trusted_devices" edge to the TrustedDevice entity was cleared.
+func (m *UserMutation) TrustedDevicesCleared() bool {
+	return m.clearedtrusted_devices
+}
+
+// RemoveTrustedDeviceIDs removes the "trusted_devices" edge to the TrustedDevice entity by IDs.
+func (m *UserMutation) RemoveTrustedDeviceIDs(ids ...string) {
+	if m.removedtrusted_devices == nil {
+		m.removedtrusted_devices = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.trusted_devices, ids[i])
+		m.removedtrusted_devices[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTrustedDevices returns the removed IDs of the "trusted_devices" edge to the TrustedDevice entity.
+func (m *UserMutation) RemovedTrustedDevicesIDs() (ids []string) {
+	for id := range m.removedtrusted_devices {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TrustedDevicesIDs returns the "trusted_devices" edge IDs in the mutation.
+func (m *UserMutation) TrustedDevicesIDs() (ids []string) {
+	for id := range m.trusted_devices {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTrustedDevices resets all changes to the "trusted_devices" edge.
+func (m *UserMutation) ResetTrustedDevices() {
+	m.trusted_devices = nil
+	m.clearedtrusted_devices = false
+	m.removedtrusted_devices = nil
+}
+
 // AddConsentIDs adds the "consents" edge to the Consent entity by ids.
 func (m *UserMutation) AddConsentIDs(ids ...string) {
 	if m.consents == nil {
@@ -32123,7 +33479,7 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 10)
+	edges := make([]string, 0, 11)
 	if m.realm != nil {
 		edges = append(edges, user.EdgeRealm)
 	}
@@ -32147,6 +33503,9 @@ func (m *UserMutation) AddedEdges() []string {
 	}
 	if m.known_accounts != nil {
 		edges = append(edges, user.EdgeKnownAccounts)
+	}
+	if m.trusted_devices != nil {
+		edges = append(edges, user.EdgeTrustedDevices)
 	}
 	if m.consents != nil {
 		edges = append(edges, user.EdgeConsents)
@@ -32207,6 +33566,12 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeTrustedDevices:
+		ids := make([]ent.Value, 0, len(m.trusted_devices))
+		for id := range m.trusted_devices {
+			ids = append(ids, id)
+		}
+		return ids
 	case user.EdgeConsents:
 		ids := make([]ent.Value, 0, len(m.consents))
 		for id := range m.consents {
@@ -32225,7 +33590,7 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 10)
+	edges := make([]string, 0, 11)
 	if m.removedroles != nil {
 		edges = append(edges, user.EdgeRoles)
 	}
@@ -32246,6 +33611,9 @@ func (m *UserMutation) RemovedEdges() []string {
 	}
 	if m.removedknown_accounts != nil {
 		edges = append(edges, user.EdgeKnownAccounts)
+	}
+	if m.removedtrusted_devices != nil {
+		edges = append(edges, user.EdgeTrustedDevices)
 	}
 	if m.removedconsents != nil {
 		edges = append(edges, user.EdgeConsents)
@@ -32302,6 +33670,12 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeTrustedDevices:
+		ids := make([]ent.Value, 0, len(m.removedtrusted_devices))
+		for id := range m.removedtrusted_devices {
+			ids = append(ids, id)
+		}
+		return ids
 	case user.EdgeConsents:
 		ids := make([]ent.Value, 0, len(m.removedconsents))
 		for id := range m.removedconsents {
@@ -32320,7 +33694,7 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 10)
+	edges := make([]string, 0, 11)
 	if m.clearedrealm {
 		edges = append(edges, user.EdgeRealm)
 	}
@@ -32344,6 +33718,9 @@ func (m *UserMutation) ClearedEdges() []string {
 	}
 	if m.clearedknown_accounts {
 		edges = append(edges, user.EdgeKnownAccounts)
+	}
+	if m.clearedtrusted_devices {
+		edges = append(edges, user.EdgeTrustedDevices)
 	}
 	if m.clearedconsents {
 		edges = append(edges, user.EdgeConsents)
@@ -32374,6 +33751,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedpassword_reset_tokens
 	case user.EdgeKnownAccounts:
 		return m.clearedknown_accounts
+	case user.EdgeTrustedDevices:
+		return m.clearedtrusted_devices
 	case user.EdgeConsents:
 		return m.clearedconsents
 	case user.EdgeFederatedIdentities:
@@ -32420,6 +33799,9 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgeKnownAccounts:
 		m.ResetKnownAccounts()
+		return nil
+	case user.EdgeTrustedDevices:
+		m.ResetTrustedDevices()
 		return nil
 	case user.EdgeConsents:
 		m.ResetConsents()

@@ -466,6 +466,8 @@ var (
 		{Name: "notification_email_enabled", Type: field.TypeBool, Default: false},
 		{Name: "key_rotation_grace_hours", Type: field.TypeInt, Default: 24},
 		{Name: "mfa_step_up_max_age_minutes", Type: field.TypeInt, Default: 10},
+		{Name: "mfa_trusted_device_enabled", Type: field.TypeBool, Default: true},
+		{Name: "mfa_trusted_device_days", Type: field.TypeInt, Default: 30},
 		{Name: "password_reset_ttl_minutes", Type: field.TypeInt, Default: 30},
 		{Name: "suspicious_login_email_enabled", Type: field.TypeBool, Default: false},
 		{Name: "updated_at", Type: field.TypeTime},
@@ -480,7 +482,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instance_settings_realms_instance_settings",
-				Columns:    []*schema.Column{InstanceSettingsColumns[20]},
+				Columns:    []*schema.Column{InstanceSettingsColumns[22]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -515,6 +517,8 @@ var (
 		{Name: "device_hash", Type: field.TypeString},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "last_used_at", Type: field.TypeTime},
+		{Name: "last_method", Type: field.TypeString, Nullable: true},
+		{Name: "last_second_factor", Type: field.TypeString, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString},
 		{Name: "user_id", Type: field.TypeString},
 	}
@@ -526,13 +530,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "known_accounts_realms_known_accounts",
-				Columns:    []*schema.Column{KnownAccountsColumns[4]},
+				Columns:    []*schema.Column{KnownAccountsColumns[6]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
 			{
 				Symbol:     "known_accounts_users_known_accounts",
-				Columns:    []*schema.Column{KnownAccountsColumns[5]},
+				Columns:    []*schema.Column{KnownAccountsColumns[7]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -541,7 +545,7 @@ var (
 			{
 				Name:    "knownaccount_device_hash_user_id",
 				Unique:  true,
-				Columns: []*schema.Column{KnownAccountsColumns[1], KnownAccountsColumns[5]},
+				Columns: []*schema.Column{KnownAccountsColumns[1], KnownAccountsColumns[7]},
 			},
 		},
 	}
@@ -872,6 +876,7 @@ var (
 		{Name: "mfa_verified_at", Type: field.TypeTime, Nullable: true},
 		{Name: "auth_method", Type: field.TypeString, Default: "pwd"},
 		{Name: "remember_me", Type: field.TypeBool, Default: false},
+		{Name: "trusted_device", Type: field.TypeBool, Default: false},
 		{Name: "status", Type: field.TypeString, Default: "active"},
 		{Name: "revoked_reason", Type: field.TypeString, Nullable: true},
 		{Name: "token_hash", Type: field.TypeString, Unique: true},
@@ -886,13 +891,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "sessions_realms_sessions",
-				Columns:    []*schema.Column{SessionsColumns[15]},
+				Columns:    []*schema.Column{SessionsColumns[16]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
 			{
 				Symbol:     "sessions_users_sessions",
-				Columns:    []*schema.Column{SessionsColumns[16]},
+				Columns:    []*schema.Column{SessionsColumns[17]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -901,7 +906,7 @@ var (
 			{
 				Name:    "session_user_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{SessionsColumns[16], SessionsColumns[12]},
+				Columns: []*schema.Column{SessionsColumns[17], SessionsColumns[13]},
 			},
 		},
 	}
@@ -1022,6 +1027,50 @@ var (
 				Name:    "token_family_id",
 				Unique:  false,
 				Columns: []*schema.Column{TokensColumns[8]},
+			},
+		},
+	}
+	// TrustedDevicesColumns holds the columns for the "trusted_devices" table.
+	TrustedDevicesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "device_hash", Type: field.TypeString},
+		{Name: "ip_address", Type: field.TypeString, Nullable: true},
+		{Name: "user_agent", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "last_used_at", Type: field.TypeTime, Nullable: true},
+		{Name: "realm_id", Type: field.TypeString},
+		{Name: "user_id", Type: field.TypeString},
+	}
+	// TrustedDevicesTable holds the schema information for the "trusted_devices" table.
+	TrustedDevicesTable = &schema.Table{
+		Name:       "trusted_devices",
+		Columns:    TrustedDevicesColumns,
+		PrimaryKey: []*schema.Column{TrustedDevicesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "trusted_devices_realms_trusted_devices",
+				Columns:    []*schema.Column{TrustedDevicesColumns[7]},
+				RefColumns: []*schema.Column{RealmsColumns[0]},
+				OnDelete:   schema.Restrict,
+			},
+			{
+				Symbol:     "trusted_devices_users_trusted_devices",
+				Columns:    []*schema.Column{TrustedDevicesColumns[8]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "trusteddevice_device_hash_user_id",
+				Unique:  true,
+				Columns: []*schema.Column{TrustedDevicesColumns[1], TrustedDevicesColumns[8]},
+			},
+			{
+				Name:    "trusteddevice_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{TrustedDevicesColumns[8]},
 			},
 		},
 	}
@@ -1199,6 +1248,7 @@ var (
 		SigningKeysTable,
 		TimeoutsTable,
 		TokensTable,
+		TrustedDevicesTable,
 		UsersTable,
 		GroupPermissionsTable,
 		RolePermissionsTable,
@@ -1244,6 +1294,8 @@ func init() {
 	TimeoutsTable.ForeignKeys[0].RefTable = RealmsTable
 	TokensTable.ForeignKeys[0].RefTable = ClientAppsTable
 	TokensTable.ForeignKeys[1].RefTable = SessionsTable
+	TrustedDevicesTable.ForeignKeys[0].RefTable = RealmsTable
+	TrustedDevicesTable.ForeignKeys[1].RefTable = UsersTable
 	UsersTable.ForeignKeys[0].RefTable = RealmsTable
 	GroupPermissionsTable.ForeignKeys[0].RefTable = GroupsTable
 	GroupPermissionsTable.ForeignKeys[1].RefTable = PermissionsTable

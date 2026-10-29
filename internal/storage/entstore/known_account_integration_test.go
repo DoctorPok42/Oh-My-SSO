@@ -87,4 +87,44 @@ func TestKnownAccountRepository(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, rows, 1)
 	})
+
+	t.Run("how the account signs in on the device (Step 18e)", func(t *testing.T) {
+		// carol (alice is deleted above).
+		dev := "device-" + uuid.NewString()
+		_, err := repo.Touch(ctx, realm.ID, dev, carol, t0)
+		require.NoError(t, err)
+		row, err := repo.Find(ctx, realm.ID, dev, carol)
+		require.NoError(t, err)
+		require.Empty(t, row.LastMethod, "nothing chosen yet")
+		require.Empty(t, row.LastSecondFactor)
+
+		pw, app := "password", "totp"
+		ok, err := repo.SetLastMethods(ctx, realm.ID, dev, carol, repository.LastMethodsParams{LastMethod: &pw})
+		require.NoError(t, err)
+		require.True(t, ok)
+		ok, err = repo.SetLastMethods(ctx, realm.ID, dev, carol, repository.LastMethodsParams{LastSecondFactor: &app})
+		require.NoError(t, err)
+		require.True(t, ok)
+		row, err = repo.Find(ctx, realm.ID, dev, carol)
+		require.NoError(t, err)
+		require.Equal(t, "password", row.LastMethod, "a nil field is left as it is")
+		require.Equal(t, "totp", row.LastSecondFactor)
+		listed, err := repo.ListByDevice(ctx, realm.ID, dev)
+		require.NoError(t, err)
+		require.Equal(t, "password", listed[0].LastMethod)
+
+		_, err = repo.Touch(ctx, realm.ID, dev, carol, t0.Add(time.Hour))
+		require.NoError(t, err)
+		row, err = repo.Find(ctx, realm.ID, dev, carol)
+		require.NoError(t, err)
+		require.Equal(t, "password", row.LastMethod, "a new sign-in keeps it")
+
+		ok, err = repo.SetLastMethods(ctx, realm.ID, dev, bob, repository.LastMethodsParams{LastMethod: &pw})
+		require.NoError(t, err)
+		require.False(t, ok, "bob is not remembered on this device")
+		_, err = repo.Find(ctx, realm.ID, dev, bob)
+		require.True(t, errors.Is(err, repository.ErrNotFound))
+		_, err = repo.Find(ctx, realm.ID, "unknown-device", carol)
+		require.True(t, errors.Is(err, repository.ErrNotFound))
+	})
 }

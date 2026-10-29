@@ -23,6 +23,7 @@ import (
 	"sso.internal/sso/ent/realm"
 	"sso.internal/sso/ent/role"
 	"sso.internal/sso/ent/session"
+	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
 )
 
@@ -41,6 +42,7 @@ type UserQuery struct {
 	withMfaBackupCodes      *MfaBackupCodeQuery
 	withPasswordResetTokens *PasswordResetTokenQuery
 	withKnownAccounts       *KnownAccountQuery
+	withTrustedDevices      *TrustedDeviceQuery
 	withConsents            *ConsentQuery
 	withFederatedIdentities *FederatedIdentityQuery
 	// intermediate query (i.e. traversal path).
@@ -248,6 +250,28 @@ func (_q *UserQuery) QueryKnownAccounts() *KnownAccountQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(knownaccount.Table, knownaccount.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.KnownAccountsTable, user.KnownAccountsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTrustedDevices chains the current query on the "trusted_devices" edge.
+func (_q *UserQuery) QueryTrustedDevices() *TrustedDeviceQuery {
+	query := (&TrustedDeviceClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(trusteddevice.Table, trusteddevice.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.TrustedDevicesTable, user.TrustedDevicesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -499,6 +523,7 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withMfaBackupCodes:      _q.withMfaBackupCodes.Clone(),
 		withPasswordResetTokens: _q.withPasswordResetTokens.Clone(),
 		withKnownAccounts:       _q.withKnownAccounts.Clone(),
+		withTrustedDevices:      _q.withTrustedDevices.Clone(),
 		withConsents:            _q.withConsents.Clone(),
 		withFederatedIdentities: _q.withFederatedIdentities.Clone(),
 		// clone intermediate query.
@@ -592,6 +617,17 @@ func (_q *UserQuery) WithKnownAccounts(opts ...func(*KnownAccountQuery)) *UserQu
 		opt(query)
 	}
 	_q.withKnownAccounts = query
+	return _q
+}
+
+// WithTrustedDevices tells the query-builder to eager-load the nodes that are connected to
+// the "trusted_devices" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithTrustedDevices(opts ...func(*TrustedDeviceQuery)) *UserQuery {
+	query := (&TrustedDeviceClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withTrustedDevices = query
 	return _q
 }
 
@@ -695,7 +731,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [10]bool{
+		loadedTypes = [11]bool{
 			_q.withRealm != nil,
 			_q.withRoles != nil,
 			_q.withGroups != nil,
@@ -704,6 +740,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withMfaBackupCodes != nil,
 			_q.withPasswordResetTokens != nil,
 			_q.withKnownAccounts != nil,
+			_q.withTrustedDevices != nil,
 			_q.withConsents != nil,
 			_q.withFederatedIdentities != nil,
 		}
@@ -780,6 +817,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadKnownAccounts(ctx, query, nodes,
 			func(n *User) { n.Edges.KnownAccounts = []*KnownAccount{} },
 			func(n *User, e *KnownAccount) { n.Edges.KnownAccounts = append(n.Edges.KnownAccounts, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withTrustedDevices; query != nil {
+		if err := _q.loadTrustedDevices(ctx, query, nodes,
+			func(n *User) { n.Edges.TrustedDevices = []*TrustedDevice{} },
+			func(n *User, e *TrustedDevice) { n.Edges.TrustedDevices = append(n.Edges.TrustedDevices, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1088,6 +1132,36 @@ func (_q *UserQuery) loadKnownAccounts(ctx context.Context, query *KnownAccountQ
 	}
 	query.Where(predicate.KnownAccount(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.KnownAccountsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadTrustedDevices(ctx context.Context, query *TrustedDeviceQuery, nodes []*User, init func(*User), assign func(*User, *TrustedDevice)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(trusteddevice.FieldUserID)
+	}
+	query.Where(predicate.TrustedDevice(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.TrustedDevicesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

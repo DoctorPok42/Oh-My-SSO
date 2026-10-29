@@ -1,12 +1,10 @@
 "use server";
 
 import { act, api, apiPath } from "@/lib/api";
+import type { RealmMfaBody } from "@/lib/mfa-form";
 import type { MfaPolicies } from "@/lib/types";
 
-export async function setRealmMfa(
-  realm: string,
-  body: { required_globally?: boolean; step_up_max_age_minutes?: number },
-) {
+export async function setRealmMfa(realm: string, body: RealmMfaBody) {
   return act(() => api<MfaPolicies>(apiPath(["realms", realm, "mfa-policies", "realm"]), { method: "PUT", body }));
 }
 

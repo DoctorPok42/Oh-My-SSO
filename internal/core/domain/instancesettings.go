@@ -29,6 +29,8 @@ type InstanceSettings struct {
 	MFAStepUpMaxAgeMinutes      int
 	PasswordResetTTLMinutes     int
 	SuspiciousLoginEmailEnabled bool
+	MFATrustedDeviceEnabled     bool // "Don't ask again on this device" (Step 18d)
+	MFATrustedDeviceDays        int
 	UpdatedAt                   time.Time
 	UpdatedBy                   string
 }

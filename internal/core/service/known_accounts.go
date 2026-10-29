@@ -28,6 +28,7 @@ type KnownAccountService struct {
 	accounts repository.KnownAccountRepository
 	users    repository.UserRepository
 	audit    repository.AuditLogRepository // nil: "Forget" is not audited
+	trusted  *TrustedDeviceService
 	now      func() time.Time
 	logger   *slog.Logger
 }
@@ -38,10 +39,12 @@ type KnownAccountDeps struct {
 	Audit    repository.AuditLogRepository
 	Now      func() time.Time
 	Logger   *slog.Logger
+	// TrustedDevices: "Forget" also ends the trust of the device (Step 18d).
+	TrustedDevices *TrustedDeviceService
 }
 
 func NewKnownAccountService(d KnownAccountDeps) *KnownAccountService {
-	s := &KnownAccountService{accounts: d.Accounts, users: d.Users, audit: d.Audit, now: d.Now, logger: d.Logger}
+	s := &KnownAccountService{accounts: d.Accounts, users: d.Users, audit: d.Audit, trusted: d.TrustedDevices, now: d.Now, logger: d.Logger}
 	if s.now == nil {
 		s.now = time.Now
 	}
@@ -116,6 +119,7 @@ func (s *KnownAccountService) ListWithMethods(ctx context.Context, q core.Accoun
 				acc.Methods = m
 			}
 		}
+		acc.Methods = preferFirstStep(acc.Methods, row.LastMethod) // Step 18e
 		out = append(out, acc)
 	}
 	return out, nil
@@ -178,6 +182,11 @@ func (s *KnownAccountService) Forget(ctx context.Context, in ForgetAccountInput)
 			Level: domain.AuditLogInfo, Status: domain.AuditLogSuccess,
 		}); err != nil {
 			s.logger.WarnContext(ctx, "audit: record forget", "known_account_id", row.ID, "error", err)
+		}
+	}
+	if s.trusted != nil {
+		if err := s.trusted.RevokeDevice(ctx, row.RealmID, row.UserID, row.DeviceHash, TrustRevokedForget); err != nil {
+			return nil, err
 		}
 	}
 	return row, nil

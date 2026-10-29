@@ -66,6 +66,8 @@ type Tx struct {
 	Timeout *TimeoutClient
 	// Token is the client for interacting with the Token builders.
 	Token *TokenClient
+	// TrustedDevice is the client for interacting with the TrustedDevice builders.
+	TrustedDevice *TrustedDeviceClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -226,6 +228,7 @@ func (tx *Tx) init() {
 	tx.SigningKey = NewSigningKeyClient(tx.config)
 	tx.Timeout = NewTimeoutClient(tx.config)
 	tx.Token = NewTokenClient(tx.config)
+	tx.TrustedDevice = NewTrustedDeviceClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 

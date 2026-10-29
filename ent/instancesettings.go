@@ -52,6 +52,10 @@ type InstanceSettings struct {
 	KeyRotationGraceHours int `json:"key_rotation_grace_hours,omitempty"`
 	// MfaStepUpMaxAgeMinutes holds the value of the "mfa_step_up_max_age_minutes" field.
 	MfaStepUpMaxAgeMinutes int `json:"mfa_step_up_max_age_minutes,omitempty"`
+	// MfaTrustedDeviceEnabled holds the value of the "mfa_trusted_device_enabled" field.
+	MfaTrustedDeviceEnabled bool `json:"mfa_trusted_device_enabled,omitempty"`
+	// MfaTrustedDeviceDays holds the value of the "mfa_trusted_device_days" field.
+	MfaTrustedDeviceDays int `json:"mfa_trusted_device_days,omitempty"`
 	// PasswordResetTTLMinutes holds the value of the "password_reset_ttl_minutes" field.
 	PasswordResetTTLMinutes int `json:"password_reset_ttl_minutes,omitempty"`
 	// SuspiciousLoginEmailEnabled holds the value of the "suspicious_login_email_enabled" field.
@@ -93,9 +97,9 @@ func (*InstanceSettings) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case instancesettings.FieldIPAllowlist:
 			values[i] = new([]byte)
-		case instancesettings.FieldRememberMeEnabled, instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled, instancesettings.FieldSuspiciousLoginEmailEnabled:
+		case instancesettings.FieldRememberMeEnabled, instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled, instancesettings.FieldMfaTrustedDeviceEnabled, instancesettings.FieldSuspiciousLoginEmailEnabled:
 			values[i] = new(sql.NullBool)
-		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldPasswordResetTTLMinutes:
+		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldMfaTrustedDeviceDays, instancesettings.FieldPasswordResetTTLMinutes:
 			values[i] = new(sql.NullInt64)
 		case instancesettings.FieldID, instancesettings.FieldRealmID, instancesettings.FieldManagedBy, instancesettings.FieldUpdatedBy:
 			values[i] = new(sql.NullString)
@@ -220,6 +224,18 @@ func (_m *InstanceSettings) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.MfaStepUpMaxAgeMinutes = int(value.Int64)
 			}
+		case instancesettings.FieldMfaTrustedDeviceEnabled:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field mfa_trusted_device_enabled", values[i])
+			} else if value.Valid {
+				_m.MfaTrustedDeviceEnabled = value.Bool
+			}
+		case instancesettings.FieldMfaTrustedDeviceDays:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field mfa_trusted_device_days", values[i])
+			} else if value.Valid {
+				_m.MfaTrustedDeviceDays = int(value.Int64)
+			}
 		case instancesettings.FieldPasswordResetTTLMinutes:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field password_reset_ttl_minutes", values[i])
@@ -332,6 +348,12 @@ func (_m *InstanceSettings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("mfa_step_up_max_age_minutes=")
 	builder.WriteString(fmt.Sprintf("%v", _m.MfaStepUpMaxAgeMinutes))
+	builder.WriteString(", ")
+	builder.WriteString("mfa_trusted_device_enabled=")
+	builder.WriteString(fmt.Sprintf("%v", _m.MfaTrustedDeviceEnabled))
+	builder.WriteString(", ")
+	builder.WriteString("mfa_trusted_device_days=")
+	builder.WriteString(fmt.Sprintf("%v", _m.MfaTrustedDeviceDays))
 	builder.WriteString(", ")
 	builder.WriteString("password_reset_ttl_minutes=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PasswordResetTTLMinutes))

@@ -53,4 +53,7 @@ type Session struct {
 	// RememberMe: the user ticked "Keep me signed in". The session follows
 	// the realm's remember-me durations and its cookie is persistent.
 	RememberMe bool
+	// TrustedDevice: the second factor was skipped because the device is
+	// trusted ("Don't ask again on this device"). Never MFA-verified.
+	TrustedDevice bool
 }

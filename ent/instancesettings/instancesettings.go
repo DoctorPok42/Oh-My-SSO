@@ -47,6 +47,10 @@ const (
 	FieldKeyRotationGraceHours = "key_rotation_grace_hours"
 	// FieldMfaStepUpMaxAgeMinutes holds the string denoting the mfa_step_up_max_age_minutes field in the database.
 	FieldMfaStepUpMaxAgeMinutes = "mfa_step_up_max_age_minutes"
+	// FieldMfaTrustedDeviceEnabled holds the string denoting the mfa_trusted_device_enabled field in the database.
+	FieldMfaTrustedDeviceEnabled = "mfa_trusted_device_enabled"
+	// FieldMfaTrustedDeviceDays holds the string denoting the mfa_trusted_device_days field in the database.
+	FieldMfaTrustedDeviceDays = "mfa_trusted_device_days"
 	// FieldPasswordResetTTLMinutes holds the string denoting the password_reset_ttl_minutes field in the database.
 	FieldPasswordResetTTLMinutes = "password_reset_ttl_minutes"
 	// FieldSuspiciousLoginEmailEnabled holds the string denoting the suspicious_login_email_enabled field in the database.
@@ -87,6 +91,8 @@ var Columns = []string{
 	FieldNotificationEmailEnabled,
 	FieldKeyRotationGraceHours,
 	FieldMfaStepUpMaxAgeMinutes,
+	FieldMfaTrustedDeviceEnabled,
+	FieldMfaTrustedDeviceDays,
 	FieldPasswordResetTTLMinutes,
 	FieldSuspiciousLoginEmailEnabled,
 	FieldUpdatedAt,
@@ -134,6 +140,10 @@ var (
 	DefaultKeyRotationGraceHours int
 	// DefaultMfaStepUpMaxAgeMinutes holds the default value on creation for the "mfa_step_up_max_age_minutes" field.
 	DefaultMfaStepUpMaxAgeMinutes int
+	// DefaultMfaTrustedDeviceEnabled holds the default value on creation for the "mfa_trusted_device_enabled" field.
+	DefaultMfaTrustedDeviceEnabled bool
+	// DefaultMfaTrustedDeviceDays holds the default value on creation for the "mfa_trusted_device_days" field.
+	DefaultMfaTrustedDeviceDays int
 	// DefaultPasswordResetTTLMinutes holds the default value on creation for the "password_reset_ttl_minutes" field.
 	DefaultPasswordResetTTLMinutes int
 	// DefaultSuspiciousLoginEmailEnabled holds the default value on creation for the "suspicious_login_email_enabled" field.
@@ -229,6 +239,16 @@ func ByKeyRotationGraceHours(opts ...sql.OrderTermOption) OrderOption {
 // ByMfaStepUpMaxAgeMinutes orders the results by the mfa_step_up_max_age_minutes field.
 func ByMfaStepUpMaxAgeMinutes(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMfaStepUpMaxAgeMinutes, opts...).ToFunc()
+}
+
+// ByMfaTrustedDeviceEnabled orders the results by the mfa_trusted_device_enabled field.
+func ByMfaTrustedDeviceEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMfaTrustedDeviceEnabled, opts...).ToFunc()
+}
+
+// ByMfaTrustedDeviceDays orders the results by the mfa_trusted_device_days field.
+func ByMfaTrustedDeviceDays(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMfaTrustedDeviceDays, opts...).ToFunc()
 }
 
 // ByPasswordResetTTLMinutes orders the results by the password_reset_ttl_minutes field.
