@@ -195,7 +195,6 @@ func TestDeviceFingerprint(t *testing.T) {
 	require.NotEqual(t, a, service.DeviceFingerprint("ABCDEFGHIJKLMNOPQRSTUVWXY2"))
 }
 
-// Step 18c: a sign-in with a factor the user has not used in the history
 // window, while they use other ones, is suspicious.
 func TestAnalyzeLogin_NewSignInMethod(t *testing.T) {
 	usual := day0.AddDate(0, 0, 20)

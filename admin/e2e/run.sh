@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# ==============================================================================
 # End-to-end tests of the admin console against a throw-away stack:
 #   fresh database -> migrations -> idp-admin bootstrap -> idp + idp-admin
 #   -> console (production build, by Playwright) -> tests.
@@ -13,7 +12,6 @@
 #
 # Overrides: E2E_DATABASE_URL, E2E_RESET_DB (a command that empties and
 # migrates the database), VAULT_ADDR, VAULT_TOKEN, VALKEY_ADDR.
-# ==============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/../.." # repository root
 

@@ -75,6 +75,7 @@ var errManagedByConfig = &AdminError{Kind: AdminRefused, Code: "managed_by_confi
 func asAdminError(err error) error {
 	var ae *AdminError
 	var pe *PasswordPolicyError
+	var tr *TimeoutRefusal
 	switch {
 	case err == nil:
 		return nil
@@ -93,6 +94,8 @@ func asAdminError(err error) error {
 		return &AdminError{Kind: AdminInvalid, Code: "invalid_request", Message: msg}
 	case errors.As(err, &pe):
 		return &AdminError{Kind: AdminInvalid, Code: "password_policy", Message: pe.Error()}
+	case errors.As(err, &tr):
+		return timeoutAdminError(tr)
 	}
 	return err
 }
@@ -120,8 +123,8 @@ type AdminDeps struct {
 	Lockout       *LockoutService
 	OIDCClients   *OIDCClientService
 	SAMLClients   *SAMLClientService
+	Timeouts      *TimeoutService
 	Notifier      Notifier // nil: no e-mail
-	// TrustedDevices: the devices users trust (Step 18d). nil: none shown.
 	TrustedDevices *TrustedDeviceService
 
 	// PublicURL of cmd/idp: base of activation links.
@@ -180,7 +183,6 @@ func (s *AdminService) auditAdmin(ctx context.Context, actor AdminActor, realmID
 	}
 }
 
-// --- shared lookups -------------------------------------------------------------
 
 // RealmByName loads an existing realm (active or not).
 func (s *AdminService) RealmByName(ctx context.Context, name string) (*domain.Realm, error) {

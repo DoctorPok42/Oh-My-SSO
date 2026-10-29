@@ -24,7 +24,6 @@ const (
 	auditActionRefreshTokenReuse = "refresh_token_reuse_detected"
 )
 
-// --- Protocol clients -------------------------------------------------------
 
 func (s *IdentityCoreService) LookupClient(ctx context.Context, realmID string, protocol domain.ClientAppProtocol, protocolID string) (*core.ProtocolClient, error) {
 	if realmID == "" || protocolID == "" {
@@ -94,7 +93,6 @@ func (s *IdentityCoreService) AuthenticateClient(ctx context.Context, clientRef,
 	return nil
 }
 
-// --- Tokens -----------------------------------------------------------------
 
 func (s *IdentityCoreService) IssueTokens(ctx context.Context, req core.TokenRequest) (*core.IssuedTokens, error) {
 	sess, client, err := s.tokenContext(ctx, req.SessionID, req.ClientRef)

@@ -87,7 +87,6 @@ func TestRememberMe_Integration(t *testing.T) {
 	})
 }
 
-// --- through the OIDC sign-in page ---------------------------------------------
 
 // postJSONCookies is postJSON, plus the cookies the response sets.
 func (b *oidcBrowser) postJSONCookies(u string, body any) (int, map[string]any, []*http.Cookie) {

@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { ConfirmAction } from "@/components/console/confirm";
 import { Drawer, useDrawerUrl, useEditLock } from "@/components/console/drawer";
+import { SuspendLink } from "@/components/console/suspend-link";
 import { useStepUp } from "@/components/console/step-up";
 import { useAction } from "@/components/console/use-action";
 import { Banner } from "@/components/ui/banner";
@@ -90,6 +91,7 @@ export function AccessDrawer({
   scopes,
   members,
   writable,
+  canSuspend = false,
 }: {
   realm: string;
   kind: Kind;
@@ -99,6 +101,8 @@ export function AccessDrawer({
   scopes: ClientScope[];
   members: UserSummary[] | null;
   writable: boolean;
+  /** timeout:write: a group's footer offers "Suspend…" (Timeouts page). */
+  canSuspend?: boolean;
 }) {
   const { close } = useDrawerUrl();
   const { run, pending } = useAction();
@@ -152,6 +156,9 @@ export function AccessDrawer({
           <Button variant="secondary" onClick={close}>
             Cancel
           </Button>
+          {kind === "groups" && mode === "edit" && item && canSuspend && (
+            <SuspendLink className="ml-auto" realm={realm} type="group" id={item.id} name={item.name} />
+          )}
         </>
       }
     >

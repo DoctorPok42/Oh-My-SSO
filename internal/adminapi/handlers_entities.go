@@ -13,7 +13,6 @@ import (
 	"sso.internal/sso/internal/notify"
 )
 
-// --- clients --------------------------------------------------------------------
 
 type scopeChoiceJSON struct {
 	ID       string `json:"id"`
@@ -203,7 +202,6 @@ func (s *Server) handleRemoveCertificate(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, v)
 }
 
-// --- client scopes --------------------------------------------------------------
 
 type scopeJSON struct {
 	Name        *string                `json:"name"`
@@ -269,7 +267,6 @@ func (s *Server) handleDeleteScope(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// --- sessions, audit ------------------------------------------------------------
 
 func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	p := page(r)
@@ -337,7 +334,6 @@ func (s *Server) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, list[service.AuditView]{Items: items(v), Total: total, Offset: p.Offset, Limit: p.Limit})
 }
 
-// --- users ----------------------------------------------------------------------
 
 func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	p := page(r)
@@ -501,7 +497,6 @@ func (s *Server) handleRevokeUserSessions(w http.ResponseWriter, r *http.Request
 }
 
 // handleRevokeTrustedDevice: the next sign-in on that device asks for the
-// second factor again (Step 18d).
 func (s *Server) handleRevokeTrustedDevice(w http.ResponseWriter, r *http.Request) {
 	if err := s.d.Admin.RevokeTrustedDevice(r.Context(), adminFrom(r).actor, realmFrom(r),
 		chi.URLParam(r, "id"), chi.URLParam(r, "deviceID")); err != nil {
@@ -519,7 +514,6 @@ func (s *Server) handleRevokeTrustedDevices(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// --- roles, groups, permissions -------------------------------------------------
 
 type accessJSON struct {
 	Name           *string   `json:"name"`

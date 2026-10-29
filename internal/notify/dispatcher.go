@@ -253,7 +253,6 @@ func (d *Dispatcher) writeAudit(ctx context.Context, e domain.NotificationEvent,
 	}
 }
 
-// --- template data --------------------------------------------------------------
 
 func (d *Dispatcher) data(e domain.NotificationEvent, user *domain.User, realm *domain.Realm) Data {
 	out := Data{

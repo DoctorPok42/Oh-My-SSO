@@ -8,13 +8,11 @@ import (
 )
 
 type AdminRepository interface {
-	// --- realms ---
 	ListRealms(ctx context.Context) ([]*domain.Realm, error)
 	// CreateSystemRealm creates the "master" realm (is_system_realm = true).
 	// RealmRepository.Create refuses reserved names; this is the only way in.
 	CreateSystemRealm(ctx context.Context, p CreateRealmParams) (*domain.Realm, error)
 
-	// --- users ---
 	SearchUsers(ctx context.Context, f UserSearch) ([]*domain.User, int, error)
 	// UsersByIDs loads users of any realm (actors of audit entries may be
 	// admins of the master realm).
@@ -39,7 +37,6 @@ type AdminRepository interface {
 	// LastSuccessfulLogins: time of the last successful password check per user.
 	LastSuccessfulLogins(ctx context.Context, userIDs []string) (map[string]time.Time, error)
 
-	// --- roles, groups, permissions ---
 	RoleGrants(ctx context.Context, roleID string) (Grants, error)
 	GroupGrants(ctx context.Context, groupID string) (Grants, error)
 	// RealmRoleGrants / RealmGroupGrants: the grants of every role / group
@@ -56,7 +53,6 @@ type AdminRepository interface {
 	// Admin API.
 	SetManagedBy(ctx context.Context, kind, id, managedBy string) error
 
-	// --- clients ---
 	ClientGrants(ctx context.Context, clientRef string) (ClientGrants, error)
 	SetClientRoles(ctx context.Context, clientRef string, roleIDs []string, grantedBy string) error
 	SetClientGroups(ctx context.Context, clientRef string, groupIDs []string, grantedBy string) error
@@ -65,7 +61,6 @@ type AdminRepository interface {
 	ScopeUsage(ctx context.Context, realmID string) (map[string]int, error)
 	CountActiveClients(ctx context.Context, realmID string) (int, error)
 
-	// --- sessions ---
 	SearchSessions(ctx context.Context, f SessionSearch) ([]*domain.Session, int, error)
 	// CountSessions: the total of SearchSessions alone (the dashboard).
 	CountSessions(ctx context.Context, f SessionSearch) (int, error)
@@ -73,17 +68,12 @@ type AdminRepository interface {
 	// each session.
 	SessionClients(ctx context.Context, sessionIDs []string, now time.Time) (map[string][]string, error)
 
-	// --- audit log, sign-ins ---
 	SearchAuditLogs(ctx context.Context, f AuditSearch) ([]*domain.AuditLog, int, error)
 	LoginCounts(ctx context.Context, realmID string, since time.Time) (success, failure int, err error)
 	LoginAttemptsByUser(ctx context.Context, userID string, limit int) ([]*domain.LoginAttempt, error)
 
-	// --- MFA ---
 	// MFACoverage: active users of the realm, and how many have an active factor.
 	MFACoverage(ctx context.Context, realmID string) (enrolled, total int, err error)
-
-	// --- timeouts ---
-	ListTimeouts(ctx context.Context, realmID string) ([]*domain.Timeout, error)
 }
 
 // Page of results: Offset rows skipped, at most Limit returned.

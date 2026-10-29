@@ -4,6 +4,7 @@ import { ChevronDown, Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { ConfirmAction } from "@/components/console/confirm";
 import { Drawer, useDrawerUrl, useEditLock } from "@/components/console/drawer";
+import { SuspendLink } from "@/components/console/suspend-link";
 import { SecretOnceDialog } from "@/components/console/secret-once";
 import { useStepUp } from "@/components/console/step-up";
 import { StatusBadge } from "@/components/console/status-badge";
@@ -89,6 +90,7 @@ export function ClientDrawer({
   scopes,
   mfaMethods,
   canReadAccess,
+  canSuspend = false,
 }: Readonly<{
   realm: string;
   mode: "create" | "edit" | null;
@@ -99,6 +101,8 @@ export function ClientDrawer({
   scopes: ClientScope[];
   mfaMethods: string[];
   canReadAccess: boolean;
+  /** timeout:write: the footer offers "Suspend…" (Timeouts page). */
+  canSuspend?: boolean;
 }>) {
   const { close, openEdit } = useDrawerUrl();
   const { run, pending } = useAction();
@@ -177,6 +181,9 @@ export function ClientDrawer({
             <Button variant="secondary" onClick={close}>
               Cancel
             </Button>
+            {mode === "edit" && client && canSuspend && client.client_id !== "sso-admin" && (
+              <SuspendLink className="ml-auto" realm={realm} type="client" id={client.id} name={client.name} />
+            )}
           </>
         }
       >

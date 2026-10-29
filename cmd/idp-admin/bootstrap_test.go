@@ -28,6 +28,13 @@ func TestRecover_Guardrails(t *testing.T) {
 	out.Reset()
 	require.Equal(t, 2, recoverCmd([]string{"admin"}, strings.NewReader(""), &out, true), "--email is required")
 	require.Equal(t, 2, recoverCmd([]string{"everything"}, strings.NewReader(""), &out, true))
+
+	// recover timeouts: the same guardrails.
+	out.Reset()
+	require.Equal(t, 4, recoverCmd([]string{"timeouts"}, strings.NewReader(""), &out, false))
+	out.Reset()
+	require.Equal(t, 5, recoverCmd([]string{"timeouts"}, strings.NewReader("WRONG1\n"), &out, true))
+	require.Contains(t, out.String(), "BREAK-GLASS PROCEDURE (timeouts)")
 }
 
 func TestAllowedNets(t *testing.T) {

@@ -167,7 +167,6 @@ func (s *AdminService) UpdateRealm(ctx context.Context, actor AdminActor, name s
 	return realmView(updated), nil
 }
 
-// --- settings -------------------------------------------------------------------
 
 // SettingsView: the Settings screen. Every value, defaults included.
 type SettingsView struct {

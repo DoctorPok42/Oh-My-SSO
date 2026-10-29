@@ -171,7 +171,6 @@ func TestJWKS_TokenSignedWithOldKeyVerifiesDuringGracePeriod(t *testing.T) {
 	oldToken := f.signJWT(t, "alice")
 	require.NoError(t, verifyJWT(oldToken, f.fetchJWKS(t)), "sanity check before any rotation")
 
-	// --- rotation: default 24h grace ---
 	newKey := f.rotate(t)
 	rotatedAt := f.now
 
@@ -185,7 +184,6 @@ func TestJWKS_TokenSignedWithOldKeyVerifiesDuringGracePeriod(t *testing.T) {
 	require.Equal(t, oldKey.Kid, headerKid(t, oldToken))
 	require.NoError(t, verifyJWT(newToken, set))
 
-	// --- 23h later: still inside the grace period ---
 	f.now = rotatedAt.Add(23 * time.Hour)
 	require.NoError(t, verifyJWT(oldToken, f.fetchJWKS(t)), "old token still verifies inside the grace period")
 
@@ -197,7 +195,6 @@ func TestJWKS_TokenSignedWithOldKeyVerifiesDuringGracePeriod(t *testing.T) {
 	require.ErrorContains(t, verifyJWT(oldToken, set), "unknown kid "+`"`+oldKey.Kid+`"`)
 	require.NoError(t, verifyJWT(newToken, set), "tokens of the new key are unaffected")
 
-	// --- the retire job tidies the status and writes the log ---
 	retired, err := f.rot.RetireExpired(context.Background(), f.realm.ID, "test")
 	require.NoError(t, err)
 	require.Len(t, retired, 1)

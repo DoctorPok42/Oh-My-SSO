@@ -75,6 +75,8 @@ type adminTestEnv struct {
 	oidc     *oidcTestEnv // reuses its browser helpers and TOTP clock
 	valkey   vk.Client
 	devices  repository.TrustedDeviceRepository
+	ent      *ent.Client
+	timeouts *service.TimeoutService
 }
 
 func setupAdminTestEnv(t *testing.T) *adminTestEnv {
@@ -121,13 +123,15 @@ func setupAdminTestEnv(t *testing.T) *adminTestEnv {
 		Store: valkeycache.NewMFAStore(valkeyClient), Limiter: limiter, LoginAttempts: attempts, Audit: audit,
 		Realms: realms, Clients: clients, Now: clock.Now, Notifier: notifier,
 	})
-	auth := service.NewAuthService(users, attempts)
+	timeouts := service.NewTimeoutService(service.TimeoutDeps{Timeouts: entstore.NewTimeoutRepository(client), Users: users,
+		Groups: groups, Clients: clients, Tokens: tokens, Sessions: sessions, Audit: audit, Now: clock.Now})
+	auth := service.NewAuthService(users, attempts, service.WithTimeoutChecker(timeouts))
 	rbac := service.NewRBACService(access, audit)
 	consent := service.NewConsentService(service.ConsentDeps{Consents: entstore.NewConsentRepository(client), Clients: clients,
 		Sessions: sessions, Tokens: tokens, Audit: audit}, service.WithConsentClock(clock.Now))
 	idp := service.NewIdentityCore(service.IdentityCoreDeps{Auth: auth, Sessions: sessions, RBAC: rbac, Users: users,
 		Clients: clients, Realms: realms, Tokens: tokens, SigningKeys: signingKeys, KeyManager: km, MFA: mfa,
-		Consent: consent, Audit: audit}, service.WithIdentityCoreClock(clock.Now))
+		Consent: consent, Audit: audit, Timeouts: timeouts}, service.WithIdentityCoreClock(clock.Now))
 	rotation := service.NewKeyRotationService(signingKeys, entstore.NewKeyRotationLogRepository(client), settings, km, "local_dev")
 	reset := service.NewPasswordResetService(service.PasswordResetDeps{Users: users,
 		Tokens: entstore.NewPasswordResetTokenRepository(client), Sessions: sessions, Settings: settings, Audit: audit, Now: clock.Now})
@@ -149,6 +153,7 @@ func setupAdminTestEnv(t *testing.T) *adminTestEnv {
 		Lockout:     service.NewLockoutService(service.LockoutDeps{Users: users, Settings: settings}),
 		OIDCClients: service.NewOIDCClientService(clients, scopes, roles, groups),
 		SAMLClients: service.NewSAMLClientService(clients, scopes, roles, groups),
+		Timeouts:    timeouts,
 		Notifier:    notifier, PublicURL: ts.URL,
 		// The in-memory KeyManager is shared by everything in this test
 		// process, so realms may get their keys here (see ensureSigningKey).
@@ -163,7 +168,7 @@ func setupAdminTestEnv(t *testing.T) *adminTestEnv {
 
 	return &adminTestEnv{idp: ts, api: api, admin: admin, sessions: sessions, audit: audit, users: users,
 		clock: clock, notifier: notifier, oidc: &oidcTestEnv{ts: ts, clock: clock, realmURL: ts.URL + "/r/master"},
-		valkey: valkeyClient, devices: devices}
+		valkey: valkeyClient, devices: devices, ent: client, timeouts: timeouts}
 }
 
 // call sends one Admin API request with the admin's access token.
@@ -239,7 +244,6 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	e := setupAdminTestEnv(t)
 	ctx := context.Background()
 
-	// --- 1. bootstrap ---
 	res, err := e.admin.Bootstrap(ctx, service.BootstrapInput{AdminEmail: "root@example.test",
 		AdminConsoleURL: adminConsoleURL, Actor: "cli:test@host"})
 	require.NoError(t, err)
@@ -263,7 +267,6 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 		AdminConsoleURL: adminConsoleURL, Actor: "cli:test@host"})
 	require.ErrorIs(t, err, service.ErrAlreadyBootstrapped)
 
-	// --- 2. the admin signs in to the console ---
 	console := &oauth2.Config{ClientID: "sso-admin", ClientSecret: res.ClientSecret,
 		RedirectURL: adminConsoleURL + "/auth/callback", Scopes: []string{"openid", "profile", "email", "offline_access"},
 		Endpoint: oauth2.Endpoint{AuthURL: e.idp.URL + "/r/master/oidc/authorize", TokenURL: e.idp.URL + "/r/master/oidc/token",
@@ -279,7 +282,6 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	require.Contains(t, me["permissions"], "realm:write")
 	require.NotNil(t, me["step_up_fresh_until"])
 
-	// --- 3. a realm, a group, an OIDC client ---
 	status, out := e.call(t, at, http.MethodPost, "/api/v1/realms", map[string]any{"name": "demo", "display_name": "Demo Corp"})
 	require.Equal(t, http.StatusCreated, status, "%v", out)
 	status, out = e.call(t, at, http.MethodPost, "/api/v1/realms", map[string]any{"name": "master"})
@@ -321,7 +323,6 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	require.Equal(t, true, entry["actor"].(map[string]any)["admin"])
 	require.Equal(t, "master", entry["details"].(map[string]any)["admin_realm"])
 
-	// --- 4. guardrails ---
 	status, users := e.call(t, at, http.MethodGet, "/api/v1/realms/master/users?q=root", nil)
 	require.Equal(t, http.StatusOK, status)
 	rootID := users["items"].([]any)[0].(map[string]any)["id"].(string)
@@ -376,7 +377,6 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	require.Equal(t, http.StatusConflict, status)
 	require.Equal(t, "already_activated", out["error"])
 
-	// --- 5. step-up: changes need a recent second factor ---
 	status, out = e.call(t, at, http.MethodPatch, "/api/v1/realms/master/settings", map[string]any{"mfa_step_up_max_age_minutes": 1})
 	require.Equal(t, http.StatusOK, status, "%v", out)
 	e.clock.Advance(2 * time.Minute) // the second factor is too old now
@@ -410,7 +410,6 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	require.Equal(t, http.StatusOK, status, "%v", out)
 	require.EqualValues(t, 14, out["remember_me_max_days"])
 
-	// --- 6. tokens ---
 	// A revoked session cuts the API at once (the JWT itself is still valid).
 	claims := jwtClaims(t, tok.AccessToken)
 	require.NoError(t, e.sessions.Revoke(ctx, claims["sid"].(string), domain.SessionRevokedAdminRevoked))
@@ -423,7 +422,6 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	status, _ = e.call(t, "eyJhbGciOiJub25lIn0.e30.", http.MethodGet, "/api/v1/me", nil)
 	require.Equal(t, http.StatusUnauthorized, status)
 
-	// --- 7. break-glass recovery ---
 	rec, err := e.admin.RecoverAdmin(ctx, service.RecoverAdminInput{Email: "root@example.test", Actor: "cli:test@host"})
 	require.Error(t, err, "recovery never touches an existing account")
 	rec, err = e.admin.RecoverAdmin(ctx, service.RecoverAdminInput{Email: "breakglass@example.test", Actor: "cli:test@host"})

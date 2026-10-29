@@ -12,7 +12,6 @@ import (
 	"sso.internal/sso/internal/mfastore"
 )
 
-// Sign-in without password (Step 18c).
 //
 // A passkey, or a security key such as a YubiKey, can replace the password
 // when the authenticator verifies the user (biometrics or PIN): it is then
@@ -30,7 +29,6 @@ import (
 // The password lockout does not apply: it protects the password against
 // guessing, and nobody can guess a passkey. A locked-out user can still
 // sign in with their passkey (the lock stays on the password).
-
 const ceremonyPasswordless = "passwordless"
 
 // methodPriority is the order in which a sign-in offers the factors of a
@@ -269,13 +267,12 @@ func (s *MFAService) FinishPasswordlessLogin(ctx context.Context, in FinishPassw
 		s.recordSignIn(ctx, user, in, domain.LoginAttemptFailure, domain.LoginFailureAccountLocked)
 		return nil, ErrAccountNotActive
 	}
-	blocked, err := s.timeouts.HasActiveTimeout(ctx, user.ID, c.ClientRef)
-	if err != nil {
-		return nil, fmt.Errorf("passkey sign-in: check timeout: %w", err)
-	}
-	if blocked {
+	if err := checkTimeout(ctx, s.timeouts, user.ID, c.ClientRef); err != nil {
+		if !errors.Is(err, ErrTimeoutActive) {
+			return nil, fmt.Errorf("passkey sign-in: check timeout: %w", err)
+		}
 		s.recordSignIn(ctx, user, in, domain.LoginAttemptFailure, domain.LoginFailureTimeoutActive)
-		return nil, ErrTimeoutActive
+		return nil, err // *core.TimeoutError
 	}
 
 	raw, sess, err := s.sessions.Create(ctx, CreateSessionInput{

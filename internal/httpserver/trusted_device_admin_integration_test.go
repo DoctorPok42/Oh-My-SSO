@@ -15,7 +15,6 @@ import (
 	"sso.internal/sso/internal/core/service"
 )
 
-// Step 18d in the Admin API: the realm setting, and the trusted devices of a
 // user (list, revoke one, revoke all, signed out everywhere).
 func TestAdmin_Integration_TrustedDevices(t *testing.T) {
 	e := setupAdminTestEnv(t)

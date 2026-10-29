@@ -107,6 +107,21 @@ func CreatedAt(v time.Time) predicate.Timeout {
 	return predicate.Timeout(sql.FieldEQ(FieldCreatedAt, v))
 }
 
+// LiftedAt applies equality check predicate on the "lifted_at" field. It's identical to LiftedAtEQ.
+func LiftedAt(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldEQ(FieldLiftedAt, v))
+}
+
+// LiftedBy applies equality check predicate on the "lifted_by" field. It's identical to LiftedByEQ.
+func LiftedBy(v string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldEQ(FieldLiftedBy, v))
+}
+
+// EnforcedAt applies equality check predicate on the "enforced_at" field. It's identical to EnforcedAtEQ.
+func EnforcedAt(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldEQ(FieldEnforcedAt, v))
+}
+
 // RealmIDEQ applies the EQ predicate on the "realm_id" field.
 func RealmIDEQ(v string) predicate.Timeout {
 	return predicate.Timeout(sql.FieldEQ(FieldRealmID, v))
@@ -579,6 +594,181 @@ func CreatedAtLT(v time.Time) predicate.Timeout {
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.Timeout {
 	return predicate.Timeout(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// LiftedAtEQ applies the EQ predicate on the "lifted_at" field.
+func LiftedAtEQ(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldEQ(FieldLiftedAt, v))
+}
+
+// LiftedAtNEQ applies the NEQ predicate on the "lifted_at" field.
+func LiftedAtNEQ(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldNEQ(FieldLiftedAt, v))
+}
+
+// LiftedAtIn applies the In predicate on the "lifted_at" field.
+func LiftedAtIn(vs ...time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldIn(FieldLiftedAt, vs...))
+}
+
+// LiftedAtNotIn applies the NotIn predicate on the "lifted_at" field.
+func LiftedAtNotIn(vs ...time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldNotIn(FieldLiftedAt, vs...))
+}
+
+// LiftedAtGT applies the GT predicate on the "lifted_at" field.
+func LiftedAtGT(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldGT(FieldLiftedAt, v))
+}
+
+// LiftedAtGTE applies the GTE predicate on the "lifted_at" field.
+func LiftedAtGTE(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldGTE(FieldLiftedAt, v))
+}
+
+// LiftedAtLT applies the LT predicate on the "lifted_at" field.
+func LiftedAtLT(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldLT(FieldLiftedAt, v))
+}
+
+// LiftedAtLTE applies the LTE predicate on the "lifted_at" field.
+func LiftedAtLTE(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldLTE(FieldLiftedAt, v))
+}
+
+// LiftedAtIsNil applies the IsNil predicate on the "lifted_at" field.
+func LiftedAtIsNil() predicate.Timeout {
+	return predicate.Timeout(sql.FieldIsNull(FieldLiftedAt))
+}
+
+// LiftedAtNotNil applies the NotNil predicate on the "lifted_at" field.
+func LiftedAtNotNil() predicate.Timeout {
+	return predicate.Timeout(sql.FieldNotNull(FieldLiftedAt))
+}
+
+// LiftedByEQ applies the EQ predicate on the "lifted_by" field.
+func LiftedByEQ(v string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldEQ(FieldLiftedBy, v))
+}
+
+// LiftedByNEQ applies the NEQ predicate on the "lifted_by" field.
+func LiftedByNEQ(v string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldNEQ(FieldLiftedBy, v))
+}
+
+// LiftedByIn applies the In predicate on the "lifted_by" field.
+func LiftedByIn(vs ...string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldIn(FieldLiftedBy, vs...))
+}
+
+// LiftedByNotIn applies the NotIn predicate on the "lifted_by" field.
+func LiftedByNotIn(vs ...string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldNotIn(FieldLiftedBy, vs...))
+}
+
+// LiftedByGT applies the GT predicate on the "lifted_by" field.
+func LiftedByGT(v string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldGT(FieldLiftedBy, v))
+}
+
+// LiftedByGTE applies the GTE predicate on the "lifted_by" field.
+func LiftedByGTE(v string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldGTE(FieldLiftedBy, v))
+}
+
+// LiftedByLT applies the LT predicate on the "lifted_by" field.
+func LiftedByLT(v string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldLT(FieldLiftedBy, v))
+}
+
+// LiftedByLTE applies the LTE predicate on the "lifted_by" field.
+func LiftedByLTE(v string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldLTE(FieldLiftedBy, v))
+}
+
+// LiftedByContains applies the Contains predicate on the "lifted_by" field.
+func LiftedByContains(v string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldContains(FieldLiftedBy, v))
+}
+
+// LiftedByHasPrefix applies the HasPrefix predicate on the "lifted_by" field.
+func LiftedByHasPrefix(v string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldHasPrefix(FieldLiftedBy, v))
+}
+
+// LiftedByHasSuffix applies the HasSuffix predicate on the "lifted_by" field.
+func LiftedByHasSuffix(v string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldHasSuffix(FieldLiftedBy, v))
+}
+
+// LiftedByIsNil applies the IsNil predicate on the "lifted_by" field.
+func LiftedByIsNil() predicate.Timeout {
+	return predicate.Timeout(sql.FieldIsNull(FieldLiftedBy))
+}
+
+// LiftedByNotNil applies the NotNil predicate on the "lifted_by" field.
+func LiftedByNotNil() predicate.Timeout {
+	return predicate.Timeout(sql.FieldNotNull(FieldLiftedBy))
+}
+
+// LiftedByEqualFold applies the EqualFold predicate on the "lifted_by" field.
+func LiftedByEqualFold(v string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldEqualFold(FieldLiftedBy, v))
+}
+
+// LiftedByContainsFold applies the ContainsFold predicate on the "lifted_by" field.
+func LiftedByContainsFold(v string) predicate.Timeout {
+	return predicate.Timeout(sql.FieldContainsFold(FieldLiftedBy, v))
+}
+
+// EnforcedAtEQ applies the EQ predicate on the "enforced_at" field.
+func EnforcedAtEQ(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldEQ(FieldEnforcedAt, v))
+}
+
+// EnforcedAtNEQ applies the NEQ predicate on the "enforced_at" field.
+func EnforcedAtNEQ(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldNEQ(FieldEnforcedAt, v))
+}
+
+// EnforcedAtIn applies the In predicate on the "enforced_at" field.
+func EnforcedAtIn(vs ...time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldIn(FieldEnforcedAt, vs...))
+}
+
+// EnforcedAtNotIn applies the NotIn predicate on the "enforced_at" field.
+func EnforcedAtNotIn(vs ...time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldNotIn(FieldEnforcedAt, vs...))
+}
+
+// EnforcedAtGT applies the GT predicate on the "enforced_at" field.
+func EnforcedAtGT(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldGT(FieldEnforcedAt, v))
+}
+
+// EnforcedAtGTE applies the GTE predicate on the "enforced_at" field.
+func EnforcedAtGTE(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldGTE(FieldEnforcedAt, v))
+}
+
+// EnforcedAtLT applies the LT predicate on the "enforced_at" field.
+func EnforcedAtLT(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldLT(FieldEnforcedAt, v))
+}
+
+// EnforcedAtLTE applies the LTE predicate on the "enforced_at" field.
+func EnforcedAtLTE(v time.Time) predicate.Timeout {
+	return predicate.Timeout(sql.FieldLTE(FieldEnforcedAt, v))
+}
+
+// EnforcedAtIsNil applies the IsNil predicate on the "enforced_at" field.
+func EnforcedAtIsNil() predicate.Timeout {
+	return predicate.Timeout(sql.FieldIsNull(FieldEnforcedAt))
+}
+
+// EnforcedAtNotNil applies the NotNil predicate on the "enforced_at" field.
+func EnforcedAtNotNil() predicate.Timeout {
+	return predicate.Timeout(sql.FieldNotNull(FieldEnforcedAt))
 }
 
 // HasRealm applies the HasEdge predicate on the "realm" edge.

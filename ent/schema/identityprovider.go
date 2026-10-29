@@ -51,7 +51,6 @@ func (IdentityProvider) Fields() []ent.Field {
 		field.Time("created_at").Default(func() time.Time { return time.Now() }).Immutable(),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 
-		// --- OIDC ---
 		field.String("issuer_url").Optional(),
 		field.String("client_id").Optional(),
 		field.String("client_secret_hash").Optional(),
@@ -61,12 +60,10 @@ func (IdentityProvider) Fields() []ent.Field {
 		field.String("jwks_uri").Optional(),
 		field.JSON("scopes_requested", []string{}).Optional(),
 
-		// --- SAML2 ---
 		field.String("idp_entity_id").Optional(),
 		field.String("idp_sso_url").Optional(),
 		field.Text("idp_certificate").Optional(),
 
-		// --- Common ---
 		field.JSON("attribute_mapping", map[string]interface{}{}).Optional(),
 		field.Bool("auto_provisioning").Default(false),
 		field.JSON("default_roles", []string{}).Optional(),

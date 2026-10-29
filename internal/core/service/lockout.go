@@ -238,7 +238,6 @@ func (s *LockoutService) onLocked(ctx context.Context, subj LockoutSubject, res 
 	})
 }
 
-// --- the rules, as pure functions (easy to test) -------------------------------
 
 // applyFailure returns the state after one more wrong password at now.
 func applyFailure(st domain.LockoutState, now time.Time, p LockoutPolicy) (domain.LockoutState, FailureResult) {
@@ -285,7 +284,6 @@ func lockDuration(base time.Duration, n int) time.Duration {
 	return d
 }
 
-// --- where the state lives -------------------------------------------------------
 
 type lockoutBackend interface {
 	// load returns the current state. hint, when not nil, is a user just

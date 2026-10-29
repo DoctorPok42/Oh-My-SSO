@@ -14,7 +14,6 @@ export type ApiErrorBody = {
 
 export type NameRef = { id: string; name: string };
 
-// --- me, realms -----------------------------------------------------------------
 
 export type Me = {
   user: { id: string; username: string; email: string; name: string };
@@ -37,7 +36,6 @@ export type RealmDetail = Realm & { issuer: string; jwks_url: string; saml_metad
 
 export type CreateRealmResult = { realm: Realm; warning?: string };
 
-// --- dashboard ------------------------------------------------------------------
 
 export type HealthLine = {
   name: string;
@@ -71,7 +69,6 @@ export type Dashboard = {
   realm: RealmDetail;
 };
 
-// --- clients --------------------------------------------------------------------
 
 export type Protocol = "oidc" | "saml2";
 export type ManagedBy = "ui" | "config";
@@ -165,7 +162,6 @@ export type ClientBody = {
   mfa_methods?: string[];
 };
 
-// --- client scopes --------------------------------------------------------------
 
 export type ClaimMapper = { source_attribute: string; claim_name: string; token_location: string[] };
 
@@ -180,7 +176,6 @@ export type ClientScope = {
   created_at: string;
 };
 
-// --- sessions -------------------------------------------------------------------
 
 export type SessionRow = {
   id: string;
@@ -202,7 +197,6 @@ export type SessionRow = {
   expires_at: string;
 };
 
-// --- users, roles, groups, permissions -------------------------------------------
 
 export type UserStatus = "active" | "inactive" | "suspended";
 
@@ -272,7 +266,6 @@ export type Permission = {
   system: boolean;
 };
 
-// --- signing keys -----------------------------------------------------------------
 
 export type SigningKey = {
   kid: string;
@@ -297,7 +290,6 @@ export type RotateResult = {
   warning?: string;
 };
 
-// --- MFA policies -----------------------------------------------------------------
 
 export type RolePolicy = {
   role: NameRef;
@@ -320,7 +312,6 @@ export type MfaPolicies = {
   known_methods: string[];
 };
 
-// --- settings, timeouts -----------------------------------------------------------
 
 export type Settings = {
   managed_by: ManagedBy;
@@ -345,13 +336,24 @@ export type Settings = {
   email_enabled: boolean;
 };
 
+export type TimeoutTargetType = "user" | "group" | "client";
+export type TimeoutStatus = "scheduled" | "active" | "ended" | "lifted";
+
 export type Timeout = {
   id: string;
-  target_type: string;
+  target_type: TimeoutTargetType;
   target: NameRef;
   starts_at: string;
-  ends_at: string | null;
+  ends_at: string | null; // null: no end, until lifted
   reason: string;
-  created_by: string;
+  created_by: string; // administrator's username, or "cli:<os user>"
+  created_at: string;
+  status: TimeoutStatus;
   active: boolean;
+  lifted_at: string | null;
+  lifted_by: string;
+  enforced_at: string | null; // when the targets were signed out
+  // Only in the answer to a create that started at once.
+  sign_out?: { users: number; sessions: number; tokens: number };
+  sign_out_pending?: boolean;
 };

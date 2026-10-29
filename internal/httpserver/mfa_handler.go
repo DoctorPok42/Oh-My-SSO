@@ -322,7 +322,6 @@ func (s *Server) handleRegenerateBackupCodes(w http.ResponseWriter, r *http.Requ
 	writeJSON(w, http.StatusOK, backupCodesResponse{BackupCodes: codes})
 }
 
-// --- helpers -------------------------------------------------------------------
 
 // writeMFAError maps service errors to HTTP. Every wrong-code case gives
 // the same "invalid_mfa_code": never tell wrong from expired or reused.
@@ -372,10 +371,12 @@ func (s *Server) writeMFAError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusBadRequest, "invalid_request")
 	case errors.Is(err, service.ErrNoPasskeyForSignIn):
 		writeError(w, http.StatusConflict, "passkey_unavailable")
+	case errors.Is(err, service.ErrTimeoutActive):
+		// The passkey proved who the user is, like a correct password.
+		writeTimeoutError(w, err)
 	case errors.Is(err, service.ErrPasskeySignInFailed),
-		errors.Is(err, service.ErrAccountNotActive),
-		errors.Is(err, service.ErrTimeoutActive):
-		// One answer for all three, like a wrong password.
+		errors.Is(err, service.ErrAccountNotActive):
+		// One answer for both, like a wrong password.
 		writeError(w, http.StatusUnauthorized, "passkey_rejected")
 	default:
 		writeError(w, http.StatusInternalServerError, "internal_error")

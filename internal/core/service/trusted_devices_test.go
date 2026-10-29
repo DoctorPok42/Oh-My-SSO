@@ -13,8 +13,6 @@ import (
 	"sso.internal/sso/internal/passkey/passkeytest"
 )
 
-// Step 18d: "Don't ask again on this device".
-
 // fakeRisk answers SignInRisk with fixed reasons (or an error).
 type fakeRisk struct {
 	reasons []string

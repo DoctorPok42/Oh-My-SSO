@@ -268,7 +268,6 @@ func (a *Authenticator) authData(c *credential, extraFlags byte, attested []byte
 	return append(out, attested...)
 }
 
-// --- just enough CBOR (RFC 8949) for COSE keys and attestation objects ---
 
 func cborHead(major byte, n uint64) []byte {
 	switch {

@@ -308,7 +308,6 @@ func (s *MFAPolicyService) realmSettings(ctx context.Context, realmID string) (*
 	return settings, nil
 }
 
-// --- changing policies -------------------------------------------------------
 
 // Actor identifies who changes a policy, for the audit trail.
 type PolicyActor struct {
@@ -323,7 +322,6 @@ type SetRealmMFAPolicyInput struct {
 	RequiredGlobally *bool
 	StepUpMaxAge     *time.Duration
 	Actor            PolicyActor
-	// "Don't ask again on this device" (Step 18d): offered or not, and for
 	// how many days (MinTrustedDeviceDays to MaxTrustedDeviceDays).
 	TrustedDevices    *bool
 	TrustedDeviceDays *int

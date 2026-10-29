@@ -39,6 +39,35 @@ var (
 	ErrConsentNotConfigured = errors.New("core: user consent required but not configured")
 )
 
+// TimeoutError is returned when an administrator's timeout blocks a sign-in
+// or a token. errors.Is(err, ErrTimeoutActive) is true. It is only returned
+// once the user proved who they are (password, passkey, session): telling
+// them their access is suspended reveals nothing to someone else.
+//
+// Neither the reason nor the end is carried: the reason is written for
+// administrators, and the user has no use for it.
+type TimeoutError struct {
+	// OnClient: the application is suspended (for everybody), not the user.
+	OnClient bool
+}
+
+func (e *TimeoutError) Error() string {
+	if e.OnClient {
+		return "core: an active timeout suspends this application"
+	}
+	return "core: an active timeout suspends this user"
+}
+
+// Is makes errors.Is(err, ErrTimeoutActive) true.
+func (e *TimeoutError) Is(target error) bool { return target == ErrTimeoutActive }
+
+// TimeoutOnClient reports whether err is a timeout on the application (as
+// opposed to one on the user or one of their groups).
+func TimeoutOnClient(err error) bool {
+	var te *TimeoutError
+	return errors.As(err, &te) && te.OnClient
+}
+
 
 type Credentials struct {
 	RealmID    string
@@ -340,7 +369,6 @@ type ConsentDenial struct {
 
 // IdentityCore is the only entry point adapters use.
 type IdentityCore interface {
-	// --- Authentication ---
 
 	// AuthenticateLocal checks credentials, the account status and active
 	// timeouts. It records a LoginAttempt in every case.
@@ -350,7 +378,6 @@ type IdentityCore interface {
 	// session: callers decide what a successful verification unlocks.
 	VerifyMFA(ctx context.Context, userID string, ch MFAChallenge) (bool, error)
 
-	// --- Sessions ---
 
 	CreateSession(ctx context.Context, userID string, ac AuthContext) (*IssuedSession, error)
 	// ValidateSession is the front-channel check: the browser is there and
@@ -367,7 +394,6 @@ type IdentityCore interface {
 	// entry. A session that is already over is not an error.
 	Logout(ctx context.Context, req LogoutRequest) error
 
-	// --- "Pick an account" ---
 
 	// KnownAccounts returns the accounts to show on a device: the current
 	// session's first, then the remembered ones, most recently used first.
@@ -377,7 +403,6 @@ type IdentityCore interface {
 	// SignedIn false). ErrSessionInvalid if the session is over.
 	SessionAccount(ctx context.Context, sessionID string) (*Account, error)
 
-	// --- Identity assertions (format-agnostic) ---
 
 	// IssueIdentityAssertion checks the session, the user's right to access
 	// the client, active timeouts and the MFA policy (*MFARequiredError),
@@ -394,12 +419,10 @@ type IdentityCore interface {
 	// DenyConsent records a refusal in the AuditLog.
 	DenyConsent(ctx context.Context, d ConsentDenial) error
 
-	// --- Authorization ---
 
 	GetEffectivePermissions(ctx context.Context, userID, clientRef string) ([]*domain.Permission, error)
 	IsAuthorizedForClient(ctx context.Context, userID, clientRef string) (bool, error)
 
-	// --- Tokens ---
 
 	// RevokeToken is idempotent: an unknown jti is not an error.
 	RevokeToken(ctx context.Context, jti string) error
@@ -443,7 +466,6 @@ type IdentityCore interface {
 	// ErrInvalidClientSecret.
 	AuthenticateClient(ctx context.Context, clientRef, secret string) error
 
-	// --- Keys ---
 
 	// Signer returns the newest active key of the realm for that purpose.
 	// For saml_signing it is also a DigestSigner.

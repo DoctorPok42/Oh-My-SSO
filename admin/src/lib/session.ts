@@ -36,7 +36,6 @@ export const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
 /** Ten minutes to sign in at the IdP. */
 export const LOGIN_STATE_MAX_AGE = 10 * 60;
 
-// --- keys -----------------------------------------------------------------------
 
 const keys = new Map<string, Promise<CryptoKey>>();
 
@@ -70,7 +69,6 @@ export function deriveKey(secret: string, purpose: "session" | "login"): Promise
   return key;
 }
 
-// --- seal / open ------------------------------------------------------------------
 
 export async function seal(
   payload: Session | LoginState,
@@ -119,7 +117,6 @@ export function isSession(v: unknown): v is Session {
   );
 }
 
-// --- cookies --------------------------------------------------------------------
 //
 // A sealed session (three JWTs inside) can exceed the ~4 KB a browser keeps per
 // cookie, so it is split into numbered chunks: omsso_admin.0, omsso_admin.1...

@@ -74,6 +74,9 @@ export function useDrawerUrl() {
     openNew: () => go({ new: "1", edit: null }),
     openEdit: (id: string) => go({ edit: id, new: null }),
     close: () => go({ new: null, edit: null }),
+    /** close(), also dropping other URL parameters (those that pre-filled the form). */
+    closeDropping: (keys: string[]) =>
+      go({ new: null, edit: null, ...Object.fromEntries(keys.map((k) => [k, null] as const)) }),
   };
 }
 

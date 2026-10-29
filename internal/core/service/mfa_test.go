@@ -162,7 +162,6 @@ func (l *countingLimiter) Allow(_ context.Context, key string, _ int64, _ time.D
 	return l.seen[key] <= l.limit, nil
 }
 
-// --- fixture -------------------------------------------------------------------
 
 const (
 	mfaClientPlain   = "client-plain"
@@ -191,11 +190,9 @@ type mfaFixture struct {
 	core       *service.IdentityCoreService
 	passkeys   service.PasskeyProvider
 	notifier   *recordingNotifier
-	// "Don't ask again on this device" (Step 18d).
 	devices *memstore.TrustedDevices
 	trusted *service.TrustedDeviceService
 	risk    *fakeRisk
-	// How the user likes to sign in on a device (Step 18e).
 	known    *fakeKnownAccounts
 	accounts *service.KnownAccountService
 }
@@ -367,7 +364,6 @@ func (f *mfaFixture) verify(dec *service.LoginDecision, method, code string) (*s
 	})
 }
 
-// --- tests -----------------------------------------------------------------------
 
 func TestMFA_TOTPEnrollment(t *testing.T) {
 	ctx := context.Background()

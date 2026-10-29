@@ -25,7 +25,6 @@ import (
 	"sso.internal/sso/ent/role"
 	entschema "sso.internal/sso/ent/schema"
 	"sso.internal/sso/ent/session"
-	"sso.internal/sso/ent/timeout"
 	"sso.internal/sso/ent/token"
 	"sso.internal/sso/ent/user"
 	"sso.internal/sso/internal/core/domain"
@@ -79,7 +78,6 @@ func quoteIdent(name string) string { return `"` + strings.ReplaceAll(name, `"`,
 // sub-queries: an aggregate expression cannot carry bind parameters.
 func quoteLiteral(v string) string { return "'" + strings.ReplaceAll(v, "'", "''") + "'" }
 
-// --- realms ---------------------------------------------------------------------
 
 func (r *entAdminRepository) ListRealms(ctx context.Context) ([]*domain.Realm, error) {
 	rows, err := r.client.Realm.Query().Order(ent.Desc(realm.FieldIsSystemRealm), ent.Asc(realm.FieldName)).All(ctx)
@@ -105,7 +103,6 @@ func (r *entAdminRepository) CreateSystemRealm(ctx context.Context, p repository
 	return toDomainRealm(e), nil
 }
 
-// --- users ----------------------------------------------------------------------
 
 func (r *entAdminRepository) SearchUsers(ctx context.Context, f repository.UserSearch) ([]*domain.User, int, error) {
 	preds := []predicate.User{user.RealmID(f.RealmID), user.DeletedAtIsNil()}
@@ -313,7 +310,6 @@ func (r *entAdminRepository) LastSuccessfulLogins(ctx context.Context, userIDs [
 	return out, nil
 }
 
-// --- roles, groups --------------------------------------------------------------
 
 func (r *entAdminRepository) RoleGrants(ctx context.Context, roleID string) (repository.Grants, error) {
 	e, err := r.client.Role.Query().
@@ -425,7 +421,6 @@ func (r *entAdminRepository) SetManagedBy(ctx context.Context, kind, id, managed
 	}
 }
 
-// --- clients --------------------------------------------------------------------
 
 func (r *entAdminRepository) ClientGrants(ctx context.Context, clientRef string) (repository.ClientGrants, error) {
 	out := repository.ClientGrants{RoleIDs: []string{}, GroupIDs: []string{}, Scopes: []repository.ScopeMapping{},
@@ -591,7 +586,6 @@ func (r *entAdminRepository) CountActiveClients(ctx context.Context, realmID str
 		Count(ctx)
 }
 
-// --- sessions -------------------------------------------------------------------
 
 func liveToken(now time.Time) predicate.Token {
 	return token.And(token.Revoked(false), token.ExpiresAtGT(now))
@@ -671,7 +665,6 @@ func (r *entAdminRepository) SessionClients(ctx context.Context, sessionIDs []st
 	return out, nil
 }
 
-// --- audit log, sign-ins --------------------------------------------------------
 
 func (r *entAdminRepository) SearchAuditLogs(ctx context.Context, f repository.AuditSearch) ([]*domain.AuditLog, int, error) {
 	preds := []predicate.AuditLog{auditlog.RealmID(f.RealmID)}
@@ -759,7 +752,6 @@ func (r *entAdminRepository) LoginAttemptsByUser(ctx context.Context, userID str
 	return toDomainLoginAttempts(rows), nil
 }
 
-// --- MFA, timeouts ----------------------------------------------------------------
 
 // MFACoverage: active users, and how many of them have a real factor, in
 // one query:
@@ -790,22 +782,6 @@ func (r *entAdminRepository) MFACoverage(ctx context.Context, realmID string) (i
 	return rows[0].Enrolled, rows[0].Count, nil
 }
 
-func (r *entAdminRepository) ListTimeouts(ctx context.Context, realmID string) ([]*domain.Timeout, error) {
-	rows, err := r.client.Timeout.Query().
-		Where(timeout.RealmID(realmID)).
-		Order(ent.Desc(timeout.FieldStartsAt)).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]*domain.Timeout, 0, len(rows))
-	for _, e := range rows {
-		out = append(out, toDomainTimeout(e))
-	}
-	return out, nil
-}
-
-// --- helpers --------------------------------------------------------------------
 
 // withTx runs fn in a transaction, rolled back on error or panic.
 func withTx(ctx context.Context, client *ent.Client, fn func(tx *ent.Tx) error) (err error) {

@@ -34,7 +34,6 @@
     for (const b of form.querySelectorAll("button")) b.disabled = on;
   }
 
-  // --- forgot password ---------------------------------------------------------
   const forgot = $("forgot");
   if (forgot) {
     const base = forgot.dataset.base;
@@ -57,7 +56,6 @@
     });
   }
 
-  // --- choose a new password -----------------------------------------------------
   const reset = $("reset");
   if (reset) {
     const base = reset.dataset.base;

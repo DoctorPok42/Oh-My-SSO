@@ -14,8 +14,6 @@ import (
 	"sso.internal/sso/internal/passkey/passkeytest"
 )
 
-// Step 18d: "Don't ask again on this device".
-
 func TestOIDC_Integration_TrustedDevice(t *testing.T) {
 	e := setupOIDCTestEnv(t)
 	ctx := context.Background()

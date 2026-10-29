@@ -958,6 +958,9 @@ var (
 		{Name: "reason", Type: field.TypeString},
 		{Name: "created_by", Type: field.TypeString},
 		{Name: "created_at", Type: field.TypeTime},
+		{Name: "lifted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "lifted_by", Type: field.TypeString, Nullable: true},
+		{Name: "enforced_at", Type: field.TypeTime, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString},
 	}
 	// TimeoutsTable holds the schema information for the "timeouts" table.
@@ -968,7 +971,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "timeouts_realms_timeouts",
-				Columns:    []*schema.Column{TimeoutsColumns[8]},
+				Columns:    []*schema.Column{TimeoutsColumns[11]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -978,6 +981,19 @@ var (
 				Name:    "timeout_target_type_target_id_ends_at",
 				Unique:  false,
 				Columns: []*schema.Column{TimeoutsColumns[1], TimeoutsColumns[2], TimeoutsColumns[4]},
+			},
+			{
+				Name:    "timeout_realm_id_starts_at",
+				Unique:  false,
+				Columns: []*schema.Column{TimeoutsColumns[11], TimeoutsColumns[3]},
+			},
+			{
+				Name:    "timeout_starts_at",
+				Unique:  false,
+				Columns: []*schema.Column{TimeoutsColumns[3]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "enforced_at IS NULL AND lifted_at IS NULL",
+				},
 			},
 		},
 	}

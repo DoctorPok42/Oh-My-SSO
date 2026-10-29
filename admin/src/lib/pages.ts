@@ -17,7 +17,10 @@ export const PAGES = {
     description: "Keys that sign this realm's tokens and SAML assertions. Private keys stay in the key manager.",
   },
   mfa: { title: "MFA Policies", description: "Who must use a second factor, which one, and when to ask again" },
-  timeouts: { title: "Timeouts", description: "Temporary restrictions on a user, a group or a client" },
+  timeouts: {
+    title: "Timeouts",
+    description: "Suspend a user, a group or an application for a while: no sign-in, no token, until it ends",
+  },
   settings: { title: "Settings", description: "Security policy of this realm and infrastructure status" },
   realms: { title: "Realms", description: "Separate identity spaces: users, applications, keys and policies" },
 } as const;
@@ -32,7 +35,7 @@ export const COLUMNS = {
   access: ["Name", "Members", "Permissions", "Client scopes", "Status", ""],
   permissions: ["Permission", "Description", "Type", ""],
   signingKeys: ["Key ID", "Algorithm", "Used for", "Status", "Created", "Unpublished", "Key manager"],
-  timeouts: ["Target", "Start", "End", "Reason", "Created by", "Status"],
+  timeouts: ["Target", "Start", "End", "Reason", "Created by", "Status", ""],
   realms: ["Display name", "Name", "Status", "Created", ""],
   mfaRoles: ["Role", "Policy", "MFA required", "Step-up for sensitive actions", "Grace period", "Allowed methods", ""],
   mfaClients: ["Client", "Policy", "Accepted methods"],

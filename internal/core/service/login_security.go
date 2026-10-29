@@ -38,7 +38,6 @@ type LoginAnalysis struct {
 	CountryCode string
 	CountryName string
 	// NewSignInMethod: the factor type of this sign-in when the user has not
-	// used it in the history window while using other ones (Step 18c).
 	NewSignInMethod string
 	// Reasons it looks suspicious (domain.Suspicious*); empty = normal.
 	Reasons []string
@@ -199,7 +198,6 @@ func (s *LoginSecurityService) record(ctx context.Context, sess *domain.Session,
 
 // SignInRisk (LoginRiskChecker) judges a sign-in before it happens, with
 // the rules of Analyze: on a trusted device, a sign-in that looks
-// suspicious asks for the second factor again (Step 18d).
 func (s *LoginSecurityService) SignInRisk(ctx context.Context, candidate *domain.Session) ([]string, error) {
 	history, err := s.sessions.ListRecentByUser(ctx, candidate.UserID, candidate.CreatedAt.Add(-loginHistoryWindow), loginHistoryLimit+1)
 	if err != nil {

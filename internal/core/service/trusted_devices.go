@@ -11,10 +11,8 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// "Don't ask again on this device" (Step 18d).
 //
 // After a second factor, the user may tick the box: the device (the
-// sso_device cookie of Step 18b) becomes trusted for the realm's
 // mfa_trusted_device_days. There, a password alone signs them in again,
 // as long as no policy requires MFA for the sign-in and the sign-in does
 // not look suspicious (MFAService.BeginLogin). Such a session is never
@@ -23,7 +21,6 @@ import (
 // The trust ends at its expiry (fixed: using it does not extend it), with
 // "Forget" on the device's tile, and whenever every session of the user is
 // revoked (password reset, MFA reset, an admin, a suspension).
-
 const (
 	DefaultTrustedDeviceDays = 30
 	MinTrustedDeviceDays     = 1

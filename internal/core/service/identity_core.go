@@ -118,7 +118,6 @@ func NewIdentityCore(d IdentityCoreDeps, opts ...IdentityCoreOption) *IdentityCo
 	return s
 }
 
-// --- Authentication ---------------------------------------------------------
 
 func (s *IdentityCoreService) AuthenticateLocal(ctx context.Context, c core.Credentials) (*domain.User, error) {
 	return s.auth.AuthenticateLocal(ctx, AuthenticateLocalParams{
@@ -139,7 +138,6 @@ func (s *IdentityCoreService) VerifyMFA(ctx context.Context, userID string, ch c
 	return ok, err
 }
 
-// --- Sessions ---------------------------------------------------------------
 
 func (s *IdentityCoreService) CreateSession(ctx context.Context, userID string, ac core.AuthContext) (*core.IssuedSession, error) {
 	raw, sess, err := s.sessions.Create(ctx, CreateSessionInput{
@@ -181,7 +179,6 @@ func (s *IdentityCoreService) KnownAccounts(ctx context.Context, q core.AccountQ
 		return accounts.List(ctx, q)
 	}
 	// Each tile starts with the best method of its account for this
-	// application (Step 18c).
 	var client *domain.ClientApp
 	if q.ClientRef != "" {
 		c, err := s.clients.GetByID(ctx, q.ClientRef)
@@ -233,7 +230,6 @@ func (s *IdentityCoreService) RevokeSession(ctx context.Context, sessionID strin
 	return s.sessions.Revoke(ctx, sessionID, reason)
 }
 
-// --- Identity assertions ----------------------------------------------------
 
 func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessionID, clientRef string, requestedScopes []string) (*core.IdentityAssertion, error) {
 	// 1. The session must still be valid.
@@ -252,13 +248,13 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 		return nil, err
 	}
 
-	// 3. Admin-issued timeouts (no-op until Phase 2).
-	blocked, err := s.timeouts.HasActiveTimeout(ctx, sess.UserID, clientRef)
-	if err != nil {
+	// 3. Admin-issued timeouts on the user, one of their groups or the
+	//    client: a *core.TimeoutError.
+	if err := checkTimeout(ctx, s.timeouts, sess.UserID, clientRef); err != nil {
+		if errors.Is(err, core.ErrTimeoutActive) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("issue identity assertion: check timeout: %w", err)
-	}
-	if blocked {
-		return nil, core.ErrTimeoutActive
 	}
 
 	// 4. Data needed to build the assertion.
@@ -502,7 +498,6 @@ func userAttributes(u *domain.User, groups, roles []string) map[string]any {
 	return attrs
 }
 
-// --- Authorization ----------------------------------------------------------
 
 func (s *IdentityCoreService) GetEffectivePermissions(ctx context.Context, userID, clientRef string) ([]*domain.Permission, error) {
 	return s.rbac.GetEffectivePermissions(ctx, userID, clientRef)
@@ -513,14 +508,13 @@ func (s *IdentityCoreService) IsAuthorizedForClient(ctx context.Context, userID,
 	if err != nil || !ok {
 		return false, err
 	}
-	blocked, err := s.timeouts.HasActiveTimeout(ctx, userID, clientRef)
+	t, err := s.timeouts.ActiveTimeout(ctx, userID, clientRef)
 	if err != nil {
 		return false, fmt.Errorf("is authorized for client: check timeout: %w", err)
 	}
-	return !blocked, nil
+	return t == nil, nil
 }
 
-// --- Tokens -----------------------------------------------------------------
 
 func (s *IdentityCoreService) RevokeToken(ctx context.Context, jti string) error {
 	tok, err := s.tokens.GetByJTI(ctx, jti)
@@ -550,7 +544,6 @@ func (s *IdentityCoreService) IsTokenRevoked(ctx context.Context, jti string) (b
 	return tok.Revoked, nil
 }
 
-// --- Keys -------------------------------------------------------------------
 
 func (s *IdentityCoreService) Signer(ctx context.Context, realmID string, purpose domain.SigningKeyPurpose) (core.Signer, error) {
 	keys, err := s.keys.ListActiveByRealm(ctx, realmID)

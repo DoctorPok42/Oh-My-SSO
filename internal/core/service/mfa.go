@@ -133,13 +133,11 @@ type MFADeps struct {
 	// Timeouts is checked by the sign-in without password, like
 	// AuthenticateLocal does after a password. nil: NoActiveTimeouts.
 	Timeouts TimeoutChecker
-	// TrustedDevices: "Don't ask again on this device" (Step 18d). nil: off.
 	TrustedDevices *TrustedDeviceService
 	// Risk judges a sign-in on a trusted device before the second factor is
 	// skipped (LoginSecurityService). nil: never judged.
 	Risk LoginRiskChecker
 	// Memory: the second factor a user prefers on a device comes first
-	// (Step 18e, KnownAccountService). nil: always the best one first.
 	Memory SignInMemory
 	// IssuerName overrides the name shown in authenticator apps
 	// (default: the realm display name, or "Oh-My-SSO (<realm>)").
@@ -195,7 +193,6 @@ func (s *MFAService) User(ctx context.Context, id string) (*domain.User, error) 
 	return s.users.GetByID(ctx, id)
 }
 
-// --- login --------------------------------------------------------------------
 
 type LoginOutcome string
 
@@ -305,7 +302,6 @@ func (s *MFAService) BeginLogin(ctx context.Context, in BeginLoginInput) (*Login
 }
 
 // preferredFirst puts the second factor the user prefers on this device
-// first (Step 18e). No memory, no device, no preference: unchanged.
 func (s *MFAService) preferredFirst(ctx context.Context, realmID, deviceHash, userID string, methods []domain.MfaMethodType) []domain.MfaMethodType {
 	if s.memory == nil || deviceHash == "" {
 		return methods
@@ -556,7 +552,6 @@ func (s *MFAService) finishLogin(ctx context.Context, lc *openedChallenge, user 
 	return out, nil
 }
 
-// --- step-up --------------------------------------------------------------------
 
 // StepUp verifies a second factor for an existing session and upgrades it
 // (same session id, same tokens). Used before sensitive actions, and when a
@@ -723,7 +718,6 @@ func (s *MFAService) Status(ctx context.Context, sess *domain.Session, client *d
 	return st, nil
 }
 
-// --- factor management -----------------------------------------------------
 
 // FactorList is the account console view of the user's factors.
 type FactorList struct {
@@ -864,7 +858,6 @@ func (s *MFAService) VerifyCode(ctx context.Context, userID, methodName, code st
 	return method, valid, err
 }
 
-// --- internals ----------------------------------------------------------------
 
 func (s *MFAService) verifyCode(ctx context.Context, user *domain.User, method domain.MfaMethodType, code string) (bool, error) {
 	switch method {

@@ -104,7 +104,6 @@ func (a *Adapter) routes() http.Handler {
 	return r
 }
 
-// --- URLs of a realm ---------------------------------------------------------------
 
 func (a *Adapter) realmBase(realm Realm) string {
 	return a.base + "/r/" + url.PathEscape(realm.Name) + "/saml"
@@ -137,7 +136,6 @@ func checkPublicURL(raw string, allowHTTP bool) (string, error) {
 	return u.String(), nil
 }
 
-// --- realm of the request ------------------------------------------------------------
 
 // Realm is what the adapter needs to know about the realm of a request. The
 // HTTP server resolves it from /r/{realm} and puts it in the context with
@@ -182,7 +180,6 @@ func securityHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// --- pages ----------------------------------------------------------------------------
 
 type message = loginui.Message
 

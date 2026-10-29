@@ -10,11 +10,9 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// Step 18e: a device remembers how its account likes to sign in.
 //
 //   - The tile starts with the method the user last chose there: the
 //     password, or the passkey (the default).
-//   - The second step (and "Confirm it's you") starts with the second
 //     factor the user last chose there: a passkey or security key (the
 //     default), or the authenticator app.
 //
@@ -22,7 +20,6 @@ import (
 // signed in"), and only a real choice: something else was offered. It
 // changes the order of the methods, never which ones are accepted. Backup
 // codes are never remembered: they stay a last resort.
-
 // The kinds of second factor the page shows (a passkey and a security key
 // are one choice there).
 const (

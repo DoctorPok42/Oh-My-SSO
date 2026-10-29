@@ -13,6 +13,9 @@ type GroupRepository interface {
 	ListByRealm(ctx context.Context, realmID string) ([]*domain.Group, error)
 	Update(ctx context.Context, id string, p UpdateGroupParams) (*domain.Group, error)
 	Delete(ctx context.Context, id string) error
+	// ListMemberIDs returns the ids of every member of a group, whatever
+	// their status.
+	ListMemberIDs(ctx context.Context, groupID string) ([]string, error)
 }
 
 type CreateGroupParams struct {

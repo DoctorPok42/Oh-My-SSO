@@ -12,7 +12,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// --- MfaMethods ------------------------------------------------------------------
 
 // MfaMethods implements repository.MfaMethodRepository, including the
 // "one active TOTP per user" rule of the partial unique index.
@@ -186,7 +185,6 @@ func (s *MfaMethods) DeleteByUser(_ context.Context, userID string) (int, error)
 	return before - len(s.methods), nil
 }
 
-// --- MfaBackupCodes ---------------------------------------------------------------
 
 // MfaBackupCodes implements repository.MfaBackupCodeRepository.
 type MfaBackupCodes struct {
@@ -316,7 +314,6 @@ func (s *MfaBackupCodes) DeleteByUser(_ context.Context, userID string) (int, er
 	return before - len(s.codes), nil
 }
 
-// --- MfaPolicies ------------------------------------------------------------------
 
 // MfaPolicies implements repository.MfaPolicyRepository.
 type MfaPolicies struct {

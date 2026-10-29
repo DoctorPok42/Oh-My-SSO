@@ -47,7 +47,6 @@ func (s *storage) lookupClient(ctx context.Context, clientID string) (*core.Prot
 	return s.a.core.LookupClient(ctx, realm.ID, protocolOIDC, clientID)
 }
 
-// --- clients -------------------------------------------------------------------
 
 func (s *storage) GetClientByClientID(ctx context.Context, clientID string) (op.Client, error) {
 	pc, err := s.lookupClient(ctx, clientID)
@@ -72,7 +71,6 @@ func (s *storage) AuthorizeClientIDSecret(ctx context.Context, clientID, clientS
 	return nil
 }
 
-// --- authorization requests ------------------------------------------------------
 
 // CreateAuthRequest runs after the library validated the client, the
 // redirect_uri and the response_type. It adds this IdP's own rules, then
@@ -222,7 +220,6 @@ func (s *storage) DeleteAuthRequest(ctx context.Context, id string) error {
 	return s.a.store.Delete(ctx, authRequestCodeKey(id))
 }
 
-// --- tokens ----------------------------------------------------------------------
 
 func (s *storage) CreateAccessToken(ctx context.Context, request op.TokenRequest) (string, time.Time, error) {
 	ar, ok := request.(*authRequest)
@@ -374,7 +371,6 @@ func (s *storage) GetRefreshTokenInfo(ctx context.Context, clientID, token strin
 	return tok.SessionID, tok.JTI, nil
 }
 
-// --- claims ----------------------------------------------------------------------
 
 // SetUserinfoFromScopes is deprecated in the library; SetUserinfoFromRequest
 // does the work.
@@ -487,7 +483,6 @@ func (s *storage) activeAccessToken(ctx context.Context, jti, subject string) (*
 	return tok, as, pc, nil
 }
 
-// --- JWT profile grant (not supported) -----------------------------------------
 
 func (s *storage) GetKeyByIDAndClientID(context.Context, string, string) (*jose.JSONWebKey, error) {
 	return nil, errors.New("oidc: private_key_jwt and the JWT bearer grant are not supported")
@@ -497,7 +492,6 @@ func (s *storage) ValidateJWTProfileScopes(context.Context, string, []string) ([
 	return nil, errors.New("oidc: the JWT bearer grant is not supported")
 }
 
-// --- keys --------------------------------------------------------------------------
 
 func (s *storage) SigningKey(ctx context.Context) (op.SigningKey, error) {
 	realm, err := s.realm(ctx)
@@ -572,7 +566,6 @@ func (s *storage) KeySet(ctx context.Context) ([]op.Key, error) {
 
 func (s *storage) Health(context.Context) error { return nil }
 
-// --- errors ----------------------------------------------------------------------
 
 // toTokenError turns a core error into the OAuth error the client gets.
 // Every "this grant is not valid any more" case is invalid_grant, with no

@@ -198,6 +198,10 @@ func New(cfg Config, d Deps) *Server {
 			r.With(write("settings", "write")...).Post("/settings/test-email", s.handleTestEmail)
 
 			r.With(read("timeout")).Get("/timeouts", s.handleTimeouts)
+			r.With(write("timeout", "write")...).Post("/timeouts", s.handleCreateTimeout)
+			r.With(read("timeout")).Get("/timeouts/{id}", s.handleGetTimeout)
+			r.With(write("timeout", "write")...).Patch("/timeouts/{id}", s.handleUpdateTimeout)
+			r.With(write("timeout", "write")...).Post("/timeouts/{id}/lift", s.handleLiftTimeout)
 		})
 	})
 	return s

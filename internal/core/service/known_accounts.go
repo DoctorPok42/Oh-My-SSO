@@ -13,11 +13,9 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-// "Pick an account" (Step 18b). An account is remembered on a device when
 // the user signs in there with "Keep me signed in" ticked. It then stays in
 // the picker after sign-outs, until the user clicks "Forget" (or the
 // account is deleted). A device is the sso_device cookie, one per realm.
-
 // MaxKnownAccountsPerDevice: beyond it, the least recently used account of
 // the device is dropped.
 const MaxKnownAccountsPerDevice = 10
@@ -39,7 +37,6 @@ type KnownAccountDeps struct {
 	Audit    repository.AuditLogRepository
 	Now      func() time.Time
 	Logger   *slog.Logger
-	// TrustedDevices: "Forget" also ends the trust of the device (Step 18d).
 	TrustedDevices *TrustedDeviceService
 }
 
@@ -119,7 +116,7 @@ func (s *KnownAccountService) ListWithMethods(ctx context.Context, q core.Accoun
 				acc.Methods = m
 			}
 		}
-		acc.Methods = preferFirstStep(acc.Methods, row.LastMethod) // Step 18e
+		acc.Methods = preferFirstStep(acc.Methods, row.LastMethod)
 		out = append(out, acc)
 	}
 	return out, nil

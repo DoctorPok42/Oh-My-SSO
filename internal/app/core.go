@@ -60,10 +60,11 @@ type Core struct {
 	IdentityCore  *service.IdentityCoreService
 	OIDCClients   *service.OIDCClientService
 	SAMLClients   *service.SAMLClientService
-	Timeouts      service.NoActiveTimeouts
+	Timeouts      *service.TimeoutService
 	RateLimiter   ratelimit.Limiter
-	// TrustedDevices: "Don't ask again on this device" (Step 18d).
 	TrustedDevices *service.TrustedDeviceService
+
+	stopEnforcer func() // StartTimeoutEnforcer
 }
 
 // EmailEnabled tells whether e-mails can leave the server (SMTP, or the log
@@ -113,13 +114,6 @@ func BuildCore() *Core {
 		Audit:    c.Audit,
 	})
 
-	c.Auth = service.NewAuthService(
-		c.Users,
-		entstore.NewLoginAttemptRepository(client),
-		service.WithTimeoutChecker(c.Timeouts),
-		service.WithLockout(c.Lockout),
-	)
-
 	mfaMethods := entstore.NewMfaMethodRepository(client)
 	loginSecurity := service.NewLoginSecurityService(service.LoginSecurityDeps{
 		Sessions: sessionRepo,
@@ -129,7 +123,6 @@ func BuildCore() *Core {
 		GeoIP:    GeoIP(),
 	})
 
-	// "Don't ask again on this device" (Step 18d).
 	c.TrustedDevices = service.NewTrustedDeviceService(service.TrustedDeviceDeps{
 		Devices:  entstore.NewTrustedDeviceRepository(client),
 		Settings: c.Settings,
@@ -153,6 +146,25 @@ func BuildCore() *Core {
 		service.WithLoginObserver(c.KnownAccounts), // "Pick an account"
 		service.WithAuditLog(c.Audit),
 		service.WithRevocationObserver(c.TrustedDevices),
+	)
+
+	// Timeouts: checked at every sign-in and token, and the targets signed
+	// out when one starts (StartTimeoutEnforcer for the scheduled ones).
+	c.Timeouts = service.NewTimeoutService(service.TimeoutDeps{
+		Timeouts: entstore.NewTimeoutRepository(client),
+		Users:    c.Users,
+		Groups:   c.Groups,
+		Clients:  c.Clients,
+		Tokens:   c.Tokens,
+		Sessions: c.Sessions,
+		Audit:    c.Audit,
+	})
+
+	c.Auth = service.NewAuthService(
+		c.Users,
+		entstore.NewLoginAttemptRepository(client),
+		service.WithTimeoutChecker(c.Timeouts),
+		service.WithLockout(c.Lockout),
 	)
 
 	c.RBAC = service.NewRBACService(entstore.NewAccessRepository(client), c.Audit)
@@ -244,9 +256,32 @@ func BuildCore() *Core {
 	return c
 }
 
-// Close lets queued e-mails leave (a few seconds at most), then closes
-// Valkey and the database.
+// StartTimeoutEnforcer signs out the targets of scheduled timeouts when
+// they start (every service.EnforcerInterval), until Close. Both servers
+// (idp and idp-admin) run it; each timeout is enforced once.
+func (c *Core) StartTimeoutEnforcer() {
+	if c.stopEnforcer != nil {
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		c.Timeouts.RunEnforcer(ctx, service.EnforcerInterval)
+	}()
+	c.stopEnforcer = func() {
+		cancel()
+		<-done // a sign-out in progress finishes before the database closes
+	}
+}
+
+// Close stops the timeout enforcer, lets queued e-mails leave (a few
+// seconds at most), then closes Valkey and the database.
 func (c *Core) Close() {
+	if c.stopEnforcer != nil {
+		c.stopEnforcer()
+		c.stopEnforcer = nil
+	}
 	if c.Dispatcher != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		c.Dispatcher.Close(ctx)
@@ -300,5 +335,6 @@ func (c *Core) AdminService() *service.AdminService {
 		PasswordReset: c.PasswordReset, Lockout: c.Lockout, OIDCClients: c.OIDCClients, SAMLClients: c.SAMLClients,
 		Notifier: c.Notifier, PublicURL: c.PublicURL, EmailEnabled: c.EmailEnabled(), KMSBackend: c.KMSBackend,
 		TrustedDevices: c.TrustedDevices,
+		Timeouts:       c.Timeouts,
 	})
 }

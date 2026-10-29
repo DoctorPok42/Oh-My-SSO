@@ -15,7 +15,6 @@ import (
 	"sso.internal/sso/internal/core/service"
 )
 
-// --- me -------------------------------------------------------------------------
 
 type meResponse struct {
 	User struct {
@@ -68,7 +67,6 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// --- realms ---------------------------------------------------------------------
 
 func (s *Server) handleListRealms(w http.ResponseWriter, r *http.Request) {
 	realms, err := s.d.Admin.ListRealms(r.Context())
@@ -137,7 +135,6 @@ func (s *Server) handleUpdateRealm(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, s.realmDetail(v))
 }
 
-// --- dashboard ------------------------------------------------------------------
 
 // ErrDisabled: a health check of something not configured (e.g. SMTP).
 var ErrDisabled = errors.New("disabled")
@@ -394,7 +391,6 @@ func (s *Server) handleRetireKeys(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"keys": toKeyViews(retired)})
 }
 
-// --- MFA policies ---------------------------------------------------------------
 
 func (s *Server) handleMFAPolicies(w http.ResponseWriter, r *http.Request) {
 	v, err := s.d.Admin.MFAPolicies(r.Context(), realmFrom(r))
@@ -455,7 +451,6 @@ func (s *Server) handleDeleteRoleMFA(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, v)
 }
 
-// --- settings -------------------------------------------------------------------
 
 func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 	v, err := s.d.Admin.GetSettings(r.Context(), realmFrom(r))
@@ -525,13 +520,112 @@ func (s *Server) handleTestEmail(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "sent", "to": addr.Address})
 }
 
-// --- timeouts -------------------------------------------------------------------
 
+// GET /timeouts?status=current|past|all (default current), paginated.
 func (s *Server) handleTimeouts(w http.ResponseWriter, r *http.Request) {
-	v, err := s.d.Admin.ListTimeouts(r.Context(), realmFrom(r))
+	status := service.TimeoutListStatus(r.URL.Query().Get("status"))
+	switch status {
+	case "":
+		status = service.TimeoutListCurrent
+	case "all":
+		status = service.TimeoutListAll
+	}
+	p := page(r)
+	v, total, err := s.d.Admin.ListTimeouts(r.Context(), realmFrom(r), status, p)
 	if err != nil {
 		writeServiceError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, list[service.TimeoutView]{Items: items(v), Total: len(v), Limit: len(v)})
+	writeJSON(w, http.StatusOK, list[service.TimeoutView]{Items: items(v), Total: total, Offset: p.Offset, Limit: p.Limit})
+}
+
+func (s *Server) handleGetTimeout(w http.ResponseWriter, r *http.Request) {
+	v, err := s.d.Admin.GetTimeout(r.Context(), realmFrom(r), chi.URLParam(r, "id"))
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
+
+// POST /timeouts. starts_at: empty or absent starts now; ends_at: empty or
+// absent means no end (until lifted). Both RFC 3339.
+func (s *Server) handleCreateTimeout(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		TargetType string `json:"target_type"`
+		TargetID   string `json:"target_id"`
+		StartsAt   string `json:"starts_at"`
+		EndsAt     string `json:"ends_at"`
+		Reason     string `json:"reason"`
+	}
+	if !decode(w, r, &in) {
+		return
+	}
+	starts, ok := optionalTime(w, "starts_at", in.StartsAt)
+	if !ok {
+		return
+	}
+	ends, ok := optionalTime(w, "ends_at", in.EndsAt)
+	if !ok {
+		return
+	}
+	v, err := s.d.Admin.CreateTimeout(r.Context(), adminFrom(r).actor, realmFrom(r), service.TimeoutInput{
+		TargetType: in.TargetType, TargetID: in.TargetID, StartsAt: starts, EndsAt: ends, Reason: in.Reason,
+	})
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, v)
+}
+
+// PATCH /timeouts/{id}: reason and/or ends_at. ends_at "" removes the end;
+// a field left out stays as it is.
+func (s *Server) handleUpdateTimeout(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Reason *string `json:"reason"`
+		EndsAt *string `json:"ends_at"`
+	}
+	if !decode(w, r, &in) {
+		return
+	}
+	var ends *time.Time
+	if in.EndsAt != nil {
+		t, ok := optionalTime(w, "ends_at", *in.EndsAt)
+		if !ok {
+			return
+		}
+		ends = &t
+	}
+	v, err := s.d.Admin.UpdateTimeout(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id"), in.Reason, ends)
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
+
+// POST /timeouts/{id}/lift: ends it now (or cancels a scheduled one).
+func (s *Server) handleLiftTimeout(w http.ResponseWriter, r *http.Request) {
+	v, err := s.d.Admin.LiftTimeout(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id"))
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
+
+// optionalTime parses an RFC 3339 time; "" is the zero time. On a bad value
+// it answers 400 and returns false.
+func optionalTime(w http.ResponseWriter, field, v string) (time.Time, bool) {
+	if v == "" {
+		return time.Time{}, true
+	}
+	t, err := time.Parse(time.RFC3339, v)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Field: field,
+			Message: field + " must be an RFC 3339 date and time, e.g. 2026-11-02T09:00:00Z"})
+		return time.Time{}, false
+	}
+	return t, true
 }

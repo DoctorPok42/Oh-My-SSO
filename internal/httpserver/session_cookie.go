@@ -112,7 +112,6 @@ func mfaChallengeTokenFromRequest(r *http.Request) string {
 
 
 // passkeyCeremonyCookieName holds the token of a sign-in without password
-// (Step 18c) between POST /auth/passkey/options and /verify.
 const passkeyCeremonyCookieName = "sso_passkey"
 
 func passkeyCeremonyCookiePath(realmName string) string {

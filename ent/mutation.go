@@ -28764,6 +28764,9 @@ type TimeoutMutation struct {
 	reason        *string
 	created_by    *string
 	created_at    *time.Time
+	lifted_at     *time.Time
+	lifted_by     *string
+	enforced_at   *time.Time
 	clearedFields map[string]struct{}
 	realm         *string
 	clearedrealm  bool
@@ -29177,6 +29180,153 @@ func (m *TimeoutMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
+// SetLiftedAt sets the "lifted_at" field.
+func (m *TimeoutMutation) SetLiftedAt(t time.Time) {
+	m.lifted_at = &t
+}
+
+// LiftedAt returns the value of the "lifted_at" field in the mutation.
+func (m *TimeoutMutation) LiftedAt() (r time.Time, exists bool) {
+	v := m.lifted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLiftedAt returns the old "lifted_at" field's value of the Timeout entity.
+// If the Timeout object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TimeoutMutation) OldLiftedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLiftedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLiftedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLiftedAt: %w", err)
+	}
+	return oldValue.LiftedAt, nil
+}
+
+// ClearLiftedAt clears the value of the "lifted_at" field.
+func (m *TimeoutMutation) ClearLiftedAt() {
+	m.lifted_at = nil
+	m.clearedFields[timeout.FieldLiftedAt] = struct{}{}
+}
+
+// LiftedAtCleared returns if the "lifted_at" field was cleared in this mutation.
+func (m *TimeoutMutation) LiftedAtCleared() bool {
+	_, ok := m.clearedFields[timeout.FieldLiftedAt]
+	return ok
+}
+
+// ResetLiftedAt resets all changes to the "lifted_at" field.
+func (m *TimeoutMutation) ResetLiftedAt() {
+	m.lifted_at = nil
+	delete(m.clearedFields, timeout.FieldLiftedAt)
+}
+
+// SetLiftedBy sets the "lifted_by" field.
+func (m *TimeoutMutation) SetLiftedBy(s string) {
+	m.lifted_by = &s
+}
+
+// LiftedBy returns the value of the "lifted_by" field in the mutation.
+func (m *TimeoutMutation) LiftedBy() (r string, exists bool) {
+	v := m.lifted_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLiftedBy returns the old "lifted_by" field's value of the Timeout entity.
+// If the Timeout object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TimeoutMutation) OldLiftedBy(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLiftedBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLiftedBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLiftedBy: %w", err)
+	}
+	return oldValue.LiftedBy, nil
+}
+
+// ClearLiftedBy clears the value of the "lifted_by" field.
+func (m *TimeoutMutation) ClearLiftedBy() {
+	m.lifted_by = nil
+	m.clearedFields[timeout.FieldLiftedBy] = struct{}{}
+}
+
+// LiftedByCleared returns if the "lifted_by" field was cleared in this mutation.
+func (m *TimeoutMutation) LiftedByCleared() bool {
+	_, ok := m.clearedFields[timeout.FieldLiftedBy]
+	return ok
+}
+
+// ResetLiftedBy resets all changes to the "lifted_by" field.
+func (m *TimeoutMutation) ResetLiftedBy() {
+	m.lifted_by = nil
+	delete(m.clearedFields, timeout.FieldLiftedBy)
+}
+
+// SetEnforcedAt sets the "enforced_at" field.
+func (m *TimeoutMutation) SetEnforcedAt(t time.Time) {
+	m.enforced_at = &t
+}
+
+// EnforcedAt returns the value of the "enforced_at" field in the mutation.
+func (m *TimeoutMutation) EnforcedAt() (r time.Time, exists bool) {
+	v := m.enforced_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnforcedAt returns the old "enforced_at" field's value of the Timeout entity.
+// If the Timeout object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TimeoutMutation) OldEnforcedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEnforcedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEnforcedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnforcedAt: %w", err)
+	}
+	return oldValue.EnforcedAt, nil
+}
+
+// ClearEnforcedAt clears the value of the "enforced_at" field.
+func (m *TimeoutMutation) ClearEnforcedAt() {
+	m.enforced_at = nil
+	m.clearedFields[timeout.FieldEnforcedAt] = struct{}{}
+}
+
+// EnforcedAtCleared returns if the "enforced_at" field was cleared in this mutation.
+func (m *TimeoutMutation) EnforcedAtCleared() bool {
+	_, ok := m.clearedFields[timeout.FieldEnforcedAt]
+	return ok
+}
+
+// ResetEnforcedAt resets all changes to the "enforced_at" field.
+func (m *TimeoutMutation) ResetEnforcedAt() {
+	m.enforced_at = nil
+	delete(m.clearedFields, timeout.FieldEnforcedAt)
+}
+
 // ClearRealm clears the "realm" edge to the Realm entity.
 func (m *TimeoutMutation) ClearRealm() {
 	m.clearedrealm = true
@@ -29238,7 +29388,7 @@ func (m *TimeoutMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TimeoutMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 11)
 	if m.realm != nil {
 		fields = append(fields, timeout.FieldRealmID)
 	}
@@ -29262,6 +29412,15 @@ func (m *TimeoutMutation) Fields() []string {
 	}
 	if m.created_at != nil {
 		fields = append(fields, timeout.FieldCreatedAt)
+	}
+	if m.lifted_at != nil {
+		fields = append(fields, timeout.FieldLiftedAt)
+	}
+	if m.lifted_by != nil {
+		fields = append(fields, timeout.FieldLiftedBy)
+	}
+	if m.enforced_at != nil {
+		fields = append(fields, timeout.FieldEnforcedAt)
 	}
 	return fields
 }
@@ -29287,6 +29446,12 @@ func (m *TimeoutMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedBy()
 	case timeout.FieldCreatedAt:
 		return m.CreatedAt()
+	case timeout.FieldLiftedAt:
+		return m.LiftedAt()
+	case timeout.FieldLiftedBy:
+		return m.LiftedBy()
+	case timeout.FieldEnforcedAt:
+		return m.EnforcedAt()
 	}
 	return nil, false
 }
@@ -29312,6 +29477,12 @@ func (m *TimeoutMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldCreatedBy(ctx)
 	case timeout.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
+	case timeout.FieldLiftedAt:
+		return m.OldLiftedAt(ctx)
+	case timeout.FieldLiftedBy:
+		return m.OldLiftedBy(ctx)
+	case timeout.FieldEnforcedAt:
+		return m.OldEnforcedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Timeout field %s", name)
 }
@@ -29377,6 +29548,27 @@ func (m *TimeoutMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCreatedAt(v)
 		return nil
+	case timeout.FieldLiftedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLiftedAt(v)
+		return nil
+	case timeout.FieldLiftedBy:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLiftedBy(v)
+		return nil
+	case timeout.FieldEnforcedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnforcedAt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Timeout field %s", name)
 }
@@ -29410,6 +29602,15 @@ func (m *TimeoutMutation) ClearedFields() []string {
 	if m.FieldCleared(timeout.FieldEndsAt) {
 		fields = append(fields, timeout.FieldEndsAt)
 	}
+	if m.FieldCleared(timeout.FieldLiftedAt) {
+		fields = append(fields, timeout.FieldLiftedAt)
+	}
+	if m.FieldCleared(timeout.FieldLiftedBy) {
+		fields = append(fields, timeout.FieldLiftedBy)
+	}
+	if m.FieldCleared(timeout.FieldEnforcedAt) {
+		fields = append(fields, timeout.FieldEnforcedAt)
+	}
 	return fields
 }
 
@@ -29426,6 +29627,15 @@ func (m *TimeoutMutation) ClearField(name string) error {
 	switch name {
 	case timeout.FieldEndsAt:
 		m.ClearEndsAt()
+		return nil
+	case timeout.FieldLiftedAt:
+		m.ClearLiftedAt()
+		return nil
+	case timeout.FieldLiftedBy:
+		m.ClearLiftedBy()
+		return nil
+	case timeout.FieldEnforcedAt:
+		m.ClearEnforcedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Timeout nullable field %s", name)
@@ -29458,6 +29668,15 @@ func (m *TimeoutMutation) ResetField(name string) error {
 		return nil
 	case timeout.FieldCreatedAt:
 		m.ResetCreatedAt()
+		return nil
+	case timeout.FieldLiftedAt:
+		m.ResetLiftedAt()
+		return nil
+	case timeout.FieldLiftedBy:
+		m.ResetLiftedBy()
+		return nil
+	case timeout.FieldEnforcedAt:
+		m.ResetEnforcedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Timeout field %s", name)

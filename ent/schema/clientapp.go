@@ -84,7 +84,6 @@ func (ClientApp) Fields() []ent.Field {
 		field.Time("deleted_at").Optional(),
 		field.String("owner_admin_id").Optional(),
 
-		// --- OIDC ---
 		field.String("client_id").Optional(),
 		field.String("client_secret_hash").Optional(),
 		field.String("client_type").GoType(ClientAppType("")).Optional(),
@@ -99,7 +98,6 @@ func (ClientApp) Fields() []ent.Field {
 		field.Int("id_token_ttl").Default(3600),
 		field.Bool("require_pkce").Default(true),
 
-		// --- SAML ---
 		field.String("entity_id").Optional(),
 		field.String("acs_url").Optional(),
 		field.String("slo_url").Optional(),
@@ -109,23 +107,19 @@ func (ClientApp) Fields() []ent.Field {
 		field.Bool("want_response_signed").Default(false),
 		field.String("default_relay_state").Optional(),
 
-		// --- Common ---
 		field.JSON("attribute_mappings", map[string]interface{}{}).Optional(),
 		field.Bool("require_consent").Default(false),
 		field.String("metadata_url").Optional(),
 
-		// --- Subject identifier (OIDC subject_type / SAML persistent NameID) ---
 		// Changing either value changes every subject this client receives.
 		field.String("subject_type").GoType(ClientAppSubjectType("")).Default(string(ClientAppSubjectPublic)),
 		// Clients sharing a sector identifier receive the same pairwise
 		// subject. Empty means "this client alone" (ClientApp.ID is used).
 		field.String("sector_identifier").Optional(),
 
-		// --- Session overrides ---
 		field.Int("session_idle_minutes").Optional().Nillable().Positive(),
 		field.Int("session_max_minutes").Optional().Nillable().Positive(),
 
-		// --- MFA ---
 		field.String("mfa_policy").GoType(ClientAppMFAPolicy("")).Default(string(ClientAppMFAInherit)),
 		// Methods that satisfy an MFA requirement for this client ("totp",
 		// "passkey", "webauthn", "backup_codes"). Empty means any method.

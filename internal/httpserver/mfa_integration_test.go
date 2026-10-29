@@ -196,7 +196,6 @@ func TestMFA_HTTP_DefinitionOfDone_Integration(t *testing.T) {
 
 	b := env.newBrowser(t, realm.Name)
 
-	// --- 1. Plain login, then TOTP enrollment ------------------------------
 	status, body := b.do(http.MethodPost, "/auth/login", login)
 	require.Equal(t, http.StatusOK, status, body)
 	require.Equal(t, "authenticated", body["status"])
@@ -223,7 +222,6 @@ func TestMFA_HTTP_DefinitionOfDone_Integration(t *testing.T) {
 	_, _ = b.do(http.MethodPost, "/auth/logout", nil)
 	env.clock.Advance(30 * time.Second) // next TOTP window
 
-	// --- 2. Login with a correct TOTP ---------------------------------------
 	status, body = b.do(http.MethodPost, "/auth/login", login)
 	require.Equal(t, http.StatusOK, status, body)
 	require.Equal(t, "mfa_required", body["status"])
@@ -257,7 +255,6 @@ func TestMFA_HTTP_DefinitionOfDone_Integration(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, status)
 	require.Equal(t, "invalid_mfa_code", body["error"])
 
-	// --- 3. Login with a backup code ----------------------------------------
 	status, body = b.do(http.MethodPost, "/auth/mfa/verify", map[string]string{"method": "backup_code", "code": codes[0].(string)})
 	require.Equal(t, http.StatusOK, status, body)
 	require.EqualValues(t, 9, body["backup_codes_remaining"])
@@ -267,14 +264,12 @@ func TestMFA_HTTP_DefinitionOfDone_Integration(t *testing.T) {
 	status, _ = b.do(http.MethodPost, "/auth/mfa/verify", map[string]string{"method": "backup_code", "code": codes[0].(string)})
 	require.Equal(t, http.StatusUnauthorized, status, "a backup code works once")
 
-	// --- 4. Expired TOTP ----------------------------------------------------
 	expired, err := totp.GenerateCodeCustom(secret, env.clock.Now().Add(-90*time.Second), totp.ValidateOpts{Period: 30, Digits: otp.DigitsSix, Algorithm: otp.AlgorithmSHA1})
 	require.NoError(t, err)
 	status, body = b.do(http.MethodPost, "/auth/mfa/verify", map[string]string{"method": "totp", "code": expired})
 	require.Equal(t, http.StatusUnauthorized, status)
 	require.Equal(t, "invalid_mfa_code", body["error"])
 
-	// --- 5. Step-up before removing a factor -------------------------------
 	env.clock.Advance(30 * time.Second)
 	status, _ = b.do(http.MethodPost, "/auth/mfa/verify", map[string]string{"method": "totp", "code": env.code(t, secret)})
 	require.Equal(t, http.StatusOK, status)
@@ -301,7 +296,6 @@ func TestMFA_HTTP_DefinitionOfDone_Integration(t *testing.T) {
 	require.Empty(t, body["methods"])
 	require.EqualValues(t, 0, body["backup_codes"].(map[string]any)["total"], "codes go with the last factor")
 
-	// --- 6. A client that requires MFA -------------------------------------
 	app, err := env.clients.Create(ctx, repository.CreateClientAppParams{RealmID: realm.ID, Name: "Payroll", Protocol: domain.ClientAppProtocolOIDC})
 	require.NoError(t, err)
 	clientID := "payroll"
@@ -351,7 +345,6 @@ func TestMFA_HTTP_Passkey_Integration(t *testing.T) {
 	phone := passkeytest.New(passkeyTestOrigin)
 	b := env.newBrowser(t, realm.Name)
 
-	// --- enrollment ------------------------------------------------------------
 	status, body := b.do(http.MethodPost, "/auth/login", login)
 	require.Equal(t, http.StatusOK, status, body)
 
@@ -371,7 +364,6 @@ func TestMFA_HTTP_Passkey_Integration(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, status)
 	require.Equal(t, "webauthn_ceremony_expired", body["error"], "a ceremony is answered once")
 
-	// --- login with the passkey -----------------------------------------------
 	_, _ = b.do(http.MethodPost, "/auth/logout", nil)
 	status, body = b.do(http.MethodPost, "/auth/login", login)
 	require.Equal(t, http.StatusOK, status)
@@ -392,7 +384,6 @@ func TestMFA_HTTP_Passkey_Integration(t *testing.T) {
 	require.Equal(t, http.StatusOK, status)
 	require.Equal(t, "passkey", body["mfa_method"])
 
-	// --- step-up with the passkey ---------------------------------------------
 	status, options = b.doRaw(http.MethodPost, "/auth/step-up/webauthn/options", map[string]string{})
 	require.Equal(t, http.StatusOK, status, string(options))
 	assertion, err = phone.Get(options)
@@ -401,7 +392,6 @@ func TestMFA_HTTP_Passkey_Integration(t *testing.T) {
 	require.Equal(t, http.StatusOK, status, body)
 	require.Equal(t, "passkey", body["mfa_method"])
 
-	// --- a replayed assertion is refused ---------------------------------------
 	_, _ = b.do(http.MethodPost, "/auth/logout", nil)
 	_, _ = b.do(http.MethodPost, "/auth/login", login)
 	status, _ = b.doRaw(http.MethodPost, "/auth/mfa/webauthn/options", map[string]string{})
@@ -410,7 +400,6 @@ func TestMFA_HTTP_Passkey_Integration(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, status)
 	require.Equal(t, "invalid_mfa_code", body["error"])
 
-	// --- no challenge cookie, no options ---------------------------------------
 	stranger := env.newBrowser(t, realm.Name)
 	status, body = stranger.do(http.MethodPost, "/auth/mfa/webauthn/options", map[string]string{})
 	require.Equal(t, http.StatusUnauthorized, status)

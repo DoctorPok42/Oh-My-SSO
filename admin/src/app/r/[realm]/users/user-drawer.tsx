@@ -10,6 +10,7 @@ import { Drawer, useDrawerUrl, useEditLock } from "@/components/console/drawer";
 import { SecretOnceDialog } from "@/components/console/secret-once";
 import { useStepUp } from "@/components/console/step-up";
 import { StatusBadge } from "@/components/console/status-badge";
+import { SuspendLink } from "@/components/console/suspend-link";
 import { useAction } from "@/components/console/use-action";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,7 @@ export function UserDrawer({
   groups,
   readAccess,
   emailEnabled,
+  canSuspend = false,
 }: {
   realm: string;
   mode: "create" | "edit" | null;
@@ -113,6 +115,8 @@ export function UserDrawer({
   groups: Access[];
   readAccess: boolean;
   emailEnabled: boolean;
+  /** timeout:write: the footer offers "Suspend…" (Timeouts page). */
+  canSuspend?: boolean;
 }) {
   const { close, openEdit } = useDrawerUrl();
   const { run, pending } = useAction();
@@ -234,6 +238,9 @@ export function UserDrawer({
             <Button variant="secondary" onClick={close}>
               Cancel
             </Button>
+            {mode === "edit" && user && canSuspend && (
+              <SuspendLink className="ml-auto" realm={realm} type="user" id={user.id} name={user.username} />
+            )}
           </>
         }
       >

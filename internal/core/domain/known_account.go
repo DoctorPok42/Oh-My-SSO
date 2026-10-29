@@ -12,7 +12,6 @@ type KnownAccount struct {
 	CreatedAt  time.Time
 	LastUsedAt time.Time
 	// LastMethod, LastSecondFactor: how the user likes to sign in on this
-	// device (Step 18e); "" when they never had to choose.
 	LastMethod       string // "password" or "passkey"
 	LastSecondFactor string // "passkey" or "totp"
 }

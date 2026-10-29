@@ -86,6 +86,48 @@ func (_c *TimeoutCreate) SetNillableCreatedAt(v *time.Time) *TimeoutCreate {
 	return _c
 }
 
+// SetLiftedAt sets the "lifted_at" field.
+func (_c *TimeoutCreate) SetLiftedAt(v time.Time) *TimeoutCreate {
+	_c.mutation.SetLiftedAt(v)
+	return _c
+}
+
+// SetNillableLiftedAt sets the "lifted_at" field if the given value is not nil.
+func (_c *TimeoutCreate) SetNillableLiftedAt(v *time.Time) *TimeoutCreate {
+	if v != nil {
+		_c.SetLiftedAt(*v)
+	}
+	return _c
+}
+
+// SetLiftedBy sets the "lifted_by" field.
+func (_c *TimeoutCreate) SetLiftedBy(v string) *TimeoutCreate {
+	_c.mutation.SetLiftedBy(v)
+	return _c
+}
+
+// SetNillableLiftedBy sets the "lifted_by" field if the given value is not nil.
+func (_c *TimeoutCreate) SetNillableLiftedBy(v *string) *TimeoutCreate {
+	if v != nil {
+		_c.SetLiftedBy(*v)
+	}
+	return _c
+}
+
+// SetEnforcedAt sets the "enforced_at" field.
+func (_c *TimeoutCreate) SetEnforcedAt(v time.Time) *TimeoutCreate {
+	_c.mutation.SetEnforcedAt(v)
+	return _c
+}
+
+// SetNillableEnforcedAt sets the "enforced_at" field if the given value is not nil.
+func (_c *TimeoutCreate) SetNillableEnforcedAt(v *time.Time) *TimeoutCreate {
+	if v != nil {
+		_c.SetEnforcedAt(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *TimeoutCreate) SetID(v string) *TimeoutCreate {
 	_c.mutation.SetID(v)
@@ -263,6 +305,18 @@ func (_c *TimeoutCreate) createSpec() (*Timeout, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(timeout.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if value, ok := _c.mutation.LiftedAt(); ok {
+		_spec.SetField(timeout.FieldLiftedAt, field.TypeTime, value)
+		_node.LiftedAt = value
+	}
+	if value, ok := _c.mutation.LiftedBy(); ok {
+		_spec.SetField(timeout.FieldLiftedBy, field.TypeString, value)
+		_node.LiftedBy = value
+	}
+	if value, ok := _c.mutation.EnforcedAt(); ok {
+		_spec.SetField(timeout.FieldEnforcedAt, field.TypeTime, value)
+		_node.EnforcedAt = value
 	}
 	if nodes := _c.mutation.RealmIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

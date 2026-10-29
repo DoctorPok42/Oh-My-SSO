@@ -137,7 +137,6 @@ func (e *mfaEnv) mfaService(needSessions bool) (*service.MFAService, error) {
 			return nil, fmt.Errorf("valkey: %w", err)
 		}
 		e.closers = append(e.closers, vc.Close)
-		// An MFA reset also ends the user's trusted devices (Step 18d).
 		trusted := service.NewTrustedDeviceService(service.TrustedDeviceDeps{
 			Devices:  entstore.NewTrustedDeviceRepository(e.client),
 			Settings: entstore.NewInstanceSettingsRepository(e.client),

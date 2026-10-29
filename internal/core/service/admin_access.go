@@ -368,7 +368,6 @@ func (s *AdminService) GroupMembers(ctx context.Context, realm *domain.Realm, gr
 	return s.ListUsers(ctx, realm, repository.UserSearch{GroupID: groupID, Page: page})
 }
 
-// --- permissions ----------------------------------------------------------------
 
 // PermissionView: one permission of the realm's catalogue.
 type PermissionView struct {

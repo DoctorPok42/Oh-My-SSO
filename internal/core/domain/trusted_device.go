@@ -3,7 +3,6 @@ package domain
 import "time"
 
 // TrustedDevice: a device where the user ticked "Don't ask again on this
-// device" after a second factor (Step 18d). Until ExpiresAt, a password
 // alone signs them in there when no policy requires MFA.
 type TrustedDevice struct {
 	ID         string

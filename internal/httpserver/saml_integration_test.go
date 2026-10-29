@@ -174,7 +174,6 @@ func setupSAMLTestEnv(t *testing.T) *samlTestEnv {
 	}
 }
 
-// --- the IdP as a service provider sees it ---------------------------------------------
 
 func (e *samlTestEnv) metadata(t *testing.T) *samllib.EntityDescriptor {
 	t.Helper()
@@ -203,7 +202,6 @@ func idpCerts(t *testing.T, md *samllib.EntityDescriptor) []*x509.Certificate {
 	return out
 }
 
-// --- service providers ------------------------------------------------------------------
 
 type testSP struct {
 	t      *testing.T
@@ -326,7 +324,6 @@ func (s *testSP) assertion(samlResponse, requestID string) (*samllib.Assertion, 
 	return s.sp.ParseXMLResponse(raw, []string{requestID}, s.sp.AcsURL)
 }
 
-// --- the browser ---------------------------------------------------------------------------
 
 type samlBrowser struct {
 	t   *testing.T
@@ -436,7 +433,6 @@ func attrs(a *samllib.Assertion) map[string][]string {
 	return out
 }
 
-// --- the tests -------------------------------------------------------------------------------
 
 func TestSAMLIntegration(t *testing.T) {
 	env := setupSAMLTestEnv(t)
@@ -722,7 +718,6 @@ func TestSAMLIntegration(t *testing.T) {
 	})
 }
 
-// --- Single Logout ---------------------------------------------------------------------------
 
 // logoutRequest builds a LogoutRequest from s, signed in the query string.
 func (s *testSP) logoutRequest(nameID, format, sessionIndex string) (string, string) {

@@ -8,7 +8,6 @@
    shadows, as Tailwind utilities (bg-surface, text-text-muted...). */
 @import "./omsso-theme.css";
 
-/* --- Theme switch --------------------------------------------------------------
    No class on <html>: follow the system (prefers-color-scheme, handled by the
    tokens file). class="dark": always dark (the tokens file). class="light":
    always light, even on a dark system: the light block again, which the
@@ -56,7 +55,6 @@
   }
 }
 
-/* --- shadcn/ui variables, mapped onto the design system -----------------------
    Components copied from shadcn/ui (https://ui.shadcn.com) read these names.
    One clash: in shadcn "accent" is a hover background, in OMSSO it is the
    brand colour. OMSSO wins: bg-accent is the brand colour; shadcn's hover
