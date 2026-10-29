@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"errors"
-	"net"
 	"net/http"
 	"net/url"
 	"slices"
@@ -13,6 +12,7 @@ import (
 	samllib "github.com/crewjam/saml"
 
 	"sso.internal/sso/internal/adapters/loginui"
+	"sso.internal/sso/internal/clientip"
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
 )
@@ -212,12 +212,8 @@ func userLabel(as *core.IdentityAssertion) string {
 	return "your account"
 }
 
-// remoteIP: the router's RealIP middleware already put the client address
-// in RemoteAddr.
+// remoteIP: the client address found by the router's middleware (the TCP
+// peer, or what a trusted reverse proxy reported, see internal/clientip).
 func remoteIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
+	return clientip.FromRequest(r)
 }

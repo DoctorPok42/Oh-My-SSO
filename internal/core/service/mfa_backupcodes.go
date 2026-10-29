@@ -37,7 +37,7 @@ const (
 	backupCodeAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 	// "Allégé" Argon2id: the OWASP minimum for passwords (m=19 MiB, t=2,
-	// p=1). Much cheaper than our password hash (192 MiB, t=3), which is
+	// p=1). Much cheaper than our password hash (64 MiB, t=3, p=4), which is
 	// fine for a 50-bit random code.
 	backupCodeMemory      = 19 * 1024
 	backupCodeIterations  = 2

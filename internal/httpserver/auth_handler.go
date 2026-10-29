@@ -5,13 +5,13 @@ import (
 	"errors"
 	"log/slog"
 	"math"
-	"net"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
+	"sso.internal/sso/internal/clientip"
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/service"
@@ -23,6 +23,10 @@ const (
 
 	loginAttemptsPerIP   = 20
 	loginRateLimitWindow = 15 * time.Minute
+
+	// maxLoginRequestBodySize: a login request is a few hundred bytes. The
+	// limit stops a client from making the server read (and hash) megabytes.
+	maxLoginRequestBodySize = 8 << 10
 )
 
 type loginRequest struct {
@@ -76,7 +80,13 @@ type sessionResponse struct {
 
 func (s *Server) mountAuth(r chi.Router) {
 	r.Route("/auth", func(r chi.Router) {
-		r.Post("/login", s.handleLogin)
+		// requireJSON stops "login CSRF": without it, a foreign page could
+		// submit a hidden form (enctype="text/plain" whose body looks like
+		// JSON) and sign the visitor's browser in to the attacker's account.
+		r.With(requireJSON).Post("/login", s.handleLogin)
+		// Logout needs no such check: the SameSite=Lax session cookie is
+		// not sent with a cross-site POST, so a foreign page cannot end
+		// someone's session.
 		r.Post("/logout", s.handleLogout)
 		if s.accounts != nil {
 			r.With(requireJSON).Post("/accounts/forget", s.handleForgetAccount)
@@ -108,7 +118,14 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	realm := realmFromContext(r)
 
 	var req loginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Identifier == "" || req.Password == "" {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxLoginRequestBodySize))
+	if err := dec.Decode(&req); err != nil || req.Identifier == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request")
+		return
+	}
+	// No password longer than service.MaxPasswordLength can be set, so a
+	// longer one is never right: refuse it before it reaches Argon2id.
+	if len(req.Password) > maxPasswordLen {
 		writeError(w, http.StatusBadRequest, "invalid_request")
 		return
 	}
@@ -312,12 +329,10 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// clientIP is the address the request comes from: the TCP peer, or the
+// address a trusted reverse proxy reported (see internal/clientip).
 func clientIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
+	return clientip.FromRequest(r)
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {

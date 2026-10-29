@@ -72,6 +72,7 @@ type Core struct {
 func (c *Core) EmailEnabled() bool { return c.Dispatcher != nil }
 
 func BuildCore() *Core {
+	ConfigurePasswordHashing()
 	c := &Core{}
 	c.Ent = EntClient()
 	c.KeyManager, c.KMSBackend = KeyManager()

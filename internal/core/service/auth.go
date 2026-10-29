@@ -86,7 +86,7 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 	if user == nil || user.PasswordHash == "" {
 		// Same work as a real check, so the response time does not tell
 		// whether the account exists (timing attack).
-		burnPasswordCheck(p.Password)
+		burnPasswordCheck(ctx, p.Password)
 		reason := domain.LoginFailureInvalidCredentials
 		if user == nil {
 			reason = domain.LoginFailureUnknownAccount
@@ -96,7 +96,7 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 		return nil, ErrInvalidCredentials
 	}
 
-	ok, err := verifyPassword(p.Password, user.PasswordHash)
+	ok, err := verifyPassword(ctx, p.Password, user.PasswordHash)
 	if err != nil {
 		return nil, fmt.Errorf("authenticate local: verify password: %w", err)
 	}
@@ -130,8 +130,36 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 		return nil, err
 	}
 
+	s.upgradePasswordHash(ctx, user, p.Password)
 	s.recordAttempt(ctx, p, user, domain.LoginAttemptSuccess, "")
 	return user, nil
+}
+
+// upgradePasswordHash hashes a correct password again when its stored hash
+// uses older Argon2id parameters (needsRehash): the only moment the server
+// knows the password. Best effort: on failure the old hash keeps working,
+// and the next sign-in tries again.
+//
+// The new hash is written only if the stored one did not change since it
+// was read (compare and swap): a password reset finishing at the same
+// moment must not be overwritten with a hash of the old password.
+func (s *AuthService) upgradePasswordHash(ctx context.Context, user *domain.User, password string) {
+	if !needsRehash(user.PasswordHash) {
+		return
+	}
+	hash, err := HashPasswordContext(ctx, password)
+	if err != nil {
+		s.logger.WarnContext(ctx, "password: cannot re-hash with the current parameters", "user_id", user.ID, "error", err)
+		return
+	}
+	swapped, err := s.users.CompareAndSwapPasswordHash(ctx, user.ID, user.PasswordHash, hash)
+	if err != nil {
+		s.logger.WarnContext(ctx, "password: cannot store the re-hashed password", "user_id", user.ID, "error", err)
+		return
+	}
+	if swapped {
+		user.PasswordHash = hash
+	}
 }
 
 // recordFailure counts a wrong password for the lockout. An error here must
@@ -155,8 +183,8 @@ var dummyPasswordHash = sync.OnceValue(func() string {
 	return h
 })
 
-func burnPasswordCheck(password string) {
-	_, _ = verifyPassword(password, dummyPasswordHash())
+func burnPasswordCheck(ctx context.Context, password string) {
+	_, _ = verifyPassword(ctx, password, dummyPasswordHash())
 }
 
 func (s *AuthService) findUserByIdentifier(ctx context.Context, realmID, identifier string) (*domain.User, error) {

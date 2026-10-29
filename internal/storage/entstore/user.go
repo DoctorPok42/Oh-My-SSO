@@ -105,6 +105,20 @@ func (r *entUserRepository) Delete(ctx context.Context, id string) error {
 	return r.client.User.DeleteOneID(id).Exec(ctx)
 }
 
+// CompareAndSwapPasswordHash is a single UPDATE ... SET password_hash = next
+// WHERE id = ... AND password_hash = old: if the password changed since the
+// caller read it (a password reset), no row matches and nothing is written.
+func (r *entUserRepository) CompareAndSwapPasswordHash(ctx context.Context, id, old, next string) (bool, error) {
+	n, err := r.client.User.Update().
+		Where(user.ID(id), user.PasswordHash(old)).
+		SetPasswordHash(next).
+		Save(ctx)
+	if err != nil {
+		return false, err
+	}
+	return n == 1, nil
+}
+
 // CompareAndSwapLockout is a single UPDATE ... WHERE <every lockout column
 // still has its old value>. If another request changed the row in between,
 // no row matches and the caller reloads and tries again.

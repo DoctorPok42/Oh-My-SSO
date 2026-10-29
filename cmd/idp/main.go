@@ -128,6 +128,7 @@ func serve() {
 	samlProvider := buildSAML(c.PublicURL, c.IdentityCore, flowStore, c.MFA.PasskeysEnabled(), c.EmailEnabled())
 
 	opts := []httpserver.Option{
+		httpserver.WithClientIP(app.ClientIP()),
 		httpserver.WithJWKS(c.IdentityCore),
 		httpserver.WithMFA(c.MFA),
 		httpserver.WithDevPages(os.Getenv("APP_ENV") == "development"),

@@ -14,6 +14,9 @@ type UserRepository interface {
 	Update(ctx context.Context, id string, p UpdateUserParams) (*domain.User, error)
 	Delete(ctx context.Context, id string) error
 	CompareAndSwapLockout(ctx context.Context, id string, old, next domain.LockoutState) (bool, error)
+	// CompareAndSwapPasswordHash sets the password hash to next only if it
+	// still is old, and reports whether it did.
+	CompareAndSwapPasswordHash(ctx context.Context, id, old, next string) (bool, error)
 }
 
 type CreateUserParams struct {

@@ -228,7 +228,7 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 	}
 	// Hash before using up the token: if hashing failed, the link would be
 	// lost for nothing.
-	hash, err := HashPassword(in.NewPassword)
+	hash, err := HashPasswordContext(ctx, in.NewPassword)
 	if err != nil {
 		return fmt.Errorf("password reset: %w", err)
 	}
