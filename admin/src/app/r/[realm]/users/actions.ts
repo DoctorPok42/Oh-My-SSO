@@ -3,7 +3,6 @@
 import { act, api, apiPath } from "@/lib/api";
 import type { Access, InviteResult, Permission, UserDetail } from "@/lib/types";
 
-
 export async function inviteUser(
   realm: string,
   body: {
@@ -86,7 +85,6 @@ export async function revokeTrustedDevices(realm: string, id: string) {
   return act(() => api<void>(apiPath(["realms", realm, "users", id, "trusted-devices"]), { method: "DELETE" }));
 }
 
-
 export type AccessBody = {
   name?: string;
   description?: string;
@@ -111,7 +109,6 @@ export async function deleteAccess(realm: string, kind: "roles" | "groups", id: 
   if (!KINDS.includes(kind)) return act(() => Promise.reject(new Error("bad kind")));
   return act(() => api<void>(apiPath(["realms", realm, kind, id]), { method: "DELETE" }));
 }
-
 
 export async function createPermission(realm: string, body: { resource: string; action: string; description: string }) {
   return act(() => api<Permission>(apiPath(["realms", realm, "permissions"]), { method: "POST", body }));

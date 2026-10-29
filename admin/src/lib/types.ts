@@ -14,7 +14,6 @@ export type ApiErrorBody = {
 
 export type NameRef = { id: string; name: string };
 
-
 export type Me = {
   user: { id: string; username: string; email: string; name: string };
   permissions: string[];
@@ -35,7 +34,6 @@ export type Realm = {
 export type RealmDetail = Realm & { issuer: string; jwks_url: string; saml_metadata_url: string };
 
 export type CreateRealmResult = { realm: Realm; warning?: string };
-
 
 export type HealthLine = {
   name: string;
@@ -68,7 +66,6 @@ export type Dashboard = {
   infrastructure: HealthLine[];
   realm: RealmDetail;
 };
-
 
 export type Protocol = "oidc" | "saml2";
 export type ManagedBy = "ui" | "config";
@@ -162,7 +159,6 @@ export type ClientBody = {
   mfa_methods?: string[];
 };
 
-
 export type ClaimMapper = { source_attribute: string; claim_name: string; token_location: string[] };
 
 export type ClientScope = {
@@ -175,7 +171,6 @@ export type ClientScope = {
   clients: number;
   created_at: string;
 };
-
 
 export type SessionRow = {
   id: string;
@@ -196,7 +191,6 @@ export type SessionRow = {
   last_activity_at: string;
   expires_at: string;
 };
-
 
 export type UserStatus = "active" | "inactive" | "suspended";
 
@@ -266,7 +260,6 @@ export type Permission = {
   system: boolean;
 };
 
-
 export type SigningKey = {
   kid: string;
   key_type: "RSA" | "EC" | "AES";
@@ -290,7 +283,6 @@ export type RotateResult = {
   warning?: string;
 };
 
-
 export type RolePolicy = {
   role: NameRef;
   configured: boolean;
@@ -311,7 +303,6 @@ export type MfaPolicies = {
   clients: { client: NameRef; policy: string; methods: string[] }[];
   known_methods: string[];
 };
-
 
 export type Settings = {
   managed_by: ManagedBy;

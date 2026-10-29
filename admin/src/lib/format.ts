@@ -51,7 +51,6 @@ export function pageLabel(offset: number, count: number, total: number): string 
   return `${offset + 1}–${offset + count} of ${total}`;
 }
 
-
 export function secondsTo(unit: "minutes" | "hours" | "days", seconds: number): string {
   if (!seconds) return "";
   const div = unit === "minutes" ? 60 : unit === "hours" ? 3600 : 86400;

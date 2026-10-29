@@ -139,7 +139,6 @@ export function refreshSession(session: Session): Promise<Session> {
   return result;
 }
 
-
 /** RP-initiated logout URL (OIDC RP-Initiated Logout 1.0): ends the IdP session too. */
 export async function endSessionUrl(idToken: string | undefined): Promise<string> {
   const e = env();

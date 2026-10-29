@@ -36,7 +36,6 @@ export const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
 /** Ten minutes to sign in at the IdP. */
 export const LOGIN_STATE_MAX_AGE = 10 * 60;
 
-
 const keys = new Map<string, Promise<CryptoKey>>();
 
 /**
@@ -68,7 +67,6 @@ export function deriveKey(secret: string, purpose: "session" | "login"): Promise
   }
   return key;
 }
-
 
 export async function seal(
   payload: Session | LoginState,
