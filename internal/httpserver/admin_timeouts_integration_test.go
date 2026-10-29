@@ -80,7 +80,14 @@ func TestAdmin_Integration_Timeouts(t *testing.T) {
 			"reason": "fraud check", "ends_at": end.Format(time.RFC3339)})
 		require.Equal(t, http.StatusOK, status, "%v", out)
 		require.Equal(t, "fraud check", out["reason"])
-		require.Equal(t, end.Format(time.RFC3339), out["ends_at"])
+		// Compare instants, not strings: pgx returns PostgreSQL times in the
+		// machine's local time zone (time.Local), so the API may write the
+		// same instant as "22:04:24Z" or "23:04:24+01:00".
+		raw, ok := out["ends_at"].(string)
+		require.True(t, ok, "ends_at: %v", out["ends_at"])
+		gotEnd, err := time.Parse(time.RFC3339, raw)
+		require.NoError(t, err)
+		require.True(t, end.Equal(gotEnd), "ends_at is %s, want %s", gotEnd, end)
 
 		status, out = e.call(t, at, http.MethodPatch, base+"/"+id, map[string]any{"ends_at": ""})
 		require.Equal(t, http.StatusOK, status, "%v", out)

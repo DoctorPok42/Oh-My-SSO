@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"sso.internal/sso/internal/clientip"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/ratelimit"
@@ -13,6 +14,7 @@ import (
 
 type Server struct {
 	router      *chi.Mux
+	ipResolver  clientip.Resolver
 	auth        *service.AuthService
 	sessions    *service.SessionService
 	authz       Authorizer
@@ -53,6 +55,13 @@ type SAMLProvider interface {
 
 // Option configures optional parts of the Server.
 type Option func(*Server)
+
+// WithClientIP sets which reverse proxies may tell the client's address
+// (TRUSTED_PROXIES, see internal/clientip). Without it, the address is
+// always the TCP peer and X-Forwarded-For is ignored.
+func WithClientIP(res clientip.Resolver) Option {
+	return func(s *Server) { s.ipResolver = res }
+}
 
 // WithKnownAccounts mounts POST /r/{realm}/auth/accounts/forget, the
 // "Forget" button of "Pick an account".
@@ -118,7 +127,9 @@ func New(
 	}
 
 	s.router.Use(middleware.RequestID)
-	s.router.Use(middleware.RealIP)
+	// Not middleware.RealIP: it believes X-Forwarded-For from anyone, so a
+	// client could choose its own address (rate limits, audit log).
+	s.router.Use(s.ipResolver.Middleware)
 	s.router.Use(middleware.Recoverer)
 
 	s.router.Get("/health", s.handleHealth)

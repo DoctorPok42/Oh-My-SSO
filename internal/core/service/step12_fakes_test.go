@@ -117,6 +117,20 @@ func (m *memUsers) CompareAndSwapLockout(_ context.Context, id string, old, next
 	return true, nil
 }
 
+func (m *memUsers) CompareAndSwapPasswordHash(_ context.Context, id, old, next string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	u, ok := m.byID[id]
+	if !ok {
+		return false, repository.ErrNotFound
+	}
+	if u.PasswordHash != old {
+		return false, nil
+	}
+	u.PasswordHash = next
+	return true, nil
+}
+
 func sameLockout(a, b domain.LockoutState) bool {
 	return a.FailedCount == b.FailedCount && a.LockCount == b.LockCount &&
 		a.LastFailedAt.Equal(b.LastFailedAt) && a.LockedUntil.Equal(b.LockedUntil) && a.LastLockedAt.Equal(b.LastLockedAt)

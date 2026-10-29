@@ -16,6 +16,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL driver for database/sql
 
 	"sso.internal/sso/ent"
+	"sso.internal/sso/internal/clientip"
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/geoip"
 	"sso.internal/sso/internal/keymanager"
@@ -169,6 +170,47 @@ func IdPPort() string {
 		return p
 	}
 	return "8080"
+}
+
+// ClientIP reads which reverse proxies may tell the client's address to
+// cmd/idp (see internal/clientip):
+//
+//	TRUSTED_PROXIES=10.0.0.2,172.18.0.0/16  IPs or CIDRs of the proxies in front
+//	                                        of cmd/idp, comma separated
+//	CLIENT_IP_HEADER=X-Real-IP              optional: a single-IP header the proxy
+//	                                        overwrites (default: X-Forwarded-For)
+//
+// Empty TRUSTED_PROXIES: the address is always the TCP peer and every
+// forwarding header is ignored, the safe choice when browsers connect
+// directly. Behind a proxy, leaving it empty makes every request look like
+// it comes from the proxy, so all users share the per-IP rate limits.
+func ClientIP() clientip.Resolver {
+	res, err := clientip.Parse(os.Getenv("TRUSTED_PROXIES"), os.Getenv("CLIENT_IP_HEADER"))
+	if err != nil {
+		log.Fatalf("client ip: %v", err)
+	}
+	log.Print(res.String())
+	return res
+}
+
+// ConfigurePasswordHashing reads how many password hashes (Argon2id, 64 MiB
+// each) may be computed at the same time:
+//
+//	PASSWORD_HASH_CONCURRENCY=4   default; at most 4 x 64 MiB = 256 MiB of RAM
+//
+// More slots let more sign-ins run in parallel on a big server, at the cost
+// of memory; extra sign-ins wait for a free slot instead of failing.
+func ConfigurePasswordHashing() {
+	n := service.DefaultPasswordHashConcurrency
+	if v := os.Getenv("PASSWORD_HASH_CONCURRENCY"); v != "" {
+		parsed, err := strconv.Atoi(v)
+		if err != nil || parsed < 1 {
+			log.Fatalf("PASSWORD_HASH_CONCURRENCY %q must be a whole number of at least 1", v)
+		}
+		n = parsed
+	}
+	service.SetPasswordHashConcurrency(n)
+	log.Printf("passwords: Argon2id, at most %d hashes at a time (%d MiB of RAM)", n, n*service.PasswordHashMemoryMiB)
 }
 
 func GeoIP() service.GeoIPResolver {
