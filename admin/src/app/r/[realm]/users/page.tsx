@@ -176,6 +176,8 @@ async function UserDrawerSlot({ realm, sp, me }: { realm: string; sp: Search; me
         groups={groups?.ok ? groups.data.items : []}
         readAccess={me.ok && can(me.data, "access")}
         emailEnabled={!!settings?.ok && settings.data.email_enabled}
+        // Not on yourself: the Admin API refuses it (you would lose the console).
+        canSuspend={me.ok && canWrite(me.data, "timeout") && !(detail?.ok && detail.data.id === me.data.user.id)}
       />
     </>
   );
@@ -217,6 +219,8 @@ async function AccessDrawerSlot({
       scopes={scopes?.ok ? scopes.data.items : []}
       members={members?.ok ? members.data.items : null}
       writable={writable}
+      // Not "admins" of master: the Admin API refuses it (the console would be lost).
+      canSuspend={me.ok && canWrite(me.data, "timeout") && !(realm === "master" && editing?.name === "admins")}
     />
   );
 }

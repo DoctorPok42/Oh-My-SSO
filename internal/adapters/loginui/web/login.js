@@ -9,7 +9,6 @@
   const passkeysOn = app.dataset.passkeys === "on";
 
   // One method on screen at a time, "Try another way" lists the others
-  // (Step 18c). Steps:
   //   first   who are you: a passkey (or security key) alone, or the password
   //   second  after the password: passkey, authenticator app, backup code
   //   stepup  the session exists, the application wants a second factor
@@ -36,6 +35,8 @@
     passkeys_disabled: "Passkeys are not enabled on this server.",
     unauthenticated: "Your session has ended. Please sign in again.",
     unknown_client: "This application is not available.",
+    access_suspended: "Your access is temporarily suspended. Contact your administrator.",
+    client_unavailable: "This application is temporarily unavailable. Try again later.",
   };
 
   // What "Try another way" offers, in the server's order (best first).
@@ -75,7 +76,6 @@
     for (const b of form.querySelectorAll("button")) b.disabled = on;
   }
 
-  // --- which methods ----------------------------------------------------------
 
   // First step: a tile brings its account's methods ("passkey,password");
   // without a tile, the password, or any passkey of the browser.
@@ -104,7 +104,6 @@
     return fresh[0] || methods.find((m) => m !== "backup_code") || methods[0];
   }
 
-  // --- screens ------------------------------------------------------------------
 
   const accounts = $("accounts");
   const remember = $("remember");
@@ -245,7 +244,6 @@
     if (code) showError(code);
   }
 
-  // --- password and codes --------------------------------------------------------
 
   $("password-form").addEventListener("submit", async (ev) => {
     ev.preventDefault();
@@ -395,7 +393,6 @@
 
   $("passkey-btn").addEventListener("click", () => runPasskey());
 
-  // --- "Pick an account" ----------------------------------------------------
   // A signed-out tile starts its account's best method: the passkey when
   // it has one this application accepts (like "Use a passkey or security
   // key"), else the password form with the account filled in. "Keep me

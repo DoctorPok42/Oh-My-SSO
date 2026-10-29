@@ -26,7 +26,6 @@ func (s *Server) mountWebAuthn(r chi.Router) {
 		r.Post("/options", s.handlePasskeyLoginOptions)
 		r.Post("/verify", s.handlePasskeyLoginVerify)
 	})
-	// Sign-in without password (Step 18c): a passkey or a security key with
 	// user verification replaces the password and the second factor.
 	r.Route("/auth/passkey", func(r chi.Router) {
 		r.Use(requireJSON)
@@ -65,7 +64,6 @@ func (s *Server) handlePasskeyLoginVerify(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// The body is the credential itself, or {"credential": ..., "trust_device":
-	// true} when "Don't ask again on this device" is ticked (Step 18d).
 	var wrapped struct {
 		Credential  json.RawMessage `json:"credential"`
 		TrustDevice bool            `json:"trust_device"`
@@ -282,7 +280,6 @@ func (s *Server) handlePasskeySignInVerify(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if s.accounts != nil {
-		// On this device, the tile starts with the passkey (Step 18e).
 		s.accounts.PasskeySignIn(r.Context(), realm.ID, device, res.User.ID)
 	}
 	s.writeVerifiedLogin(w, r, res)

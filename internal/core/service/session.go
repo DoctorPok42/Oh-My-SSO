@@ -56,7 +56,6 @@ type SessionService struct {
 
 // RevocationObserver is told when every session of a user is revoked
 // (password reset, MFA reset, an admin, a suspension): the trusted devices
-// of Step 18d end there too.
 type RevocationObserver interface {
 	AllSessionsRevoked(ctx context.Context, userID string, reason domain.SessionRevokedReason)
 }
@@ -451,22 +450,29 @@ func (s *SessionService) auditLogout(ctx context.Context, sess *domain.Session, 
 }
 
 func (s *SessionService) RevokeAllForUser(ctx context.Context, userID string, reason domain.SessionRevokedReason) error {
+	_, err := s.RevokeUserSessions(ctx, userID, reason)
+	return err
+}
+
+// RevokeUserSessions is RevokeAllForUser, and tells how many active
+// sessions it ended.
+func (s *SessionService) RevokeUserSessions(ctx context.Context, userID string, reason domain.SessionRevokedReason) (int, error) {
 	revoked, err := s.sessions.RevokeAllByUser(ctx, userID, reason)
 	if err != nil {
-		return fmt.Errorf("revoke all sessions: %w", err)
+		return 0, fmt.Errorf("revoke all sessions: %w", err)
 	}
 	for _, sess := range revoked {
 		if err := s.markRevoked(ctx, sess); err != nil {
-			return err
+			return 0, err
 		}
 		if err := s.revokeSessionTokens(ctx, sess.ID); err != nil {
-			return err
+			return 0, err
 		}
 	}
 	for _, o := range s.revokers {
 		o.AllSessionsRevoked(ctx, userID, reason)
 	}
-	return nil
+	return len(revoked), nil
 }
 
 // revokeSessionTokens revokes every token issued for a session. A token must
@@ -559,7 +565,6 @@ func (d SessionDurations) Expired(sess *domain.Session, now time.Time) bool {
 	return !now.Before(end) || !now.Before(sess.LastActivityAt.Add(idle))
 }
 
-// --- internals ---------------------------------------------------------------
 
 type sessionPolicy struct {
 	SessionDurations

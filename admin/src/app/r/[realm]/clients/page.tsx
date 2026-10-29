@@ -192,6 +192,7 @@ async function ClientDrawerSlot({
         scopes={scopes?.ok ? scopes.data.items : []}
         mfaMethods={MFA_METHODS}
         canReadAccess={me.ok && can(me.data, "access")}
+        canSuspend={me.ok && canWrite(me.data, "timeout")}
       />
     </>
   );

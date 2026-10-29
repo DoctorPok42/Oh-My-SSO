@@ -39,7 +39,6 @@ func testClient(mod func(*domain.ClientApp), scopes ...*domain.ClientScope) *cor
 	return &core.ProtocolClient{App: app, Scopes: scopes}
 }
 
-// --- claims ---------------------------------------------------------------------
 
 func TestBuildClaims(t *testing.T) {
 	groups := &domain.ClientScope{Name: "groups", ClaimMappers: []map[string]interface{}{
@@ -117,7 +116,6 @@ func TestApplyRenames(t *testing.T) {
 	}, claims)
 }
 
-// --- authorize policy -------------------------------------------------------------
 
 func TestCheckAuthorizePolicy(t *testing.T) {
 	ok := func() *oidc.AuthRequest {
@@ -222,7 +220,6 @@ func TestCheckPublicURL(t *testing.T) {
 	}
 }
 
-// --- signing through the KMS ------------------------------------------------------
 
 // fakeSigner behaves like core.Signer on top of the KMS: SHA-256, then
 // PKCS#1 v1.5 (RSA) or ASN.1 DER ECDSA.
@@ -308,7 +305,6 @@ func TestParsePublicKeyPEM(t *testing.T) {
 	require.Error(t, err)
 }
 
-// --- pages -------------------------------------------------------------------------
 
 func TestReauthRequired(t *testing.T) {
 	now := time.Date(2026, 10, 18, 12, 0, 0, 0, time.UTC)

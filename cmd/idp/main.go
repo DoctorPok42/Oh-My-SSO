@@ -75,6 +75,7 @@ const backendLocalDev = app.BackendLocalDev
 //	idp saml ...   manage SAML clients (see saml.go)
 //	idp consents . consent screen setting, users' consents (see consents.go)
 //	idp users ...  account lockout: status, unlock (see users.go)
+//	idp timeouts . suspend a user, a group or a client for a while (see timeouts.go)
 //	idp settings . realm settings: e-mails, lockout, passwords (see settings.go)
 //	idp mail test  send a test e-mail with the SMTP_* settings (see mail.go)
 //	idp dev seed   demo realm, user and OIDC client (development only, see dev.go)
@@ -98,6 +99,8 @@ func main() {
 			os.Exit(runConsentsCommand(os.Args[2:]))
 		case "users":
 			os.Exit(runUsersCommand(os.Args[2:]))
+		case "timeouts":
+			os.Exit(runTimeoutsCommand(os.Args[2:]))
 		case "settings":
 			os.Exit(runSettingsCommand(os.Args[2:]))
 		case "mail":
@@ -105,7 +108,7 @@ func main() {
 		case "dev":
 			os.Exit(runDevCommand(os.Args[2:]))
 		default:
-			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|activate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n  idp oidc clients <create|list|rotate-secret> [flags]\n  idp saml clients <create|list|add-cert|remove-cert> [flags]\n  idp consents <set-client|list|revoke> [flags]\n  idp users <status|unlock> [flags]\n  idp settings <show|set> [flags]\n  idp mail test --to <address>\n  idp dev seed [flags]\n", os.Args[1])
+			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|activate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n  idp oidc clients <create|list|rotate-secret> [flags]\n  idp saml clients <create|list|add-cert|remove-cert> [flags]\n  idp consents <set-client|list|revoke> [flags]\n  idp users <status|unlock> [flags]\n  idp timeouts <list|create|update|lift> [flags]\n  idp settings <show|set> [flags]\n  idp mail test --to <address>\n  idp dev seed [flags]\n", os.Args[1])
 			os.Exit(2)
 		}
 	}
@@ -117,6 +120,8 @@ func serve() {
 
 	c := app.BuildCore()
 	defer c.Close()
+	// Scheduled timeouts: their targets are signed out when they start.
+	c.StartTimeoutEnforcer()
 
 	flowStore := valkeycache.NewOIDCStore(c.Valkey)
 	oidcProvider := buildOIDC(c.PublicURL, c.IdentityCore, flowStore, c.MFA.PasskeysEnabled(), c.EmailEnabled())

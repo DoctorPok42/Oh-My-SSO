@@ -75,7 +75,6 @@ func testAdapter() *Adapter {
 	return &Adapter{logger: quiet, now: time.Now}
 }
 
-// --- HTTP-Redirect binding ----------------------------------------------------------
 
 func deflateB64(t *testing.T, s string) string {
 	t.Helper()
@@ -178,7 +177,6 @@ func TestVerifyQuerySignature(t *testing.T) {
 	require.ErrorIs(t, check(tampered, rsaKey), errBadSignature, "an added parameter breaks the signature")
 }
 
-// --- certificates and XML signatures -----------------------------------------------------
 
 func TestCertificatesAt(t *testing.T) {
 	now := time.Now()
@@ -273,7 +271,6 @@ func TestVerifyXMLSignature(t *testing.T) {
 	})
 }
 
-// --- attributes and NameID --------------------------------------------------------------
 
 func TestBuildAttributes(t *testing.T) {
 	as := &core.IdentityAssertion{
@@ -344,7 +341,6 @@ func TestNameIDValue(t *testing.T) {
 	require.ErrorIs(t, err, errNoEmail)
 }
 
-// --- service provider metadata --------------------------------------------------------------
 
 func TestParseSPMetadata(t *testing.T) {
 	k := validSPKey(t, false)

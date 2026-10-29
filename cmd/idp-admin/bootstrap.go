@@ -41,9 +41,13 @@ func cliAdmin(notifier service.Notifier) (*service.AdminService, *ent.Client) {
 			Users: users, Tokens: entstore.NewPasswordResetTokenRepository(client), Settings: settings, Audit: audit,
 		}),
 		OIDCClients: service.NewOIDCClientService(clients, scopes, roles, groups),
-		Notifier:    notifier,
-		PublicURL:   app.DevPublicURL(),
-		KMSBackend:  backend,
+		// Lifting only (recover timeouts): no sign-out, no session cache.
+		Timeouts: service.NewTimeoutService(service.TimeoutDeps{
+			Timeouts: entstore.NewTimeoutRepository(client), Users: users, Groups: groups, Clients: clients, Audit: audit,
+		}),
+		Notifier:   notifier,
+		PublicURL:  app.DevPublicURL(),
+		KMSBackend: backend,
 	}), client
 }
 
@@ -134,11 +138,11 @@ func envOr(name, def string) string {
 	return def
 }
 
-// --- recover --------------------------------------------------------------------
 
 const recoverUsage = `usage:
   idp-admin recover admin --email <address>     create a NEW administrator account
   idp-admin recover client-secret               new secret for the admin console client
+  idp-admin recover timeouts                    lift every timeout of the master realm
 
 Break-glass only: every administrator receives an e-mail, the audit log
 records who ran it (OS user and host). It needs an interactive terminal.
@@ -171,7 +175,7 @@ func recoverCmd(args []string, in io.Reader, out io.Writer, interactive bool) in
 			fmt.Fprintf(out, "error: --email is required\n\n%s", recoverUsage)
 			return 2
 		}
-	case "client-secret":
+	case "client-secret", "timeouts":
 	default:
 		fmt.Fprintf(out, "unknown recover command %q\n\n%s", what, recoverUsage)
 		return 2
@@ -218,6 +222,21 @@ func recoverCmd(args []string, in io.Reader, out io.Writer, interactive bool) in
 		}
 		fmt.Fprintf(out, "\nNew secret of the admin console client (%d administrator(s) alerted by e-mail).\n", alerted)
 		fmt.Fprintf(out, "The old one stopped working. Put this in admin/.env.local and restart the console:\n\n  OIDC_CLIENT_SECRET=%s\n\n", secret)
+	case "timeouts":
+		lifted, alerted, err := admin.RecoverTimeouts(ctx, cliActor())
+		for _, v := range lifted {
+			fmt.Fprintf(out, "  lifted: %s %s (%s)\n", v.TargetType, v.Target.Name, v.Reason)
+		}
+		if err != nil {
+			fmt.Fprintf(out, "error: %v\n", err)
+			return 1
+		}
+		if len(lifted) == 0 {
+			fmt.Fprintln(out, "\nNo timeout in force or scheduled in the master realm: nothing to lift.")
+			return 0
+		}
+		fmt.Fprintf(out, "\n%d timeout(s) of the master realm lifted (%d administrator(s) alerted by e-mail).\n", len(lifted), alerted)
+		fmt.Fprintln(out, "Sessions revoked when they started stay revoked: sign in again.")
 	}
 	return 0
 }

@@ -133,7 +133,6 @@ func (r *refreshRequest) GetScopes() []string         { return r.scopes }
 func (r *refreshRequest) GetSubject() string          { return r.assertion.Subject }
 func (r *refreshRequest) SetCurrentScopes(s []string) { r.scopes = s }
 
-// --- persistence -------------------------------------------------------------
 
 var errAuthRequestNotFound = errors.New("oidc: authorization request not found or expired")
 

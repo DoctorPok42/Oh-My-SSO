@@ -13,8 +13,6 @@ import (
 	"sso.internal/sso/internal/passkey/passkeytest"
 )
 
-// Step 18e: a device remembers how its account likes to sign in.
-
 func methodsOf(m ...core.SignInMethod) service.SignInMethodsFunc {
 	return func(context.Context, *domain.User) []core.SignInMethod { return m }
 }

@@ -234,7 +234,6 @@ func (p *Provider) FinishLogin(u *domain.User, credentials []*domain.MfaMethod, 
 }
 
 // BeginPasswordlessLogin builds the options of a sign-in without password
-// (Step 18c). The passkey (or security key) is then the only proof, so the
 // authenticator must verify the user (biometrics or PIN): "required".
 //
 //   - u nil: discoverable login, allowCredentials stays empty and the

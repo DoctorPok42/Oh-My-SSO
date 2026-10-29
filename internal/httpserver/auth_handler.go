@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/ratelimit"
@@ -33,7 +34,6 @@ type loginRequest struct {
 	// does not offer it.
 	RememberMe bool `json:"remember_me,omitempty"`
 	// AccountID: the password was typed on this tile of "Pick an account"
-	// (Step 18e: the tile then starts with the password).
 	AccountID string `json:"account_id,omitempty"`
 }
 
@@ -91,7 +91,6 @@ func (s *Server) mountAuth(r chi.Router) {
 
 // rememberPasswordChoice: a correct password typed on a tile that also
 // offered a passkey. On this device, the tile now starts with the password
-// (Step 18e). Best effort: nothing here fails the sign-in.
 func (s *Server) rememberPasswordChoice(r *http.Request, realmID string, user *domain.User, client *domain.ClientApp, accountID string) {
 	if accountID == "" || s.accounts == nil || s.mfa == nil {
 		return
@@ -150,9 +149,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.As(err, &locked):
 			writeRetryAfter(w, locked.Until)
+		case errors.Is(err, service.ErrTimeoutActive):
+			// Only returned after a correct password: saying so reveals
+			// nothing to someone who does not know it.
+			writeTimeoutError(w, err)
 		case errors.Is(err, service.ErrInvalidCredentials),
-			errors.Is(err, service.ErrAccountNotActive),
-			errors.Is(err, service.ErrTimeoutActive):
+			errors.Is(err, service.ErrAccountNotActive):
 			writeError(w, http.StatusUnauthorized, "invalid_credentials")
 		default:
 			writeError(w, http.StatusInternalServerError, "internal_error")
@@ -326,6 +328,18 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 
 func writeError(w http.ResponseWriter, status int, code string) {
 	writeJSON(w, status, errorResponse{Error: code})
+}
+
+// writeTimeoutError answers 403 for an administrator's timeout, once the
+// user proved who they are: "access_suspended" (the user or one of their
+// groups) or "client_unavailable" (the application). Neither the reason nor
+// the end is sent.
+func writeTimeoutError(w http.ResponseWriter, err error) {
+	code := "access_suspended"
+	if core.TimeoutOnClient(err) {
+		code = "client_unavailable"
+	}
+	writeError(w, http.StatusForbidden, code)
 }
 
 // writeRetryAfter answers 429 "rate_limited" with the seconds left in the

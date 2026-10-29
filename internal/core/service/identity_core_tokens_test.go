@@ -118,7 +118,6 @@ func (f *fakeAuditRepo) actions() []string {
 	return out
 }
 
-// --- tests -------------------------------------------------------------------
 
 func issue(t *testing.T, f *coreFixture, sessionID string, withRefresh bool) *core.IssuedTokens {
 	t.Helper()

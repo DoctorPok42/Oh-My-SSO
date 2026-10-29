@@ -63,7 +63,6 @@ type ClientApp struct {
 	DeletedAt    time.Time
 	OwnerAdminID string
 
-	// --- OIDC ---
 	ClientID                string
 	ClientSecretHash        string
 	ClientType              ClientAppType
@@ -78,7 +77,6 @@ type ClientApp struct {
 	IDTokenTTL              int
 	RequirePKCE             bool
 
-	// --- SAML ---
 	EntityID            string
 	ACSURL              string
 	SLOURL              string
@@ -88,16 +86,13 @@ type ClientApp struct {
 	WantResponseSigned  bool
 	DefaultRelayState   string
 
-	// --- Common ---
 	AttributeMappings map[string]interface{}
 	RequireConsent    bool
 	MetadataURL       string
 
-	// --- Subject identifier ---
 	SubjectType      ClientAppSubjectType
 	SectorIdentifier string // empty: ClientApp.ID is used as the sector
 
-	// --- MFA ---
 	MFAPolicy         ClientAppMFAPolicy
 	MFAAllowedMethods []MfaMethodType // empty: any method
 }

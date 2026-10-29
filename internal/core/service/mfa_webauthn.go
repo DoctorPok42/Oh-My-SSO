@@ -19,7 +19,6 @@ type PasskeyKind string
 const (
 	// PasskeyKindPasskey: discoverable credential ("resident key") with user
 	// verification (biometrics or device PIN). Stored as type "passkey". It
-	// also signs in without password (Step 18c, passwordless.go).
 	PasskeyKindPasskey PasskeyKind = "passkey"
 	// PasskeyKindSecurityKey: classic WebAuthn second factor (e.g. a YubiKey),
 	// not discoverable. Stored as type "webauthn".
@@ -92,7 +91,6 @@ type PasskeyAssertion struct {
 // PasskeysEnabled tells whether WebAuthn is configured.
 func (s *MFAService) PasskeysEnabled() bool { return s.passkeys != nil }
 
-// --- registration --------------------------------------------------------------
 
 func ceremonyKeyFor(purpose, sessionID string) string { return purpose + ":" + sessionID }
 
@@ -205,7 +203,6 @@ func (s *MFAService) FinishPasskeyRegistration(ctx context.Context, user *domain
 	return res, nil
 }
 
-// --- second factor at login ---------------------------------------------------
 
 func loginCeremonyKey(challengeKey string) string { return ceremonyLogin + ":" + challengeKey }
 
@@ -298,7 +295,6 @@ func (s *MFAService) FinishPasskeyLogin(ctx context.Context, in VerifyPasskeyLog
 	return s.finishLogin(ctx, lc, user, m.Type, in.IPAddress, in.UserAgent, in.TrustDevice)
 }
 
-// --- step-up --------------------------------------------------------------------
 
 // BeginPasskeyStepUp returns options to verify one of the user's passkeys or
 // security keys again, for the current session.
@@ -366,7 +362,6 @@ func (s *MFAService) FinishPasskeyStepUp(ctx context.Context, sess *domain.Sessi
 	return upd, m.Type, nil
 }
 
-// --- internals ----------------------------------------------------------------
 
 // verifyAssertion checks a WebAuthn assertion against the user's credentials
 // of the allowed types and stores the updated credential record. Any

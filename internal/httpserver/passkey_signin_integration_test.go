@@ -13,9 +13,7 @@ import (
 	"sso.internal/sso/internal/passkey/passkeytest"
 )
 
-// Step 18c: sign-in without password with a passkey or a security key,
 // from a tile of "Pick an account" or from "Try another way".
-
 var reTileMethods = regexp.MustCompile(`data-account="([^"]+)" data-methods="([^"]*)"`)
 
 // rawJSON turns a decoded JSON object back into bytes (the software

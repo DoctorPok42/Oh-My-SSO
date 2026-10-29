@@ -40,7 +40,6 @@ type UpdateClientAppParams struct {
 	Status       *domain.ClientAppStatus
 	OwnerAdminID *string
 
-	// --- OIDC ---
 	ClientID                *string
 	ClientSecretHash        *string
 	ClientType              *domain.ClientAppType
@@ -55,7 +54,6 @@ type UpdateClientAppParams struct {
 	IDTokenTTL              *int
 	RequirePKCE             *bool
 
-	// --- SAML ---
 	EntityID            *string
 	ACSURL              *string
 	SLOURL              *string
@@ -65,17 +63,14 @@ type UpdateClientAppParams struct {
 	WantResponseSigned  *bool
 	DefaultRelayState   *string
 
-	// --- Common ---
 	AttributeMappings map[string]interface{}
 	RequireConsent    *bool
 	MetadataURL       *string
 
-	// --- Subject identifier ---
 	// Changing either value changes every subject this client receives.
 	SubjectType      *domain.ClientAppSubjectType
 	SectorIdentifier *string
 
-	// --- MFA ---
 	MFAPolicy *domain.ClientAppMFAPolicy
 	// nil: unchanged. Empty non-nil slice: clear (any method allowed).
 	MFAAllowedMethods []domain.MfaMethodType

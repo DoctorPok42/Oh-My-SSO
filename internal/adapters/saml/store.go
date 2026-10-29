@@ -125,7 +125,6 @@ func (a *Adapter) firstUse(ctx context.Context, clientRef, kind, requestID strin
 	return a.store.PutIfAbsent(ctx, replayKey(clientRef, kind, requestID), []byte{1}, replayTTL)
 }
 
-// --- browser binding -------------------------------------------------------------
 
 func (a *Adapter) bindBrowser(w http.ResponseWriter, r *http.Request, realm Realm) string {
 	v := browserCookieValue(r)

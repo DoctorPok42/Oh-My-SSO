@@ -19,7 +19,6 @@ x-server-env: &server-env
   ADMIN_PANEL_URL: http://localhost:3000
 
 services:
-  # --- data ---------------------------------------------------------------------
   postgres:
     image: postgres:16
     environment:
@@ -85,7 +84,6 @@ services:
       postgres: { condition: service_healthy }
     networks: [data]
 
-  # --- servers ----------------------------------------------------------------------
   idp:
     build: { context: ., target: idp }
     environment: *server-env

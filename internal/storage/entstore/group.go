@@ -94,3 +94,7 @@ func toDomainGroup(e *ent.Group) *domain.Group {
 		UpdatedAt:   e.UpdatedAt,
 	}
 }
+
+func (r *entGroupRepository) ListMemberIDs(ctx context.Context, groupID string) ([]string, error) {
+	return r.client.Group.Query().Where(group.ID(groupID)).QueryUsers().IDs(ctx)
+}

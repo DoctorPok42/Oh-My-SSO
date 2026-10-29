@@ -15,6 +15,7 @@ var masterReadOnlyCommands = map[string]bool{
 	"consents list":     true,
 	"users status":      true,
 	"settings show":     true,
+	"timeouts list":     true,
 }
 
 const masterRealmName = "master"

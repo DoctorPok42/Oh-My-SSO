@@ -122,7 +122,7 @@ what      ?= admin
 admin-bootstrap:
 	go run ./cmd/idp-admin bootstrap --email $(email) --admin-url $(admin_url)
 
-## admin-recover: Break-glass, interactive, alerts every admin (usage: make admin-recover what=admin email=new@example.com | make admin-recover what=client-secret)
+## admin-recover: Break-glass, interactive, alerts every admin (usage: make admin-recover what=admin email=new@example.com | what=client-secret | what=timeouts)
 admin-recover:
 	go run ./cmd/idp-admin recover $(what) $(if $(email),--email $(email),)
 
@@ -192,6 +192,35 @@ alerts-on:
 ## mail-test: Send a test e-mail with the SMTP_* settings (usage: make mail-test to=you@example.com)
 mail-test:
 	go run ./cmd/idp mail test --to $(to)
+
+# ------------------------------------------------------------------------------
+# Timeouts: suspend a user, a group or a client for a while (Step 19).
+# More: go run ./cmd/idp timeouts --help. The master realm: admin console only.
+# ------------------------------------------------------------------------------
+
+duration ?=
+id ?=
+group ?=
+
+## timeouts: Scheduled and active timeouts of a realm (usage: make timeouts realm=demo)
+timeouts:
+	go run ./cmd/idp timeouts list --realm $(realm)
+
+## timeout-user: Suspend a user now, signed out at once (usage: make timeout-user realm=demo user=alice reason="investigation" [duration=24h])
+timeout-user:
+	go run ./cmd/idp timeouts create --realm $(realm) --user $(user) --reason "$(reason)" $(if $(duration),--for $(duration),)
+
+## timeout-group: Suspend every member of a group (usage: make timeout-group realm=demo group=interns reason="holidays" [duration=7d])
+timeout-group:
+	go run ./cmd/idp timeouts create --realm $(realm) --group $(group) --reason "$(reason)" $(if $(duration),--for $(duration),)
+
+## timeout-client: Suspend an application for everybody (usage: make timeout-client realm=demo client=demo reason="maintenance" [duration=2h])
+timeout-client:
+	go run ./cmd/idp timeouts create --realm $(realm) --client $(client) --reason "$(reason)" $(if $(duration),--for $(duration),)
+
+## timeout-lift: End a timeout now (usage: make timeout-lift realm=demo id=<id from make timeouts>)
+timeout-lift:
+	go run ./cmd/idp timeouts lift --realm $(realm) --id $(id)
 
 ## mailpit: Address of the Mailpit inbox (every e-mail sent in development lands there)
 mailpit:
@@ -438,6 +467,7 @@ clean:
 	oidc-clients oidc-rotate-secret dev-seed oidc-demo \
 	saml-clients keys-rotate-saml keys-activate-saml saml-sp saml-sp-register \
 	consent-on consent-off consents consent-revoke \
+	timeouts timeout-user timeout-group timeout-client timeout-lift \
 	test test-integration test-all coverage \
 	lint fmt vuln check check-core-deps check-adapter-deps \
 	docker-up docker-down docker-reset docker-logs psql dev \

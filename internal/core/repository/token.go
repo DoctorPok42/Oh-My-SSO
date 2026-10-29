@@ -23,6 +23,9 @@ type TokenRepository interface {
 	// were still active.
 	RevokeFamily(ctx context.Context, familyID string) (int, error)
 	RevokeByUserAndClient(ctx context.Context, userID, clientRefID string) (int, error)
+	// RevokeByClient revokes every active token issued to a client, for
+	// any user, and returns how many (a timeout on the client).
+	RevokeByClient(ctx context.Context, clientRefID string) (int, error)
 	Delete(ctx context.Context, id string) error
 }
 

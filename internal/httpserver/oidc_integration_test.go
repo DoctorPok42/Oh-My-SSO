@@ -84,6 +84,9 @@ type oidcTestEnv struct {
 	tokens        repository.TokenRepository
 	audit         repository.AuditLogRepository
 	clock         *fakeClock
+	// timeouts: the real service, checked at every sign-in and token.
+	timeouts *service.TimeoutService
+	web      *domain.ClientApp
 }
 
 func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
@@ -116,7 +119,6 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 	km := localdev.New("test")
 	clock := &fakeClock{} // moved forward to get the next TOTP code
 
-	// "Don't ask again on this device" (Step 18d).
 	trusted := service.NewTrustedDeviceService(service.TrustedDeviceDeps{
 		Devices: entstore.NewTrustedDeviceRepository(client), Settings: settings, Audit: audit, Now: clock.Now,
 	})
@@ -127,23 +129,26 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 	sessions := service.NewSessionService(entstore.NewSessionRepository(client), settings, tokens,
 		valkeycache.NewSessionCache(valkeyClient), service.WithClock(clock.Now),
 		service.WithLoginObserver(known), service.WithAuditLog(audit), service.WithRevocationObserver(trusted))
+	timeouts := service.NewTimeoutService(service.TimeoutDeps{
+		Timeouts: entstore.NewTimeoutRepository(client), Users: users, Groups: entstore.NewGroupRepository(client),
+		Clients: clients, Tokens: tokens, Sessions: sessions, Audit: audit, Now: clock.Now,
+	})
 	policy := service.NewMFAPolicyService(service.MFAPolicyDeps{
 		Settings: settings, Clients: clients, Roles: entstore.NewRoleRepository(client),
 		Policies: entstore.NewMfaPolicyRepository(client), Access: access, Audit: audit, Now: clock.Now,
 	})
-	// Passkeys (Step 18c): the software authenticator answers from this origin.
 	passkeys, err := passkey.New(passkey.Config{RPID: "sso.test", RPOrigins: []string{passkeyTestOrigin}})
 	require.NoError(t, err)
 	mfa := service.NewMFAService(service.MFADeps{
 		Users: users, Methods: entstore.NewMfaMethodRepository(client), BackupCodes: entstore.NewMfaBackupCodeRepository(client),
 		Sessions: sessions, Policy: policy, Envelope: service.NewEnvelopeService(signingKeys, km, "local_dev"),
 		Store: valkeycache.NewMFAStore(valkeyClient), Limiter: limiter, LoginAttempts: attempts, Audit: audit,
-		Realms: realms, Clients: clients, Passkeys: passkeys, Now: clock.Now, TrustedDevices: trusted, Memory: known,
+		Realms: realms, Clients: clients, Passkeys: passkeys, Now: clock.Now, TrustedDevices: trusted, Memory: known, Timeouts: timeouts,
 	})
 	lockout := service.NewLockoutService(service.LockoutDeps{
 		Users: users, Unknown: valkeycache.NewLockoutStore(valkeyClient), Settings: settings, Audit: audit, Now: clock.Now,
 	})
-	auth := service.NewAuthService(users, attempts, service.WithLockout(lockout))
+	auth := service.NewAuthService(users, attempts, service.WithLockout(lockout), service.WithTimeoutChecker(timeouts))
 	rbac := service.NewRBACService(access, audit)
 	consent := service.NewConsentService(service.ConsentDeps{
 		Consents: entstore.NewConsentRepository(client), Clients: clients, Sessions: sessions,
@@ -152,7 +157,7 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 	idp := service.NewIdentityCore(service.IdentityCoreDeps{
 		Auth: auth, Sessions: sessions, RBAC: rbac, Users: users, Clients: clients, Realms: realms,
 		Tokens: tokens, SigningKeys: signingKeys, KeyManager: km, MFA: mfa, Consent: consent, Audit: audit,
-		Accounts: known,
+		Accounts: known, Timeouts: timeouts,
 	}, service.WithIdentityCoreClock(clock.Now))
 
 	// The issuer must be the server's own URL, known once it listens.
@@ -171,7 +176,6 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 		httpserver.WithMFA(mfa), httpserver.WithJWKS(idp), httpserver.WithOIDC(adapter),
 		httpserver.WithKnownAccounts(known)).Router()
 
-	// --- data: a realm, its signing key, alice (allowed), bob (not) ---
 	realm, err := realms.Create(ctx, repository.CreateRealmParams{Name: oidcRealm, DisplayName: "Acme Corp"})
 	require.NoError(t, err)
 	rotation := service.NewKeyRotationService(signingKeys, entstore.NewKeyRotationLogRepository(client), settings, km, "local_dev")
@@ -243,7 +247,7 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 
 	env := &oidcTestEnv{ts: ts, ent: client, realm: realm, realmURL: ts.URL + "/r/" + oidcRealm,
 		webSecret: webSecret, payrollSecret: payrollSecret, partnerSecret: partnerSecret, consent: consent,
-		alice: alice, sessions: sessions, tokens: tokens, audit: audit, clock: clock}
+		alice: alice, sessions: sessions, tokens: tokens, audit: audit, clock: clock, timeouts: timeouts, web: web}
 	resp, err := ts.Client().Get(env.realmURL + "/.well-known/openid-configuration")
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -252,7 +256,6 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 	return env
 }
 
-// --- a browser and an OAuth client ---------------------------------------------
 
 type oidcBrowser struct {
 	t  *testing.T
@@ -407,7 +410,6 @@ func requireInvalidGrant(t *testing.T, err error) {
 	require.Equal(t, "invalid_grant", re.ErrorCode, "body: %s", re.Body)
 }
 
-// --- the Definition of Done ------------------------------------------------------
 
 func TestOIDC_Integration_DefinitionOfDone(t *testing.T) {
 	e := setupOIDCTestEnv(t)

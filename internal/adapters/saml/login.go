@@ -76,7 +76,13 @@ func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, core.ErrSessionInvalid):
 		a.renderLogin(w, r, &p, app, "login", nil)
 		return
-	case errors.Is(err, core.ErrForbidden), errors.Is(err, core.ErrTimeoutActive):
+	case core.TimeoutOnClient(err):
+		a.sendError(w, r, &p, samllib.StatusResponder, statusRequestDenied, "this application is temporarily suspended by the administrator")
+		return
+	case errors.Is(err, core.ErrTimeoutActive):
+		a.sendError(w, r, &p, samllib.StatusResponder, statusRequestDenied, "the access of this user is temporarily suspended")
+		return
+	case errors.Is(err, core.ErrForbidden):
 		a.sendError(w, r, &p, samllib.StatusResponder, statusRequestDenied, "the user is not allowed to use this application")
 		return
 	default:

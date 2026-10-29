@@ -29,7 +29,6 @@ const (
 	browserCookieTTL  = 24 * time.Hour
 )
 
-// --- browser binding -------------------------------------------------------------
 
 // Without a binding, a login started by an attacker (who then knows the
 // request id) could be finished by a victim the attacker sent to the login
@@ -163,7 +162,16 @@ func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, core.ErrSessionInvalid):
 		a.renderLogin(w, r, ar, pc, "login", nil)
 		return
-	case errors.Is(err, core.ErrForbidden), errors.Is(err, core.ErrTimeoutActive):
+	case core.TimeoutOnClient(err):
+		// RFC 6749 §4.1.2.1: the application is suspended for a while (an
+		// administrator's timeout), it may try again later.
+		a.authError(w, r, ar, &oidc.Error{ErrorType: "temporarily_unavailable",
+			Description: "this application is temporarily suspended by the administrator"})
+		return
+	case errors.Is(err, core.ErrTimeoutActive):
+		a.authError(w, r, ar, oidc.ErrAccessDenied().WithDescription("the access of this user is temporarily suspended"))
+		return
+	case errors.Is(err, core.ErrForbidden):
 		a.authError(w, r, ar, oidc.ErrAccessDenied().WithDescription("the user is not allowed to use this application"))
 		return
 	default:
@@ -397,7 +405,6 @@ func (a *Adapter) loginPage(r *http.Request, ar *authRequest, pc *core.ProtocolC
 	return page
 }
 
-// --- other pages -------------------------------------------------------------------
 
 type message = loginui.Message
 

@@ -19,7 +19,6 @@ func TestClientAppCRUD(t *testing.T) {
 
 	name := "test-client-" + uuid.NewString()[:8]
 
-	// --- Create ---
 	app, err := clientRepo.Create(ctx, repository.CreateClientAppParams{
 		RealmID:  realm.ID,
 		Name:     name,
@@ -38,7 +37,6 @@ func TestClientAppCRUD(t *testing.T) {
 		t.Errorf("Create: Protocol = %q, want %q", app.Protocol, domain.ClientAppProtocolOIDC)
 	}
 
-	// --- GetByID ---
 	got, err := clientRepo.GetByID(ctx, app.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
@@ -47,7 +45,6 @@ func TestClientAppCRUD(t *testing.T) {
 		t.Errorf("GetByID: Name = %q, want %q", got.Name, name)
 	}
 
-	// --- Update ---
 	newName := "renamed-" + name
 	clientID := "abc123"
 	updated, err := clientRepo.Update(ctx, app.ID, repository.UpdateClientAppParams{
@@ -64,7 +61,6 @@ func TestClientAppCRUD(t *testing.T) {
 		t.Errorf("Update: ClientID = %q, want %q", updated.ClientID, clientID)
 	}
 
-	// --- GetByRealmAndClientID ---
 	byClientID, err := clientRepo.GetByRealmAndClientID(ctx, realm.ID, clientID)
 	if err != nil {
 		t.Fatalf("GetByRealmAndClientID: %v", err)
@@ -73,7 +69,6 @@ func TestClientAppCRUD(t *testing.T) {
 		t.Errorf("GetByRealmAndClientID: ID = %q, want %q", byClientID.ID, app.ID)
 	}
 
-	// --- ListByRealm ---
 	list, err := clientRepo.ListByRealm(ctx, realm.ID)
 	if err != nil {
 		t.Fatalf("ListByRealm: %v", err)
@@ -82,7 +77,6 @@ func TestClientAppCRUD(t *testing.T) {
 		t.Errorf("ListByRealm: got %d client(s), want 1", len(list))
 	}
 
-	// --- Delete ---
 	if err := clientRepo.Delete(ctx, app.ID); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}

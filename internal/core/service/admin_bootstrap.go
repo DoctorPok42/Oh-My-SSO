@@ -50,6 +50,7 @@ var AdminPermissions = []AdminPermission{
 	{"settings", "read", "See realm settings"},
 	{"settings", "write", "Change realm settings"},
 	{"timeout", "read", "See timeouts"},
+	{"timeout", "write", "Suspend users, groups and clients for a while (timeouts), change and lift timeouts"},
 }
 
 // Groups created by the bootstrap, both managed by the system (read-only in
@@ -320,7 +321,6 @@ func (s *AdminService) RecoverClientSecret(ctx context.Context, actor string) (s
 	return secret, len(current), nil
 }
 
-// --- helpers --------------------------------------------------------------------
 
 func checkBootstrapAccount(email, username string) (string, string, error) {
 	addr, err := mail.ParseAddress(strings.TrimSpace(email))
@@ -372,7 +372,6 @@ func (s *AdminService) ensureMasterSettings(ctx context.Context, realmID, actor 
 		// remembered sessions there by default ("Keep me signed in" off).
 		RememberMeEnabled: &no,
 		UpdatedBy:         &actor,
-		// ...and the second factor is never skipped (Step 18d).
 		MFATrustedDeviceEnabled: &no,
 	})
 	return true, err
@@ -400,6 +399,68 @@ func (s *AdminService) ensureSigningKey(ctx context.Context, realmID, actor stri
 		return "", false, fmt.Errorf("create signing key: %w", err)
 	}
 	return "", true, nil
+}
+
+// SyncAdminCatalogue brings a master realm that is already set up up to date
+// with the permission catalogue (AdminPermissions): missing permissions are
+// created, "admins" gets every permission and "auditors" every "read" one.
+// Without it, a permission added by an upgrade (e.g. "timeout:write")
+// would reach nobody, since bootstrap runs only once. idp-admin runs it at
+// start. It returns true when a group's permissions changed: tokens issued
+// before must not be trusted any more (the rights epoch moves).
+//
+// Only the permissions of the two system groups are touched (managed by
+// the system, read-only in the console); never an account or a membership.
+func (s *AdminService) SyncAdminCatalogue(ctx context.Context) (bool, error) {
+	realm, err := s.d.Realms.GetByName(ctx, MasterRealmName)
+	if errors.Is(err, repository.ErrNotFound) {
+		return false, nil // not bootstrapped yet: bootstrap writes everything
+	}
+	if err != nil {
+		return false, fmt.Errorf("sync admin permissions: %w", err)
+	}
+	if !realm.IsSystemRealm {
+		return false, nil
+	}
+	all, read, err := s.ensureAdminPermissions(ctx, realm.ID)
+	if err != nil {
+		return false, fmt.Errorf("sync admin permissions: %w", err)
+	}
+	changed := false
+	for _, g := range []struct {
+		name string
+		ids  []string
+	}{{AdminGroupName, all}, {AuditorGroupName, read}} {
+		group, err := s.d.Groups.GetByRealmAndName(ctx, realm.ID, g.name)
+		if errors.Is(err, repository.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return changed, fmt.Errorf("sync admin permissions: group %s: %w", g.name, err)
+		}
+		held, err := s.d.Admin.GroupGrants(ctx, group.ID)
+		if err != nil {
+			return changed, fmt.Errorf("sync admin permissions: group %s: %w", g.name, err)
+		}
+		if sameIDs(held.PermissionIDs, g.ids) {
+			continue
+		}
+		if err := s.d.Admin.SetGroupPermissions(ctx, group.ID, g.ids); err != nil {
+			return changed, fmt.Errorf("sync admin permissions: group %s: %w", g.name, err)
+		}
+		changed = true
+	}
+	return changed, nil
+}
+
+func sameIDs(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	x, y := slices.Clone(a), slices.Clone(b)
+	slices.Sort(x)
+	slices.Sort(y)
+	return slices.Equal(x, y)
 }
 
 // ensureAdminPermissions creates the missing permissions of the catalogue

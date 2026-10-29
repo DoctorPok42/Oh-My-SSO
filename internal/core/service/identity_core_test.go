@@ -214,6 +214,8 @@ type fakeTokenRepo struct {
 	mu    sync.Mutex
 	byJTI map[string]*domain.Token
 	sessionUser func(sessionID string) string
+	// failRevokeByClient: the next RevokeByClient fails (timeout_test.go).
+	failRevokeByClient bool
 }
 
 func (f *fakeTokenRepo) GetByJTI(_ context.Context, jti string) (*domain.Token, error) {
@@ -283,14 +285,20 @@ func (f *fakeSigningKeyRepo) ListActiveByRealm(_ context.Context, realmID string
 	return out, nil
 }
 
-// fakeTimeouts blocks every call while blocked is true.
-type fakeTimeouts struct{ blocked bool }
+// fakeTimeouts blocks every call while blocked is true: a timeout on the
+// user, or on the client with onClient.
+type fakeTimeouts struct{ blocked, onClient bool }
 
-func (f *fakeTimeouts) HasActiveTimeout(context.Context, string, string) (bool, error) {
-	return f.blocked, nil
+func (f *fakeTimeouts) ActiveTimeout(_ context.Context, userID, clientRef string) (*domain.Timeout, error) {
+	if !f.blocked {
+		return nil, nil
+	}
+	if f.onClient {
+		return &domain.Timeout{ID: "t-client", TargetType: domain.TimeoutTargetClientApp, TargetID: clientRef}, nil
+	}
+	return &domain.Timeout{ID: "t-user", TargetType: domain.TimeoutTargetUser, TargetID: userID}, nil
 }
 
-// --- fixture ---------------------------------------------------------------
 
 const (
 	alicePassword = "correct horse battery staple"
@@ -518,7 +526,6 @@ func parsePublicKey(t *testing.T, pemStr string) any {
 	return pub
 }
 
-// --- tests -----------------------------------------------------------------
 
 func TestIdentityCore_AuthenticateLocal(t *testing.T) {
 	ctx := context.Background()

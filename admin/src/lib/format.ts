@@ -51,8 +51,6 @@ export function pageLabel(offset: number, count: number, total: number): string 
   return `${offset + 1}–${offset + count} of ${total}`;
 }
 
-// --- token lifetimes: the API speaks seconds, people think in minutes and days ---
-
 export function secondsTo(unit: "minutes" | "hours" | "days", seconds: number): string {
   if (!seconds) return "";
   const div = unit === "minutes" ? 60 : unit === "hours" ? 3600 : 86400;

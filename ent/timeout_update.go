@@ -62,6 +62,66 @@ func (_u *TimeoutUpdate) SetNillableReason(v *string) *TimeoutUpdate {
 	return _u
 }
 
+// SetLiftedAt sets the "lifted_at" field.
+func (_u *TimeoutUpdate) SetLiftedAt(v time.Time) *TimeoutUpdate {
+	_u.mutation.SetLiftedAt(v)
+	return _u
+}
+
+// SetNillableLiftedAt sets the "lifted_at" field if the given value is not nil.
+func (_u *TimeoutUpdate) SetNillableLiftedAt(v *time.Time) *TimeoutUpdate {
+	if v != nil {
+		_u.SetLiftedAt(*v)
+	}
+	return _u
+}
+
+// ClearLiftedAt clears the value of the "lifted_at" field.
+func (_u *TimeoutUpdate) ClearLiftedAt() *TimeoutUpdate {
+	_u.mutation.ClearLiftedAt()
+	return _u
+}
+
+// SetLiftedBy sets the "lifted_by" field.
+func (_u *TimeoutUpdate) SetLiftedBy(v string) *TimeoutUpdate {
+	_u.mutation.SetLiftedBy(v)
+	return _u
+}
+
+// SetNillableLiftedBy sets the "lifted_by" field if the given value is not nil.
+func (_u *TimeoutUpdate) SetNillableLiftedBy(v *string) *TimeoutUpdate {
+	if v != nil {
+		_u.SetLiftedBy(*v)
+	}
+	return _u
+}
+
+// ClearLiftedBy clears the value of the "lifted_by" field.
+func (_u *TimeoutUpdate) ClearLiftedBy() *TimeoutUpdate {
+	_u.mutation.ClearLiftedBy()
+	return _u
+}
+
+// SetEnforcedAt sets the "enforced_at" field.
+func (_u *TimeoutUpdate) SetEnforcedAt(v time.Time) *TimeoutUpdate {
+	_u.mutation.SetEnforcedAt(v)
+	return _u
+}
+
+// SetNillableEnforcedAt sets the "enforced_at" field if the given value is not nil.
+func (_u *TimeoutUpdate) SetNillableEnforcedAt(v *time.Time) *TimeoutUpdate {
+	if v != nil {
+		_u.SetEnforcedAt(*v)
+	}
+	return _u
+}
+
+// ClearEnforcedAt clears the value of the "enforced_at" field.
+func (_u *TimeoutUpdate) ClearEnforcedAt() *TimeoutUpdate {
+	_u.mutation.ClearEnforcedAt()
+	return _u
+}
+
 // Mutation returns the TimeoutMutation object of the builder.
 func (_u *TimeoutUpdate) Mutation() *TimeoutMutation {
 	return _u.mutation
@@ -128,6 +188,24 @@ func (_u *TimeoutUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Reason(); ok {
 		_spec.SetField(timeout.FieldReason, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.LiftedAt(); ok {
+		_spec.SetField(timeout.FieldLiftedAt, field.TypeTime, value)
+	}
+	if _u.mutation.LiftedAtCleared() {
+		_spec.ClearField(timeout.FieldLiftedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LiftedBy(); ok {
+		_spec.SetField(timeout.FieldLiftedBy, field.TypeString, value)
+	}
+	if _u.mutation.LiftedByCleared() {
+		_spec.ClearField(timeout.FieldLiftedBy, field.TypeString)
+	}
+	if value, ok := _u.mutation.EnforcedAt(); ok {
+		_spec.SetField(timeout.FieldEnforcedAt, field.TypeTime, value)
+	}
+	if _u.mutation.EnforcedAtCleared() {
+		_spec.ClearField(timeout.FieldEnforcedAt, field.TypeTime)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{timeout.Label}
@@ -179,6 +257,66 @@ func (_u *TimeoutUpdateOne) SetNillableReason(v *string) *TimeoutUpdateOne {
 	if v != nil {
 		_u.SetReason(*v)
 	}
+	return _u
+}
+
+// SetLiftedAt sets the "lifted_at" field.
+func (_u *TimeoutUpdateOne) SetLiftedAt(v time.Time) *TimeoutUpdateOne {
+	_u.mutation.SetLiftedAt(v)
+	return _u
+}
+
+// SetNillableLiftedAt sets the "lifted_at" field if the given value is not nil.
+func (_u *TimeoutUpdateOne) SetNillableLiftedAt(v *time.Time) *TimeoutUpdateOne {
+	if v != nil {
+		_u.SetLiftedAt(*v)
+	}
+	return _u
+}
+
+// ClearLiftedAt clears the value of the "lifted_at" field.
+func (_u *TimeoutUpdateOne) ClearLiftedAt() *TimeoutUpdateOne {
+	_u.mutation.ClearLiftedAt()
+	return _u
+}
+
+// SetLiftedBy sets the "lifted_by" field.
+func (_u *TimeoutUpdateOne) SetLiftedBy(v string) *TimeoutUpdateOne {
+	_u.mutation.SetLiftedBy(v)
+	return _u
+}
+
+// SetNillableLiftedBy sets the "lifted_by" field if the given value is not nil.
+func (_u *TimeoutUpdateOne) SetNillableLiftedBy(v *string) *TimeoutUpdateOne {
+	if v != nil {
+		_u.SetLiftedBy(*v)
+	}
+	return _u
+}
+
+// ClearLiftedBy clears the value of the "lifted_by" field.
+func (_u *TimeoutUpdateOne) ClearLiftedBy() *TimeoutUpdateOne {
+	_u.mutation.ClearLiftedBy()
+	return _u
+}
+
+// SetEnforcedAt sets the "enforced_at" field.
+func (_u *TimeoutUpdateOne) SetEnforcedAt(v time.Time) *TimeoutUpdateOne {
+	_u.mutation.SetEnforcedAt(v)
+	return _u
+}
+
+// SetNillableEnforcedAt sets the "enforced_at" field if the given value is not nil.
+func (_u *TimeoutUpdateOne) SetNillableEnforcedAt(v *time.Time) *TimeoutUpdateOne {
+	if v != nil {
+		_u.SetEnforcedAt(*v)
+	}
+	return _u
+}
+
+// ClearEnforcedAt clears the value of the "enforced_at" field.
+func (_u *TimeoutUpdateOne) ClearEnforcedAt() *TimeoutUpdateOne {
+	_u.mutation.ClearEnforcedAt()
 	return _u
 }
 
@@ -277,6 +415,24 @@ func (_u *TimeoutUpdateOne) sqlSave(ctx context.Context) (_node *Timeout, err er
 	}
 	if value, ok := _u.mutation.Reason(); ok {
 		_spec.SetField(timeout.FieldReason, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.LiftedAt(); ok {
+		_spec.SetField(timeout.FieldLiftedAt, field.TypeTime, value)
+	}
+	if _u.mutation.LiftedAtCleared() {
+		_spec.ClearField(timeout.FieldLiftedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LiftedBy(); ok {
+		_spec.SetField(timeout.FieldLiftedBy, field.TypeString, value)
+	}
+	if _u.mutation.LiftedByCleared() {
+		_spec.ClearField(timeout.FieldLiftedBy, field.TypeString)
+	}
+	if value, ok := _u.mutation.EnforcedAt(); ok {
+		_spec.SetField(timeout.FieldEnforcedAt, field.TypeTime, value)
+	}
+	if _u.mutation.EnforcedAtCleared() {
+		_spec.ClearField(timeout.FieldEnforcedAt, field.TypeTime)
 	}
 	_node = &Timeout{config: _u.config}
 	_spec.Assign = _node.assignValues

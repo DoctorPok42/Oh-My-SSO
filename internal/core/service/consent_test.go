@@ -210,7 +210,6 @@ func (f *coreFixture) auditActions(action string) []repository.CreateAuditLogPar
 	return out
 }
 
-// --- the decision itself ----------------------------------------------------------
 
 func TestConsentRequired(t *testing.T) {
 	granted := &domain.Consent{Status: domain.ConsentGranted, Scopes: []string{"profile", "email"}}
@@ -249,7 +248,6 @@ func TestConsentRequired(t *testing.T) {
 	}
 }
 
-// --- Definition of done -------------------------------------------------------------
 
 func TestIdentityCore_Consent_DefinitionOfDone(t *testing.T) {
 	ctx := context.Background()

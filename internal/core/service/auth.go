@@ -120,14 +120,14 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 	}
 
 	// Checked only once the password is proven correct, so a blocked state
-	// is never revealed to someone who doesn't know the password.
-	blocked, err := s.timeouts.HasActiveTimeout(ctx, user.ID, p.ClientRef)
-	if err != nil {
-		return nil, fmt.Errorf("authenticate local: check timeout: %w", err)
-	}
-	if blocked {
+	// is never revealed to someone who doesn't know the password. The error
+	// is a *core.TimeoutError (errors.Is ErrTimeoutActive).
+	if err := checkTimeout(ctx, s.timeouts, user.ID, p.ClientRef); err != nil {
+		if !errors.Is(err, ErrTimeoutActive) {
+			return nil, fmt.Errorf("authenticate local: check timeout: %w", err)
+		}
 		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, domain.LoginFailureTimeoutActive)
-		return nil, ErrTimeoutActive
+		return nil, err
 	}
 
 	s.recordAttempt(ctx, p, user, domain.LoginAttemptSuccess, "")

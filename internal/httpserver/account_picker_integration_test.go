@@ -21,9 +21,7 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
-// Step 18b: "Pick an account", one signed-in account per browser, the
 // sign-out confirmation of RP-initiated logout, and the audit of sign-outs.
-
 var (
 	reContinueToken = regexp.MustCompile(`data-continue-token="([^"]*)"`)
 	reRequestID     = regexp.MustCompile(`data-request-id="([^"]*)"`)

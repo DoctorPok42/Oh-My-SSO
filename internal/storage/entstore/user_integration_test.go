@@ -19,7 +19,6 @@ func TestUserCRUD(t *testing.T) {
 	username := "alice-" + uuid.NewString()[:8]
 	email := username + "@example.com"
 
-	// --- Create ---
 	u, err := userRepo.Create(ctx, repository.CreateUserParams{
 		RealmID:      realm.ID,
 		Username:     username,
@@ -36,7 +35,6 @@ func TestUserCRUD(t *testing.T) {
 		t.Errorf("Create: RealmID = %q, want %q", u.RealmID, realm.ID)
 	}
 
-	// --- GetByID ---
 	got, err := userRepo.GetByID(ctx, u.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
@@ -45,7 +43,6 @@ func TestUserCRUD(t *testing.T) {
 		t.Errorf("GetByID: Username = %q, want %q", got.Username, username)
 	}
 
-	// --- GetByRealmAndEmail ---
 	byEmail, err := userRepo.GetByRealmAndEmail(ctx, realm.ID, email)
 	if err != nil {
 		t.Fatalf("GetByRealmAndEmail: %v", err)
@@ -54,7 +51,6 @@ func TestUserCRUD(t *testing.T) {
 		t.Errorf("GetByRealmAndEmail: ID = %q, want %q", byEmail.ID, u.ID)
 	}
 
-	// --- GetByRealmAndUsername ---
 	byUsername, err := userRepo.GetByRealmAndUsername(ctx, realm.ID, username)
 	if err != nil {
 		t.Fatalf("GetByRealmAndUsername: %v", err)
@@ -63,7 +59,6 @@ func TestUserCRUD(t *testing.T) {
 		t.Errorf("GetByRealmAndUsername: ID = %q, want %q", byUsername.ID, u.ID)
 	}
 
-	// --- Update ---
 	newEmail := "updated-" + email
 	updated, err := userRepo.Update(ctx, u.ID, repository.UpdateUserParams{
 		Email: &newEmail,
@@ -78,7 +73,6 @@ func TestUserCRUD(t *testing.T) {
 		t.Errorf("Update: Username = %q, want inchangé %q (mise à jour partielle)", updated.Username, username)
 	}
 
-	// --- Delete ---
 	if err := userRepo.Delete(ctx, u.ID); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}

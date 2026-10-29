@@ -15,8 +15,6 @@ import (
 	"sso.internal/sso/internal/passkey/passkeytest"
 )
 
-// Step 18c: sign-in without password with a passkey or a security key.
-
 const mfaClientTOTP = "client-totp" // mfa required, authenticator app only
 
 func (f *mfaFixture) addTOTPOnlyClient() {

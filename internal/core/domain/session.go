@@ -21,6 +21,9 @@ const (
 	SessionRevokedMFAReset       SessionRevokedReason = "mfa_reset"
 	// Another account signed in in the same browser ("Use another account").
 	SessionRevokedAccountSwitch SessionRevokedReason = "account_switch"
+	// An administrator's timeout on the user, one of their groups or the
+	// client started.
+	SessionRevokedTimeout SessionRevokedReason = "timeout"
 )
 
 // Authentication Method Reference values (RFC 8176 §2), stored as-is in

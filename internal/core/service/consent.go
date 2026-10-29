@@ -367,7 +367,6 @@ func (s *ConsentService) SetClientRequirement(ctx context.Context, in SetClientC
 	return updated, nil
 }
 
-// --- helpers -------------------------------------------------------------------
 
 // sessionAndClient loads the active session and checks the client belongs
 // to the same realm: a user can only answer for themselves, in their realm.

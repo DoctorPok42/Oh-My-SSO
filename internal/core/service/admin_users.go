@@ -64,7 +64,6 @@ type UserDetail struct {
 }
 
 // TrustedDeviceView: a device where the user ticked "Don't ask again on
-// this device" (Step 18d), still trusted.
 type TrustedDeviceView struct {
 	ID         string     `json:"id"`
 	IPAddress  string     `json:"ip_address"` // of the last sign-in that used it
@@ -629,7 +628,6 @@ func (s *AdminService) UnlockUser(ctx context.Context, actor AdminActor, realm *
 	return nil
 }
 
-// --- guardrails -----------------------------------------------------------------
 
 func isMaster(realm *domain.Realm) bool {
 	return realm.IsSystemRealm && realm.Name == MasterRealmName

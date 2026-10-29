@@ -101,7 +101,6 @@ function str(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
-// --- refresh ----------------------------------------------------------------------
 //
 // The IdP rotates refresh tokens and treats a reused one as stolen: it revokes
 // the whole family (RFC 9700 §4.14.2). The browser often sends several
@@ -139,8 +138,6 @@ export function refreshSession(session: Session): Promise<Session> {
   result.catch(() => undefined); // the caller handles the error
   return result;
 }
-
-// --- sign-out ---------------------------------------------------------------------
 
 /** RP-initiated logout URL (OIDC RP-Initiated Logout 1.0): ends the IdP session too. */
 export async function endSessionUrl(idToken: string | undefined): Promise<string> {

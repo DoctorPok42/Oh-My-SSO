@@ -126,7 +126,6 @@ func (s *AdminService) RevokeUserSessions(ctx context.Context, actor AdminActor,
 	return nil
 }
 
-// --- audit log ------------------------------------------------------------------
 
 // AuditView: an audit entry, with the actor's name resolved (an admin of
 // the master realm, a user of the realm, or the system).
@@ -191,7 +190,6 @@ func (s *AdminService) SearchAudit(ctx context.Context, realm *domain.Realm, f r
 	return out, total, nil
 }
 
-// --- dashboard ------------------------------------------------------------------
 
 // Dashboard: the KPIs of a realm. Infrastructure health is added by the
 // HTTP layer (it pings Postgres, Valkey, the KMS, SMTP and the public server).
@@ -324,7 +322,6 @@ func (s *AdminService) countActiveSessions(ctx context.Context, realm *domain.Re
 
 func round1(v float64) float64 { return float64(int(v*10+0.5)) / 10 }
 
-// --- MFA policies ---------------------------------------------------------------
 
 // MFAPoliciesView: the MFA Policies screen.
 type MFAPoliciesView struct {
@@ -333,7 +330,6 @@ type MFAPoliciesView struct {
 	Roles               []RolePolicyView `json:"roles"`
 	Clients             []ClientPolicy   `json:"clients"`
 	KnownMethods        []string         `json:"known_methods"`
-	// "Don't ask again on this device" (Step 18d).
 	TrustedDevicesEnabled bool `json:"trusted_devices_enabled"`
 	TrustedDeviceDays     int  `json:"trusted_device_days"`
 }
@@ -455,52 +451,6 @@ func (s *AdminService) DeleteRoleMFA(ctx context.Context, actor AdminActor, real
 }
 
 
-type TimeoutView struct {
-	ID         string     `json:"id"`
-	TargetType string     `json:"target_type"`
-	Target     NameRef    `json:"target"`
-	StartsAt   time.Time  `json:"starts_at"`
-	EndsAt     *time.Time `json:"ends_at"` // nil: no end
-	Reason     string     `json:"reason"`
-	CreatedBy  string     `json:"created_by"`
-	Active     bool       `json:"active"`
-}
-
-func (s *AdminService) ListTimeouts(ctx context.Context, realm *domain.Realm) ([]TimeoutView, error) {
-	rows, err := s.d.Admin.ListTimeouts(ctx, realm.ID)
-	if err != nil {
-		return nil, err
-	}
-	now := s.d.Now()
-	out := make([]TimeoutView, 0, len(rows))
-	for _, t := range rows {
-		v := TimeoutView{ID: t.ID, TargetType: string(t.TargetType), Target: NameRef{ID: t.TargetID, Name: t.TargetID},
-			StartsAt: t.StartsAt, Reason: t.Reason, CreatedBy: t.CreatedBy}
-		if !t.EndsAt.IsZero() {
-			e := t.EndsAt
-			v.EndsAt = &e
-		}
-		v.Active = !now.Before(t.StartsAt) && (t.EndsAt.IsZero() || now.Before(t.EndsAt))
-		switch t.TargetType {
-		case domain.TimeoutTargetUser:
-			if u, err := s.d.Users.GetByID(ctx, t.TargetID); err == nil {
-				v.Target.Name = u.Username
-			}
-		case domain.TimeoutTargetGroup:
-			if g, err := s.d.Groups.GetByID(ctx, t.TargetID); err == nil {
-				v.Target.Name = g.Name
-			}
-		case domain.TimeoutTargetClientApp:
-			if c, err := s.d.Clients.GetByID(ctx, t.TargetID); err == nil {
-				v.Target.Name = c.Name
-			}
-		}
-		out = append(out, v)
-	}
-	return out, nil
-}
-
-// --- signing keys ---------------------------------------------------------------
 
 // SigningKeys lists every key of the realm (moved from the public server).
 func (s *AdminService) SigningKeys(ctx context.Context, realm *domain.Realm) ([]*domain.SigningKey, error) {

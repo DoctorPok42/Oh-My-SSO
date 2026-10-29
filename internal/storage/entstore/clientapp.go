@@ -95,7 +95,6 @@ func (r *entClientAppRepository) Update(ctx context.Context, id string, p reposi
 	}
 	builder = builder.SetNillableOwnerAdminID(p.OwnerAdminID)
 
-	// --- OIDC ---
 	builder = builder.SetNillableClientID(p.ClientID)
 	builder = builder.SetNillableClientSecretHash(p.ClientSecretHash)
 	if p.ClientType != nil {
@@ -120,7 +119,6 @@ func (r *entClientAppRepository) Update(ctx context.Context, id string, p reposi
 	builder = builder.SetNillableIDTokenTTL(p.IDTokenTTL)
 	builder = builder.SetNillableRequirePkce(p.RequirePKCE)
 
-	// --- SAML ---
 	builder = builder.SetNillableEntityID(p.EntityID)
 	builder = builder.SetNillableAcsURL(p.ACSURL)
 	builder = builder.SetNillableSloURL(p.SLOURL)
@@ -132,20 +130,17 @@ func (r *entClientAppRepository) Update(ctx context.Context, id string, p reposi
 	builder = builder.SetNillableWantResponseSigned(p.WantResponseSigned)
 	builder = builder.SetNillableDefaultRelayState(p.DefaultRelayState)
 
-	// --- Common ---
 	if p.AttributeMappings != nil {
 		builder = builder.SetAttributeMappings(p.AttributeMappings)
 	}
 	builder = builder.SetNillableRequireConsent(p.RequireConsent)
 	builder = builder.SetNillableMetadataURL(p.MetadataURL)
 
-	// --- Subject identifier ---
 	if p.SubjectType != nil {
 		builder = builder.SetSubjectType(entschema.ClientAppSubjectType(*p.SubjectType))
 	}
 	builder = builder.SetNillableSectorIdentifier(p.SectorIdentifier)
 
-	// --- MFA ---
 	if p.MFAPolicy != nil {
 		builder = builder.SetMfaPolicy(entschema.ClientAppMFAPolicy(*p.MFAPolicy))
 	}

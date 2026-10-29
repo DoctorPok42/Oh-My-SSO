@@ -31,7 +31,6 @@ type KnownAccountRepository interface {
 	SetLastMethods(ctx context.Context, realmID, deviceHash, userID string, p LastMethodsParams) (bool, error)
 }
 
-// LastMethodsParams: how the user signed in on a device (Step 18e).
 type LastMethodsParams struct {
 	LastMethod       *string
 	LastSecondFactor *string

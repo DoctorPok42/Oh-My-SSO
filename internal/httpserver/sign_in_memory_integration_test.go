@@ -10,8 +10,6 @@ import (
 	"sso.internal/sso/internal/passkey/passkeytest"
 )
 
-// Step 18e: the tile starts with the method last chosen on this device.
-
 func TestOIDC_Integration_SignInMemory(t *testing.T) {
 	e := setupOIDCTestEnv(t)
 	web := e.oauth(webClientID, e.webSecret, webRedirectURI)

@@ -30,6 +30,12 @@ const (
 	FieldCreatedBy = "created_by"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// FieldLiftedAt holds the string denoting the lifted_at field in the database.
+	FieldLiftedAt = "lifted_at"
+	// FieldLiftedBy holds the string denoting the lifted_by field in the database.
+	FieldLiftedBy = "lifted_by"
+	// FieldEnforcedAt holds the string denoting the enforced_at field in the database.
+	FieldEnforcedAt = "enforced_at"
 	// EdgeRealm holds the string denoting the realm edge name in mutations.
 	EdgeRealm = "realm"
 	// Table holds the table name of the timeout in the database.
@@ -54,6 +60,9 @@ var Columns = []string{
 	FieldReason,
 	FieldCreatedBy,
 	FieldCreatedAt,
+	FieldLiftedAt,
+	FieldLiftedBy,
+	FieldEnforcedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -129,6 +138,21 @@ func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByLiftedAt orders the results by the lifted_at field.
+func ByLiftedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLiftedAt, opts...).ToFunc()
+}
+
+// ByLiftedBy orders the results by the lifted_by field.
+func ByLiftedBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLiftedBy, opts...).ToFunc()
+}
+
+// ByEnforcedAt orders the results by the enforced_at field.
+func ByEnforcedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEnforcedAt, opts...).ToFunc()
 }
 
 // ByRealmField orders the results by realm field.

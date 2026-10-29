@@ -97,7 +97,6 @@ type ClientInput struct {
 	Name     *string
 	Active   *bool
 
-	// --- OIDC ---
 	ClientID                *string // create; empty: generated from the name
 	Public                  *bool   // create
 	RedirectURIs            *[]string
@@ -109,7 +108,6 @@ type ClientInput struct {
 	RefreshTokenTTL         *int
 	IDTokenTTL              *int
 
-	// --- SAML ---
 	EntityID           *string
 	ACSURL             *string
 	SLOURL             *string
@@ -119,7 +117,6 @@ type ClientInput struct {
 	Pairwise           *bool                      // create
 	Certificates       []domain.ClientCertificate // create
 
-	// --- common ---
 	ClientScopes    *[]ScopeChoiceInput
 	AllowedRoleIDs  *[]string
 	AllowedGroupIDs *[]string

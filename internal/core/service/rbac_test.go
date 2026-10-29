@@ -13,7 +13,6 @@ import (
 	"sso.internal/sso/internal/core/service"
 )
 
-// --- in-memory fakes -------------------------------------------------------
 
 type fakeAccessRepo struct {
 	users   map[string]*domain.UserAccess
@@ -75,7 +74,6 @@ func (f *fakeAuditRepo) ListByRealm(context.Context, string) ([]*domain.AuditLog
 	return nil, nil
 }
 
-// --- fixture builders ------------------------------------------------------
 
 const realmA = "realm-a"
 
@@ -135,7 +133,6 @@ func scopeNames(cs []*domain.ClientScope) []string {
 	return out
 }
 
-// --- tests -----------------------------------------------------------------
 
 func TestRBAC_GetEffectivePermissions(t *testing.T) {
 	read := perm("p-read", "client", "read")

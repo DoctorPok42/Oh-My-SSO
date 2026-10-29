@@ -147,6 +147,17 @@ func (r *entTokenRepository) RevokeByUserAndClient(ctx context.Context, userID, 
 		Save(ctx)
 }
 
+// RevokeByClient is one UPDATE ... WHERE client_ref_id = $1 AND NOT revoked.
+func (r *entTokenRepository) RevokeByClient(ctx context.Context, clientRefID string) (int, error) {
+	if clientRefID == "" {
+		return 0, nil
+	}
+	return r.client.Token.Update().
+		Where(token.ClientRefID(clientRefID), token.Revoked(false)).
+		SetRevoked(true).
+		Save(ctx)
+}
+
 func (r *entTokenRepository) Delete(ctx context.Context, id string) error {
 	return r.client.Token.DeleteOneID(id).Exec(ctx)
 }

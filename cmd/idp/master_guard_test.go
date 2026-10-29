@@ -21,6 +21,9 @@ func TestGuardMasterRealm(t *testing.T) {
 		"settings set --realm master --notification-email=false",
 		"consents revoke --realm master --user a --client b",
 		"dev seed --realm master",
+		"timeouts create --realm master --group admins --reason x",
+		"timeouts lift --realm master --id x",
+		"timeouts update --realm master --id x --until none",
 	}
 	for _, cmd := range refused {
 		require.Error(t, guardMasterRealm(strings.Fields(cmd)), cmd)
@@ -37,6 +40,7 @@ func TestGuardMasterRealm(t *testing.T) {
 		"consents list --realm master --user admin",
 		"users status --realm master --user admin",
 		"settings show --realm master",
+		"timeouts list --realm master --status all",
 		// Other realms: nothing changes.
 		"mfa reset --realm demo --user alice --reason lost",
 		"keys rotate --realm demo",
