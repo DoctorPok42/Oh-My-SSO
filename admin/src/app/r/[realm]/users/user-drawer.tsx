@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, LogOut, Plus, ShieldOff, Smartphone, Trash2, Unlock, X } from "lucide-react";
+import { KeyRound, Laptop, LogOut, Plus, ShieldOff, Smartphone, Trash2, Unlock, X } from "lucide-react";
 import { NavLink } from "@/components/console/nav-link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -28,6 +28,8 @@ import {
   inviteUser,
   resendActivation,
   resetUserMfa,
+  revokeTrustedDevice,
+  revokeTrustedDevices,
   revokeUserSessions,
   setUserGroups,
   setUserRoles,
@@ -497,6 +499,60 @@ function UserDetails({
             {user.backup_codes_left > 0 && (
               <li className="text-[12px] text-text-muted">{user.backup_codes_left} backup code(s) left.</li>
             )}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-[13px] font-semibold text-text-secondary">
+            Trusted devices{" "}
+            <span className="font-normal text-text-muted">(&quot;Don&apos;t ask again on this device&quot;)</span>
+          </h3>
+          {user.trusted_devices.length > 1 && (
+            <ConfirmAction
+              variant="secondary"
+              size="xs"
+              disabled={locked}
+              trigger="Revoke all"
+              title={`Revoke the trusted devices of ${user.username}?`}
+              description="The next sign-in on each of them asks for the second factor again."
+              confirmLabel="Revoke all"
+              success="Trusted devices revoked"
+              action={() => revokeTrustedDevices(realm, user.id)}
+            />
+          )}
+        </div>
+        {user.trusted_devices.length === 0 ? (
+          <p className="text-[13px] text-text-muted">No trusted device: every sign-in asks for the second factor.</p>
+        ) : (
+          <ul className="space-y-2">
+            {user.trusted_devices.map((d) => (
+              <li key={d.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
+                <Laptop className="mt-0.5 size-4 text-text-muted" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium" title={d.user_agent}>
+                    {d.device || "Unknown device"}
+                    {d.ip_address && <span className="ml-2 font-mono text-[12px] text-text-muted">{d.ip_address}</span>}
+                  </p>
+                  <p className="text-[12px] text-text-muted">
+                    Trusted {formatDate(d.created_at)} · last used {formatRelative(d.last_used_at)} · until{" "}
+                    {formatDate(d.expires_at)}
+                  </p>
+                </div>
+                <ConfirmAction
+                  variant="secondary"
+                  size="xs"
+                  disabled={locked}
+                  trigger="Revoke"
+                  title="Revoke this trusted device?"
+                  description="The next sign-in on it asks for the second factor again."
+                  confirmLabel="Revoke"
+                  success="Trusted device revoked"
+                  action={() => revokeTrustedDevice(realm, user.id, d.id)}
+                />
+              </li>
+            ))}
           </ul>
         )}
       </section>

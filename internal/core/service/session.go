@@ -51,6 +51,19 @@ type SessionService struct {
 
 	observers []LoginObserver
 	audit     repository.AuditLogRepository // nil: sign-outs are not audited
+	revokers  []RevocationObserver
+}
+
+// RevocationObserver is told when every session of a user is revoked
+// (password reset, MFA reset, an admin, a suspension): the trusted devices
+// of Step 18d end there too.
+type RevocationObserver interface {
+	AllSessionsRevoked(ctx context.Context, userID string, reason domain.SessionRevokedReason)
+}
+
+// WithRevocationObserver adds o to the observers of RevokeAllForUser.
+func WithRevocationObserver(o RevocationObserver) SessionOption {
+	return func(s *SessionService) { s.revokers = append(s.revokers, o) }
 }
 
 type LoginObserver interface {
@@ -121,6 +134,8 @@ type CreateSessionInput struct {
 	// ignored when the realm does not allow it: check the RememberMe field
 	// of the session that Create returns.
 	RememberMe bool
+	// TrustedDevice: the second factor was skipped on a trusted device.
+	TrustedDevice bool
 }
 
 // DeviceFingerprint turns the random id of the sso_device cookie into what
@@ -167,6 +182,7 @@ func (s *SessionService) Create(ctx context.Context, in CreateSessionInput) (raw
 		MFAVerifiedAt:     mfaAt,
 		AuthMethod:        authMethod,
 		DeviceFingerprint: in.DeviceFingerprint,
+		TrustedDevice:     in.TrustedDevice && !in.MFAVerified,
 	})
 	if err != nil {
 		return "", nil, fmt.Errorf("create session: %w", err)
@@ -446,6 +462,9 @@ func (s *SessionService) RevokeAllForUser(ctx context.Context, userID string, re
 		if err := s.revokeSessionTokens(ctx, sess.ID); err != nil {
 			return err
 		}
+	}
+	for _, o := range s.revokers {
+		o.AllSessionsRevoked(ctx, userID, reason)
 	}
 	return nil
 }

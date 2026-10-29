@@ -194,6 +194,8 @@ export type SessionRow = {
   mfa_method: string;
   /** "Keep me signed in" was ticked: long-lived session, persistent cookie. */
   remember_me: boolean;
+  /** The second factor was skipped: the device is trusted ("Don't ask again on this device"). */
+  trusted_device: boolean;
   clients: NameRef[];
   created_at: string;
   last_activity_at: string;
@@ -220,6 +222,19 @@ export type UserSummary = {
 };
 
 export type Factor = { id: string; type: string; name: string; created_at: string; last_used_at: string | null };
+
+/** A device where the user ticked "Don't ask again on this device", still trusted. */
+export type TrustedDevice = {
+  id: string;
+  /** Of the last sign-in that used it (first: where the box was ticked). */
+  ip_address: string;
+  user_agent: string;
+  /** "Firefox on Windows". */
+  device: string;
+  created_at: string;
+  expires_at: string;
+  last_used_at: string | null;
+};
 export type EffectiveGrant = { id: string; name: string; sources: string[] };
 
 export type UserDetail = UserSummary & {
@@ -229,6 +244,7 @@ export type UserDetail = UserSummary & {
   factors: Factor[];
   backup_codes_left: number;
   effective: { permissions: EffectiveGrant[]; client_scopes: EffectiveGrant[] };
+  trusted_devices: TrustedDevice[];
 };
 
 export type InviteResult = { user: UserDetail; emailed: boolean; activation_url?: string; expires_at: string };
@@ -296,6 +312,9 @@ export type RolePolicy = {
 export type MfaPolicies = {
   required_globally: boolean;
   step_up_max_age_minutes: number;
+  /** "Don't ask again on this device" is offered after a second factor. */
+  trusted_devices_enabled: boolean;
+  trusted_device_days: number;
   roles: RolePolicy[];
   clients: { client: NameRef; policy: string; methods: string[] }[];
   known_methods: string[];

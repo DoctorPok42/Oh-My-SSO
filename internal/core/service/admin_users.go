@@ -60,6 +60,19 @@ type UserDetail struct {
 	Factors         []FactorView           `json:"factors"`
 	BackupCodesLeft int                    `json:"backup_codes_left"`
 	Effective       EffectiveAccess        `json:"effective"`
+	TrustedDevices  []TrustedDeviceView    `json:"trusted_devices"`
+}
+
+// TrustedDeviceView: a device where the user ticked "Don't ask again on
+// this device" (Step 18d), still trusted.
+type TrustedDeviceView struct {
+	ID         string     `json:"id"`
+	IPAddress  string     `json:"ip_address"` // of the last sign-in that used it
+	UserAgent  string     `json:"user_agent"`
+	Device     string     `json:"device"` // "Firefox on Windows", filled by the HTTP layer
+	CreatedAt  time.Time  `json:"created_at"`
+	ExpiresAt  time.Time  `json:"expires_at"`
+	LastUsedAt *time.Time `json:"last_used_at"`
 }
 
 // FactorView: a second factor, as an admin may see it (never its secret).
@@ -179,7 +192,71 @@ func (s *AdminService) GetUser(ctx context.Context, realm *domain.Realm, userID 
 	if d.Effective, err = s.effectiveAccess(ctx, u.ID); err != nil {
 		return nil, err
 	}
+	if d.TrustedDevices, err = s.trustedDevices(ctx, u.ID); err != nil {
+		return nil, err
+	}
 	return d, nil
+}
+
+func (s *AdminService) trustedDevices(ctx context.Context, userID string) ([]TrustedDeviceView, error) {
+	out := []TrustedDeviceView{}
+	if s.d.TrustedDevices == nil {
+		return out, nil
+	}
+	rows, err := s.d.TrustedDevices.List(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range rows {
+		v := TrustedDeviceView{ID: t.ID, IPAddress: t.IPAddress, UserAgent: t.UserAgent, CreatedAt: t.CreatedAt, ExpiresAt: t.ExpiresAt}
+		if !t.LastUsedAt.IsZero() {
+			at := t.LastUsedAt
+			v.LastUsedAt = &at
+		}
+		out = append(out, v)
+	}
+	return out, nil
+}
+
+// RevokeTrustedDevice ends one trusted device of a user: the next sign-in
+// there asks for the second factor again.
+func (s *AdminService) RevokeTrustedDevice(ctx context.Context, actor AdminActor, realm *domain.Realm, userID, deviceID string) error {
+	u, err := s.userInRealm(ctx, realm.ID, userID)
+	if err != nil {
+		return err
+	}
+	if s.d.TrustedDevices == nil {
+		return adminNotFound("trusted device")
+	}
+	if err := s.d.TrustedDevices.RevokeOne(ctx, u.ID, deviceID); err != nil {
+		if errors.Is(err, ErrTrustedDeviceNotFound) {
+			return adminNotFound("trusted device")
+		}
+		return err
+	}
+	s.auditAdmin(ctx, actor, realm.ID, "trusted_device.revoke", "TrustedDevice", deviceID, domain.AuditLogWarning, map[string]interface{}{
+		"user_id": u.ID,
+	})
+	return nil
+}
+
+// RevokeTrustedDevices ends every trusted device of a user.
+func (s *AdminService) RevokeTrustedDevices(ctx context.Context, actor AdminActor, realm *domain.Realm, userID string) error {
+	u, err := s.userInRealm(ctx, realm.ID, userID)
+	if err != nil {
+		return err
+	}
+	if s.d.TrustedDevices == nil {
+		return nil
+	}
+	n, err := s.d.TrustedDevices.RevokeAll(ctx, u.ID)
+	if err != nil {
+		return err
+	}
+	s.auditAdmin(ctx, actor, realm.ID, "trusted_device.revoke_all", "User", u.ID, domain.AuditLogWarning, map[string]interface{}{
+		"devices": n,
+	})
+	return nil
 }
 
 func (s *AdminService) effectiveAccess(ctx context.Context, userID string) (EffectiveAccess, error) {

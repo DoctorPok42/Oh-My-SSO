@@ -42,6 +42,7 @@ import (
 	"sso.internal/sso/ent/signingkey"
 	"sso.internal/sso/ent/timeout"
 	"sso.internal/sso/ent/token"
+	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
 )
 
@@ -104,6 +105,8 @@ type Client struct {
 	Timeout *TimeoutClient
 	// Token is the client for interacting with the Token builders.
 	Token *TokenClient
+	// TrustedDevice is the client for interacting with the TrustedDevice builders.
+	TrustedDevice *TrustedDeviceClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 }
@@ -144,6 +147,7 @@ func (c *Client) init() {
 	c.SigningKey = NewSigningKeyClient(c.config)
 	c.Timeout = NewTimeoutClient(c.config)
 	c.Token = NewTokenClient(c.config)
+	c.TrustedDevice = NewTrustedDeviceClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -264,6 +268,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		SigningKey:         NewSigningKeyClient(cfg),
 		Timeout:            NewTimeoutClient(cfg),
 		Token:              NewTokenClient(cfg),
+		TrustedDevice:      NewTrustedDeviceClient(cfg),
 		User:               NewUserClient(cfg),
 	}, nil
 }
@@ -311,6 +316,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		SigningKey:         NewSigningKeyClient(cfg),
 		Timeout:            NewTimeoutClient(cfg),
 		Token:              NewTokenClient(cfg),
+		TrustedDevice:      NewTrustedDeviceClient(cfg),
 		User:               NewUserClient(cfg),
 	}, nil
 }
@@ -346,7 +352,7 @@ func (c *Client) Use(hooks ...Hook) {
 		c.GroupClientScope, c.IdentityProvider, c.InstanceSettings, c.KeyRotationLog,
 		c.KnownAccount, c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.MfaPolicy,
 		c.PasswordResetToken, c.Permission, c.Realm, c.Role, c.RoleClientScope,
-		c.Session, c.SigningKey, c.Timeout, c.Token, c.User,
+		c.Session, c.SigningKey, c.Timeout, c.Token, c.TrustedDevice, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -361,7 +367,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.GroupClientScope, c.IdentityProvider, c.InstanceSettings, c.KeyRotationLog,
 		c.KnownAccount, c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.MfaPolicy,
 		c.PasswordResetToken, c.Permission, c.Realm, c.Role, c.RoleClientScope,
-		c.Session, c.SigningKey, c.Timeout, c.Token, c.User,
+		c.Session, c.SigningKey, c.Timeout, c.Token, c.TrustedDevice, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -424,6 +430,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Timeout.mutate(ctx, m)
 	case *TokenMutation:
 		return c.Token.mutate(ctx, m)
+	case *TrustedDeviceMutation:
+		return c.TrustedDevice.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	default:
@@ -4223,6 +4231,22 @@ func (c *RealmClient) QueryKnownAccounts(_m *Realm) *KnownAccountQuery {
 	return query
 }
 
+// QueryTrustedDevices queries the trusted_devices edge of a Realm.
+func (c *RealmClient) QueryTrustedDevices(_m *Realm) *TrustedDeviceQuery {
+	query := (&TrustedDeviceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(realm.Table, realm.FieldID, id),
+			sqlgraph.To(trusteddevice.Table, trusteddevice.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, realm.TrustedDevicesTable, realm.TrustedDevicesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *RealmClient) Hooks() []Hook {
 	return c.hooks.Realm
@@ -5334,6 +5358,171 @@ func (c *TokenClient) mutate(ctx context.Context, m *TokenMutation) (Value, erro
 	}
 }
 
+// TrustedDeviceClient is a client for the TrustedDevice schema.
+type TrustedDeviceClient struct {
+	config
+}
+
+// NewTrustedDeviceClient returns a client for the TrustedDevice from the given config.
+func NewTrustedDeviceClient(c config) *TrustedDeviceClient {
+	return &TrustedDeviceClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `trusteddevice.Hooks(f(g(h())))`.
+func (c *TrustedDeviceClient) Use(hooks ...Hook) {
+	c.hooks.TrustedDevice = append(c.hooks.TrustedDevice, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `trusteddevice.Intercept(f(g(h())))`.
+func (c *TrustedDeviceClient) Intercept(interceptors ...Interceptor) {
+	c.inters.TrustedDevice = append(c.inters.TrustedDevice, interceptors...)
+}
+
+// Create returns a builder for creating a TrustedDevice entity.
+func (c *TrustedDeviceClient) Create() *TrustedDeviceCreate {
+	mutation := newTrustedDeviceMutation(c.config, OpCreate)
+	return &TrustedDeviceCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of TrustedDevice entities.
+func (c *TrustedDeviceClient) CreateBulk(builders ...*TrustedDeviceCreate) *TrustedDeviceCreateBulk {
+	return &TrustedDeviceCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *TrustedDeviceClient) MapCreateBulk(slice any, setFunc func(*TrustedDeviceCreate, int)) *TrustedDeviceCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &TrustedDeviceCreateBulk{err: fmt.Errorf("calling to TrustedDeviceClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*TrustedDeviceCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &TrustedDeviceCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for TrustedDevice.
+func (c *TrustedDeviceClient) Update() *TrustedDeviceUpdate {
+	mutation := newTrustedDeviceMutation(c.config, OpUpdate)
+	return &TrustedDeviceUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TrustedDeviceClient) UpdateOne(_m *TrustedDevice) *TrustedDeviceUpdateOne {
+	mutation := newTrustedDeviceMutation(c.config, OpUpdateOne, withTrustedDevice(_m))
+	return &TrustedDeviceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *TrustedDeviceClient) UpdateOneID(id string) *TrustedDeviceUpdateOne {
+	mutation := newTrustedDeviceMutation(c.config, OpUpdateOne, withTrustedDeviceID(id))
+	return &TrustedDeviceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for TrustedDevice.
+func (c *TrustedDeviceClient) Delete() *TrustedDeviceDelete {
+	mutation := newTrustedDeviceMutation(c.config, OpDelete)
+	return &TrustedDeviceDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *TrustedDeviceClient) DeleteOne(_m *TrustedDevice) *TrustedDeviceDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *TrustedDeviceClient) DeleteOneID(id string) *TrustedDeviceDeleteOne {
+	builder := c.Delete().Where(trusteddevice.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &TrustedDeviceDeleteOne{builder}
+}
+
+// Query returns a query builder for TrustedDevice.
+func (c *TrustedDeviceClient) Query() *TrustedDeviceQuery {
+	return &TrustedDeviceQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeTrustedDevice},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a TrustedDevice entity by its id.
+func (c *TrustedDeviceClient) Get(ctx context.Context, id string) (*TrustedDevice, error) {
+	return c.Query().Where(trusteddevice.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TrustedDeviceClient) GetX(ctx context.Context, id string) *TrustedDevice {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryRealm queries the realm edge of a TrustedDevice.
+func (c *TrustedDeviceClient) QueryRealm(_m *TrustedDevice) *RealmQuery {
+	query := (&RealmClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(trusteddevice.Table, trusteddevice.FieldID, id),
+			sqlgraph.To(realm.Table, realm.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, trusteddevice.RealmTable, trusteddevice.RealmColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryUser queries the user edge of a TrustedDevice.
+func (c *TrustedDeviceClient) QueryUser(_m *TrustedDevice) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(trusteddevice.Table, trusteddevice.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, trusteddevice.UserTable, trusteddevice.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *TrustedDeviceClient) Hooks() []Hook {
+	return c.hooks.TrustedDevice
+}
+
+// Interceptors returns the client interceptors.
+func (c *TrustedDeviceClient) Interceptors() []Interceptor {
+	return c.inters.TrustedDevice
+}
+
+func (c *TrustedDeviceClient) mutate(ctx context.Context, m *TrustedDeviceMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&TrustedDeviceCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&TrustedDeviceUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&TrustedDeviceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&TrustedDeviceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown TrustedDevice mutation op: %q", m.Op())
+	}
+}
+
 // UserClient is a client for the User schema.
 type UserClient struct {
 	config
@@ -5570,6 +5759,22 @@ func (c *UserClient) QueryKnownAccounts(_m *User) *KnownAccountQuery {
 	return query
 }
 
+// QueryTrustedDevices queries the trusted_devices edge of a User.
+func (c *UserClient) QueryTrustedDevices(_m *User) *TrustedDeviceQuery {
+	query := (&TrustedDeviceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(trusteddevice.Table, trusteddevice.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.TrustedDevicesTable, user.TrustedDevicesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryConsents queries the consents edge of a User.
 func (c *UserClient) QueryConsents(_m *User) *ConsentQuery {
 	query := (&ConsentClient{config: c.config}).Query()
@@ -5634,13 +5839,15 @@ type (
 		Consent, FederatedIdentity, Group, GroupClientScope, IdentityProvider,
 		InstanceSettings, KeyRotationLog, KnownAccount, LoginAttempt, MfaBackupCode,
 		MfaMethod, MfaPolicy, PasswordResetToken, Permission, Realm, Role,
-		RoleClientScope, Session, SigningKey, Timeout, Token, User []ent.Hook
+		RoleClientScope, Session, SigningKey, Timeout, Token, TrustedDevice,
+		User []ent.Hook
 	}
 	inters struct {
 		AuditLog, ClientApp, ClientGroup, ClientRole, ClientScope, ClientScopeMapping,
 		Consent, FederatedIdentity, Group, GroupClientScope, IdentityProvider,
 		InstanceSettings, KeyRotationLog, KnownAccount, LoginAttempt, MfaBackupCode,
 		MfaMethod, MfaPolicy, PasswordResetToken, Permission, Realm, Role,
-		RoleClientScope, Session, SigningKey, Timeout, Token, User []ent.Interceptor
+		RoleClientScope, Session, SigningKey, Timeout, Token, TrustedDevice,
+		User []ent.Interceptor
 	}
 )

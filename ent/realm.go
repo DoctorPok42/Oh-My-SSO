@@ -69,9 +69,11 @@ type RealmEdges struct {
 	MfaPolicies []*MfaPolicy `json:"mfa_policies,omitempty"`
 	// KnownAccounts holds the value of the known_accounts edge.
 	KnownAccounts []*KnownAccount `json:"known_accounts,omitempty"`
+	// TrustedDevices holds the value of the trusted_devices edge.
+	TrustedDevices []*TrustedDevice `json:"trusted_devices,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [14]bool
+	loadedTypes [15]bool
 }
 
 // UsersOrErr returns the Users value or an error if the edge
@@ -200,6 +202,15 @@ func (e RealmEdges) KnownAccountsOrErr() ([]*KnownAccount, error) {
 		return e.KnownAccounts, nil
 	}
 	return nil, &NotLoadedError{edge: "known_accounts"}
+}
+
+// TrustedDevicesOrErr returns the TrustedDevices value or an error if the edge
+// was not loaded in eager-loading.
+func (e RealmEdges) TrustedDevicesOrErr() ([]*TrustedDevice, error) {
+	if e.loadedTypes[14] {
+		return e.TrustedDevices, nil
+	}
+	return nil, &NotLoadedError{edge: "trusted_devices"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -357,6 +368,11 @@ func (_m *Realm) QueryMfaPolicies() *MfaPolicyQuery {
 // QueryKnownAccounts queries the "known_accounts" edge of the Realm entity.
 func (_m *Realm) QueryKnownAccounts() *KnownAccountQuery {
 	return NewRealmClient(_m.config).QueryKnownAccounts(_m)
+}
+
+// QueryTrustedDevices queries the "trusted_devices" edge of the Realm entity.
+func (_m *Realm) QueryTrustedDevices() *TrustedDeviceQuery {
+	return NewRealmClient(_m.config).QueryTrustedDevices(_m)
 }
 
 // Update returns a builder for updating this Realm.

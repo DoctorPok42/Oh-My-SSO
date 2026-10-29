@@ -62,6 +62,8 @@ type Core struct {
 	SAMLClients   *service.SAMLClientService
 	Timeouts      service.NoActiveTimeouts
 	RateLimiter   ratelimit.Limiter
+	// TrustedDevices: "Don't ask again on this device" (Step 18d).
+	TrustedDevices *service.TrustedDeviceService
 }
 
 // EmailEnabled tells whether e-mails can leave the server (SMTP, or the log
@@ -127,10 +129,19 @@ func BuildCore() *Core {
 		GeoIP:    GeoIP(),
 	})
 
+	// "Don't ask again on this device" (Step 18d).
+	c.TrustedDevices = service.NewTrustedDeviceService(service.TrustedDeviceDeps{
+		Devices:  entstore.NewTrustedDeviceRepository(client),
+		Settings: c.Settings,
+		Audit:    c.Audit,
+	})
+
 	c.KnownAccounts = service.NewKnownAccountService(service.KnownAccountDeps{
 		Accounts: entstore.NewKnownAccountRepository(client),
 		Users:    c.Users,
 		Audit:    c.Audit,
+		// "Forget" also ends the trust of the device.
+		TrustedDevices: c.TrustedDevices,
 	})
 
 	c.Sessions = service.NewSessionService(
@@ -141,6 +152,7 @@ func BuildCore() *Core {
 		service.WithLoginObserver(loginSecurity),
 		service.WithLoginObserver(c.KnownAccounts), // "Pick an account"
 		service.WithAuditLog(c.Audit),
+		service.WithRevocationObserver(c.TrustedDevices),
 	)
 
 	c.RBAC = service.NewRBACService(entstore.NewAccessRepository(client), c.Audit)
@@ -182,6 +194,12 @@ func BuildCore() *Core {
 		Notifier:      c.Notifier,
 		Timeouts:      c.Timeouts,
 		IssuerName:    os.Getenv("MFA_TOTP_ISSUER"),
+		// A trusted device skips the second factor unless the sign-in looks
+		// suspicious (the same analysis as the security alerts).
+		TrustedDevices: c.TrustedDevices,
+		Risk:           loginSecurity,
+		// The second factor a user prefers on a device comes first.
+		Memory: c.KnownAccounts,
 	})
 
 	c.PasswordReset = service.NewPasswordResetService(service.PasswordResetDeps{
@@ -281,5 +299,6 @@ func (c *Core) AdminService() *service.AdminService {
 		Sessions: c.Sessions, KeyRotation: c.KeyRotation, MFA: c.MFA, MFAPolicy: c.MFAPolicy,
 		PasswordReset: c.PasswordReset, Lockout: c.Lockout, OIDCClients: c.OIDCClients, SAMLClients: c.SAMLClients,
 		Notifier: c.Notifier, PublicURL: c.PublicURL, EmailEnabled: c.EmailEnabled(), KMSBackend: c.KMSBackend,
+		TrustedDevices: c.TrustedDevices,
 	})
 }

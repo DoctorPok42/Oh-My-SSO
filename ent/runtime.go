@@ -33,6 +33,7 @@ import (
 	"sso.internal/sso/ent/signingkey"
 	"sso.internal/sso/ent/timeout"
 	"sso.internal/sso/ent/token"
+	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
 )
 
@@ -458,16 +459,24 @@ func init() {
 	instancesettingsDescMfaStepUpMaxAgeMinutes := instancesettingsFields[16].Descriptor()
 	// instancesettings.DefaultMfaStepUpMaxAgeMinutes holds the default value on creation for the mfa_step_up_max_age_minutes field.
 	instancesettings.DefaultMfaStepUpMaxAgeMinutes = instancesettingsDescMfaStepUpMaxAgeMinutes.Default.(int)
+	// instancesettingsDescMfaTrustedDeviceEnabled is the schema descriptor for mfa_trusted_device_enabled field.
+	instancesettingsDescMfaTrustedDeviceEnabled := instancesettingsFields[17].Descriptor()
+	// instancesettings.DefaultMfaTrustedDeviceEnabled holds the default value on creation for the mfa_trusted_device_enabled field.
+	instancesettings.DefaultMfaTrustedDeviceEnabled = instancesettingsDescMfaTrustedDeviceEnabled.Default.(bool)
+	// instancesettingsDescMfaTrustedDeviceDays is the schema descriptor for mfa_trusted_device_days field.
+	instancesettingsDescMfaTrustedDeviceDays := instancesettingsFields[18].Descriptor()
+	// instancesettings.DefaultMfaTrustedDeviceDays holds the default value on creation for the mfa_trusted_device_days field.
+	instancesettings.DefaultMfaTrustedDeviceDays = instancesettingsDescMfaTrustedDeviceDays.Default.(int)
 	// instancesettingsDescPasswordResetTTLMinutes is the schema descriptor for password_reset_ttl_minutes field.
-	instancesettingsDescPasswordResetTTLMinutes := instancesettingsFields[17].Descriptor()
+	instancesettingsDescPasswordResetTTLMinutes := instancesettingsFields[19].Descriptor()
 	// instancesettings.DefaultPasswordResetTTLMinutes holds the default value on creation for the password_reset_ttl_minutes field.
 	instancesettings.DefaultPasswordResetTTLMinutes = instancesettingsDescPasswordResetTTLMinutes.Default.(int)
 	// instancesettingsDescSuspiciousLoginEmailEnabled is the schema descriptor for suspicious_login_email_enabled field.
-	instancesettingsDescSuspiciousLoginEmailEnabled := instancesettingsFields[18].Descriptor()
+	instancesettingsDescSuspiciousLoginEmailEnabled := instancesettingsFields[20].Descriptor()
 	// instancesettings.DefaultSuspiciousLoginEmailEnabled holds the default value on creation for the suspicious_login_email_enabled field.
 	instancesettings.DefaultSuspiciousLoginEmailEnabled = instancesettingsDescSuspiciousLoginEmailEnabled.Default.(bool)
 	// instancesettingsDescUpdatedAt is the schema descriptor for updated_at field.
-	instancesettingsDescUpdatedAt := instancesettingsFields[19].Descriptor()
+	instancesettingsDescUpdatedAt := instancesettingsFields[21].Descriptor()
 	// instancesettings.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	instancesettings.DefaultUpdatedAt = instancesettingsDescUpdatedAt.Default.(func() time.Time)
 	// instancesettings.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -844,12 +853,16 @@ func init() {
 	sessionDescRememberMe := sessionFields[13].Descriptor()
 	// session.DefaultRememberMe holds the default value on creation for the remember_me field.
 	session.DefaultRememberMe = sessionDescRememberMe.Default.(bool)
+	// sessionDescTrustedDevice is the schema descriptor for trusted_device field.
+	sessionDescTrustedDevice := sessionFields[14].Descriptor()
+	// session.DefaultTrustedDevice holds the default value on creation for the trusted_device field.
+	session.DefaultTrustedDevice = sessionDescTrustedDevice.Default.(bool)
 	// sessionDescStatus is the schema descriptor for status field.
-	sessionDescStatus := sessionFields[14].Descriptor()
+	sessionDescStatus := sessionFields[15].Descriptor()
 	// session.DefaultStatus holds the default value on creation for the status field.
 	session.DefaultStatus = schema.SessionStatus(sessionDescStatus.Default.(string))
 	// sessionDescTokenHash is the schema descriptor for token_hash field.
-	sessionDescTokenHash := sessionFields[16].Descriptor()
+	sessionDescTokenHash := sessionFields[17].Descriptor()
 	// session.TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
 	session.TokenHashValidator = sessionDescTokenHash.Validators[0].(func(string) error)
 	// sessionDescID is the schema descriptor for id field.
@@ -952,6 +965,30 @@ func init() {
 	token.DefaultID = tokenDescID.Default.(func() string)
 	// token.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	token.IDValidator = tokenDescID.Validators[0].(func(string) error)
+	trusteddeviceFields := schema.TrustedDevice{}.Fields()
+	_ = trusteddeviceFields
+	// trusteddeviceDescRealmID is the schema descriptor for realm_id field.
+	trusteddeviceDescRealmID := trusteddeviceFields[1].Descriptor()
+	// trusteddevice.RealmIDValidator is a validator for the "realm_id" field. It is called by the builders before save.
+	trusteddevice.RealmIDValidator = trusteddeviceDescRealmID.Validators[0].(func(string) error)
+	// trusteddeviceDescUserID is the schema descriptor for user_id field.
+	trusteddeviceDescUserID := trusteddeviceFields[2].Descriptor()
+	// trusteddevice.UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
+	trusteddevice.UserIDValidator = trusteddeviceDescUserID.Validators[0].(func(string) error)
+	// trusteddeviceDescDeviceHash is the schema descriptor for device_hash field.
+	trusteddeviceDescDeviceHash := trusteddeviceFields[3].Descriptor()
+	// trusteddevice.DeviceHashValidator is a validator for the "device_hash" field. It is called by the builders before save.
+	trusteddevice.DeviceHashValidator = trusteddeviceDescDeviceHash.Validators[0].(func(string) error)
+	// trusteddeviceDescCreatedAt is the schema descriptor for created_at field.
+	trusteddeviceDescCreatedAt := trusteddeviceFields[6].Descriptor()
+	// trusteddevice.DefaultCreatedAt holds the default value on creation for the created_at field.
+	trusteddevice.DefaultCreatedAt = trusteddeviceDescCreatedAt.Default.(func() time.Time)
+	// trusteddeviceDescID is the schema descriptor for id field.
+	trusteddeviceDescID := trusteddeviceFields[0].Descriptor()
+	// trusteddevice.DefaultID holds the default value on creation for the id field.
+	trusteddevice.DefaultID = trusteddeviceDescID.Default.(func() string)
+	// trusteddevice.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	trusteddevice.IDValidator = trusteddeviceDescID.Validators[0].(func(string) error)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescRealmID is the schema descriptor for realm_id field.

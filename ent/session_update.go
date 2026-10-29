@@ -200,6 +200,20 @@ func (_u *SessionUpdate) SetNillableRememberMe(v *bool) *SessionUpdate {
 	return _u
 }
 
+// SetTrustedDevice sets the "trusted_device" field.
+func (_u *SessionUpdate) SetTrustedDevice(v bool) *SessionUpdate {
+	_u.mutation.SetTrustedDevice(v)
+	return _u
+}
+
+// SetNillableTrustedDevice sets the "trusted_device" field if the given value is not nil.
+func (_u *SessionUpdate) SetNillableTrustedDevice(v *bool) *SessionUpdate {
+	if v != nil {
+		_u.SetTrustedDevice(*v)
+	}
+	return _u
+}
+
 // SetStatus sets the "status" field.
 func (_u *SessionUpdate) SetStatus(v schema.SessionStatus) *SessionUpdate {
 	_u.mutation.SetStatus(v)
@@ -369,6 +383,9 @@ func (_u *SessionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.RememberMe(); ok {
 		_spec.SetField(session.FieldRememberMe, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.TrustedDevice(); ok {
+		_spec.SetField(session.FieldTrustedDevice, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(session.FieldStatus, field.TypeString, value)
@@ -614,6 +631,20 @@ func (_u *SessionUpdateOne) SetNillableRememberMe(v *bool) *SessionUpdateOne {
 	return _u
 }
 
+// SetTrustedDevice sets the "trusted_device" field.
+func (_u *SessionUpdateOne) SetTrustedDevice(v bool) *SessionUpdateOne {
+	_u.mutation.SetTrustedDevice(v)
+	return _u
+}
+
+// SetNillableTrustedDevice sets the "trusted_device" field if the given value is not nil.
+func (_u *SessionUpdateOne) SetNillableTrustedDevice(v *bool) *SessionUpdateOne {
+	if v != nil {
+		_u.SetTrustedDevice(*v)
+	}
+	return _u
+}
+
 // SetStatus sets the "status" field.
 func (_u *SessionUpdateOne) SetStatus(v schema.SessionStatus) *SessionUpdateOne {
 	_u.mutation.SetStatus(v)
@@ -813,6 +844,9 @@ func (_u *SessionUpdateOne) sqlSave(ctx context.Context) (_node *Session, err er
 	}
 	if value, ok := _u.mutation.RememberMe(); ok {
 		_spec.SetField(session.FieldRememberMe, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.TrustedDevice(); ok {
+		_spec.SetField(session.FieldTrustedDevice, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(session.FieldStatus, field.TypeString, value)

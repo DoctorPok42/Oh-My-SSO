@@ -22,6 +22,7 @@ import (
 	"sso.internal/sso/ent/role"
 	"sso.internal/sso/ent/schema"
 	"sso.internal/sso/ent/session"
+	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
 )
 
@@ -365,6 +366,21 @@ func (_u *UserUpdate) AddKnownAccounts(v ...*KnownAccount) *UserUpdate {
 	return _u.AddKnownAccountIDs(ids...)
 }
 
+// AddTrustedDeviceIDs adds the "trusted_devices" edge to the TrustedDevice entity by IDs.
+func (_u *UserUpdate) AddTrustedDeviceIDs(ids ...string) *UserUpdate {
+	_u.mutation.AddTrustedDeviceIDs(ids...)
+	return _u
+}
+
+// AddTrustedDevices adds the "trusted_devices" edges to the TrustedDevice entity.
+func (_u *UserUpdate) AddTrustedDevices(v ...*TrustedDevice) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddTrustedDeviceIDs(ids...)
+}
+
 // AddConsentIDs adds the "consents" edge to the Consent entity by IDs.
 func (_u *UserUpdate) AddConsentIDs(ids ...string) *UserUpdate {
 	_u.mutation.AddConsentIDs(ids...)
@@ -545,6 +561,27 @@ func (_u *UserUpdate) RemoveKnownAccounts(v ...*KnownAccount) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveKnownAccountIDs(ids...)
+}
+
+// ClearTrustedDevices clears all "trusted_devices" edges to the TrustedDevice entity.
+func (_u *UserUpdate) ClearTrustedDevices() *UserUpdate {
+	_u.mutation.ClearTrustedDevices()
+	return _u
+}
+
+// RemoveTrustedDeviceIDs removes the "trusted_devices" edge to TrustedDevice entities by IDs.
+func (_u *UserUpdate) RemoveTrustedDeviceIDs(ids ...string) *UserUpdate {
+	_u.mutation.RemoveTrustedDeviceIDs(ids...)
+	return _u
+}
+
+// RemoveTrustedDevices removes "trusted_devices" edges to TrustedDevice entities.
+func (_u *UserUpdate) RemoveTrustedDevices(v ...*TrustedDevice) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveTrustedDeviceIDs(ids...)
 }
 
 // ClearConsents clears all "consents" edges to the Consent entity.
@@ -1036,6 +1073,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.TrustedDevicesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.TrustedDevicesTable,
+			Columns: []string{user.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedTrustedDevicesIDs(); len(nodes) > 0 && !_u.mutation.TrustedDevicesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.TrustedDevicesTable,
+			Columns: []string{user.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.TrustedDevicesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.TrustedDevicesTable,
+			Columns: []string{user.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ConsentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1473,6 +1555,21 @@ func (_u *UserUpdateOne) AddKnownAccounts(v ...*KnownAccount) *UserUpdateOne {
 	return _u.AddKnownAccountIDs(ids...)
 }
 
+// AddTrustedDeviceIDs adds the "trusted_devices" edge to the TrustedDevice entity by IDs.
+func (_u *UserUpdateOne) AddTrustedDeviceIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.AddTrustedDeviceIDs(ids...)
+	return _u
+}
+
+// AddTrustedDevices adds the "trusted_devices" edges to the TrustedDevice entity.
+func (_u *UserUpdateOne) AddTrustedDevices(v ...*TrustedDevice) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddTrustedDeviceIDs(ids...)
+}
+
 // AddConsentIDs adds the "consents" edge to the Consent entity by IDs.
 func (_u *UserUpdateOne) AddConsentIDs(ids ...string) *UserUpdateOne {
 	_u.mutation.AddConsentIDs(ids...)
@@ -1653,6 +1750,27 @@ func (_u *UserUpdateOne) RemoveKnownAccounts(v ...*KnownAccount) *UserUpdateOne 
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveKnownAccountIDs(ids...)
+}
+
+// ClearTrustedDevices clears all "trusted_devices" edges to the TrustedDevice entity.
+func (_u *UserUpdateOne) ClearTrustedDevices() *UserUpdateOne {
+	_u.mutation.ClearTrustedDevices()
+	return _u
+}
+
+// RemoveTrustedDeviceIDs removes the "trusted_devices" edge to TrustedDevice entities by IDs.
+func (_u *UserUpdateOne) RemoveTrustedDeviceIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.RemoveTrustedDeviceIDs(ids...)
+	return _u
+}
+
+// RemoveTrustedDevices removes "trusted_devices" edges to TrustedDevice entities.
+func (_u *UserUpdateOne) RemoveTrustedDevices(v ...*TrustedDevice) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveTrustedDeviceIDs(ids...)
 }
 
 // ClearConsents clears all "consents" edges to the Consent entity.
@@ -2167,6 +2285,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(knownaccount.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.TrustedDevicesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.TrustedDevicesTable,
+			Columns: []string{user.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedTrustedDevicesIDs(); len(nodes) > 0 && !_u.mutation.TrustedDevicesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.TrustedDevicesTable,
+			Columns: []string{user.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.TrustedDevicesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.TrustedDevicesTable,
+			Columns: []string{user.TrustedDevicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

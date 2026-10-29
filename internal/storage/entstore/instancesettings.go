@@ -62,6 +62,8 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 		SetNillableMfaStepUpMaxAgeMinutes(p.MFAStepUpMaxAgeMinutes).
 		SetNillablePasswordResetTTLMinutes(p.PasswordResetTTLMinutes).
 		SetNillableSuspiciousLoginEmailEnabled(p.SuspiciousLoginEmailEnabled).
+		SetNillableMfaTrustedDeviceEnabled(p.MFATrustedDeviceEnabled).
+		SetNillableMfaTrustedDeviceDays(p.MFATrustedDeviceDays).
 		SetNillableUpdatedBy(p.UpdatedBy)
 	if p.IPAllowlist != nil {
 		builder = builder.SetIPAllowlist(p.IPAllowlist)
@@ -99,6 +101,8 @@ func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings 
 		MFAStepUpMaxAgeMinutes:      e.MfaStepUpMaxAgeMinutes,
 		PasswordResetTTLMinutes:     e.PasswordResetTTLMinutes,
 		SuspiciousLoginEmailEnabled: e.SuspiciousLoginEmailEnabled,
+		MFATrustedDeviceEnabled:     e.MfaTrustedDeviceEnabled,
+		MFATrustedDeviceDays:        e.MfaTrustedDeviceDays,
 		UpdatedAt:                   e.UpdatedAt,
 		UpdatedBy:                   e.UpdatedBy,
 	}

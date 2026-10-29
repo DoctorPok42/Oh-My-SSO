@@ -129,6 +129,10 @@ async function SessionsTable({
                 <TableCell>
                   {s.mfa_verified ? (
                     <Badge tone="success">{MFA_METHOD_LABELS[s.mfa_method]?.split(" (")[0] ?? "Verified"}</Badge>
+                  ) : s.trusted_device ? (
+                    <Badge tone="info" title="Second factor skipped: Don't ask again on this device">
+                      Trusted device
+                    </Badge>
                   ) : (
                     <Badge tone="neutral">No</Badge>
                   )}

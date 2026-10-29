@@ -197,6 +197,17 @@ func (s *LoginSecurityService) record(ctx context.Context, sess *domain.Session,
 	})
 }
 
+// SignInRisk (LoginRiskChecker) judges a sign-in before it happens, with
+// the rules of Analyze: on a trusted device, a sign-in that looks
+// suspicious asks for the second factor again (Step 18d).
+func (s *LoginSecurityService) SignInRisk(ctx context.Context, candidate *domain.Session) ([]string, error) {
+	history, err := s.sessions.ListRecentByUser(ctx, candidate.UserID, candidate.CreatedAt.Add(-loginHistoryWindow), loginHistoryLimit+1)
+	if err != nil {
+		return nil, fmt.Errorf("sign-in risk: history: %w", err)
+	}
+	return AnalyzeLogin(candidate, history, s.geo).Reasons, nil
+}
+
 // AnalyzeLogin is the pure decision: cur against the user's past sessions
 // (cur itself may be in history, it is skipped). geo may be nil.
 func AnalyzeLogin(cur *domain.Session, history []*domain.Session, geo GeoIPResolver) LoginAnalysis {

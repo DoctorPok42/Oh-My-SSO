@@ -409,11 +409,16 @@ func (s *Server) handleSetRealmMFA(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Required            *bool `json:"required_globally"`
 		StepUpMaxAgeMinutes *int  `json:"step_up_max_age_minutes"`
+		TrustedDevices      *bool `json:"trusted_devices_enabled"`
+		TrustedDeviceDays   *int  `json:"trusted_device_days"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
-	v, err := s.d.Admin.SetRealmMFA(r.Context(), adminFrom(r).actor, realmFrom(r), in.Required, in.StepUpMaxAgeMinutes)
+	v, err := s.d.Admin.SetRealmMFA(r.Context(), adminFrom(r).actor, realmFrom(r), service.RealmMFAInput{
+		Required: in.Required, StepUpMinutes: in.StepUpMaxAgeMinutes,
+		TrustedDevices: in.TrustedDevices, TrustedDeviceDays: in.TrustedDeviceDays,
+	})
 	if err != nil {
 		writeServiceError(w, r, err)
 		return

@@ -80,6 +80,7 @@ type oidcTestEnv struct {
 	partnerSecret string
 	consent       *service.ConsentService
 	alice         *domain.User
+	sessions      *service.SessionService
 	tokens        repository.TokenRepository
 	audit         repository.AuditLogRepository
 	clock         *fakeClock
@@ -115,12 +116,17 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 	km := localdev.New("test")
 	clock := &fakeClock{} // moved forward to get the next TOTP code
 
+	// "Don't ask again on this device" (Step 18d).
+	trusted := service.NewTrustedDeviceService(service.TrustedDeviceDeps{
+		Devices: entstore.NewTrustedDeviceRepository(client), Settings: settings, Audit: audit, Now: clock.Now,
+	})
 	known := service.NewKnownAccountService(service.KnownAccountDeps{
 		Accounts: entstore.NewKnownAccountRepository(client), Users: users, Audit: audit, Now: clock.Now,
+		TrustedDevices: trusted,
 	})
 	sessions := service.NewSessionService(entstore.NewSessionRepository(client), settings, tokens,
 		valkeycache.NewSessionCache(valkeyClient), service.WithClock(clock.Now),
-		service.WithLoginObserver(known), service.WithAuditLog(audit))
+		service.WithLoginObserver(known), service.WithAuditLog(audit), service.WithRevocationObserver(trusted))
 	policy := service.NewMFAPolicyService(service.MFAPolicyDeps{
 		Settings: settings, Clients: clients, Roles: entstore.NewRoleRepository(client),
 		Policies: entstore.NewMfaPolicyRepository(client), Access: access, Audit: audit, Now: clock.Now,
@@ -132,7 +138,7 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 		Users: users, Methods: entstore.NewMfaMethodRepository(client), BackupCodes: entstore.NewMfaBackupCodeRepository(client),
 		Sessions: sessions, Policy: policy, Envelope: service.NewEnvelopeService(signingKeys, km, "local_dev"),
 		Store: valkeycache.NewMFAStore(valkeyClient), Limiter: limiter, LoginAttempts: attempts, Audit: audit,
-		Realms: realms, Clients: clients, Passkeys: passkeys, Now: clock.Now,
+		Realms: realms, Clients: clients, Passkeys: passkeys, Now: clock.Now, TrustedDevices: trusted, Memory: known,
 	})
 	lockout := service.NewLockoutService(service.LockoutDeps{
 		Users: users, Unknown: valkeycache.NewLockoutStore(valkeyClient), Settings: settings, Audit: audit, Now: clock.Now,
@@ -237,7 +243,7 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 
 	env := &oidcTestEnv{ts: ts, ent: client, realm: realm, realmURL: ts.URL + "/r/" + oidcRealm,
 		webSecret: webSecret, payrollSecret: payrollSecret, partnerSecret: partnerSecret, consent: consent,
-		alice: alice, tokens: tokens, audit: audit, clock: clock}
+		alice: alice, sessions: sessions, tokens: tokens, audit: audit, clock: clock}
 	resp, err := ts.Client().Get(env.realmURL + "/.well-known/openid-configuration")
 	require.NoError(t, err)
 	defer resp.Body.Close()

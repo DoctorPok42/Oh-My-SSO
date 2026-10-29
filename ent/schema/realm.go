@@ -57,5 +57,6 @@ func (Realm) Edges() []ent.Edge {
 		edge.To("timeouts", Timeout.Type).Annotations(entsql.OnDelete(entsql.Restrict)),
 		edge.To("mfa_policies", MfaPolicy.Type).Annotations(entsql.OnDelete(entsql.Restrict)),
 		edge.To("known_accounts", KnownAccount.Type).Annotations(entsql.OnDelete(entsql.Restrict)),
+		edge.To("trusted_devices", TrustedDevice.Type).Annotations(entsql.OnDelete(entsql.Restrict)),
 	}
 }

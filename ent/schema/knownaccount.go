@@ -33,6 +33,12 @@ func (KnownAccount) Fields() []ent.Field {
 		// Last sign-in with "Keep me signed in" on this device: newest first
 		// in the picker, oldest dropped beyond the per-device limit.
 		field.Time("last_used_at").Default(func() time.Time { return time.Now() }),
+		// How the user likes to sign in on this device (Step 18e), set only
+		// when they had a choice. last_method: "password" or "passkey", what
+		// the tile starts with. last_second_factor: "passkey" or "totp",
+		// what the second step starts with. Empty: the best one first.
+		field.String("last_method").Optional(),
+		field.String("last_second_factor").Optional(),
 	}
 }
 

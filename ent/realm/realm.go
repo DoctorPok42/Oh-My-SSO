@@ -57,6 +57,8 @@ const (
 	EdgeMfaPolicies = "mfa_policies"
 	// EdgeKnownAccounts holds the string denoting the known_accounts edge name in mutations.
 	EdgeKnownAccounts = "known_accounts"
+	// EdgeTrustedDevices holds the string denoting the trusted_devices edge name in mutations.
+	EdgeTrustedDevices = "trusted_devices"
 	// Table holds the table name of the realm in the database.
 	Table = "realms"
 	// UsersTable is the table that holds the users relation/edge.
@@ -157,6 +159,13 @@ const (
 	KnownAccountsInverseTable = "known_accounts"
 	// KnownAccountsColumn is the table column denoting the known_accounts relation/edge.
 	KnownAccountsColumn = "realm_id"
+	// TrustedDevicesTable is the table that holds the trusted_devices relation/edge.
+	TrustedDevicesTable = "trusted_devices"
+	// TrustedDevicesInverseTable is the table name for the TrustedDevice entity.
+	// It exists in this package in order to avoid circular dependency with the "trusteddevice" package.
+	TrustedDevicesInverseTable = "trusted_devices"
+	// TrustedDevicesColumn is the table column denoting the trusted_devices relation/edge.
+	TrustedDevicesColumn = "realm_id"
 )
 
 // Columns holds all SQL columns for realm fields.
@@ -431,6 +440,20 @@ func ByKnownAccounts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newKnownAccountsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByTrustedDevicesCount orders the results by trusted_devices count.
+func ByTrustedDevicesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newTrustedDevicesStep(), opts...)
+	}
+}
+
+// ByTrustedDevices orders the results by trusted_devices terms.
+func ByTrustedDevices(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTrustedDevicesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUsersStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -527,5 +550,12 @@ func newKnownAccountsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(KnownAccountsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, KnownAccountsTable, KnownAccountsColumn),
+	)
+}
+func newTrustedDevicesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TrustedDevicesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, TrustedDevicesTable, TrustedDevicesColumn),
 	)
 }

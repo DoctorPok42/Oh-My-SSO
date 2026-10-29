@@ -24,6 +24,10 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldLastUsedAt holds the string denoting the last_used_at field in the database.
 	FieldLastUsedAt = "last_used_at"
+	// FieldLastMethod holds the string denoting the last_method field in the database.
+	FieldLastMethod = "last_method"
+	// FieldLastSecondFactor holds the string denoting the last_second_factor field in the database.
+	FieldLastSecondFactor = "last_second_factor"
 	// EdgeRealm holds the string denoting the realm edge name in mutations.
 	EdgeRealm = "realm"
 	// EdgeUser holds the string denoting the user edge name in mutations.
@@ -54,6 +58,8 @@ var Columns = []string{
 	FieldDeviceHash,
 	FieldCreatedAt,
 	FieldLastUsedAt,
+	FieldLastMethod,
+	FieldLastSecondFactor,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -114,6 +120,16 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByLastUsedAt orders the results by the last_used_at field.
 func ByLastUsedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastUsedAt, opts...).ToFunc()
+}
+
+// ByLastMethod orders the results by the last_method field.
+func ByLastMethod(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastMethod, opts...).ToFunc()
+}
+
+// ByLastSecondFactor orders the results by the last_second_factor field.
+func ByLastSecondFactor(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastSecondFactor, opts...).ToFunc()
 }
 
 // ByRealmField orders the results by realm field.

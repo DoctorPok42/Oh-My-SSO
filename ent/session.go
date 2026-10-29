@@ -46,6 +46,8 @@ type Session struct {
 	AuthMethod string `json:"auth_method,omitempty"`
 	// RememberMe holds the value of the "remember_me" field.
 	RememberMe bool `json:"remember_me,omitempty"`
+	// TrustedDevice holds the value of the "trusted_device" field.
+	TrustedDevice bool `json:"trusted_device,omitempty"`
 	// Status holds the value of the "status" field.
 	Status schema.SessionStatus `json:"status,omitempty"`
 	// RevokedReason holds the value of the "revoked_reason" field.
@@ -107,7 +109,7 @@ func (*Session) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case session.FieldMfaVerified, session.FieldRememberMe:
+		case session.FieldMfaVerified, session.FieldRememberMe, session.FieldTrustedDevice:
 			values[i] = new(sql.NullBool)
 		case session.FieldID, session.FieldRealmID, session.FieldUserID, session.FieldIPAddress, session.FieldUserAgent, session.FieldDeviceFingerprint, session.FieldMfaMethodType, session.FieldAuthMethod, session.FieldStatus, session.FieldRevokedReason, session.FieldTokenHash:
 			values[i] = new(sql.NullString)
@@ -211,6 +213,12 @@ func (_m *Session) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field remember_me", values[i])
 			} else if value.Valid {
 				_m.RememberMe = value.Bool
+			}
+		case session.FieldTrustedDevice:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field trusted_device", values[i])
+			} else if value.Valid {
+				_m.TrustedDevice = value.Bool
 			}
 		case session.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -319,6 +327,9 @@ func (_m *Session) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("remember_me=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RememberMe))
+	builder.WriteString(", ")
+	builder.WriteString("trusted_device=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TrustedDevice))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))

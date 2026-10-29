@@ -42,6 +42,46 @@ func (_u *KnownAccountUpdate) SetNillableLastUsedAt(v *time.Time) *KnownAccountU
 	return _u
 }
 
+// SetLastMethod sets the "last_method" field.
+func (_u *KnownAccountUpdate) SetLastMethod(v string) *KnownAccountUpdate {
+	_u.mutation.SetLastMethod(v)
+	return _u
+}
+
+// SetNillableLastMethod sets the "last_method" field if the given value is not nil.
+func (_u *KnownAccountUpdate) SetNillableLastMethod(v *string) *KnownAccountUpdate {
+	if v != nil {
+		_u.SetLastMethod(*v)
+	}
+	return _u
+}
+
+// ClearLastMethod clears the value of the "last_method" field.
+func (_u *KnownAccountUpdate) ClearLastMethod() *KnownAccountUpdate {
+	_u.mutation.ClearLastMethod()
+	return _u
+}
+
+// SetLastSecondFactor sets the "last_second_factor" field.
+func (_u *KnownAccountUpdate) SetLastSecondFactor(v string) *KnownAccountUpdate {
+	_u.mutation.SetLastSecondFactor(v)
+	return _u
+}
+
+// SetNillableLastSecondFactor sets the "last_second_factor" field if the given value is not nil.
+func (_u *KnownAccountUpdate) SetNillableLastSecondFactor(v *string) *KnownAccountUpdate {
+	if v != nil {
+		_u.SetLastSecondFactor(*v)
+	}
+	return _u
+}
+
+// ClearLastSecondFactor clears the value of the "last_second_factor" field.
+func (_u *KnownAccountUpdate) ClearLastSecondFactor() *KnownAccountUpdate {
+	_u.mutation.ClearLastSecondFactor()
+	return _u
+}
+
 // Mutation returns the KnownAccountMutation object of the builder.
 func (_u *KnownAccountUpdate) Mutation() *KnownAccountMutation {
 	return _u.mutation
@@ -100,6 +140,18 @@ func (_u *KnownAccountUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if value, ok := _u.mutation.LastUsedAt(); ok {
 		_spec.SetField(knownaccount.FieldLastUsedAt, field.TypeTime, value)
 	}
+	if value, ok := _u.mutation.LastMethod(); ok {
+		_spec.SetField(knownaccount.FieldLastMethod, field.TypeString, value)
+	}
+	if _u.mutation.LastMethodCleared() {
+		_spec.ClearField(knownaccount.FieldLastMethod, field.TypeString)
+	}
+	if value, ok := _u.mutation.LastSecondFactor(); ok {
+		_spec.SetField(knownaccount.FieldLastSecondFactor, field.TypeString, value)
+	}
+	if _u.mutation.LastSecondFactorCleared() {
+		_spec.ClearField(knownaccount.FieldLastSecondFactor, field.TypeString)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{knownaccount.Label}
@@ -131,6 +183,46 @@ func (_u *KnownAccountUpdateOne) SetNillableLastUsedAt(v *time.Time) *KnownAccou
 	if v != nil {
 		_u.SetLastUsedAt(*v)
 	}
+	return _u
+}
+
+// SetLastMethod sets the "last_method" field.
+func (_u *KnownAccountUpdateOne) SetLastMethod(v string) *KnownAccountUpdateOne {
+	_u.mutation.SetLastMethod(v)
+	return _u
+}
+
+// SetNillableLastMethod sets the "last_method" field if the given value is not nil.
+func (_u *KnownAccountUpdateOne) SetNillableLastMethod(v *string) *KnownAccountUpdateOne {
+	if v != nil {
+		_u.SetLastMethod(*v)
+	}
+	return _u
+}
+
+// ClearLastMethod clears the value of the "last_method" field.
+func (_u *KnownAccountUpdateOne) ClearLastMethod() *KnownAccountUpdateOne {
+	_u.mutation.ClearLastMethod()
+	return _u
+}
+
+// SetLastSecondFactor sets the "last_second_factor" field.
+func (_u *KnownAccountUpdateOne) SetLastSecondFactor(v string) *KnownAccountUpdateOne {
+	_u.mutation.SetLastSecondFactor(v)
+	return _u
+}
+
+// SetNillableLastSecondFactor sets the "last_second_factor" field if the given value is not nil.
+func (_u *KnownAccountUpdateOne) SetNillableLastSecondFactor(v *string) *KnownAccountUpdateOne {
+	if v != nil {
+		_u.SetLastSecondFactor(*v)
+	}
+	return _u
+}
+
+// ClearLastSecondFactor clears the value of the "last_second_factor" field.
+func (_u *KnownAccountUpdateOne) ClearLastSecondFactor() *KnownAccountUpdateOne {
+	_u.mutation.ClearLastSecondFactor()
 	return _u
 }
 
@@ -221,6 +313,18 @@ func (_u *KnownAccountUpdateOne) sqlSave(ctx context.Context) (_node *KnownAccou
 	}
 	if value, ok := _u.mutation.LastUsedAt(); ok {
 		_spec.SetField(knownaccount.FieldLastUsedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.LastMethod(); ok {
+		_spec.SetField(knownaccount.FieldLastMethod, field.TypeString, value)
+	}
+	if _u.mutation.LastMethodCleared() {
+		_spec.ClearField(knownaccount.FieldLastMethod, field.TypeString)
+	}
+	if value, ok := _u.mutation.LastSecondFactor(); ok {
+		_spec.SetField(knownaccount.FieldLastSecondFactor, field.TypeString, value)
+	}
+	if _u.mutation.LastSecondFactorCleared() {
+		_spec.ClearField(knownaccount.FieldLastSecondFactor, field.TypeString)
 	}
 	_node = &KnownAccount{config: _u.config}
 	_spec.Assign = _node.assignValues

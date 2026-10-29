@@ -76,6 +76,17 @@ export async function revokeUserSessions(realm: string, id: string) {
   return act(() => api<void>(apiPath(["realms", realm, "users", id, "sessions"]), { method: "DELETE" }));
 }
 
+/** The next sign-in on that device asks for the second factor again. */
+export async function revokeTrustedDevice(realm: string, id: string, deviceId: string) {
+  return act(() =>
+    api<void>(apiPath(["realms", realm, "users", id, "trusted-devices", deviceId]), { method: "DELETE" }),
+  );
+}
+
+export async function revokeTrustedDevices(realm: string, id: string) {
+  return act(() => api<void>(apiPath(["realms", realm, "users", id, "trusted-devices"]), { method: "DELETE" }));
+}
+
 // --- roles and groups --------------------------------------------------------------
 
 export type AccessBody = {

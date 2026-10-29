@@ -26,6 +26,8 @@ const (
 type mfaCodeRequest struct {
 	Method string `json:"method"` // "totp" or "backup_code"
 	Code   string `json:"code"`
+	// TrustDevice: "Don't ask again on this device" is ticked (login only).
+	TrustDevice bool `json:"trust_device,omitempty"`
 }
 
 type mfaVerifyResponse struct {
@@ -34,6 +36,8 @@ type mfaVerifyResponse struct {
 	MFAMethod            string   `json:"mfa_method"`
 	AllowedMethods       []string `json:"allowed_methods,omitempty"`
 	BackupCodesRemaining *int     `json:"backup_codes_remaining,omitempty"`
+	// DeviceTrusted: the box was ticked, this device is now trusted.
+	DeviceTrusted bool `json:"device_trusted,omitempty"`
 }
 
 type mfaErrorResponse struct {
@@ -139,6 +143,7 @@ func (s *Server) handleMFAVerify(w http.ResponseWriter, r *http.Request) {
 		Code:           req.Code,
 		IPAddress:      clientIP(r),
 		UserAgent:      r.UserAgent(),
+		TrustDevice:    req.TrustDevice,
 	})
 	if err != nil {
 		if errors.Is(err, service.ErrMFAChallengeInvalid) {
@@ -162,6 +167,7 @@ func (s *Server) writeVerifiedLogin(w http.ResponseWriter, r *http.Request, res 
 		UserID:    res.User.ID,
 		MFAMethod: string(res.Method),
 	}
+	out.DeviceTrusted = res.DeviceTrusted
 	if res.Outcome == service.LoginMFAEnrollmentRequired {
 		out.AllowedMethods = methodStrings(res.Requirement.AllowedMethods)
 	}

@@ -182,6 +182,20 @@ func (_c *SessionCreate) SetNillableRememberMe(v *bool) *SessionCreate {
 	return _c
 }
 
+// SetTrustedDevice sets the "trusted_device" field.
+func (_c *SessionCreate) SetTrustedDevice(v bool) *SessionCreate {
+	_c.mutation.SetTrustedDevice(v)
+	return _c
+}
+
+// SetNillableTrustedDevice sets the "trusted_device" field if the given value is not nil.
+func (_c *SessionCreate) SetNillableTrustedDevice(v *bool) *SessionCreate {
+	if v != nil {
+		_c.SetTrustedDevice(*v)
+	}
+	return _c
+}
+
 // SetStatus sets the "status" field.
 func (_c *SessionCreate) SetStatus(v schema.SessionStatus) *SessionCreate {
 	_c.mutation.SetStatus(v)
@@ -316,6 +330,10 @@ func (_c *SessionCreate) defaults() {
 		v := session.DefaultRememberMe
 		_c.mutation.SetRememberMe(v)
 	}
+	if _, ok := _c.mutation.TrustedDevice(); !ok {
+		v := session.DefaultTrustedDevice
+		_c.mutation.SetTrustedDevice(v)
+	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := session.DefaultStatus
 		_c.mutation.SetStatus(v)
@@ -361,6 +379,9 @@ func (_c *SessionCreate) check() error {
 	}
 	if _, ok := _c.mutation.RememberMe(); !ok {
 		return &ValidationError{Name: "remember_me", err: errors.New(`ent: missing required field "Session.remember_me"`)}
+	}
+	if _, ok := _c.mutation.TrustedDevice(); !ok {
+		return &ValidationError{Name: "trusted_device", err: errors.New(`ent: missing required field "Session.trusted_device"`)}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Session.status"`)}
@@ -462,6 +483,10 @@ func (_c *SessionCreate) createSpec() (*Session, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RememberMe(); ok {
 		_spec.SetField(session.FieldRememberMe, field.TypeBool, value)
 		_node.RememberMe = value
+	}
+	if value, ok := _c.mutation.TrustedDevice(); ok {
+		_spec.SetField(session.FieldTrustedDevice, field.TypeBool, value)
+		_node.TrustedDevice = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(session.FieldStatus, field.TypeString, value)

@@ -61,6 +61,8 @@ const (
 	EdgePasswordResetTokens = "password_reset_tokens"
 	// EdgeKnownAccounts holds the string denoting the known_accounts edge name in mutations.
 	EdgeKnownAccounts = "known_accounts"
+	// EdgeTrustedDevices holds the string denoting the trusted_devices edge name in mutations.
+	EdgeTrustedDevices = "trusted_devices"
 	// EdgeConsents holds the string denoting the consents edge name in mutations.
 	EdgeConsents = "consents"
 	// EdgeFederatedIdentities holds the string denoting the federated_identities edge name in mutations.
@@ -119,6 +121,13 @@ const (
 	KnownAccountsInverseTable = "known_accounts"
 	// KnownAccountsColumn is the table column denoting the known_accounts relation/edge.
 	KnownAccountsColumn = "user_id"
+	// TrustedDevicesTable is the table that holds the trusted_devices relation/edge.
+	TrustedDevicesTable = "trusted_devices"
+	// TrustedDevicesInverseTable is the table name for the TrustedDevice entity.
+	// It exists in this package in order to avoid circular dependency with the "trusteddevice" package.
+	TrustedDevicesInverseTable = "trusted_devices"
+	// TrustedDevicesColumn is the table column denoting the trusted_devices relation/edge.
+	TrustedDevicesColumn = "user_id"
 	// ConsentsTable is the table that holds the consents relation/edge.
 	ConsentsTable = "consents"
 	// ConsentsInverseTable is the table name for the Consent entity.
@@ -382,6 +391,20 @@ func ByKnownAccounts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByTrustedDevicesCount orders the results by trusted_devices count.
+func ByTrustedDevicesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newTrustedDevicesStep(), opts...)
+	}
+}
+
+// ByTrustedDevices orders the results by trusted_devices terms.
+func ByTrustedDevices(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTrustedDevicesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByConsentsCount orders the results by consents count.
 func ByConsentsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -463,6 +486,13 @@ func newKnownAccountsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(KnownAccountsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, KnownAccountsTable, KnownAccountsColumn),
+	)
+}
+func newTrustedDevicesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TrustedDevicesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, TrustedDevicesTable, TrustedDevicesColumn),
 	)
 }
 func newConsentsStep() *sqlgraph.Step {

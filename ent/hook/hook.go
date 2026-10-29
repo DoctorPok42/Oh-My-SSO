@@ -333,6 +333,18 @@ func (f TokenFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TokenMutation", m)
 }
 
+// The TrustedDeviceFunc type is an adapter to allow the use of ordinary
+// function as TrustedDevice mutator.
+type TrustedDeviceFunc func(context.Context, *ent.TrustedDeviceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f TrustedDeviceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.TrustedDeviceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TrustedDeviceMutation", m)
+}
+
 // The UserFunc type is an adapter to allow the use of ordinary
 // function as User mutator.
 type UserFunc func(context.Context, *ent.UserMutation) (ent.Value, error)

@@ -74,13 +74,15 @@ type UserEdges struct {
 	PasswordResetTokens []*PasswordResetToken `json:"password_reset_tokens,omitempty"`
 	// KnownAccounts holds the value of the known_accounts edge.
 	KnownAccounts []*KnownAccount `json:"known_accounts,omitempty"`
+	// TrustedDevices holds the value of the trusted_devices edge.
+	TrustedDevices []*TrustedDevice `json:"trusted_devices,omitempty"`
 	// Consents holds the value of the consents edge.
 	Consents []*Consent `json:"consents,omitempty"`
 	// FederatedIdentities holds the value of the federated_identities edge.
 	FederatedIdentities []*FederatedIdentity `json:"federated_identities,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [10]bool
+	loadedTypes [11]bool
 }
 
 // RealmOrErr returns the Realm value or an error if the edge
@@ -157,10 +159,19 @@ func (e UserEdges) KnownAccountsOrErr() ([]*KnownAccount, error) {
 	return nil, &NotLoadedError{edge: "known_accounts"}
 }
 
+// TrustedDevicesOrErr returns the TrustedDevices value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) TrustedDevicesOrErr() ([]*TrustedDevice, error) {
+	if e.loadedTypes[8] {
+		return e.TrustedDevices, nil
+	}
+	return nil, &NotLoadedError{edge: "trusted_devices"}
+}
+
 // ConsentsOrErr returns the Consents value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) ConsentsOrErr() ([]*Consent, error) {
-	if e.loadedTypes[8] {
+	if e.loadedTypes[9] {
 		return e.Consents, nil
 	}
 	return nil, &NotLoadedError{edge: "consents"}
@@ -169,7 +180,7 @@ func (e UserEdges) ConsentsOrErr() ([]*Consent, error) {
 // FederatedIdentitiesOrErr returns the FederatedIdentities value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) FederatedIdentitiesOrErr() ([]*FederatedIdentity, error) {
-	if e.loadedTypes[9] {
+	if e.loadedTypes[10] {
 		return e.FederatedIdentities, nil
 	}
 	return nil, &NotLoadedError{edge: "federated_identities"}
@@ -357,6 +368,11 @@ func (_m *User) QueryPasswordResetTokens() *PasswordResetTokenQuery {
 // QueryKnownAccounts queries the "known_accounts" edge of the User entity.
 func (_m *User) QueryKnownAccounts() *KnownAccountQuery {
 	return NewUserClient(_m.config).QueryKnownAccounts(_m)
+}
+
+// QueryTrustedDevices queries the "trusted_devices" edge of the User entity.
+func (_m *User) QueryTrustedDevices() *TrustedDeviceQuery {
+	return NewUserClient(_m.config).QueryTrustedDevices(_m)
 }
 
 // QueryConsents queries the "consents" edge of the User entity.

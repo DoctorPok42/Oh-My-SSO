@@ -104,6 +104,9 @@ type MFAService struct {
 	passkeys      PasskeyProvider
 	notifier      Notifier
 	timeouts      TimeoutChecker
+	trusted       *TrustedDeviceService
+	risk          LoginRiskChecker
+	memory        SignInMemory
 	issuerName    string                            // optional override
 	now           func() time.Time
 	logger        *slog.Logger
@@ -130,6 +133,14 @@ type MFADeps struct {
 	// Timeouts is checked by the sign-in without password, like
 	// AuthenticateLocal does after a password. nil: NoActiveTimeouts.
 	Timeouts TimeoutChecker
+	// TrustedDevices: "Don't ask again on this device" (Step 18d). nil: off.
+	TrustedDevices *TrustedDeviceService
+	// Risk judges a sign-in on a trusted device before the second factor is
+	// skipped (LoginSecurityService). nil: never judged.
+	Risk LoginRiskChecker
+	// Memory: the second factor a user prefers on a device comes first
+	// (Step 18e, KnownAccountService). nil: always the best one first.
+	Memory SignInMemory
 	// IssuerName overrides the name shown in authenticator apps
 	// (default: the realm display name, or "Oh-My-SSO (<realm>)").
 	IssuerName string
@@ -154,6 +165,9 @@ func NewMFAService(d MFADeps) *MFAService {
 		passkeys:      d.Passkeys,
 		notifier:      d.Notifier,
 		timeouts:      d.Timeouts,
+		trusted:       d.TrustedDevices,
+		risk:          d.Risk,
+		memory:        d.Memory,
 		issuerName:    d.IssuerName,
 		now:           d.Now,
 		logger:        d.Logger,
@@ -212,6 +226,12 @@ type LoginDecision struct {
 	ChallengeToken     string // LoginMFARequired only: goes in the sso_mfa cookie
 	ChallengeExpiresAt time.Time
 	Requirement        MFARequirement
+	// TrustedDevice (LoginAuthenticated): the second factor was skipped, the
+	// device is trusted. The session must say so (CreateSessionInput).
+	TrustedDevice bool
+	// TrustDeviceDays (LoginMFARequired): the sign-in page may offer "Don't
+	// ask again on this device" for that many days. 0: no box.
+	TrustDeviceDays int
 }
 
 // BeginLogin decides, after a correct password, whether a second factor is
@@ -259,6 +279,17 @@ func (s *MFAService) BeginLogin(ctx context.Context, in BeginLoginInput) (*Login
 		}
 	}
 
+	methods = s.preferredFirst(ctx, in.User.RealmID, in.DeviceFingerprint, in.User.ID, methods)
+
+	offer := 0
+	if !req.Required {
+		days, skip := s.trustedDevice(ctx, in)
+		if skip {
+			return &LoginDecision{Outcome: LoginAuthenticated, Requirement: req, TrustedDevice: true}, nil
+		}
+		offer = days
+	}
+
 	token, expires, err := s.saveChallenge(ctx, in, methods)
 	if err != nil {
 		return nil, err
@@ -269,7 +300,74 @@ func (s *MFAService) BeginLogin(ctx context.Context, in BeginLoginInput) (*Login
 		ChallengeToken:     token,
 		ChallengeExpiresAt: expires,
 		Requirement:        req,
+		TrustDeviceDays:    offer,
 	}, nil
+}
+
+// preferredFirst puts the second factor the user prefers on this device
+// first (Step 18e). No memory, no device, no preference: unchanged.
+func (s *MFAService) preferredFirst(ctx context.Context, realmID, deviceHash, userID string, methods []domain.MfaMethodType) []domain.MfaMethodType {
+	if s.memory == nil || deviceHash == "" {
+		return methods
+	}
+	return preferSecondFactor(methods, s.memory.PreferredSecondFactor(ctx, realmID, deviceHash, userID))
+}
+
+// trustedDevice decides, for a sign-in that no policy requires MFA for,
+// whether the device is trusted and the second factor can be skipped. It
+// also returns how many days the box may promise (0: the realm does not
+// offer it, or the browser has no device cookie). Every doubt asks for the
+// second factor: an error, or a sign-in that looks suspicious (new
+// country, unusual hour...), which is audited.
+func (s *MFAService) trustedDevice(ctx context.Context, in BeginLoginInput) (days int, skip bool) {
+	if s.trusted == nil || in.DeviceFingerprint == "" {
+		return 0, false
+	}
+	on, period := s.trusted.Policy(ctx, in.User.RealmID)
+	if !on {
+		return 0, false
+	}
+	days = int(period / (24 * time.Hour))
+	d, ok, err := s.trusted.Check(ctx, in.User, in.DeviceFingerprint)
+	if err != nil {
+		s.logger.WarnContext(ctx, "trusted device check failed, asking for the second factor", "user_id", in.User.ID, "error", err)
+		return days, false
+	}
+	if !ok {
+		return days, false
+	}
+	if reasons := s.signInRisk(ctx, in); len(reasons) > 0 {
+		s.auditEvent(ctx, in.User, "mfa_trusted_device_challenged", "TrustedDevice", d.ID, domain.AuditLogInfo, map[string]interface{}{
+			"reasons": reasons,
+		})
+		return days, false
+	}
+	s.trusted.Used(ctx, d, in.IPAddress, in.UserAgent)
+	return days, true
+}
+
+// LoginRiskChecker judges a sign-in before it happens: the reasons it would
+// be suspicious (domain.Suspicious*), none when it looks normal.
+type LoginRiskChecker interface {
+	SignInRisk(ctx context.Context, candidate *domain.Session) ([]string, error)
+}
+
+// riskCheckFailed: the risk could not be judged; the second factor is asked.
+const riskCheckFailed = "risk_check_failed"
+
+func (s *MFAService) signInRisk(ctx context.Context, in BeginLoginInput) []string {
+	if s.risk == nil {
+		return nil
+	}
+	reasons, err := s.risk.SignInRisk(ctx, &domain.Session{
+		RealmID: in.User.RealmID, UserID: in.User.ID, CreatedAt: s.now(),
+		IPAddress: in.IPAddress, UserAgent: in.UserAgent, DeviceFingerprint: in.DeviceFingerprint,
+	})
+	if err != nil {
+		s.logger.WarnContext(ctx, "sign-in risk check failed, asking for the second factor", "user_id", in.User.ID, "error", err)
+		return []string{riskCheckFailed}
+	}
+	return reasons
 }
 
 func (s *MFAService) saveChallenge(ctx context.Context, in BeginLoginInput, methods []domain.MfaMethodType) (string, time.Time, error) {
@@ -302,6 +400,8 @@ type VerifyLoginInput struct {
 	Code           string
 	IPAddress      string
 	UserAgent      string
+	// TrustDevice: "Don't ask again on this device" is ticked.
+	TrustDevice bool
 }
 
 // VerifiedLogin is the result of a successful second factor at login.
@@ -316,6 +416,8 @@ type VerifiedLogin struct {
 	Requirement MFARequirement
 	// BackupCodesRemaining is set when a backup code was used (-1 otherwise).
 	BackupCodesRemaining int
+	// DeviceTrusted: the box was ticked and the device is now trusted.
+	DeviceTrusted bool
 }
 
 func (s *MFAService) VerifyLogin(ctx context.Context, in VerifyLoginInput) (*VerifiedLogin, error) {
@@ -340,7 +442,7 @@ func (s *MFAService) VerifyLogin(ctx context.Context, in VerifyLoginInput) (*Ver
 		s.recordMFAFailure(ctx, user, in.IPAddress, in.UserAgent)
 		return nil, &MFACodeError{AttemptsRemaining: lc.remaining()}
 	}
-	return s.finishLogin(ctx, lc, user, method, in.IPAddress, in.UserAgent)
+	return s.finishLogin(ctx, lc, user, method, in.IPAddress, in.UserAgent, in.TrustDevice)
 }
 
 // openedChallenge is a login challenge being answered.
@@ -393,7 +495,9 @@ func (s *MFAService) challengeUser(ctx context.Context, lc *openedChallenge) (*d
 }
 
 // finishLogin consumes the challenge and creates the MFA-verified session.
-func (s *MFAService) finishLogin(ctx context.Context, lc *openedChallenge, user *domain.User, method domain.MfaMethodType, ip, ua string) (*VerifiedLogin, error) {
+// trust: "Don't ask again on this device" was ticked; it is honoured when
+// no policy requires MFA for this sign-in (the box was offered then).
+func (s *MFAService) finishLogin(ctx context.Context, lc *openedChallenge, user *domain.User, method domain.MfaMethodType, ip, ua string, trust bool) (*VerifiedLogin, error) {
 	// Single use: if a concurrent request already finished this challenge,
 	// stop here (its session is the only one).
 	taken, err := s.store.TakeChallenge(ctx, lc.key)
@@ -418,6 +522,9 @@ func (s *MFAService) finishLogin(ctx context.Context, lc *openedChallenge, user 
 	if err != nil {
 		return nil, err
 	}
+	if s.memory != nil {
+		s.memory.SecondFactorUsed(ctx, user.RealmID, lc.c.Device, user.ID, method, methodTypes(lc.c.Methods))
+	}
 
 	out := &VerifiedLogin{
 		RawToken: raw, Session: sess, User: user, Method: method,
@@ -431,6 +538,14 @@ func (s *MFAService) finishLogin(ctx context.Context, lc *openedChallenge, user 
 		out.Requirement = req
 		if req.Required && !req.Allows(method) {
 			out.Outcome = LoginMFAEnrollmentRequired
+		}
+		if trust && !req.Required && s.trusted != nil {
+			// The session exists: a failure here only costs the box.
+			if d, err := s.trusted.Trust(ctx, user, lc.c.Device, ip, ua); err != nil {
+				s.logger.WarnContext(ctx, "trust device", "user_id", user.ID, "error", err)
+			} else {
+				out.DeviceTrusted = d != nil
+			}
 		}
 	}
 	if method == domain.MfaMethodBackupCodes {
@@ -593,6 +708,7 @@ func (s *MFAService) Status(ctx context.Context, sess *domain.Session, client *d
 	if err != nil {
 		return nil, err
 	}
+	answerable = s.preferredFirst(ctx, sess.RealmID, sess.DeviceFingerprint, sess.UserID, answerable)
 	maxAge := s.policy.StepUpMaxAge(ctx, sess.RealmID)
 	st := &MFAStatus{
 		Requirement:     req,

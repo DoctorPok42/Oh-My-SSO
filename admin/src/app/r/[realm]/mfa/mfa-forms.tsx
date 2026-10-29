@@ -14,6 +14,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { TogglePill } from "@/components/ui/toggle-pill";
 import { MFA_METHOD_LABELS } from "@/lib/labels";
+import { realmMfaDraft, realmMfaPatch, TRUSTED_DEVICE_DAYS } from "@/lib/mfa-form";
 import type { MfaPolicies, RolePolicy } from "@/lib/types";
 import { deleteRoleMfa, setRealmMfa, setRoleMfa } from "./actions";
 
@@ -28,11 +29,14 @@ export function RealmMfaCard({
   writable: boolean;
   system: boolean;
 }) {
-  const [required, setRequired] = useState(policies.required_globally);
-  const [maxAge, setMaxAge] = useState(String(policies.step_up_max_age_minutes));
+  const [draft, setDraft] = useState(() => realmMfaDraft(policies));
+  const { required, maxAge, trusted, trustedDays } = draft;
+  const set = <K extends keyof typeof draft>(k: K, v: (typeof draft)[K]) => setDraft((d) => ({ ...d, [k]: v }));
+  const setRequired = (v: boolean) => set("required", v);
   const { locked, banner } = useEditLock({ canWrite: writable });
   const { run, pending } = useAction();
-  const dirty = required !== policies.required_globally || maxAge !== String(policies.step_up_max_age_minutes);
+  const patch = realmMfaPatch(policies, draft, system);
+  const dirty = Object.keys(patch).length > 0;
   return (
     <Card>
       <CardTitle>Realm policy</CardTitle>
@@ -67,24 +71,50 @@ export function RealmMfaCard({
             min={1}
             max={1440}
             value={maxAge}
-            onChange={(e) => setMaxAge(e.target.value)}
+            onChange={(e) => set("maxAge", e.target.value)}
             disabled={locked}
             className="w-32"
           />
         </Field>
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-4 py-3">
+          <div>
+            <p className="text-[14px] font-medium">&quot;Don&apos;t ask again on this device&quot;</p>
+            <p className="text-[12px] text-text-muted">
+              {system
+                ? "Always off in the master realm: its accounts always give a second factor."
+                : "After a second factor, users may skip it on that device. Applications and roles that require MFA still ask, and so does a sign-in that looks suspicious."}
+            </p>
+          </div>
+          <TogglePill
+            checked={trusted}
+            onCheckedChange={locked || system ? undefined : (v) => set("trusted", v)}
+            onLabel="Offered"
+            offLabel="Off"
+            label="Offer Don't ask again on this device"
+          />
+        </div>
+        {trusted && !system && (
+          <Field
+            label="Trusted for (days)"
+            htmlFor="mfa-trusted-days"
+            hint={`A fixed period from the moment the box is ticked. ${TRUSTED_DEVICE_DAYS.min} to ${TRUSTED_DEVICE_DAYS.max}.`}
+          >
+            <Input
+              id="mfa-trusted-days"
+              type="number"
+              min={TRUSTED_DEVICE_DAYS.min}
+              max={TRUSTED_DEVICE_DAYS.max}
+              value={trustedDays}
+              onChange={(e) => set("trustedDays", e.target.value)}
+              disabled={locked}
+              className="w-32"
+            />
+          </Field>
+        )}
         <Button
           loading={pending}
           disabled={locked || pending || !dirty}
-          onClick={() =>
-            run(
-              () =>
-                setRealmMfa(realm, {
-                  required_globally: system ? undefined : required,
-                  step_up_max_age_minutes: Number(maxAge),
-                }),
-              { success: "Realm MFA policy saved" },
-            )
-          }
+          onClick={() => run(() => setRealmMfa(realm, patch), { success: "Realm MFA policy saved" })}
         >
           Save
         </Button>

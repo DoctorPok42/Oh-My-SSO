@@ -97,6 +97,35 @@ func (f *fakeKnownAccounts) Trim(_ context.Context, realmID, deviceHash string, 
 	return n, nil
 }
 
+func (f *fakeKnownAccounts) Find(_ context.Context, realmID, deviceHash, userID string) (*domain.KnownAccount, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, r := range f.rows {
+		if r.RealmID == realmID && r.DeviceHash == deviceHash && r.UserID == userID {
+			cp := *r
+			return &cp, nil
+		}
+	}
+	return nil, repository.ErrNotFound
+}
+
+func (f *fakeKnownAccounts) SetLastMethods(_ context.Context, realmID, deviceHash, userID string, p repository.LastMethodsParams) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, r := range f.rows {
+		if r.RealmID == realmID && r.DeviceHash == deviceHash && r.UserID == userID {
+			if p.LastMethod != nil {
+				r.LastMethod = *p.LastMethod
+			}
+			if p.LastSecondFactor != nil {
+				r.LastSecondFactor = *p.LastSecondFactor
+			}
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // Two devices: what the sso_device cookie holds (26 characters of base32).
 const (
 	deviceA = "AAAAAAAAAAAAAAAAAAAAAAAAAA"

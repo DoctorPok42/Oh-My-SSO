@@ -372,6 +372,8 @@ func (s *AdminService) ensureMasterSettings(ctx context.Context, realmID, actor 
 		// remembered sessions there by default ("Keep me signed in" off).
 		RememberMeEnabled: &no,
 		UpdatedBy:         &actor,
+		// ...and the second factor is never skipped (Step 18d).
+		MFATrustedDeviceEnabled: &no,
 	})
 	return true, err
 }

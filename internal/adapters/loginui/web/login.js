@@ -111,8 +111,23 @@
   const rememberBox = $("remember-me");
   const rememberChecked = () => !!(rememberBox && rememberBox.checked);
 
+  // "Don't ask again on this device" belongs to the second step, when the
+  // server offers it (trust_device_days: the realm allows it and this
+  // application does not require a second factor).
+  const trust = $("trust");
+  const trustBox = $("trust-device");
+  let trustDays = 0;
+  const trustChecked = () => step === "second" && trustDays > 0 && trustBox.checked;
+
+  function placeTrust(section, before) {
+    const on = step === "second" && trustDays > 0;
+    trust.hidden = !on;
+    if (on) section.insertBefore(trust, before);
+  }
+
   function hideAll() {
     cancelPasskey(); // leaving the screen closes its passkey prompt
+    trust.hidden = true;
     accounts.hidden = true;
     $("password-form").hidden = true;
     $("passkey-step").hidden = true;
@@ -152,15 +167,20 @@
       const section = $("passkey-step");
       section.hidden = false;
       placeRemember(section, $("passkey-btn"));
+      placeTrust(section, $("passkey-btn"));
       const who = step === "first" && tile ? ` to sign in as ${tile.identifier}` : step === "first" ? " to sign in" : " to confirm it's you";
       $("passkey-hint").textContent = `Use your passkey or security key${who}.`;
       $("passkey-status").hidden = true;
       $("passkey-btn").textContent = "Continue";
       $("passkey-btn").disabled = false;
-      if (launch) runPasskey();
+      // The prompt covers the page: with "Don't ask again on this device"
+      // on screen, it waits for "Continue" so the box can be ticked first.
+      if (launch && trust.hidden) runPasskey();
       else $("passkey-btn").focus();
     } else {
-      $("code-form").hidden = false;
+      const form = $("code-form");
+      form.hidden = false;
+      placeTrust(form, form.querySelector("button[type=submit]"));
       const backup = method === "backup_code";
       $("code-hint").textContent = backup ? "Enter one of your backup codes." : "Enter the code from your authenticator app.";
       $("code-label").textContent = backup ? "Backup code" : "Code";
@@ -199,9 +219,13 @@
     list.querySelector("button").focus();
   });
 
-  function startSecondStep(serverMethods, nextStep) {
+  function startSecondStep(serverMethods, nextStep, offerDays) {
     step = nextStep;
     methods = secondStepMethods(serverMethods);
+    trustDays = nextStep === "second" ? offerDays || 0 : 0;
+    trustBox.checked = false;
+    $("trust-device-hint").textContent = `For ${trustDays} days, unless an application requires a second factor. ` +
+      "Leave this unchecked on a shared or public computer.";
     if (!methods.length) {
       hideAll();
       updateLinks(true);
@@ -228,15 +252,18 @@
     clearError();
     const form = ev.currentTarget;
     busy(form, true);
-    const { status, data } = await post("/auth/login", {
+    const body = {
       identifier: $("identifier").value,
       password: $("password").value,
       remember_me: rememberChecked(),
       [clientParam]: clientId,
-    });
+    };
+    // From a tile: the server remembers the password was chosen there.
+    if (tile) body.account_id = tile.account;
+    const { status, data } = await post("/auth/login", body);
     busy(form, false);
     if (status !== 200) return showError(data.error);
-    if (data.status === "mfa_required") return startSecondStep(data.methods, "second");
+    if (data.status === "mfa_required") return startSecondStep(data.methods, "second", data.trust_device_days);
     done(); // "authenticated" or "mfa_enrollment_required"
   });
 
@@ -247,7 +274,9 @@
     const method = current === "backup_code" ? "backup_code" : "totp";
     busy(form, true);
     const path = step === "stepup" ? "/auth/step-up" : "/auth/mfa/verify";
-    const { status, data } = await post(path, { method, code: $("code").value.trim() });
+    const body = { method, code: $("code").value.trim() };
+    if (trustChecked()) body.trust_device = true;
+    const { status, data } = await post(path, body);
     busy(form, false);
     if (status === 200) return done();
     if (data.error === "mfa_challenge_expired") return restart(data.error);
@@ -352,7 +381,9 @@
     }
     if (!live()) return; // answered too late: the user went elsewhere
     status.hidden = true;
-    const answer = step === "first" ? { credential: credentialJSON(cred), remember_me: rememberChecked() } : credentialJSON(cred);
+    const answer = step === "first" ? { credential: credentialJSON(cred), remember_me: rememberChecked() }
+      : step === "second" ? { credential: credentialJSON(cred), trust_device: trustChecked() }
+      : credentialJSON(cred);
     btn.disabled = true;
     const res = await post(prefix + "/verify", answer);
     btn.disabled = false;

@@ -142,6 +142,16 @@ func MfaStepUpMaxAgeMinutes(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldMfaStepUpMaxAgeMinutes, v))
 }
 
+// MfaTrustedDeviceEnabled applies equality check predicate on the "mfa_trusted_device_enabled" field. It's identical to MfaTrustedDeviceEnabledEQ.
+func MfaTrustedDeviceEnabled(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMfaTrustedDeviceEnabled, v))
+}
+
+// MfaTrustedDeviceDays applies equality check predicate on the "mfa_trusted_device_days" field. It's identical to MfaTrustedDeviceDaysEQ.
+func MfaTrustedDeviceDays(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMfaTrustedDeviceDays, v))
+}
+
 // PasswordResetTTLMinutes applies equality check predicate on the "password_reset_ttl_minutes" field. It's identical to PasswordResetTTLMinutesEQ.
 func PasswordResetTTLMinutes(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldPasswordResetTTLMinutes, v))
@@ -749,6 +759,56 @@ func MfaStepUpMaxAgeMinutesLT(v int) predicate.InstanceSettings {
 // MfaStepUpMaxAgeMinutesLTE applies the LTE predicate on the "mfa_step_up_max_age_minutes" field.
 func MfaStepUpMaxAgeMinutesLTE(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldLTE(FieldMfaStepUpMaxAgeMinutes, v))
+}
+
+// MfaTrustedDeviceEnabledEQ applies the EQ predicate on the "mfa_trusted_device_enabled" field.
+func MfaTrustedDeviceEnabledEQ(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMfaTrustedDeviceEnabled, v))
+}
+
+// MfaTrustedDeviceEnabledNEQ applies the NEQ predicate on the "mfa_trusted_device_enabled" field.
+func MfaTrustedDeviceEnabledNEQ(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldMfaTrustedDeviceEnabled, v))
+}
+
+// MfaTrustedDeviceDaysEQ applies the EQ predicate on the "mfa_trusted_device_days" field.
+func MfaTrustedDeviceDaysEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMfaTrustedDeviceDays, v))
+}
+
+// MfaTrustedDeviceDaysNEQ applies the NEQ predicate on the "mfa_trusted_device_days" field.
+func MfaTrustedDeviceDaysNEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldMfaTrustedDeviceDays, v))
+}
+
+// MfaTrustedDeviceDaysIn applies the In predicate on the "mfa_trusted_device_days" field.
+func MfaTrustedDeviceDaysIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldMfaTrustedDeviceDays, vs...))
+}
+
+// MfaTrustedDeviceDaysNotIn applies the NotIn predicate on the "mfa_trusted_device_days" field.
+func MfaTrustedDeviceDaysNotIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldMfaTrustedDeviceDays, vs...))
+}
+
+// MfaTrustedDeviceDaysGT applies the GT predicate on the "mfa_trusted_device_days" field.
+func MfaTrustedDeviceDaysGT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldMfaTrustedDeviceDays, v))
+}
+
+// MfaTrustedDeviceDaysGTE applies the GTE predicate on the "mfa_trusted_device_days" field.
+func MfaTrustedDeviceDaysGTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldMfaTrustedDeviceDays, v))
+}
+
+// MfaTrustedDeviceDaysLT applies the LT predicate on the "mfa_trusted_device_days" field.
+func MfaTrustedDeviceDaysLT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldMfaTrustedDeviceDays, v))
+}
+
+// MfaTrustedDeviceDaysLTE applies the LTE predicate on the "mfa_trusted_device_days" field.
+func MfaTrustedDeviceDaysLTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldMfaTrustedDeviceDays, v))
 }
 
 // PasswordResetTTLMinutesEQ applies the EQ predicate on the "password_reset_ttl_minutes" field.

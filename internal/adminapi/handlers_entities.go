@@ -387,6 +387,9 @@ func (s *Server) handleGetUser(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, r, err)
 		return
 	}
+	for i := range v.TrustedDevices {
+		v.TrustedDevices[i].Device = notify.DescribeUserAgent(v.TrustedDevices[i].UserAgent)
+	}
 	writeJSON(w, http.StatusOK, v)
 }
 
@@ -491,6 +494,25 @@ func (s *Server) handleActivationLink(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleRevokeUserSessions(w http.ResponseWriter, r *http.Request) {
 	if err := s.d.Admin.RevokeUserSessions(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id")); err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleRevokeTrustedDevice: the next sign-in on that device asks for the
+// second factor again (Step 18d).
+func (s *Server) handleRevokeTrustedDevice(w http.ResponseWriter, r *http.Request) {
+	if err := s.d.Admin.RevokeTrustedDevice(r.Context(), adminFrom(r).actor, realmFrom(r),
+		chi.URLParam(r, "id"), chi.URLParam(r, "deviceID")); err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleRevokeTrustedDevices(w http.ResponseWriter, r *http.Request) {
+	if err := s.d.Admin.RevokeTrustedDevices(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id")); err != nil {
 		writeServiceError(w, r, err)
 		return
 	}

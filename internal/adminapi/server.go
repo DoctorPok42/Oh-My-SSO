@@ -167,6 +167,8 @@ func New(cfg Config, d Deps) *Server {
 			r.With(write("user", "write")...).Post("/users/{id}/unlock", s.handleUnlockUser)
 			r.With(write("user", "write")...).Post("/users/{id}/activation-link", s.handleActivationLink)
 			r.With(write("session", "revoke")...).Delete("/users/{id}/sessions", s.handleRevokeUserSessions)
+			r.With(write("session", "revoke")...).Delete("/users/{id}/trusted-devices", s.handleRevokeTrustedDevices)
+			r.With(write("session", "revoke")...).Delete("/users/{id}/trusted-devices/{deviceID}", s.handleRevokeTrustedDevice)
 
 			r.With(read("access")).Get("/roles", s.handleListRoles)
 			r.With(write("access", "write")...).Post("/roles", s.handleCreateRole)

@@ -32,6 +32,9 @@ type loginRequest struct {
 	// RememberMe: "Keep me signed in" is ticked. Ignored when the realm
 	// does not offer it.
 	RememberMe bool `json:"remember_me,omitempty"`
+	// AccountID: the password was typed on this tile of "Pick an account"
+	// (Step 18e: the tile then starts with the password).
+	AccountID string `json:"account_id,omitempty"`
 }
 
 // loginResponse. "status" tells the next step:
@@ -49,6 +52,11 @@ type loginResponse struct {
 	MFAEnrollmentDueAt string   `json:"mfa_enrollment_due_at,omitempty"`
 	// RememberMe: the session is a remembered one (persistent cookie).
 	RememberMe bool `json:"remember_me,omitempty"`
+	// mfa_required: the page may offer "Don't ask again on this device"
+	// for that many days (absent: no box). authenticated: TrustedDevice
+	// tells the second factor was skipped, the device is trusted.
+	TrustDeviceDays int  `json:"trust_device_days,omitempty"`
+	TrustedDevice   bool `json:"trusted_device,omitempty"`
 }
 
 type errorResponse struct {
@@ -78,6 +86,22 @@ func (s *Server) mountAuth(r chi.Router) {
 			r.Use(s.requireSession)
 			r.Get("/session", s.handleGetSession)
 		})
+	})
+}
+
+// rememberPasswordChoice: a correct password typed on a tile that also
+// offered a passkey. On this device, the tile now starts with the password
+// (Step 18e). Best effort: nothing here fails the sign-in.
+func (s *Server) rememberPasswordChoice(r *http.Request, realmID string, user *domain.User, client *domain.ClientApp, accountID string) {
+	if accountID == "" || s.accounts == nil || s.mfa == nil {
+		return
+	}
+	offered, err := s.mfa.SignInMethods(r.Context(), user, client)
+	if err != nil {
+		return // cannot tell whether a passkey was offered: remember nothing
+	}
+	s.accounts.PasswordChosen(r.Context(), service.PasswordChosenInput{
+		RealmID: realmID, DeviceID: deviceIDFromRequest(r), AccountID: accountID, UserID: user.ID, Offered: offered,
 	})
 }
 
@@ -138,6 +162,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	resp := loginResponse{Status: string(service.LoginAuthenticated), UserID: user.ID}
 	device := service.DeviceFingerprint(ensureDeviceCookie(w, r, realm.Name))
+	s.rememberPasswordChoice(r, realm.ID, user, client, req.AccountID)
 
 	if s.mfa != nil {
 		dec, err := s.mfa.BeginLogin(r.Context(), service.BeginLoginInput{
@@ -159,15 +184,17 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		case service.LoginMFARequired:
 			setMFAChallengeCookie(w, realm.Name, dec.ChallengeToken, dec.ChallengeExpiresAt)
 			writeJSON(w, http.StatusOK, loginResponse{
-				Status:    string(dec.Outcome),
-				Methods:   methodStrings(dec.Methods),
-				ExpiresAt: dec.ChallengeExpiresAt.UTC().Format(time.RFC3339),
+				Status:          string(dec.Outcome),
+				Methods:         methodStrings(dec.Methods),
+				ExpiresAt:       dec.ChallengeExpiresAt.UTC().Format(time.RFC3339),
+				TrustDeviceDays: dec.TrustDeviceDays,
 			})
 			return
 		case service.LoginMFAEnrollmentRequired:
 			resp.Status = string(dec.Outcome)
 			resp.AllowedMethods = methodStrings(dec.Methods)
 		}
+		resp.TrustedDevice = dec.TrustedDevice
 	}
 
 	rawToken, sess, err := s.sessions.Create(r.Context(), service.CreateSessionInput{
@@ -178,6 +205,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		AuthMethod:        domain.AuthMethodPassword,
 		DeviceFingerprint: device,
 		RememberMe:        req.RememberMe,
+		TrustedDevice:     resp.TrustedDevice,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error")
