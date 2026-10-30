@@ -346,7 +346,7 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	require.Equal(t, http.StatusOK, status)
 	for _, g := range groupsOut["items"].([]any) {
 		g := g.(map[string]any)
-		status, out = e.call(t, at, http.MethodDelete, "/api/v1/realms/master/groups/"+g["id"].(string), nil)
+		status, _ = e.call(t, at, http.MethodDelete, "/api/v1/realms/master/groups/"+g["id"].(string), nil)
 		require.Equal(t, http.StatusConflict, status, "group %s is a system group", g["name"])
 	}
 
@@ -422,9 +422,9 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	status, _ = e.call(t, "eyJhbGciOiJub25lIn0.e30.", http.MethodGet, "/api/v1/me", nil)
 	require.Equal(t, http.StatusUnauthorized, status)
 
-	rec, err := e.admin.RecoverAdmin(ctx, service.RecoverAdminInput{Email: "root@example.test", Actor: "cli:test@host"})
+	_, err = e.admin.RecoverAdmin(ctx, service.RecoverAdminInput{Email: "root@example.test", Actor: "cli:test@host"})
 	require.Error(t, err, "recovery never touches an existing account")
-	rec, err = e.admin.RecoverAdmin(ctx, service.RecoverAdminInput{Email: "breakglass@example.test", Actor: "cli:test@host"})
+	rec, err := e.admin.RecoverAdmin(ctx, service.RecoverAdminInput{Email: "breakglass@example.test", Actor: "cli:test@host"})
 	require.NoError(t, err)
 	require.True(t, strings.HasPrefix(rec.Username, "recovery-"))
 	alerts := e.notifier.kinds(domain.NotificationAdminRecovery)

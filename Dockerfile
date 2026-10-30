@@ -7,7 +7,7 @@
 # manager, a non-root user. https://github.com/GoogleContainerTools/distroless
 # Templates, login pages and dev pages are embedded in the binaries (go:embed).
 # ==============================================================================
-ARG GO_VERSION=1.26.7
+ARG GO_VERSION=1.26.10
 
 FROM golang:${GO_VERSION}-alpine AS build
 WORKDIR /src
