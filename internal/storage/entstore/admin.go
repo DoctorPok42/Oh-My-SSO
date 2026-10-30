@@ -680,6 +680,9 @@ func (r *entAdminRepository) SearchAuditLogs(ctx context.Context, f repository.A
 	if f.Action != "" {
 		preds = append(preds, auditlog.Action(f.Action))
 	}
+	if len(f.Actions) > 0 {
+		preds = append(preds, auditlog.ActionIn(f.Actions...))
+	}
 	if f.Status != "" {
 		preds = append(preds, auditlog.StatusEQ(entschema.AuditLogStatus(f.Status)))
 	}

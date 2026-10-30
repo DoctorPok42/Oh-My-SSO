@@ -5,28 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <title>Forgot password · {{.RealmDisplay}}</title>
+<link rel="stylesheet" href="{{.Assets}}/omsso.css">
 <link rel="stylesheet" href="{{.Assets}}/login.css">
 <script src="{{.Assets}}/password.js" defer></script>
 </head>
 <body>
-<main class="card" id="forgot" data-base="{{.Base}}">
+<main class="auth">
+<div class="auth-inner">
+<div class="auth-card" id="forgot" data-base="{{.Base}}">
+  {{template "logo"}}
   <header>
-    <p class="realm">{{.RealmDisplay}}</p>
-    <h1>Forgot your password?</h1>
-    <p class="hint">Enter your username or e-mail. If an account matches, we send a link to choose a new password.</p>
+    <p class="auth-eyebrow">{{.RealmDisplay}}</p>
+    <h1 class="auth-title">Forgot your password?</h1>
+    <p class="auth-subtitle">Enter your username or e-mail. If an account matches, we send a link to choose a new password.</p>
   </header>
 
-  <p class="alert" id="error" role="alert" hidden></p>
-  <p class="notice" id="sent" role="status" hidden>If an account matches, an e-mail is on its way. The link works once and expires soon. Check your spam folder if you do not see it.</p>
-  <noscript><p class="alert">This page needs JavaScript.</p></noscript>
+  <div class="auth-body">
+  <p class="banner banner-danger" id="error" role="alert" hidden></p>
+  <p class="banner banner-success" id="sent" role="status" hidden>If an account matches, an e-mail is on its way. The link works once and expires soon. Check your spam folder if you do not see it.</p>
+  <noscript><p class="banner banner-danger">This page needs JavaScript.</p></noscript>
 
-  <form id="forgot-form">
-    <label for="identifier">Username or e-mail</label>
-    <input id="identifier" name="identifier" autocomplete="username" required autofocus>
-    <button type="submit">Send the link</button>
+  <form class="stack" id="forgot-form">
+    <div>
+      <label class="label" for="identifier">Username or e-mail</label>
+      <input class="input" id="identifier" name="identifier" autocomplete="username" required autofocus>
+    </div>
+    <button type="submit" class="btn btn-md btn-block">Send the link</button>
   </form>
 
-  <p class="links"><button type="button" id="back">Back</button></p>
+  <p class="auth-links"><button type="button" class="btn btn-link" id="back">Back</button></p>
+  </div>
+</div>
+{{template "auth-footer"}}
+</div>
 </main>
 </body>
 </html>

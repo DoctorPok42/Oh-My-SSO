@@ -185,8 +185,8 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, p *pending
 		Passkeys:     a.cfg.PasskeysEnabled,
 		CancelURL:    base + "/saml/login?id=" + url.QueryEscape(p.ID) + "&cancel=1",
 	}
-	if a.cfg.DevPages {
-		page.EnrollURL = base + "/dev/mfa"
+	if a.cfg.AccountConsole {
+		page.EnrollURL = base + "/account/security"
 	}
 	if a.cfg.PasswordReset {
 		page.ForgotPasswordURL = base + "/auth/forgot-password"

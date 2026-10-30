@@ -12,15 +12,17 @@ import (
 	"time"
 	"unicode"
 
+	"sso.internal/sso/internal/adapters/uikit"
 	"sso.internal/sso/internal/core"
 )
 
 //go:embed web/*.html web/*.js web/*.css
 var webFS embed.FS
 
-// PageCSP is the Content-Security-Policy of the pages: only our own script
-// and style, requests only to ourselves, no framing (clickjacking).
-const PageCSP = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; " +
+// PageCSP is the Content-Security-Policy of the pages: only our own script,
+// style and fonts (the design system's, see uikit), requests only to
+// ourselves, no framing (clickjacking).
+const PageCSP = "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; " +
 	"img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
 
 // Pages renders the templates.
@@ -44,7 +46,12 @@ func New(logger *slog.Logger) (*Pages, error) {
 // Login is the data of the sign-in page.
 type Login struct {
 	RealmDisplay string
-	ClientName   string
+	// ClientName: "to continue to <ClientName>". Empty (the account
+	// console): Subtitle instead, if any.
+	ClientName string
+	Subtitle   string
+	// Notice: one sentence above the form ("For your security, ...").
+	Notice string
 	// ClientParam and ClientID tell the page how to name the application to
 	// the JSON API, so that its MFA policy applies right away: "client_id"
 	// (OIDC) or "entity_id" (SAML), and its value.
@@ -56,8 +63,13 @@ type Login struct {
 	Methods     string // stepup: allowed methods, comma separated ("" = any)
 	Passkeys    bool
 	LoginHint   string
-	CancelURL   string
-	EnrollURL   string // dev pages only
+	// CancelURL: the link at the bottom ("" = no link), with CancelText
+	// ("" = "Cancel and go back to the application").
+	CancelURL  string
+	CancelText string
+	// EnrollURL: where to add a second factor when the application requires
+	// one the user does not have (the Security page of the account console).
+	EnrollURL         string
 	ForgotPasswordURL string
 	// RememberMe shows "Keep me signed in" under the password, for at
 	// most RememberMeDays days.
@@ -293,9 +305,14 @@ func (p *Pages) render(w http.ResponseWriter, status int, name, csp string, data
 	}
 }
 
-// Asset serves login.js, login.css, autopost.js and password.js. name is the file name
-// (the last path segment of the request).
+// Asset serves login.js, login.css, autopost.js and password.js, and the
+// design system's files (uikit: omsso.css and its fonts). name is the file
+// name (the last path segment of the request).
 func Asset(w http.ResponseWriter, r *http.Request, name string) {
+	if uikit.HasAsset(name) {
+		uikit.Asset(w, r, name)
+		return
+	}
 	var ctype string
 	switch path.Ext(name) {
 	case ".js":

@@ -25,4 +25,5 @@ const (
 	LogoutViaSAML          LogoutVia = "saml_slo"       // SAML Single Logout
 	LogoutViaAccountSwitch LogoutVia = "account_switch" // another account signed in in this browser
 	LogoutViaForget        LogoutVia = "forget"         // "Sign out and forget" on the sign-in page
+	LogoutViaAccount       LogoutVia = "account"        // "Sign out" in the account console
 )

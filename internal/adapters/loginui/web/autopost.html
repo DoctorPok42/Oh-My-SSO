@@ -5,19 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <title>{{.Title}}</title>
+<link rel="stylesheet" href="{{.Assets}}/omsso.css">
 <link rel="stylesheet" href="{{.Assets}}/login.css">
 <script src="{{.Assets}}/autopost.js" defer></script>
 </head>
 <body>
-<main class="card">
-  <h1>{{.Title}}</h1>
+<main class="auth">
+<div class="auth-inner">
+<div class="auth-card">
+  {{template "logo"}}
+  <h1 class="auth-title">{{.Title}}</h1>
+  <div class="auth-body">
   <p>{{.Text}}</p>
   <form id="autopost" method="post" action="{{.Action}}">
     {{- range .Fields}}
     <input type="hidden" name="{{.Name}}" value="{{.Value}}">
     {{- end}}
-    <button type="submit">Continue</button>
+    <button type="submit" class="btn btn-md btn-block">Continue</button>
   </form>
+  </div>
+</div>
+{{template "auth-footer"}}
+</div>
 </main>
 </body>
 </html>

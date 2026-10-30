@@ -1,0 +1,62 @@
+{{define "content"}}
+<p class="back"><a href="{{.Base}}/security">← Security</a></p>
+<div class="page-header"><h1 class="page-title">Add an authenticator app</h1></div>
+<section class="card">
+  {{- if eq .Step "name"}}
+  <form id="totp-start" class="stack" method="post" action="{{.Base}}/security/totp">
+    <p>An authenticator app (Google Authenticator, Microsoft Authenticator, Aegis, 1Password...) shows a new 6-digit code every 30 seconds.</p>
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div>
+      <label class="label" for="totp-name">Name it</label>
+      <input class="input" id="totp-name" name="name" maxlength="100" placeholder="e.g. My phone" value="{{.Name}}" aria-describedby="totp-name-hint">
+      <p class="field-hint" id="totp-name-hint">To tell it apart if you add several.</p>
+    </div>
+    {{- with .FormError}}<p class="banner banner-danger" role="alert">{{.}}</p>{{end}}
+    <div class="actions">
+      <button type="submit" class="btn">Continue</button>
+      <a class="btn btn-secondary" href="{{.Base}}/security">Cancel</a>
+    </div>
+  </form>
+  {{- else}}
+  <ol class="steps">
+    <li>
+      <p>In your app, add an account and scan this QR code.</p>
+      {{- if .QR}}
+      <img class="qr" src="{{.QR}}" alt="QR code to scan with your authenticator app" width="200" height="200">
+      <div>
+        <p class="field-hint">Cannot scan? Type this key instead:</p>
+        <p class="secret" id="totp-secret">{{.Secret}}</p>
+      </div>
+      {{- else}}
+      <p class="field-hint">The QR code is not shown again. If your app does not have the account yet, <a href="{{.Base}}/security/totp">start over</a>.</p>
+      {{- end}}
+    </li>
+    <li>
+      <p>Enter the 6-digit code the app shows.</p>
+      {{/* With htmx, a wrong code only replaces the field: the QR code
+           stays on screen. */}}
+      <form id="totp-form" class="stack" method="post" action="{{.Base}}/security/totp/{{.MethodID}}/confirm"
+            hx-post="{{.Base}}/security/totp/{{.MethodID}}/confirm" hx-target="#totp-code-area" hx-swap="outerHTML">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        {{template "totp-code-area" .}}
+        <div class="actions">
+          <button type="submit" class="btn">Verify and add</button>
+          <a class="btn btn-secondary" href="{{.Base}}/security">Cancel</a>
+        </div>
+      </form>
+    </li>
+  </ol>
+  {{- if not .ExpiresAt.IsZero}}
+  <p class="card-note">This setup expires at {{template "time" .ExpiresAt}}.</p>
+  {{- end}}
+  {{- end}}
+</section>
+{{end}}
+
+{{define "totp-code-area"}}<div id="totp-code-area" class="stack">
+  <div>
+    <label class="label" for="totp-code">Code</label>
+    <input class="input" id="totp-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required autofocus{{if .FormError}} aria-invalid="true"{{end}}>
+  </div>
+  {{- with .FormError}}<p class="banner banner-danger" role="alert">{{.}}</p>{{end}}
+</div>{{end}}

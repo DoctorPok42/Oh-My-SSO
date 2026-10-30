@@ -67,6 +67,22 @@ func (r *entLoginAttemptRepository) ListByIP(ctx context.Context, ipAddress stri
 	return toDomainLoginAttempts(rows), nil
 }
 
+// ListByUser uses the index (user_id, created_at).
+func (r *entLoginAttemptRepository) ListByUser(ctx context.Context, userID string, page repository.Page) ([]*domain.LoginAttempt, error) {
+	offset, limit := clampPage(page)
+	rows, err := r.client.LoginAttempt.
+		Query().
+		Where(loginattempt.UserID(userID)).
+		Order(ent.Desc(loginattempt.FieldCreatedAt), ent.Desc(loginattempt.FieldID)).
+		Offset(offset).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainLoginAttempts(rows), nil
+}
+
 func toDomainLoginAttempts(rows []*ent.LoginAttempt) []*domain.LoginAttempt {
 	out := make([]*domain.LoginAttempt, 0, len(rows))
 	for _, e := range rows {

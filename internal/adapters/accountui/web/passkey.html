@@ -1,0 +1,40 @@
+{{define "content"}}
+<p class="back"><a href="{{.Base}}/security">← Security</a></p>
+<div class="page-header"><h1 class="page-title">Add a passkey or security key</h1></div>
+<section class="card stack" id="passkey-card">
+  <p>Your device confirms it's you with your fingerprint, face, PIN or a tap on your key. Nothing to type.</p>
+  <noscript><p class="banner banner-danger">This step needs JavaScript: your browser talks to your device through it.</p></noscript>
+  <form id="passkey-form" class="stack" data-api="{{.API}}" data-base="{{.Base}}">
+    <fieldset class="choice stack-sm">
+      <legend class="label">What do you want to add?</legend>
+      <label class="option"><input class="radio" type="radio" name="kind" value="passkey" checked>
+        <span><span class="option-title">A passkey</span><span class="option-hint">Saved by your phone, computer or password manager. It can also sign you in without your password.</span></span></label>
+      <label class="option"><input class="radio" type="radio" name="kind" value="security_key">
+        <span><span class="option-title">A security key</span><span class="option-hint">A USB or NFC key (YubiKey...), used after your password.</span></span></label>
+    </fieldset>
+    <div>
+      <label class="label" for="passkey-name">Name it</label>
+      <input class="input" id="passkey-name" name="name" maxlength="100" placeholder="e.g. Work laptop">
+    </div>
+    <p class="banner banner-danger" id="passkey-error" role="alert" hidden></p>
+    <p class="field-hint" id="passkey-status" role="status" hidden></p>
+    <div class="actions">
+      <button type="submit" class="btn" id="passkey-add">Continue</button>
+      <a class="btn btn-secondary" href="{{.Base}}/security">Cancel</a>
+    </div>
+  </form>
+  {{/* Filled by account.js when this is the first second step: the
+       backup codes come back with it, shown once. */}}
+  <div class="stack" id="passkey-codes" hidden>
+    <p class="banner banner-success" role="status">Added. Your account now has two-step verification.</p>
+    <h2 class="card-title" tabindex="-1">Save your backup codes</h2>
+    <p>Each code works once, if you lose your device. Keep them somewhere safe: they are not shown again.</p>
+    <ul class="codes" id="codes"></ul>
+    <div class="actions">
+      <button type="button" class="btn btn-secondary" data-copy-codes>Copy</button>
+      <button type="button" class="btn btn-secondary" data-download-codes>Download</button>
+      <a class="btn" href="{{.Base}}/security?done=passkey">I saved them</a>
+    </div>
+  </div>
+</section>
+{{end}}

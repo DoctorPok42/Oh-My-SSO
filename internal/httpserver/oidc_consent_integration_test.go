@@ -20,7 +20,7 @@ import (
 )
 
 
-var reConsentAction = regexp.MustCompile(`<form method="post" action="([^"]*)">`)
+var reConsentAction = regexp.MustCompile(`<form [^>]*method="post" action="([^"]*)"`)
 
 // consentForm reads the consent page: where it posts, and its hidden fields
 // (request id and one-time token).
@@ -96,7 +96,7 @@ func TestOIDC_Integration_Consent(t *testing.T) {
 			require.Contains(t, page, item)
 		}
 		require.Contains(t, page, "partner.example.test", "where the user goes next")
-		require.NotContains(t, page, `class="tag"`, "first use: nothing is marked new")
+		require.NotContains(t, page, `>new</span>`, "first use: nothing is marked new")
 		require.Equal(t, "no-store", resp.Header.Get("Cache-Control"))
 		// No form-action rule: browsers apply it to the redirect to the
 		// application that follows the answer (Chromium blocked Allow and
@@ -126,7 +126,7 @@ func TestOIDC_Integration_Consent(t *testing.T) {
 		resp, page := b.page(more.AuthCodeURL("c3", pkce()))
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.Contains(t, page, "It now asks for more than before")
-		require.Contains(t, page, `groups <em class="tag">new</em>`)
+		require.Contains(t, page, `groups <span class="badge badge-warning">new</span>`)
 		codeFromRedirect(t, e.answer(t, b, page, "allow"), partnerRedirectURI, "c3")
 
 		require.ElementsMatch(t, []string{"profile", "email", "offline_access", "groups"}, stored(t).Scopes)

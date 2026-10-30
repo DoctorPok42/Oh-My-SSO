@@ -1,0 +1,93 @@
+{{define "layout"}}<!doctype html>
+<html lang="en"{{with .ThemeClass}} class="{{.}}"{{end}}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+{{/* htmx: no eval, no inline <script> from answers, no indicator <style>
+     (the CSP forbids inline code), requests to this server only, and no
+     copy of the pages in sessionStorage (backup codes!). attributesToSettle
+     without "style": htmx would copy a style attribute (some browsers add
+     an empty one to filled-in fields) with setAttribute, which the CSP
+     blocks. */}}
+<meta name="htmx-config" content='{"allowEval":false,"allowScriptTags":false,"includeIndicatorStyles":false,"selfRequestsOnly":true,"historyCacheSize":0,"attributesToSettle":["class","width","height"]}'>
+<title>{{.Title}} · {{.Org.Display}}</title>
+<link rel="stylesheet" href="{{.Assets}}/omsso.css">
+<link rel="stylesheet" href="{{.Assets}}/account.css">
+<script src="{{.Assets}}/htmx.min.js" defer></script>
+<script src="{{.Assets}}/account.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+{{/* The header and the tabs of the admin console (console/header.tsx,
+     console/nav-tabs.tsx): logo, organization, then theme and avatar. */}}
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="logo brand" href="{{.Base}}" aria-label="Your account">
+      <span class="logo-mark" aria-hidden="true">O</span><span class="logo-wordmark">OMSSO</span>
+    </a>
+    <span class="sep" aria-hidden="true"></span>
+    {{- if gt (len .Orgs) 1}}
+    <details class="menu orgs">
+      <summary class="org-trigger"><span class="org-name">{{.Org.Display}}</span><span class="ico ico-chevron-down" aria-hidden="true"></span><span class="sr-only">Switch organization</span></summary>
+      <div class="menu-panel">
+        <p class="menu-label">Signed in on this browser</p>
+        <ul>
+          {{- range .Orgs}}
+          <li><a class="menu-item" href="{{.URL}}"{{if .Current}} aria-current="true"{{end}}><span class="menu-check">{{if .Current}}<span class="ico ico-check" aria-hidden="true"></span>{{end}}</span>{{.Display}}</a></li>
+          {{- end}}
+        </ul>
+        <div class="menu-separator" role="separator"></div>
+        <p class="menu-label">Each organization has its own account and its own sign-in.</p>
+      </div>
+    </details>
+    {{- else}}
+    <p class="org-trigger"><span class="org-name">{{.Org.Display}}</span></p>
+    {{- end}}
+    <span class="badge badge-accent console-badge">My account</span>
+    <div class="topbar-actions">
+      {{/* account.js shows it: without JavaScript, the device's theme. */}}
+      <div class="theme-toggle" id="theme-toggle" role="radiogroup" aria-label="Theme" hidden>
+        <button type="button" role="radio" data-theme="light" title="Light" aria-checked="{{if eq .Theme "light"}}true{{else}}false{{end}}"><span class="ico ico-sun" aria-hidden="true"></span><span class="sr-only">Light</span></button>
+        <button type="button" role="radio" data-theme="dark" title="Dark" aria-checked="{{if eq .Theme "dark"}}true{{else}}false{{end}}"><span class="ico ico-moon" aria-hidden="true"></span><span class="sr-only">Dark</span></button>
+        <button type="button" role="radio" data-theme="system" title="System" aria-checked="{{if or (eq .Theme "system") (eq .Theme "")}}true{{else}}false{{end}}"><span class="ico ico-monitor" aria-hidden="true"></span><span class="sr-only">System</span></button>
+      </div>
+      <details class="menu user">
+        <summary class="avatar">{{.User.Initials}}<span class="sr-only">Account menu</span></summary>
+        <div class="menu-panel">
+          <div class="who"><p class="who-name">{{.User.Name}}</p>{{with .User.Email}}<p class="who-email">{{.}}</p>{{end}}</div>
+          <div class="menu-separator" role="separator"></div>
+          <form method="post" action="{{.Base}}/signout">
+            <input type="hidden" name="csrf" value="{{.CSRF}}">
+            <button type="submit" class="menu-item" id="signout"><span class="ico ico-log-out" aria-hidden="true"></span>Sign out</button>
+          </form>
+        </div>
+      </details>
+    </div>
+  </div>
+</header>
+<nav class="nav-tabs" aria-label="Account sections">
+  <div class="nav-tabs-in">
+    <a class="nav-tab" href="{{.Base}}"{{if eq .Active "profile"}} aria-current="page"{{end}}>Profile</a>
+    <a class="nav-tab" href="{{.Base}}/security"{{if eq .Active "security"}} aria-current="page"{{end}}>Security</a>
+    <a class="nav-tab" href="{{.Base}}/sessions"{{if eq .Active "sessions"}} aria-current="page"{{end}}>Sessions</a>
+    <a class="nav-tab" href="{{.Base}}/apps"{{if eq .Active "apps"}} aria-current="page"{{end}}>Connected apps</a>
+    <a class="nav-tab" href="{{.Base}}/history"{{if eq .Active "history"}} aria-current="page"{{end}}>History</a>
+  </div>
+</nav>
+<div class="page">
+  <main class="content" id="main">{{template "main-inner" .}}</main>
+</div>
+</body>
+</html>
+{{end}}
+
+{{/* The inside of <main>: also the answer of an htmx request that replaces
+     the whole page content (HX-Retarget: #main). */}}
+{{define "main-inner"}}
+    {{- if .MFARequired}}
+    <p class="banner banner-warning" role="note">{{.Org.Display}} requires a second step when you sign in, and your account has none yet. <a href="{{.Base}}/security">Add one</a> to keep access to its applications.</p>
+    {{- end}}
+    {{template "notice" .}}
+    {{template "content" .}}
+{{end}}

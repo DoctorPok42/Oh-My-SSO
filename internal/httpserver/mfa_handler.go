@@ -162,6 +162,7 @@ func (s *Server) writeVerifiedLogin(w http.ResponseWriter, r *http.Request, res 
 	clearMFAChallengeCookie(w, realmName)
 	s.endPreviousSession(r, res.Session)
 	setSessionCookie(w, realmName, res.RawToken, res.Session)
+	rememberRealm(w, r, realmName) // the account console's organization menu
 	out := mfaVerifyResponse{
 		Status:    string(res.Outcome),
 		UserID:    res.User.ID,

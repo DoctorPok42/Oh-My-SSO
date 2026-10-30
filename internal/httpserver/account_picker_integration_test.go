@@ -25,7 +25,7 @@ import (
 var (
 	reContinueToken = regexp.MustCompile(`data-continue-token="([^"]*)"`)
 	reRequestID     = regexp.MustCompile(`data-request-id="([^"]*)"`)
-	reForgetAccount = regexp.MustCompile(`class="link forget" data-account="([^"]*)"`)
+	reForgetAccount = regexp.MustCompile(`class="[^"]*\bforget" data-account="([^"]*)"`)
 	reLogoutID      = regexp.MustCompile(`name="id" value="([^"]*)"`)
 	reLogoutToken   = regexp.MustCompile(`name="logout_token" value="([^"]*)"`)
 )

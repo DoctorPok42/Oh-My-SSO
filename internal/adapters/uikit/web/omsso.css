@@ -1,0 +1,461 @@
+/* OMSSO design system for the pages of cmd/idp (no build step, no
+   Tailwind): the same tokens and components as the admin console.
+   - tokens: admin/src/app/omsso-theme.css, values unchanged
+   - components: admin/src/components/ui (button.tsx, input.tsx, label.tsx,
+     field.tsx, checkbox.tsx, card.tsx, badge.tsx, banner.tsx, table.tsx,
+     segmented.tsx, dropdown-menu.tsx) and components/console (logo.tsx,
+     auth-card.tsx, page-header.tsx). A change there goes here too.
+   Theme: the system's (prefers-color-scheme) on every page. Only the
+   consoles (admin, account) let the user choose: class "light" or "dark"
+   on <html>, from the omsso_theme cookie; no class = the system's. */
+
+/* --- fonts (latin subset; other scripts fall back to the system font) --- */
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url(ibm-plex-sans-400.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 500; font-display: swap; src: url(ibm-plex-sans-500.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600; font-display: swap; src: url(ibm-plex-sans-600.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 700; font-display: swap; src: url(ibm-plex-sans-700.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url(ibm-plex-mono-400.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+/* --- tokens ------------------------------------------------------------- */
+:root {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  /* DS radii: 6 small buttons, 8 buttons/inputs, 10 sub-cards, 12 cards. */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --page: #0D0F16;
+  --surface: #161923;
+  --surface-alt: #1C202B;
+  --row-hover: #1B1E29;
+  --border: #282C39;
+  --border-strong: #3A3F4F;
+
+  --text-primary: #F1F2F7;
+  --text-secondary: #A7ACC1;
+  --text-muted: #6C7086;
+
+  --accent: #7A90F7;
+  --accent-hover: #93A5F9;
+  --accent-soft: #232B4D;
+  --on-accent: #0D0F16;
+
+  --success: #4ADE80;
+  --success-soft: #173324;
+  --warning: #FBBF24;
+  --warning-soft: #3B2C10;
+  --danger: #F87171;
+  --danger-soft: #3B1A1A;
+  --info: #60A5FA;
+  --info-soft: #182746;
+  --neutral: #9AA0B7;
+  --neutral-soft: #252A38;
+
+  --input-bg: #1C202B;
+  --input-border: #333849;
+
+  --shadow: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 16px 40px rgba(0,0,0,0.5);
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) {
+    --page: #F4F5FA;
+    --surface: #FFFFFF;
+    --surface-alt: #FAFBFD;
+    --row-hover: #F7F8FC;
+    --border: #E2E5EE;
+    --border-strong: #CBD0DE;
+
+    --text-primary: #13151F;
+    --text-secondary: #565B70;
+    --text-muted: #8D92A6;
+
+    --accent: #3557D6;
+    --accent-hover: #2C47B8;
+    --accent-soft: #EAEEFC;
+    --on-accent: #FFFFFF;
+
+    --success: #15803D;
+    --success-soft: #E5F6EA;
+    --warning: #B45309;
+    --warning-soft: #FDF1DF;
+    --danger: #B91C1C;
+    --danger-soft: #FCE8E8;
+    --info: #1D4ED8;
+    --info-soft: #E7EEFD;
+    --neutral: #4B5063;
+    --neutral-soft: #EEF0F4;
+
+    --input-bg: #FFFFFF;
+    --input-border: #D7DAE4;
+
+    --shadow: 0 1px 2px rgba(20,22,35,0.06);
+    --shadow-md: 0 12px 32px rgba(20,22,35,0.12);
+
+    color-scheme: light;
+  }
+}
+
+/* Light chosen in a console, whatever the system (admin/src/app/globals.css). */
+:root.light {
+  --page: #F4F5FA;
+  --surface: #FFFFFF;
+  --surface-alt: #FAFBFD;
+  --row-hover: #F7F8FC;
+  --border: #E2E5EE;
+  --border-strong: #CBD0DE;
+
+  --text-primary: #13151F;
+  --text-secondary: #565B70;
+  --text-muted: #8D92A6;
+
+  --accent: #3557D6;
+  --accent-hover: #2C47B8;
+  --accent-soft: #EAEEFC;
+  --on-accent: #FFFFFF;
+
+  --success: #15803D;
+  --success-soft: #E5F6EA;
+  --warning: #B45309;
+  --warning-soft: #FDF1DF;
+  --danger: #B91C1C;
+  --danger-soft: #FCE8E8;
+  --info: #1D4ED8;
+  --info-soft: #E7EEFD;
+  --neutral: #4B5063;
+  --neutral-soft: #EEF0F4;
+
+  --input-bg: #FFFFFF;
+  --input-border: #D7DAE4;
+
+  --shadow: 0 1px 2px rgba(20,22,35,0.06);
+  --shadow-md: 0 12px 32px rgba(20,22,35,0.12);
+
+  color-scheme: light;
+}
+
+/* --- base (Tailwind's preflight, then admin/src/app/globals.css) -------- */
+*, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; border: 0 solid var(--border); }
+html { -webkit-text-size-adjust: 100%; line-height: 1.5; }
+body {
+  min-height: 100dvh; background: var(--page); color: var(--text-primary);
+  font-family: var(--font-sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-size: inherit; font-weight: inherit; }
+ol, ul { list-style: none; }
+img, svg { display: block; max-width: 100%; }
+b, strong { font-weight: 600; }
+code, kbd, samp, pre { font-family: var(--font-mono); }
+button, input, select, textarea {
+  font: inherit; letter-spacing: inherit; color: inherit; background: transparent; border-radius: 0;
+}
+::placeholder { color: var(--text-muted); opacity: 1; }
+[hidden]:where(:not([hidden="until-found"])) { display: none !important; }
+a { color: var(--accent); text-decoration: none; text-underline-offset: 4px; }
+a:hover { text-decoration: underline; }
+a[href], button:not(:disabled), [role="button"]:not([aria-disabled="true"]),
+input[type="checkbox"]:not(:disabled), input[type="radio"]:not(:disabled), select:not(:disabled), summary { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+::selection { background: var(--accent-soft); }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;
+}
+
+/* --- layout helpers ---------------------------------------------------- */
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.stack-sm { display: flex; flex-direction: column; gap: 8px; }
+.stack-lg { display: flex; flex-direction: column; gap: 20px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+.small { font-size: 12px; color: var(--text-muted); }
+.mono { font-family: var(--font-mono); }
+
+/* --- Logo (console/logo.tsx): 28 px square, radius 7, accent, "O" ------ */
+.logo { display: inline-flex; align-items: center; gap: 10px; color: var(--text-primary); }
+a.logo:hover { text-decoration: none; }
+.logo-mark {
+  display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 7px;
+  background: var(--accent); color: var(--on-accent); font-size: 15px; font-weight: 700;
+}
+.logo-wordmark { font-size: 15px; font-weight: 700; letter-spacing: 0.025em; }
+
+/* --- Button (ui/button.tsx) --------------------------------------------
+   .btn alone = primary, size sm (the DS defaults). Variants: .btn-secondary
+   (outlined), .btn-danger (revocations), .btn-destructive (confirm a
+   deletion), .btn-ghost, .btn-link. Sizes: .btn-md, .btn-xs, .btn-icon.
+   .btn-block: full width (the auth card). */
+.btn {
+  display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; gap: 8px;
+  height: 36px; padding: 0 16px; border: 1px solid transparent; border-radius: var(--radius-md);
+  font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; text-decoration: none;
+  background: var(--accent); color: var(--on-accent);
+  outline: none; transition: color .15s var(--ease), background-color .15s var(--ease), border-color .15s var(--ease), opacity .15s var(--ease);
+}
+.btn:hover { text-decoration: none; background: var(--accent-hover); color: var(--on-accent); }
+.btn:focus-visible { box-shadow: 0 0 0 3px var(--accent-soft); }
+.btn:disabled { pointer-events: none; background: var(--neutral-soft); color: var(--text-muted); }
+.btn svg { width: 16px; height: 16px; flex-shrink: 0; pointer-events: none; }
+
+.btn-secondary { border-color: var(--border); background: transparent; color: var(--text-primary); }
+.btn-secondary:hover { border-color: var(--border-strong); background: var(--surface-alt); color: var(--text-primary); }
+.btn-secondary:disabled { background: transparent; color: var(--text-muted); }
+
+.btn-danger { border-color: var(--danger-soft); background: transparent; color: var(--danger); }
+.btn-danger:hover { background: var(--danger-soft); color: var(--danger); }
+.btn-danger:disabled { background: transparent; color: var(--danger); opacity: .5; }
+
+.btn-destructive { background: var(--danger); color: var(--on-accent); }
+.btn-destructive:hover { background: var(--danger); color: var(--on-accent); opacity: .9; }
+.btn-destructive:disabled { background: var(--danger); color: var(--on-accent); opacity: .5; }
+
+.btn-ghost { background: transparent; color: var(--text-secondary); }
+.btn-ghost:hover { background: var(--surface-alt); color: var(--text-primary); }
+.btn-ghost:disabled { background: transparent; color: var(--text-muted); }
+
+.btn-link { height: auto; padding: 0; border: 0; background: none; color: var(--accent); font-weight: 500; }
+.btn-link:hover { background: none; color: var(--accent); text-decoration: underline; }
+.btn-link:disabled { background: none; color: var(--accent); opacity: .5; }
+
+.btn-md { height: 40px; padding: 0 20px; font-size: 14px; }
+.btn-xs { height: 28px; padding: 0 12px; border-radius: var(--radius-sm); font-size: 12px; }
+.btn-icon { width: 36px; height: 36px; padding: 0; }
+.btn-link.btn-md, .btn-link.btn-xs { height: auto; padding: 0; }
+.btn-block { width: 100%; }
+
+/* --- Input (ui/input.tsx): 40 px, radius 8; focus = accent border and a
+   3px accent-soft ring; error = danger border (aria-invalid). ----------- */
+.input, .textarea {
+  display: block; width: 100%; height: 40px; padding: 0 12px;
+  border: 1px solid var(--input-border); border-radius: var(--radius-md); background: var(--input-bg);
+  color: var(--text-primary); font-size: 14px; outline: none;
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
+}
+.textarea { height: auto; min-height: 80px; padding: 10px 12px; }
+.input:read-only, .textarea:read-only { background: var(--surface-alt); }
+.input:focus, .textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.input:disabled, .textarea:disabled { cursor: not-allowed; background: var(--neutral-soft); color: var(--text-muted); }
+.input[aria-invalid="true"], .textarea[aria-invalid="true"] { border-color: var(--danger); }
+
+/* --- Label and Field (ui/label.tsx, ui/field.tsx) ---------------------- */
+.label {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+}
+.label-optional { font-weight: 400; color: var(--text-muted); }
+.field-hint, .field-error { margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+.field-error { color: var(--danger); }
+
+/* --- Checkbox (ui/checkbox.tsx): 16 px, radius 4; checked = accent ----- */
+.checkbox, .radio {
+  appearance: none; display: grid; place-items: center; flex-shrink: 0; width: 16px; height: 16px;
+  border: 1px solid var(--input-border); border-radius: 4px; background: var(--input-bg);
+  outline: none; transition: background-color .15s var(--ease), border-color .15s var(--ease);
+}
+.radio { border-radius: 50%; }
+.checkbox:focus-visible, .radio:focus-visible { box-shadow: 0 0 0 3px var(--accent-soft); }
+.checkbox:disabled, .radio:disabled { cursor: not-allowed; opacity: .5; }
+.checkbox:checked { border-color: var(--accent); background: var(--accent); }
+.checkbox:checked::before {
+  content: ""; width: 12px; height: 12px; background: var(--on-accent);
+  -webkit-mask: var(--icon-check) center / contain no-repeat; mask: var(--icon-check) center / contain no-repeat;
+}
+.radio:checked { border-color: var(--accent); }
+.radio:checked::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+/* CheckboxField: the box, then its label and hint; the whole line clicks. */
+.check-field { display: flex; align-items: flex-start; gap: 10px; }
+.check-field > .checkbox, .check-field > .radio { margin-top: 3px; }
+.check-field label { font-size: 14px; color: var(--text-primary); cursor: pointer; }
+.check-hint { font-size: 12px; color: var(--text-muted); }
+
+/* A choice between a few options (radios): sub-cards, the chosen one in
+   the colours of the active segmented item. */
+.option {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  transition: border-color .15s var(--ease), background-color .15s var(--ease);
+}
+.option:hover { border-color: var(--border-strong); }
+.option:has(:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.option > .radio, .option > .checkbox { margin-top: 3px; }
+.option-title { display: block; font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.option-hint { display: block; font-size: 12px; color: var(--text-muted); }
+
+/* --- Card (ui/card.tsx): radius 12, padding 24; title 15px / 600 ------- */
+.card {
+  border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface);
+  padding: 24px; box-shadow: var(--shadow);
+}
+.card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.card-header:last-child { margin-bottom: 0; }
+.card-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.card-description { margin-top: 4px; font-size: 13px; color: var(--text-secondary); }
+
+/* --- Page header (console/page-header.tsx) ----------------------------- */
+.page-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.page-title { font-size: 22px; font-weight: 600; line-height: 1.3; }
+.page-description { margin-top: 4px; font-size: 14px; color: var(--text-secondary); }
+
+/* --- Badge (ui/badge.tsx): pill, 11px / 600, {x}-soft with {x} text ---- */
+.badge {
+  display: inline-flex; flex-shrink: 0; align-items: center; gap: 4px; width: fit-content; vertical-align: 1px;
+  padding: 3px 10px; border-radius: 999px; font-size: 11px; line-height: 16px; font-weight: 600; font-style: normal; white-space: nowrap;
+  background: var(--neutral-soft); color: var(--neutral);
+}
+.badge-success { background: var(--success-soft); color: var(--success); }
+.badge-warning { background: var(--warning-soft); color: var(--warning); }
+.badge-danger { background: var(--danger-soft); color: var(--danger); }
+.badge-info { background: var(--info-soft); color: var(--info); }
+.badge-accent { background: var(--accent-soft); color: var(--accent); }
+
+/* --- Banner (ui/banner.tsx): {x}-soft, {x} text, radius 8, 10×12, 13px,
+   the tone's icon before the text. Any inline content works inside. ----- */
+.banner {
+  position: relative; padding: 10px 12px 10px 36px; border-radius: var(--radius-md);
+  font-size: 13px; line-height: 20px; background: var(--info-soft); color: var(--info);
+  --icon: var(--icon-info);
+}
+.banner::before {
+  content: ""; position: absolute; left: 12px; top: 12px; width: 16px; height: 16px; background: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat;
+}
+.banner a { color: inherit; font-weight: 600; text-decoration: underline; }
+.banner-success { background: var(--success-soft); color: var(--success); --icon: var(--icon-success); }
+.banner-warning { background: var(--warning-soft); color: var(--warning); --icon: var(--icon-warning); }
+.banner-danger { background: var(--danger-soft); color: var(--danger); --icon: var(--icon-danger); }
+.banner-neutral { background: var(--neutral-soft); color: var(--neutral); --icon: var(--icon-lock); }
+
+/* --- Table (ui/table.tsx): cells 12×16; header 12px / 600 uppercase ---- */
+.table-container {
+  overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-xl);
+  background: var(--surface); box-shadow: var(--shadow);
+}
+.table-scroll { position: relative; width: 100%; overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table th {
+  padding: 12px 16px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.025em; text-transform: uppercase; color: var(--text-muted);
+}
+.table td { padding: 12px 16px; vertical-align: middle; }
+.table tr { border-bottom: 1px solid var(--border); transition: background-color .15s var(--ease); }
+.table tr:last-child { border-bottom: 0; }
+.table tbody tr:hover { background: var(--row-hover); }
+.table-empty { padding: 48px 16px; text-align: center; font-size: 13px; color: var(--text-muted); }
+
+/* --- Segmented (ui/segmented.tsx): 6×14, radius 8; active = accent-soft,
+   accent border and text. As links: aria-current="page". --------------- */
+.segmented { display: flex; flex-wrap: wrap; gap: 4px; }
+.segmented-item {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+  border: 1px solid transparent; border-radius: var(--radius-md);
+  font-size: 13px; font-weight: 500; color: var(--text-secondary); outline: none;
+  transition: color .15s var(--ease), background-color .15s var(--ease), border-color .15s var(--ease);
+}
+.segmented-item:hover { color: var(--text-primary); text-decoration: none; }
+.segmented-item:focus-visible { box-shadow: 0 0 0 3px var(--accent-soft); }
+.segmented-item[aria-current="page"], .segmented-item[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+/* --- Dropdown menu (ui/dropdown-menu.tsx) ------------------------------ */
+.menu-panel {
+  min-width: 224px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-xl);
+  background: var(--surface); box-shadow: var(--shadow-md);
+}
+.menu-item {
+  display: flex; width: 100%; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-sm);
+  font-size: 13px; color: var(--text-primary); text-align: left; text-decoration: none; outline: none;
+}
+.menu-item:hover, .menu-item:focus-visible { background: var(--row-hover); color: var(--text-primary); text-decoration: none; }
+.menu-item .ico { color: var(--text-muted); }
+.menu-item .ico-check { color: var(--accent); }
+.menu-label { padding: 8px 12px; font-size: 12px; color: var(--text-muted); }
+.menu-separator { height: 1px; margin: 4px 0; background: var(--border); }
+
+/* --- Avatar (console/user-menu.tsx) ------------------------------------ */
+.avatar {
+  display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 600;
+}
+
+/* --- Auth card (console/auth-card.tsx): the centred card of the pages
+   seen before signing in. -------------------------------------------- */
+.auth { display: grid; min-height: 100dvh; place-items: center; padding: 40px 16px; background: var(--page); }
+.auth-inner { width: 100%; max-width: 400px; }
+.auth-card {
+  padding: 32px; border: 1px solid var(--border); border-radius: var(--radius-xl);
+  background: var(--surface); box-shadow: var(--shadow-md);
+}
+.auth-card > .logo { margin-bottom: 28px; }
+.auth-eyebrow {
+  margin-bottom: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.025em; text-transform: uppercase;
+  color: var(--text-muted); overflow-wrap: anywhere;
+}
+.auth-title { font-size: 20px; font-weight: 600; line-height: 1.35; color: var(--text-primary); }
+.auth-subtitle { margin-top: 4px; font-size: 14px; color: var(--text-secondary); }
+.auth-subtitle strong { color: var(--text-primary); }
+.auth-body { display: flex; flex-direction: column; gap: 20px; margin-top: 24px; font-size: 14px; color: var(--text-secondary); }
+.auth-footer { margin-top: 20px; text-align: center; font-size: 12px; color: var(--text-muted); }
+@media (max-width: 420px) {
+  .auth { padding: 24px 12px; }
+  .auth-card { padding: 24px 20px; }
+}
+
+/* --- Primary tabs (console/nav-tabs.tsx): 2px bottom border, accent when
+   active; active = text-primary 600, inactive = text-secondary 500. ----- */
+.nav-tabs { border-bottom: 1px solid var(--border); background: var(--surface); }
+.nav-tabs-in { display: flex; gap: 20px; max-width: 1360px; margin: 0 auto; padding: 0 24px; overflow-x: auto; scrollbar-width: none; }
+.nav-tab {
+  margin-bottom: -1px; padding: 16px 4px; border-bottom: 2px solid transparent; white-space: nowrap;
+  font-size: 14px; font-weight: 500; color: var(--text-secondary); transition: color .15s var(--ease);
+}
+.nav-tab:hover { color: var(--text-primary); text-decoration: none; }
+.nav-tab[aria-current="page"] { border-bottom-color: var(--accent); font-weight: 600; color: var(--text-primary); }
+@media (max-width: 639px) { .nav-tabs-in { padding: 0 16px; } }
+
+/* --- Theme toggle (console/theme-toggle.tsx): Light / Dark / System ---- */
+.theme-toggle { display: flex; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.theme-toggle button {
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-sm);
+  color: var(--text-muted); outline: none; transition: color .15s var(--ease), background-color .15s var(--ease);
+}
+.theme-toggle button:hover { color: var(--text-primary); }
+.theme-toggle button:focus-visible { box-shadow: 0 0 0 3px var(--accent-soft); }
+.theme-toggle button[aria-checked="true"] { background: var(--accent-soft); color: var(--accent); }
+.theme-toggle .ico { width: 14px; height: 14px; }
+
+/* --- icons (lucide, stroke 2): masks, painted with the text colour ----- */
+.ico {
+  display: inline-block; flex: none; width: 16px; height: 16px; background: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat;
+}
+.ico-check { --icon: var(--icon-check); }
+.ico-sun { --icon: var(--icon-sun); }
+.ico-moon { --icon: var(--icon-moon); }
+.ico-monitor { --icon: var(--icon-monitor); }
+.ico-chevron-down { --icon: var(--icon-chevron-down); }
+.ico-log-out { --icon: var(--icon-log-out); }
+:root {
+  --icon-sun: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2M12 20v2m-7.07-17.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41'/%3E%3C/svg%3E");
+  --icon-moon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z'/%3E%3C/svg%3E");
+  --icon-monitor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='20' height='14' x='2' y='3' rx='2'/%3E%3Cpath d='M8 21h8M12 17v4'/%3E%3C/svg%3E");
+  --icon-chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --icon-log-out: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9'/%3E%3C/svg%3E");
+}
+:root {
+  --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  --icon-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4M12 8h.01'/%3E%3C/svg%3E");
+  --icon-success: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E");
+  --icon-warning: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4M12 17h.01'/%3E%3C/svg%3E");
+  --icon-danger: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m15 9-6 6M9 9l6 6'/%3E%3C/svg%3E");
+  --icon-lock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='11' x='3' y='11' rx='2' ry='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { transition: none !important; }
+}

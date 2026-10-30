@@ -123,8 +123,11 @@ type AuditSearch struct {
 	UserID string
 	// ClientRef matches entries about a client (resource ClientApp).
 	ClientRef string
-	Action    string                // exact action name; empty: any
-	Status    domain.AuditLogStatus // empty: any
+	Action    string // exact action name; empty: any
+	// Actions: any of these action names (the account console's activity
+	// list shows only the actions it can describe); empty: any.
+	Actions []string
+	Status  domain.AuditLogStatus // empty: any
 	// Levels: any of these levels (the console's bell asks for warning and
 	// above); empty: any.
 	Levels   []domain.AuditLogLevel

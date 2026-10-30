@@ -1,0 +1,16 @@
+{{define "content"}}
+<p class="back"><a href="{{.Base}}/security">← Security</a></p>
+<div class="page-header"><h1 class="page-title">Remove {{if .Factor.Name}}{{.Factor.Name}}{{else}}this {{.Factor.KindLabel}}{{end}}?</h1></div>
+<section class="card stack">
+  <p>You will not be able to use this {{.Factor.KindLabel}} to sign in to {{.Org.Display}} any more.</p>
+  {{- if .Last}}
+  <p class="banner banner-warning" role="note">It is your last second step: your account will be protected by your password only, and your backup codes will stop working.</p>
+  {{- end}}
+  {{- with .FormError}}<p class="banner banner-danger" role="alert">{{.}}</p>{{end}}
+  <form class="actions" method="post" action="{{.Base}}/security/factors/{{.Factor.ID}}/remove">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button type="submit" class="btn btn-destructive" id="remove-confirm">Remove</button>
+    <a class="btn btn-secondary" href="{{.Base}}/security">Cancel</a>
+  </form>
+</section>
+{{end}}

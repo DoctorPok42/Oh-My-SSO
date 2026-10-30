@@ -1,0 +1,103 @@
+{{define "content"}}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Security</h1>
+    <p class="page-description">How you sign in to {{.Org.Display}}, and what protects your account.</p>
+  </div>
+</div>
+
+<section class="card" aria-labelledby="pw-title">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title" id="pw-title">Password</h2>
+      <p class="card-description">{{if .HasPassword}}Changing it signs you out everywhere else.{{else}}Your account has no password yet: use the link of your invitation e-mail, or "Forgot password" on the sign-in page.{{end}}</p>
+    </div>
+    {{- if .HasPassword}}<a class="btn btn-secondary" href="{{.Base}}/security/password">Change password</a>{{end}}
+  </div>
+</section>
+
+<section class="card" aria-labelledby="mfa-title" id="factors">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title" id="mfa-title">Two-step verification</h2>
+      <p class="card-description">After your password, a second step proves it's you: a code from an authenticator app, a passkey or a security key.</p>
+    </div>
+  </div>
+  {{- if .Factors}}
+  <ul class="items">
+    {{- range .Factors}}
+    <li class="item">
+      <span class="icon icon-{{.Kind}}" aria-hidden="true"></span>
+      <div class="item-main">
+        <strong class="item-title">{{if .Name}}{{.Name}}{{else}}{{.KindLabel}}{{end}}</strong>
+        <span class="item-meta">{{.KindLabel}} · added {{template "date" .CreatedAt}}{{with .LastUsed}} · last used {{template "date" .}}{{end}}</span>
+        <span class="item-meta">Used for: every application</span>
+      </div>
+      <a class="btn btn-danger btn-xs" href="{{$.Base}}/security/factors/{{.ID}}/remove" aria-label="Remove {{if .Name}}{{.Name}}{{else}}{{.KindLabel}}{{end}}">Remove</a>
+    </li>
+    {{- end}}
+  </ul>
+  {{- else}}
+  <p class="empty">No second step yet. Add one: it stops someone who learns your password.</p>
+  {{- end}}
+  <div class="actions card-actions">
+    <a class="btn" href="{{.Base}}/security/totp" id="add-totp">Add an authenticator app</a>
+    {{- if .PasskeysEnabled}}
+    <a class="btn btn-secondary" href="{{.Base}}/security/passkey" id="add-passkey">Add a passkey or security key</a>
+    {{- end}}
+  </div>
+</section>
+
+<section class="card" aria-labelledby="codes-title">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title" id="codes-title">Backup codes</h2>
+      {{- if .Factors}}
+      <p class="card-description">Single-use codes for when your phone or key is not at hand.
+        <strong>{{.BackupRemaining}} of {{.BackupTotal}}</strong> left.</p>
+      {{- else}}
+      <p class="card-description">You get 10 codes when you add your first second step.</p>
+      {{- end}}
+    </div>
+    {{- if .Factors}}<a class="btn btn-secondary" href="{{.Base}}/security/backup-codes">Get new codes</a>{{end}}
+  </div>
+</section>
+
+{{template "devices" .}}
+{{end}}
+
+{{define "devices"}}<section class="card" aria-labelledby="devices-title" id="devices">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title" id="devices-title">Devices that skip the second step</h2>
+      <p class="card-description">Where you ticked "Don't ask again on this device". Remove one to be asked again there.</p>
+    </div>
+  </div>
+  {{- if .TrustedDevices}}
+  <ul class="items">
+    {{- range .TrustedDevices}}
+    <li class="item">
+      <span class="icon icon-device" aria-hidden="true"></span>
+      <div class="item-main">
+        <strong class="item-title">{{.Device}}{{if .Current}} <span class="badge badge-accent">This device</span>{{end}}</strong>
+        <span class="item-meta">since {{template "date" .CreatedAt}} · until {{template "date" .ExpiresAt}}{{with .LastUsed}} · last used {{template "date" .}}{{end}}</span>
+      </div>
+      <form method="post" action="{{$.Base}}/security/devices/{{.ID}}/revoke"
+            hx-post="{{$.Base}}/security/devices/{{.ID}}/revoke" hx-target="#devices" hx-swap="outerHTML">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <button type="submit" class="btn btn-danger btn-xs">Remove</button>
+      </form>
+    </li>
+    {{- end}}
+  </ul>
+  {{- if gt (len .TrustedDevices) 1}}
+  <form class="actions card-actions" method="post" action="{{.Base}}/security/devices/revoke-all"
+        hx-post="{{.Base}}/security/devices/revoke-all" hx-target="#devices" hx-swap="outerHTML">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button type="submit" class="btn btn-danger">Remove all</button>
+  </form>
+  {{- end}}
+  {{- else}}
+  <p class="empty">None.</p>
+  {{- end}}
+</section>{{end}}

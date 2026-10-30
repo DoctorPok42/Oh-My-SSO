@@ -475,6 +475,33 @@ func (s *SessionService) RevokeUserSessions(ctx context.Context, userID string, 
 	return len(revoked), nil
 }
 
+// RevokeOthers ends every active session of a user except keepID (the one
+// the user is using), with their tokens, and tells how many it ended. The
+// trusted devices stay: this is not "every session revoked".
+func (s *SessionService) RevokeOthers(ctx context.Context, userID, keepID string, reason domain.SessionRevokedReason) (int, error) {
+	active, err := s.sessions.ListActiveByUser(ctx, userID)
+	if err != nil {
+		return 0, fmt.Errorf("revoke other sessions: %w", err)
+	}
+	n := 0
+	for _, sess := range active {
+		if sess.ID == keepID {
+			continue
+		}
+		if err := s.sessions.Revoke(ctx, sess.ID, reason); err != nil && !errors.Is(err, repository.ErrNotFound) {
+			return n, fmt.Errorf("revoke other sessions: %w", err)
+		}
+		if err := s.markRevoked(ctx, sess); err != nil {
+			return n, err
+		}
+		if err := s.revokeSessionTokens(ctx, sess.ID); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
+}
+
 // revokeSessionTokens revokes every token issued for a session. A token must
 // never outlive an explicit revocation of the session it was issued for.
 // Idempotent: calling Revoke again after a partial failure finishes the job.

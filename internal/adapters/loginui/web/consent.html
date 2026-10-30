@@ -5,35 +5,46 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <title>Allow access · {{.RealmDisplay}}</title>
+<link rel="stylesheet" href="{{.Assets}}/omsso.css">
 <link rel="stylesheet" href="{{.Assets}}/login.css">
 </head>
 <body>
-<main class="card">
+<main class="auth">
+<div class="auth-inner">
+<div class="auth-card">
+  {{template "logo"}}
   <header>
-    <p class="realm">{{.RealmDisplay}}</p>
-    <h1>Allow {{.ClientName}} to access your account?</h1>
-    <p class="client">Signed in as <strong>{{.Username}}</strong></p>
+    <p class="auth-eyebrow">{{.RealmDisplay}}</p>
+    <h1 class="auth-title">Allow {{.ClientName}} to access your account?</h1>
+    <p class="auth-subtitle">Signed in as <strong>{{.Username}}</strong></p>
   </header>
 
-  {{if .MoreThanBefore}}<p class="notice">You already use this application. It now asks for more than before (marked “new”).</p>{{end}}
+  <div class="auth-body">
+  {{if .MoreThanBefore}}<p class="banner" role="note">You already use this application. It now asks for more than before (marked “new”).</p>{{end}}
 
-  <p class="lead">If you allow it, <strong>{{.ClientName}}</strong> will receive:</p>
-  <ul class="consent">
-    <li><strong>Who you are</strong><span>An identifier of your account, so that the application recognises you.</span></li>
-    {{- range .Items}}
-    <li><strong>{{.Title}}{{if .New}} <em class="tag">new</em>{{end}}</strong>{{if .Description}}<span>{{.Description}}</span>{{end}}</li>
-    {{- end}}
-  </ul>
-  {{if .ClientHost}}<p class="hint">You will then go back to <strong>{{.ClientHost}}</strong>.</p>{{end}}
+  <div class="stack-sm">
+    <p>If you allow it, <strong>{{.ClientName}}</strong> will receive:</p>
+    <ul class="consent">
+      <li><strong>Who you are</strong><span>An identifier of your account, so that the application recognises you.</span></li>
+      {{- range .Items}}
+      <li><strong>{{.Title}}{{if .New}} <span class="badge badge-warning">new</span>{{end}}</strong>{{if .Description}}<span>{{.Description}}</span>{{end}}</li>
+      {{- end}}
+    </ul>
+  </div>
+  {{if .ClientHost}}<p>You will then go back to <strong>{{.ClientHost}}</strong>.</p>{{end}}
 
-  <form method="post" action="{{.Action}}">
+  <form class="stack-sm" method="post" action="{{.Action}}">
     <input type="hidden" name="id" value="{{.RequestID}}">
     <input type="hidden" name="consent_token" value="{{.Token}}">
-    <button type="submit" name="decision" value="allow">Allow</button>
-    <button type="submit" name="decision" value="deny" class="secondary deny">Deny</button>
+    <button type="submit" class="btn btn-md btn-block" name="decision" value="allow">Allow</button>
+    <button type="submit" class="btn btn-secondary btn-md btn-block" name="decision" value="deny">Deny</button>
   </form>
 
   <p class="small">Your answer is remembered for this application. Only allow applications you trust.</p>
+  </div>
+</div>
+{{template "auth-footer"}}
+</div>
 </main>
 </body>
 </html>
