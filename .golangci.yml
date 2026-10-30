@@ -1,0 +1,17 @@
+# golangci-lint configuration, read by `make lint` and by the CI.
+# https://golangci-lint.run/docs/configuration/file/
+version: "2"
+
+linters:
+  # The "standard" set: errcheck, govet, ineffassign, staticcheck, unused.
+  # https://golangci-lint.run/docs/linters/
+  default: standard
+
+  exclusions:
+    # Ent's generated code (ent/*) starts with "Code generated ... DO NOT
+    # EDIT.": golangci-lint skips it by default (generated: strict).
+    presets:
+      # errcheck: an unchecked error from Close, Flush, fmt.Print*,
+      # os.Remove... is accepted (a deferred client.Close() of a CLI command,
+      # a line printed to the terminal). Every other ignored error is reported.
+      - std-error-handling

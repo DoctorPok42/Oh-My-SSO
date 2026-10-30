@@ -156,9 +156,10 @@ func runValkey(ctx context.Context) error {
 			return nil
 		}
 		log.Printf("integration tests: Valkey did not start (attempt %d): %v", attempt, err)
-		if c != nil {
-			_ = c.Terminate(context.Background())
-		}
+		// Not "if c != nil": c is an interface holding a *DockerContainer, so
+		// it is never nil, even when that pointer is. TerminateContainer
+		// checks the pointer itself.
+		_ = testcontainers.TerminateContainer(c)
 	}
 	return err
 }

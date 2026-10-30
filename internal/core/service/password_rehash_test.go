@@ -79,9 +79,10 @@ type resetDuringSignIn struct {
 }
 
 func (r *resetDuringSignIn) CompareAndSwapPasswordHash(ctx context.Context, id, old, next string) (bool, error) {
-	r.memUsers.mu.Lock()
-	r.memUsers.byID[id].PasswordHash = r.resetHash
-	r.memUsers.mu.Unlock()
+	r.mu.Lock()
+	r.byID[id].PasswordHash = r.resetHash
+	r.mu.Unlock()
+	// The embedded method, not ours (that would call itself forever).
 	return r.memUsers.CompareAndSwapPasswordHash(ctx, id, old, next)
 }
 
