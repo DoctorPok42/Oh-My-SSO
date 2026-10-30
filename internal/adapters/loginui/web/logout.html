@@ -5,26 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <title>Sign out · {{.RealmDisplay}}</title>
+<link rel="stylesheet" href="{{.Assets}}/omsso.css">
 <link rel="stylesheet" href="{{.Assets}}/login.css">
 </head>
 <body>
-<main class="card">
+<main class="auth">
+<div class="auth-inner">
+<div class="auth-card">
+  {{template "logo"}}
   <header>
-    <p class="realm">{{.RealmDisplay}}</p>
-    <h1>Sign out of {{.RealmDisplay}}?</h1>
-    <p class="client"><strong>{{.ClientName}}</strong> asked to sign out <strong>{{.Account}}</strong>.</p>
+    <p class="auth-eyebrow">{{.RealmDisplay}}</p>
+    <h1 class="auth-title">Sign out of {{.RealmDisplay}}?</h1>
+    <p class="auth-subtitle"><strong>{{.ClientName}}</strong> asked to sign out <strong>{{.Account}}</strong>.</p>
   </header>
 
-  <p class="lead">This browser is not using that session, so we ask you first.</p>
+  <div class="auth-body">
+  <p>This browser is not using that session, so we ask you first.</p>
 
-  <form method="post" action="{{.Action}}">
+  <form class="stack-sm" method="post" action="{{.Action}}">
     <input type="hidden" name="id" value="{{.RequestID}}">
     <input type="hidden" name="logout_token" value="{{.Token}}">
-    <button type="submit" name="decision" value="signout">Sign out</button>
-    <button type="submit" name="decision" value="cancel" class="secondary deny">Cancel</button>
+    <button type="submit" class="btn btn-md btn-block" name="decision" value="signout">Sign out</button>
+    <button type="submit" class="btn btn-secondary btn-md btn-block" name="decision" value="cancel">Cancel</button>
   </form>
 
   <p class="small">Cancel keeps that session open. You are already signed out of {{.ClientName}} either way.</p>
+  </div>
+</div>
+{{template "auth-footer"}}
+</div>
 </main>
 </body>
 </html>

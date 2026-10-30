@@ -1,0 +1,18 @@
+{{/* Blocks shared by every page. */}}
+
+{{/* The confirmation or error of the last action. */}}
+{{define "notice"}}<div id="notice" class="notice-area">
+  {{- with .Notice}}<p class="banner banner-success" role="status">{{.}}</p>{{end}}
+  {{- with .Error}}<p class="banner banner-danger" role="alert">{{.}}</p>{{end}}
+</div>{{end}}
+
+{{/* The same block, sent along with an htmx answer: htmx swaps it into
+     #notice ("out of band"), whatever the answer's own target is. */}}
+{{define "notice-oob"}}<div id="notice" class="notice-area" hx-swap-oob="true">
+  {{- with .Notice}}<p class="banner banner-success" role="status">{{.}}</p>{{end}}
+  {{- with .Error}}<p class="banner banner-danger" role="alert">{{.}}</p>{{end}}
+</div>{{end}}
+
+{{/* A time: UTC for the server, the reader's time zone with account.js. */}}
+{{define "time"}}<time datetime="{{iso .}}">{{when .}}</time>{{end}}
+{{define "date"}}<time datetime="{{iso .}}" data-format="date">{{day .}}</time>{{end}}

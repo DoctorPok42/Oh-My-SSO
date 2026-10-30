@@ -33,9 +33,9 @@ type Config struct {
 	DeviceCookieName string
 	// PasskeysEnabled shows the passkey buttons on the sign-in page.
 	PasskeysEnabled bool
-	// DevPages links to /r/{realm}/dev/mfa when a factor must be enrolled
-	// first (APP_ENV=development).
-	DevPages bool
+	// AccountConsole links to the Security page of the account console
+	// (/r/{realm}/account/security) when a factor must be enrolled first.
+	AccountConsole bool
 	PasswordReset bool
 	// Now is the clock (tests). nil: time.Now.
 	Now func() time.Time

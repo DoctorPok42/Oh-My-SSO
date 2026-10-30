@@ -63,6 +63,8 @@ type Core struct {
 	Timeouts      *service.TimeoutService
 	RateLimiter   ratelimit.Limiter
 	TrustedDevices *service.TrustedDeviceService
+	// Account is the account console's service (Step 14c).
+	Account *service.AccountService
 
 	stopEnforcer func() // StartTimeoutEnforcer
 }
@@ -116,12 +118,13 @@ func BuildCore() *Core {
 	})
 
 	mfaMethods := entstore.NewMfaMethodRepository(client)
+	geo := GeoIP()
 	loginSecurity := service.NewLoginSecurityService(service.LoginSecurityDeps{
 		Sessions: sessionRepo,
 		Methods:  mfaMethods,
 		Audit:    c.Audit,
 		Notifier: c.Notifier,
-		GeoIP:    GeoIP(),
+		GeoIP:    geo,
 	})
 
 	c.TrustedDevices = service.NewTrustedDeviceService(service.TrustedDeviceDeps{
@@ -215,11 +218,12 @@ func BuildCore() *Core {
 		Memory: c.KnownAccounts,
 	})
 
+	passwordPolicy := service.NewPasswordPolicyService(c.Settings)
 	c.PasswordReset = service.NewPasswordResetService(service.PasswordResetDeps{
 		Users:    c.Users,
 		Tokens:   entstore.NewPasswordResetTokenRepository(client),
 		Sessions: c.Sessions,
-		Policy:   service.NewPasswordPolicyService(c.Settings),
+		Policy:   passwordPolicy,
 		Settings: c.Settings,
 		Lockout:  c.Lockout,
 		Notifier: c.Notifier,
@@ -233,6 +237,23 @@ func BuildCore() *Core {
 		Tokens:   c.Tokens,
 		Audit:    c.Audit,
 		Notifier: c.Notifier,
+	})
+
+	c.Account = service.NewAccountService(service.AccountDeps{
+		Users:          c.Users,
+		Admin:          c.Admin,
+		Settings:       c.Settings,
+		Clients:        c.Clients,
+		ClientScopes:   c.Scopes,
+		Tokens:         c.Tokens,
+		LoginAttempts:  entstore.NewLoginAttemptRepository(client),
+		Audit:          c.Audit,
+		Sessions:       c.Sessions,
+		Consents:       c.Consent,
+		TrustedDevices: c.TrustedDevices,
+		Policy:         passwordPolicy,
+		Notifier:       c.Notifier,
+		GeoIP:          geo,
 	})
 
 	c.IdentityCore = service.NewIdentityCore(service.IdentityCoreDeps{

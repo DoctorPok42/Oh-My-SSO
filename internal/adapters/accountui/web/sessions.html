@@ -1,0 +1,41 @@
+{{define "content"}}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Sessions</h1>
+    <p class="page-description">Where you are signed in to {{.Org.Display}}. If you do not recognise one, sign it out and change your password.</p>
+  </div>
+</div>
+{{template "sessions-list" .}}
+{{end}}
+
+{{define "sessions-list"}}<section class="card" id="sessions">
+  <ul class="items sessions">
+    {{- range .Sessions}}
+    <li class="item">
+      <span class="icon icon-device" aria-hidden="true"></span>
+      <div class="item-main">
+        <strong class="item-title">{{.Device}}{{if .Current}} <span class="badge badge-accent">This session</span>{{end}}</strong>
+        <span class="item-meta">{{.Location}}{{with .IPAddress}} · {{.}}{{end}}</span>
+        <span class="item-meta">Signed in with {{.Method}}{{if .RememberMe}} · kept signed in{{end}} · started {{template "time" .StartedAt}}</span>
+        <span class="item-meta">Last active {{template "time" .LastActiveAt}}</span>
+        {{- if .Apps}}<span class="item-meta apps">Apps: {{range $i, $a := .Apps}}{{if $i}}, {{end}}{{$a}}{{end}}</span>{{end}}
+      </div>
+      {{- if not .Current}}
+      <form method="post" action="{{$.Base}}/sessions/{{.ID}}/revoke"
+            hx-post="{{$.Base}}/sessions/{{.ID}}/revoke" hx-target="#sessions" hx-swap="outerHTML">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <button type="submit" class="btn btn-danger btn-xs">Sign out</button>
+      </form>
+      {{- end}}
+    </li>
+    {{- end}}
+  </ul>
+  {{- if gt (len .Sessions) 1}}
+  <form class="actions card-actions" method="post" action="{{.Base}}/sessions/revoke-others"
+        hx-post="{{.Base}}/sessions/revoke-others" hx-target="#sessions" hx-swap="outerHTML"
+        hx-confirm="Sign out of all your other sessions?">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button type="submit" class="btn btn-danger" id="revoke-others">Sign out of all other sessions</button>
+  </form>
+  {{- end}}
+</section>{{end}}

@@ -1,0 +1,42 @@
+{{define "content"}}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Connected apps</h1>
+    <p class="page-description">Applications that can use your {{.Org.Display}} account: the ones you approved, and the ones you are signed in to now.</p>
+  </div>
+</div>
+{{template "apps-list" .}}
+{{end}}
+
+{{define "apps-list"}}<section class="card" id="apps">
+  {{- if .Apps}}
+  <ul class="items">
+    {{- range .Apps}}
+    <li class="item">
+      <span class="app-initial" aria-hidden="true">{{.Initial}}</span>
+      <div class="item-main">
+        <strong class="item-title">{{.Name}}</strong>
+        {{- with .Host}}<span class="item-meta">{{.}}</span>{{end}}
+        {{- if .Consent}}
+        <span class="item-meta">You approved it {{template "date" .GrantedAt}}{{if .SignedIn}} · signed in now{{end}}</span>
+        {{- if .Access}}
+        <ul class="access">{{range .Access}}<li>{{.}}</li>{{end}}</ul>
+        {{- end}}
+        {{- else}}
+        <span class="item-meta">Signed in now · your organization approved it for you</span>
+        {{- end}}
+      </div>
+      <form method="post" action="{{$.Base}}/apps/{{.ClientRef}}/revoke"
+            hx-post="{{$.Base}}/apps/{{.ClientRef}}/revoke" hx-target="#apps" hx-swap="outerHTML"
+            hx-confirm="Remove the access of {{.Name}}?">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <button type="submit" class="btn btn-danger btn-xs">Remove access</button>
+      </form>
+    </li>
+    {{- end}}
+  </ul>
+  <p class="card-note">Removing access signs the application out. An application you approved asks for your permission again next time.</p>
+  {{- else}}
+  <p class="empty">No application right now.</p>
+  {{- end}}
+</section>{{end}}

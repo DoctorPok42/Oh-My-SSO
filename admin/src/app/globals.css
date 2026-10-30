@@ -5,7 +5,10 @@
 
 /* The design system's tokens, copied unchanged from the design handoff
    (tokens/omsso-theme.css): colours for dark (default) and light, fonts,
-   shadows, as Tailwind utilities (bg-surface, text-text-muted...). */
+   shadows, as Tailwind utilities (bg-surface, text-text-muted...).
+   The IdP's own pages (sign-in, consent, account console) use the same
+   tokens and components in plain CSS: internal/adapters/uikit/web/omsso.css.
+   A change to a token or to components/ui goes there too. */
 @import "./omsso-theme.css";
 
 :root.light {

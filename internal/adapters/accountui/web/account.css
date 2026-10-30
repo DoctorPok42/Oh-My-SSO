@@ -1,0 +1,125 @@
+/* Account console: its header and its lists. Tokens and components
+   (buttons, fields, cards, badges, banners, menus, tabs, tables, theme
+   toggle) are the design system's: omsso.css (package uikit), the same as
+   the admin console's. */
+
+.skip { position: absolute; left: -9999px; }
+.skip:focus { left: 16px; top: 8px; z-index: 60; padding: 8px 12px; border-radius: var(--radius-md); background: var(--surface); }
+
+/* --- header (console/header.tsx: 60 px, surface, bottom border) ---------- */
+.topbar { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid var(--border); background: var(--surface); }
+.topbar-in { display: flex; align-items: center; gap: 12px; max-width: 1360px; height: 60px; margin: 0 auto; padding: 0 24px; }
+.brand { flex: none; margin-right: 8px; }
+.sep { flex: none; width: 1px; height: 24px; background: var(--border); }
+.topbar-actions { display: flex; flex: none; align-items: center; gap: 8px; margin-left: auto; }
+
+/* The organization, as the admin's realm switcher ("Acme Corp ▾"). */
+.org-trigger {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 220px; padding: 6px 8px;
+  border-radius: var(--radius-md); font-size: 14px; font-weight: 600; color: var(--text-primary);
+}
+.org-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.org-trigger .ico { color: var(--text-muted); }
+
+/* Menus: a <details>; the panel is the DS dropdown menu. */
+.menu { position: relative; min-width: 0; }
+.menu > summary { list-style: none; outline: none; }
+.menu > summary::-webkit-details-marker { display: none; }
+.menu > summary:focus-visible { box-shadow: 0 0 0 3px var(--accent-soft); }
+.menu.orgs > summary:hover, .menu.orgs[open] > summary { background: var(--surface-alt); }
+.menu > .menu-panel { position: absolute; top: calc(100% + 6px); left: 0; z-index: 50; width: 256px; }
+.menu.user { flex: none; }
+.menu.user > summary { cursor: pointer; }
+.menu.user > summary:focus-visible { box-shadow: none; outline: 2px solid var(--accent); outline-offset: 2px; }
+.menu.user > .menu-panel { left: auto; right: 0; }
+.menu-check { display: flex; flex: none; width: 16px; }
+.menu-item[aria-current="true"] { font-weight: 600; }
+.who { padding: 10px 12px; }
+.who-name, .who-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who-name { font-size: 14px; font-weight: 600; }
+.who-email { font-size: 12px; color: var(--text-muted); }
+
+/* --- page (the admin's <main>: centred, 1360 px, as the header and tabs) -- */
+.page { max-width: 1360px; margin: 0 auto; padding: 32px 24px 64px; }
+.content { min-width: 0; }
+.content > .card, .content > .table-container, .content > .banner, .content > .segmented { margin-bottom: 16px; }
+.notice-area { margin-bottom: 16px; }
+.notice-area:empty { display: none; }
+.notice-area .banner + .banner { margin-top: 8px; }
+.back { margin-bottom: 8px; font-size: 13px; }
+.card-actions { margin-top: 16px; }
+.card-note { margin-top: 16px; font-size: 12px; color: var(--text-muted); }
+.empty { font-size: 13px; color: var(--text-muted); }
+
+/* --- forms ----------------------------------------------------------------- */
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.saved { font-size: 13px; font-weight: 600; color: var(--success); }
+fieldset.choice { min-width: 0; }
+fieldset.choice legend { margin-bottom: 6px; }
+
+/* --- lists (factors, devices, sessions, applications) --------------------- */
+.item { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid var(--border); }
+.item:first-child { padding-top: 0; border-top: 0; }
+.item:last-child { padding-bottom: 0; }
+.item-main { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.item-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.item-meta { font-size: 12px; color: var(--text-muted); }
+.item-meta.apps { color: var(--text-secondary); }
+.item > form, .item > .btn { flex: none; }
+.access { margin-top: 4px; padding-left: 18px; list-style: disc; font-size: 12px; color: var(--text-secondary); }
+
+.icon { position: relative; flex: none; width: 36px; height: 36px; border-radius: var(--radius-lg); background: var(--neutral-soft); }
+.icon::after { content: ""; position: absolute; inset: 9px; background: var(--neutral); -webkit-mask: var(--glyph) center / contain no-repeat; mask: var(--glyph) center / contain no-repeat; }
+.icon-totp { background: var(--accent-soft); } .icon-totp::after { background: var(--accent); }
+.icon-passkey, .icon-security_key { background: var(--success-soft); } .icon-passkey::after, .icon-security_key::after { background: var(--success); }
+/* Glyphs: lucide icons (smartphone, key-round, monitor) as SVG masks. */
+.icon-totp { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='14' height='20' x='5' y='2' rx='2' ry='2'/%3E%3Cpath d='M12 18h.01'/%3E%3C/svg%3E"); }
+.icon-passkey, .icon-security_key { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z'/%3E%3Ccircle cx='16.5' cy='7.5' r='.5' fill='black'/%3E%3C/svg%3E"); }
+.icon-device { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='20' height='14' x='2' y='3' rx='2'/%3E%3Cpath d='M8 21h8M12 17v4'/%3E%3C/svg%3E"); }
+.app-initial { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: var(--radius-lg); background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+
+/* --- profile, authenticator app, backup codes ----------------------------- */
+dl.facts div { display: grid; grid-template-columns: 160px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+dl.facts div:first-child { padding-top: 0; border-top: 0; }
+dl.facts dt { font-size: 13px; color: var(--text-secondary); }
+dl.facts dd { overflow-wrap: anywhere; }
+
+ol.steps { display: flex; flex-direction: column; gap: 20px; padding-left: 20px; list-style: decimal; }
+ol.steps > li::marker { font-weight: 600; color: var(--text-muted); }
+ol.steps > li > * + * { margin-top: 12px; }
+.qr { width: 200px; height: 200px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #fff; }
+.secret {
+  display: inline-block; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-alt);
+  font-family: var(--font-mono); font-size: 14px; letter-spacing: .08em; overflow-wrap: anywhere;
+}
+.codes {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; padding: 14px 16px;
+  border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-alt);
+  font-family: var(--font-mono); font-size: 15px; letter-spacing: .06em;
+}
+
+/* --- history ----------------------------------------------------------------- */
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
+
+/* --- small screens (the admin's breakpoints: md 768, sm 640) -------------- */
+@media (max-width: 767px) {
+  .theme-toggle { display: none; }
+}
+@media (max-width: 639px) {
+  .topbar-in { gap: 8px; padding: 0 16px; }
+  .brand { margin-right: 0; }
+  .logo-wordmark, .sep, .console-badge { display: none; }
+  .org-trigger { max-width: 150px; }
+  .page { padding: 24px 16px 48px; }
+  .card { padding: 16px; }
+  .card-header { flex-direction: column; }
+  .row2 { grid-template-columns: 1fr; }
+  dl.facts div { grid-template-columns: 1fr; gap: 0; }
+  .item { flex-wrap: wrap; }
+  .item > form, .item > .btn { margin-left: 48px; }
+  .codes { grid-template-columns: 1fr; }
+  .table.stack-mobile thead { display: none; }
+  .table.stack-mobile tr { display: block; padding: 10px 16px; }
+  .table.stack-mobile td { display: block; padding: 1px 0; }
+  .menu > .menu-panel { min-width: min(280px, calc(100vw - 32px)); }
+}

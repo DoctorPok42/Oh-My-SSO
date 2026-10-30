@@ -395,8 +395,8 @@ func (a *Adapter) loginPage(r *http.Request, ar *authRequest, pc *core.ProtocolC
 		LoginHint:    ar.LoginHint,
 		CancelURL:    base + "/oidc/login?id=" + url.QueryEscape(ar.ID) + "&cancel=1",
 	}
-	if a.cfg.DevPages {
-		page.EnrollURL = base + "/dev/mfa"
+	if a.cfg.AccountConsole {
+		page.EnrollURL = base + "/account/security"
 	}
 	if a.cfg.PasswordReset {
 		page.ForgotPasswordURL = base + "/auth/forgot-password"

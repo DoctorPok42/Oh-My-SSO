@@ -1,88 +1,40 @@
-:root {
-  --bg: #f4f5f7; --card: #ffffff; --text: #1d2330; --muted: #5d6676;
-  --border: #d5d9e0; --accent: #2b59c3; --accent-text: #ffffff; --error-bg: #fdecec; --error: #a3201c;
-  --ok-bg: #e7f5ea; --ok: #1a5e2b; --warn-bg: #fff4d6; --warn: #6b4a00;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #12151b; --card: #1b2029; --text: #e7eaf0; --muted: #9aa3b2;
-    --border: #333b48; --accent: #7aa2ff; --accent-text: #0d1220; --error-bg: #3a1d1d; --error: #ffb4ae;
-    --ok-bg: #16301e; --ok: #9be3ad; --warn-bg: #33290f; --warn: #f2d27a;
-  }
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
-  background: var(--bg); color: var(--text);
-  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
-.card {
-  width: 100%; max-width: 400px; background: var(--card); border: 1px solid var(--border);
-  border-radius: 12px; padding: 28px 24px;
-}
-h1 { font-size: 1.5rem; margin: 0 0 4px; }
-.realm { margin: 0 0 12px; color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; }
-.client, .hint { margin: 0 0 20px; color: var(--muted); }
-label { display: block; margin: 12px 0 4px; font-weight: 600; font-size: .95rem; }
-fieldset { border: 0; margin: 0 0 4px; padding: 0; }
-fieldset label { display: inline-flex; gap: 6px; font-weight: 400; margin-right: 16px; }
-legend { font-weight: 600; font-size: .95rem; }
-input:not([type=radio]):not([type=checkbox]) {
-  width: 100%; padding: 10px 12px; font: inherit; color: inherit; background: transparent;
-  border: 1px solid var(--border); border-radius: 8px;
-}
-input:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-button {
-  width: 100%; margin-top: 20px; padding: 11px; font: inherit; font-weight: 600; cursor: pointer;
-  border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: var(--accent-text);
-}
-button.secondary { margin-top: 0; background: transparent; color: var(--accent); }
-button[disabled] { opacity: .6; cursor: progress; }
-.alert { margin: 0 0 16px; padding: 10px 12px; border-radius: 8px; background: var(--error-bg); color: var(--error); }
-.or { display: flex; align-items: center; gap: 12px; color: var(--muted); margin: 20px 0 12px; }
-.or::before, .or::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
-footer { margin-top: 24px; font-size: .9rem; }
-a { color: var(--accent); }
-[hidden] { display: none !important; }
-.aside { margin: 8px 0 0; text-align: right; font-size: .9rem; }
-label.check { display: flex; align-items: center; gap: 8px; margin: 16px 0 0; font-weight: 400; cursor: pointer; }
-label.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
-.note { margin: 4px 0 0 26px; color: var(--muted); font-size: .85rem; }
-.warn { margin: 0 0 4px; padding: 10px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: .95rem; }
-.notice { margin: 0 0 16px; padding: 10px 12px; border-radius: 8px; background: var(--ok-bg); color: var(--ok); }
-.links { margin: 20px 0 0; text-align: center; font-size: .9rem; }
-.links button { width: auto; margin: 0; padding: 0; border: 0; background: none; color: var(--accent); font-weight: 400; text-decoration: underline; }
-.lead { margin: 0 0 8px; }
-.consent { margin: 0 0 16px; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: 8px; }
-.consent li { padding: 10px 12px; border-top: 1px solid var(--border); }
-.consent li:first-child { border-top: 0; }
-.consent strong { display: block; }
-.consent span { display: block; color: var(--muted); font-size: .9rem; }
-.tag { font-style: normal; font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; background: var(--warn-bg); color: var(--warn); }
-button.deny { margin-top: 12px; }
-.small { margin: 20px 0 0; color: var(--muted); font-size: .85rem; }
-.accounts { margin: 0 0 16px; padding: 0; list-style: none; }
-.account { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; margin: 0 0 10px; }
+/* What only the sign-in pages have. Everything else (tokens, buttons,
+   fields, banners, the auth card) is the design system: omsso.css. */
+
+/* "Forgot password?" under the password field. */
+.field-aside { margin-top: 6px; text-align: right; font-size: 13px; }
+
+/* "Try another way", "Choose another account", "Cancel...". */
+.auth-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; font-size: 13px; }
+.auth-links .btn-link { font-size: 13px; }
+
+/* The browser's passkey prompt: what it is waiting for. */
+.prompt-status { font-size: 13px; color: var(--text-muted); }
+
+/* "Pick an account": one tile per account, "Forget" under it. */
+.accounts { display: flex; flex-direction: column; gap: 10px; }
+.account { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .account-pick {
-  display: flex; align-items: center; gap: 12px; width: 100%; margin: 0; padding: 10px 12px; text-align: left;
-  font-weight: 400; color: var(--text); background: transparent; border: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; text-align: left;
+  border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-primary); outline: none;
+  transition: border-color .15s var(--ease), background-color .15s var(--ease);
 }
-.account-pick:hover { border-color: var(--accent); }
-.avatar {
-  flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
-  background: var(--accent); color: var(--accent-text); font-weight: 600; font-size: .9rem;
-}
+.account-pick:hover { border-color: var(--border-strong); background: var(--surface-alt); }
+.account-pick:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.account-pick:disabled { opacity: .6; cursor: progress; }
 .who { flex: 1; min-width: 0; }
 .who strong, .who span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.who span { color: var(--muted); font-size: .9rem; }
-.state { flex: none; font-size: .8rem; color: var(--muted); }
-.state.on { color: var(--ok); font-weight: 600; }
-button.link { width: auto; margin: 0; padding: 2px 0; border: 0; background: none; color: var(--accent); font-weight: 400; font-size: .85rem; text-decoration: underline; }
-.links button + button { margin-left: 16px; }
-.ways { margin: 0; padding: 0; list-style: none; }
-.ways li + li { margin-top: 8px; }
-.ways button { margin-top: 0; text-align: left; }
-.ways button[aria-current="true"] { box-shadow: inset 0 0 0 1px var(--accent); }
-.prompt-status { margin: -12px 0 20px; color: var(--muted); font-size: .9rem; }
-#passkey-step > button { margin-top: 0; }
-#passkey-step #remember + button, #passkey-step #trust + button { margin-top: 20px; }
+.who strong { font-size: 14px; font-weight: 600; }
+.who span { font-size: 12px; color: var(--text-muted); }
+
+/* "Try another way": the methods, the current one marked. */
+.ways .btn { justify-content: flex-start; }
+.ways .btn[aria-current="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+/* Consent: what the application receives. */
+.consent { border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.consent li { padding: 12px 16px; border-top: 1px solid var(--border); }
+.consent li:first-child { border-top: 0; }
+.consent strong { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.consent span:not(.badge) { display: block; font-size: 12px; color: var(--text-muted); }
+.auth-body strong { color: var(--text-primary); }

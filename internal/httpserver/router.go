@@ -6,6 +6,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"sso.internal/sso/internal/adapters/accountui"
+	"sso.internal/sso/internal/adapters/loginui"
 	"sso.internal/sso/internal/clientip"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
@@ -24,8 +26,12 @@ type Server struct {
 
 	publicKeys PublicKeySource
 
-	mfa      *service.MFAService
-	devPages bool
+	mfa *service.MFAService
+
+	// Account console (account_console.go).
+	account      *service.AccountService
+	accountPages *accountui.Pages
+	loginPages   *loginui.Pages
 
 	oidc OIDCProvider
 
@@ -98,12 +104,6 @@ func WithForgotPassword(enabled bool) Option {
 	return func(s *Server) { s.forgotPassword = enabled }
 }
 
-// WithDevPages mounts /r/{realm}/dev/mfa, a bare HTML page to try the MFA
-// flows by hand. Only ever enabled when APP_ENV=development.
-func WithDevPages(enabled bool) Option {
-	return func(s *Server) { s.devPages = enabled }
-}
-
 func New(
 	auth *service.AuthService,
 	sessions *service.SessionService,
@@ -145,8 +145,8 @@ func New(
 			if s.mfa.PasskeysEnabled() {
 				s.mountWebAuthn(r)
 			}
-			if s.devPages {
-				s.mountDevPages(r)
+			if s.account != nil {
+				s.mountAccount(r)
 			}
 		}
 		if s.publicKeys != nil {

@@ -1,0 +1,29 @@
+{{define "content"}}
+{{- if eq .Step "show"}}
+<div class="page-header"><h1 class="page-title">Save your backup codes</h1></div>
+<section class="card stack" id="backup-codes-shown">
+  {{- if .FirstFactor}}<p class="banner banner-success" role="status">Added. Your account now has two-step verification.</p>{{end}}
+  <p>Each code works once, when your phone or key is not at hand. Keep them somewhere safe (a password manager, a printed page): <strong>they are not shown again.</strong></p>
+  <ul class="codes" id="codes">
+    {{- range .Codes}}<li>{{.}}</li>{{end}}
+  </ul>
+  <div class="actions">
+    <button type="button" class="btn btn-secondary" data-copy-codes>Copy</button>
+    <button type="button" class="btn btn-secondary" data-download-codes>Download</button>
+    <a class="btn" href="{{.Base}}/security" id="codes-done">I saved them</a>
+  </div>
+</section>
+{{- else}}
+<p class="back"><a href="{{.Base}}/security">← Security</a></p>
+<div class="page-header"><h1 class="page-title">Get new backup codes</h1></div>
+<section class="card stack">
+  <p class="banner banner-warning" role="note">Your current backup codes will stop working, used or not.</p>
+  {{- with .FormError}}<p class="banner banner-danger" role="alert">{{.}}</p>{{end}}
+  <form class="actions" method="post" action="{{.Base}}/security/backup-codes">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button type="submit" class="btn" id="codes-generate">Get new codes</button>
+    <a class="btn btn-secondary" href="{{.Base}}/security">Cancel</a>
+  </form>
+</section>
+{{- end}}
+{{end}}

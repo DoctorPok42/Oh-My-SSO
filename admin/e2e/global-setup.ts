@@ -5,8 +5,9 @@ import { saveAccount, signInOnIdP, STORAGE, totpCode, type Account } from "./hel
 
 // Once before the tests: the first administrator created by
 // `idp-admin bootstrap` (e2e/run.sh) chooses a password with the activation
-// link, sets up an authenticator app, and signs in to the console. The
-// browser state (session cookie) is saved for the tests.
+// link, sets up an authenticator app in the account console of the IdP
+// (/r/master/account), and signs in to the admin console. The browser state
+// (session cookie) is saved for the tests.
 export default async function globalSetup(config: FullConfig) {
   const file = process.env.E2E_BOOTSTRAP_OUTPUT;
   if (!file) throw new Error("E2E_BOOTSTRAP_OUTPUT is not set: run the tests with e2e/run.sh (make admin-e2e)");
@@ -32,20 +33,21 @@ export default async function globalSetup(config: FullConfig) {
     await page.locator("#reset-form button[type=submit]").click();
     await expect(page.locator("#done")).toBeVisible();
 
-    await page.goto(`${idp}/r/master/dev/mfa`);
+    // 2. authenticator app, from the account console of the IdP: its
+    // sign-in page first, then "Add an authenticator app"
+    await page.goto(`${idp}/r/master/account/security/totp`);
     await page.locator("#identifier").fill(a.email);
     await page.locator("#password").fill(a.password);
-    await page.locator("#login").click();
-    await expect(page.locator("#log")).toContainText("mfa_enrollment_required");
-    await page.locator("#totpname").fill("e2e");
-    await page.locator("#totpstart").click();
-    await expect(page.locator("#secret")).not.toBeEmpty();
-    a.totpSecret = (await page.locator("#secret").innerText()).replace(/\s+/g, "");
+    await page.locator("#password-submit").click();
+    await page.locator("#totp-name").fill("e2e");
+    await page.locator("#totp-start button[type=submit]").click();
+    await expect(page.locator("#totp-secret")).not.toBeEmpty();
+    a.totpSecret = (await page.locator("#totp-secret").innerText()).replace(/\s+/g, "");
     OTPAuth.Secret.fromBase32(a.totpSecret); // valid base32
     saveAccount(a);
-    await page.locator("#totpcode").fill(await totpCode(a.totpSecret));
-    await page.locator("#totpconfirm").click();
-    await expect(page.locator("#log")).toContainText("backup_codes");
+    await page.locator("#totp-code").fill(await totpCode(a.totpSecret));
+    await page.locator("#totp-form button[type=submit]").click();
+    await expect(page.locator("#codes li").first()).toBeVisible();
 
     // 3. sign in to the console (a new browser: no IdP session yet)
     const context = await browser.newContext();

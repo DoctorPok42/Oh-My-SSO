@@ -202,7 +202,7 @@
       const li = document.createElement("li");
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "secondary way";
+      b.className = "btn btn-secondary btn-md btn-block way";
       b.dataset.method = m;
       b.textContent = labels[m];
       if (m === current) b.setAttribute("aria-current", "true");
@@ -283,7 +283,7 @@
   });
 
   // --- passkeys: the server speaks base64url JSON, the browser API wants
-  // ArrayBuffers (same helpers as the /dev/mfa page).
+  // ArrayBuffers (same helpers as the account console, account.js).
   const dec = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
   const enc = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   const requestOptions = (o) => {

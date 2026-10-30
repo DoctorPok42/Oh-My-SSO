@@ -233,6 +233,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	s.endPreviousSession(r, sess)
 	setSessionCookie(w, realm.Name, rawToken, sess)
+	rememberRealm(w, r, realm.Name) // the account console's organization menu
 	resp.RememberMe = sess.RememberMe
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -293,6 +294,7 @@ func (s *Server) handleForgetAccount(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			clearSessionCookie(w, realm.Name)
+			forgetRealm(w, r, realm.Name)
 		}
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -308,6 +310,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	clearSessionCookie(w, realm.Name)
+	forgetRealm(w, r, realm.Name)
 	w.WriteHeader(http.StatusNoContent)
 }
 

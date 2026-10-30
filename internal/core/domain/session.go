@@ -24,6 +24,12 @@ const (
 	// An administrator's timeout on the user, one of their groups or the
 	// client started.
 	SessionRevokedTimeout SessionRevokedReason = "timeout"
+	// The user signed this session out from their account console
+	// ("Sessions" page, or "Sign out of all other sessions").
+	SessionRevokedByUser SessionRevokedReason = "user_revoked"
+	// The user changed their password in the account console: their other
+	// sessions end, the one they used stays.
+	SessionRevokedPasswordChanged SessionRevokedReason = "password_changed"
 )
 
 // Authentication Method Reference values (RFC 8176 §2), stored as-is in
