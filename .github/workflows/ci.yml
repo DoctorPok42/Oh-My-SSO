@@ -1,3 +1,20 @@
+# Continuous integration: every push to main and every pull request runs all
+# the checks below. Docs: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+#
+# Jobs (they run in parallel, except docker which waits for all the others):
+#   go-unit         unit tests, fast feedback (-short)
+#   go-integration  every test, with PostgreSQL / Valkey / Vault in Docker
+#                   (testcontainers), plus the coverage floor of internal/core
+#   lint            golangci-lint (.golangci.yml)
+#   checks          architecture rules, Ent code up to date, govulncheck
+#   admin           admin console: lint, types, unit tests, npm audit, build
+#   docker          builds the 3 images; pushes them on main only
+#
+# Runners: GitHub-hosted (ubuntu-latest), free for public repositories. Not
+# self-hosted: on a public repository, anyone can open a pull request from a
+# fork, and that pull request's code would run on your own machine.
+# https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners
+
 name: CI
 
 on:
@@ -15,41 +32,135 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GO_VERSION: "1.26.7"
   NODE_VERSION: "22.12.0"
+  GOLANGCI_LINT_VERSION: v2.15.0
+  GOVULNCHECK_VERSION: v1.9.0
+  CORE_COVERAGE_MIN: "50"
   DOCKER_REPOSITORY: doctorpok/omsso
 
 jobs:
-  go:
-    name: Go checks
+  go-unit:
+    name: Go unit tests
     if: github.event_name == 'push' || github.event.pull_request.draft == false
-    runs-on: [self-hosted, linux, x64]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
 
-      - name: Run Go tests
-        run: go test -p 1 ./... -short -race -count=1
+      - name: Run unit tests
+        run: go test -p 1 -short -race -count=1 ./...
+
+  go-integration:
+    name: Go integration tests
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Run all tests (unit + integration)
+        run: >-
+          go test -p 1 -race -count=1 -timeout 20m
+          -coverpkg=./internal/core/...
+          -coverprofile=coverage-core.out
+          ./...
+
+      - name: Check the coverage of internal/core
+        run: |
+          total=$(go tool cover -func=coverage-core.out | awk '/^total:/ { sub("%", "", $3); print $3 }')
+          echo "internal/core coverage: ${total}% (minimum ${CORE_COVERAGE_MIN}%)" | tee -a "$GITHUB_STEP_SUMMARY"
+          if awk -v t="$total" -v min="$CORE_COVERAGE_MIN" 'BEGIN { exit !(t + 0 < min + 0) }'; then
+            echo "::error::internal/core coverage ${total}% is below ${CORE_COVERAGE_MIN}%"
+            exit 1
+          fi
+
+  lint:
+    name: Go lint
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+
+  checks:
+    name: Architecture, generated code, vulnerabilities
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Check the dependency rules
+        run: make check-core-deps check-adapter-deps
+
+      - name: Check that the Ent code is up to date
+        run: |
+          go generate ./ent/...
+          if ! git diff --exit-code --stat -- ent/; then
+            echo "::error::ent/ is out of date with ent/schema: run 'make generate' and commit the result"
+            exit 1
+          fi
+
+      - name: Run govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }} ./...
 
   admin:
     name: Admin checks
     if: github.event_name == 'push' || github.event.pull_request.draft == false
-    runs-on: [self-hosted, linux, x64]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: admin
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -57,6 +168,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Run lint
         run: npm run lint
@@ -73,8 +187,9 @@ jobs:
   docker:
     name: Docker ${{ matrix.image }}
     if: github.event_name == 'push' || github.event.pull_request.draft == false
-    needs: [go, admin]
-    runs-on: [self-hosted, linux, x64]
+    needs: [go-unit, go-integration, lint, checks, admin]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -91,20 +206,22 @@ jobs:
             target: ""
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to Docker Hub
         if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and publish Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.context }}/Dockerfile

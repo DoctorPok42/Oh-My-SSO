@@ -231,7 +231,8 @@ func IsDeviceID(v string) bool {
 		return false
 	}
 	for _, ch := range v {
-		if !(ch >= 'A' && ch <= 'Z') && !(ch >= '2' && ch <= '7') {
+		// Outside A-Z and outside 2-7: not a base32 character.
+		if (ch < 'A' || ch > 'Z') && (ch < '2' || ch > '7') {
 			return false
 		}
 	}
