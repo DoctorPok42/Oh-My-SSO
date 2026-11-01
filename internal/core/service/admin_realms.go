@@ -174,6 +174,7 @@ type SettingsView struct {
 	MinPasswordLength           int       `json:"min_password_length"`
 	PasswordExpiryDays          int       `json:"password_expiry_days"`
 	PasswordResetTTLMinutes     int       `json:"password_reset_ttl_minutes"`
+	InviteTTLHours              int       `json:"invite_ttl_hours"`
 	SessionIdleMinutes          int       `json:"session_idle_minutes"`
 	SessionMaxHours             int       `json:"session_max_hours"`
 	RememberMeEnabled           bool      `json:"remember_me_enabled"`
@@ -199,6 +200,7 @@ func (s *AdminService) settingsOf(ctx context.Context, realmID string) (*domain.
 		st.PasswordExpiryDays = 90
 		st.KeyRotationGraceHours = 24
 		st.MFAStepUpMaxAgeMinutes = 10
+		st.InviteTTLHours = defaultInviteTTLHours
 		return st, nil
 	}
 	return st, err
@@ -215,7 +217,7 @@ func (s *AdminService) GetSettings(ctx context.Context, realm *domain.Realm) (*S
 	}
 	return &SettingsView{
 		ManagedBy: string(st.ManagedBy), MinPasswordLength: st.MinPasswordLength, PasswordExpiryDays: st.PasswordExpiryDays,
-		PasswordResetTTLMinutes: st.PasswordResetTTLMinutes, SessionIdleMinutes: st.SessionIdleMinutes,
+		InviteTTLHours: st.InviteTTLHours, PasswordResetTTLMinutes: st.PasswordResetTTLMinutes, SessionIdleMinutes: st.SessionIdleMinutes,
 		SessionMaxHours: st.SessionMaxHours, RememberMeEnabled: st.RememberMeEnabled, RememberMeIdleDays: st.RememberMeIdleDays,
 		RememberMeMaxDays: st.RememberMeMaxDays, LockoutThreshold: st.LockoutThreshold, LockoutDurationMinutes: st.LockoutDurationMinutes,
 		IPAllowlist: allow, MFARequiredGlobally: st.MFARequiredGlobally, MFAStepUpMaxAgeMinutes: st.MFAStepUpMaxAgeMinutes,
@@ -229,6 +231,7 @@ type SettingsPatch struct {
 	MinPasswordLength           *int
 	PasswordExpiryDays          *int
 	PasswordResetTTLMinutes     *int
+	InviteTTLHours              *int
 	SessionIdleMinutes          *int
 	SessionMaxHours             *int
 	RememberMeEnabled           *bool
@@ -261,6 +264,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		{"min_password_length", p.MinPasswordLength, 8, MaxPasswordLength},
 		{"password_expiry_days", p.PasswordExpiryDays, 0, 3650},
 		{"password_reset_ttl_minutes", p.PasswordResetTTLMinutes, 5, 24 * 60},
+		{"invite_ttl_hours", p.InviteTTLHours, 1, 30 * 24},
 		{"session_idle_minutes", p.SessionIdleMinutes, 1, 7 * 24 * 60},
 		{"session_max_hours", p.SessionMaxHours, 1, 90 * 24},
 		{"remember_me_idle_days", p.RememberMeIdleDays, 1, maxRememberMeDays},
@@ -311,10 +315,15 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 	if err := ValidateSessionDurations(&merged); err != nil {
 		return nil, err
 	}
+	if p.SessionIdleMinutes != nil && merged.MFAStepUpMaxAgeMinutes > merged.SessionIdleMinutes {
+		return nil, adminInvalid("session_idle_minutes",
+			"the idle timeout (%d minutes) cannot be shorter than the MFA step-up window (%d minutes): the session would end first and ask to sign in again",
+			merged.SessionIdleMinutes, merged.MFAStepUpMaxAgeMinutes)
+	}
 	by := actor.By()
 	upd := repository.UpdateInstanceSettingsParams{
 		MinPasswordLength: p.MinPasswordLength, PasswordExpiryDays: p.PasswordExpiryDays,
-		PasswordResetTTLMinutes: p.PasswordResetTTLMinutes, SessionIdleMinutes: p.SessionIdleMinutes,
+		InviteTTLHours: p.InviteTTLHours, PasswordResetTTLMinutes: p.PasswordResetTTLMinutes, SessionIdleMinutes: p.SessionIdleMinutes,
 		SessionMaxHours: p.SessionMaxHours, RememberMeEnabled: p.RememberMeEnabled,
 		RememberMeIdleDays: p.RememberMeIdleDays, RememberMeMaxDays: p.RememberMeMaxDays, LockoutThreshold: p.LockoutThreshold,
 		LockoutDurationMinutes: p.LockoutDurationMinutes, IPAllowlist: allow,
@@ -337,7 +346,7 @@ func settingsChanges(p SettingsPatch) map[string]interface{} {
 	out := map[string]interface{}{}
 	ints := map[string]*int{
 		"min_password_length": p.MinPasswordLength, "password_expiry_days": p.PasswordExpiryDays,
-		"password_reset_ttl_minutes": p.PasswordResetTTLMinutes, "session_idle_minutes": p.SessionIdleMinutes,
+		"invite_ttl_hours": p.InviteTTLHours, "password_reset_ttl_minutes": p.PasswordResetTTLMinutes, "session_idle_minutes": p.SessionIdleMinutes,
 		"session_max_hours": p.SessionMaxHours, "remember_me_idle_days": p.RememberMeIdleDays,
 		"remember_me_max_days": p.RememberMeMaxDays, "lockout_threshold": p.LockoutThreshold,
 		"lockout_duration_minutes": p.LockoutDurationMinutes, "mfa_step_up_max_age_minutes": p.MFAStepUpMaxAgeMinutes,

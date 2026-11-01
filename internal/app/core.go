@@ -291,9 +291,16 @@ func (c *Core) StartTimeoutEnforcer() {
 		defer close(done)
 		c.Timeouts.RunEnforcer(ctx, service.EnforcerInterval)
 	}()
+	retirerDone := make(chan struct{})
+	go func() {
+		defer close(retirerDone)
+		// Expired signing keys are retired and removed from the wallet.
+		c.KeyRotation.RunRetirer(ctx, c.Admin.ListRealms, 10*time.Minute)
+	}()
 	c.stopEnforcer = func() {
 		cancel()
 		<-done // a sign-out in progress finishes before the database closes
+		<-retirerDone
 	}
 }
 

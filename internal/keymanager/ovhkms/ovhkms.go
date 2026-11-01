@@ -109,6 +109,23 @@ func (k *KeyManager) Sign(ctx context.Context, kmsKeyReference string, payload [
 	return signer.Sign(rand.Reader, hash[:], crypto.SHA256)
 }
 
+var _ keymanager.KeyRemover = (*KeyManager)(nil)
+
+// DeleteKey removes a service key from the OKMS.
+func (k *KeyManager) DeleteKey(ctx context.Context, kmsKeyReference string) error {
+	id, err := uuid.Parse(kmsKeyReference)
+	if err != nil {
+		return fmt.Errorf("ovhkms keymanager: invalid key reference %q: %w", kmsKeyReference, err)
+	}
+	if err := k.client.DeleteServiceKey(ctx, k.okmsID, id); err != nil {
+		return fmt.Errorf("ovhkms keymanager: delete key: %w", err)
+	}
+	k.mu.Lock()
+	delete(k.signers, kmsKeyReference)
+	k.mu.Unlock()
+	return nil
+}
+
 func (k *KeyManager) SignDigest(ctx context.Context, kmsKeyReference string, digest []byte) ([]byte, error) {
 	if len(digest) != sha256.Size {
 		return nil, fmt.Errorf("ovhkms keymanager: digest must be %d bytes (SHA-256), got %d", sha256.Size, len(digest))

@@ -370,6 +370,27 @@ func (_u *InstanceSettingsUpdate) AddPasswordResetTTLMinutes(v int) *InstanceSet
 	return _u
 }
 
+// SetInviteTTLHours sets the "invite_ttl_hours" field.
+func (_u *InstanceSettingsUpdate) SetInviteTTLHours(v int) *InstanceSettingsUpdate {
+	_u.mutation.ResetInviteTTLHours()
+	_u.mutation.SetInviteTTLHours(v)
+	return _u
+}
+
+// SetNillableInviteTTLHours sets the "invite_ttl_hours" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableInviteTTLHours(v *int) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetInviteTTLHours(*v)
+	}
+	return _u
+}
+
+// AddInviteTTLHours adds value to the "invite_ttl_hours" field.
+func (_u *InstanceSettingsUpdate) AddInviteTTLHours(v int) *InstanceSettingsUpdate {
+	_u.mutation.AddInviteTTLHours(v)
+	return _u
+}
+
 // SetSuspiciousLoginEmailEnabled sets the "suspicious_login_email_enabled" field.
 func (_u *InstanceSettingsUpdate) SetSuspiciousLoginEmailEnabled(v bool) *InstanceSettingsUpdate {
 	_u.mutation.SetSuspiciousLoginEmailEnabled(v)
@@ -568,6 +589,12 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.AddedPasswordResetTTLMinutes(); ok {
 		_spec.AddField(instancesettings.FieldPasswordResetTTLMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.InviteTTLHours(); ok {
+		_spec.SetField(instancesettings.FieldInviteTTLHours, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedInviteTTLHours(); ok {
+		_spec.AddField(instancesettings.FieldInviteTTLHours, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.SuspiciousLoginEmailEnabled(); ok {
 		_spec.SetField(instancesettings.FieldSuspiciousLoginEmailEnabled, field.TypeBool, value)
@@ -941,6 +968,27 @@ func (_u *InstanceSettingsUpdateOne) AddPasswordResetTTLMinutes(v int) *Instance
 	return _u
 }
 
+// SetInviteTTLHours sets the "invite_ttl_hours" field.
+func (_u *InstanceSettingsUpdateOne) SetInviteTTLHours(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.ResetInviteTTLHours()
+	_u.mutation.SetInviteTTLHours(v)
+	return _u
+}
+
+// SetNillableInviteTTLHours sets the "invite_ttl_hours" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableInviteTTLHours(v *int) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetInviteTTLHours(*v)
+	}
+	return _u
+}
+
+// AddInviteTTLHours adds value to the "invite_ttl_hours" field.
+func (_u *InstanceSettingsUpdateOne) AddInviteTTLHours(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.AddInviteTTLHours(v)
+	return _u
+}
+
 // SetSuspiciousLoginEmailEnabled sets the "suspicious_login_email_enabled" field.
 func (_u *InstanceSettingsUpdateOne) SetSuspiciousLoginEmailEnabled(v bool) *InstanceSettingsUpdateOne {
 	_u.mutation.SetSuspiciousLoginEmailEnabled(v)
@@ -1169,6 +1217,12 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.AddedPasswordResetTTLMinutes(); ok {
 		_spec.AddField(instancesettings.FieldPasswordResetTTLMinutes, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.InviteTTLHours(); ok {
+		_spec.SetField(instancesettings.FieldInviteTTLHours, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedInviteTTLHours(); ok {
+		_spec.AddField(instancesettings.FieldInviteTTLHours, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.SuspiciousLoginEmailEnabled(); ok {
 		_spec.SetField(instancesettings.FieldSuspiciousLoginEmailEnabled, field.TypeBool, value)

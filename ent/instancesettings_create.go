@@ -272,6 +272,20 @@ func (_c *InstanceSettingsCreate) SetNillablePasswordResetTTLMinutes(v *int) *In
 	return _c
 }
 
+// SetInviteTTLHours sets the "invite_ttl_hours" field.
+func (_c *InstanceSettingsCreate) SetInviteTTLHours(v int) *InstanceSettingsCreate {
+	_c.mutation.SetInviteTTLHours(v)
+	return _c
+}
+
+// SetNillableInviteTTLHours sets the "invite_ttl_hours" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableInviteTTLHours(v *int) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetInviteTTLHours(*v)
+	}
+	return _c
+}
+
 // SetSuspiciousLoginEmailEnabled sets the "suspicious_login_email_enabled" field.
 func (_c *InstanceSettingsCreate) SetSuspiciousLoginEmailEnabled(v bool) *InstanceSettingsCreate {
 	_c.mutation.SetSuspiciousLoginEmailEnabled(v)
@@ -436,6 +450,10 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultPasswordResetTTLMinutes
 		_c.mutation.SetPasswordResetTTLMinutes(v)
 	}
+	if _, ok := _c.mutation.InviteTTLHours(); !ok {
+		v := instancesettings.DefaultInviteTTLHours
+		_c.mutation.SetInviteTTLHours(v)
+	}
 	if _, ok := _c.mutation.SuspiciousLoginEmailEnabled(); !ok {
 		v := instancesettings.DefaultSuspiciousLoginEmailEnabled
 		_c.mutation.SetSuspiciousLoginEmailEnabled(v)
@@ -510,6 +528,9 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.PasswordResetTTLMinutes(); !ok {
 		return &ValidationError{Name: "password_reset_ttl_minutes", err: errors.New(`ent: missing required field "InstanceSettings.password_reset_ttl_minutes"`)}
+	}
+	if _, ok := _c.mutation.InviteTTLHours(); !ok {
+		return &ValidationError{Name: "invite_ttl_hours", err: errors.New(`ent: missing required field "InstanceSettings.invite_ttl_hours"`)}
 	}
 	if _, ok := _c.mutation.SuspiciousLoginEmailEnabled(); !ok {
 		return &ValidationError{Name: "suspicious_login_email_enabled", err: errors.New(`ent: missing required field "InstanceSettings.suspicious_login_email_enabled"`)}
@@ -631,6 +652,10 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.PasswordResetTTLMinutes(); ok {
 		_spec.SetField(instancesettings.FieldPasswordResetTTLMinutes, field.TypeInt, value)
 		_node.PasswordResetTTLMinutes = value
+	}
+	if value, ok := _c.mutation.InviteTTLHours(); ok {
+		_spec.SetField(instancesettings.FieldInviteTTLHours, field.TypeInt, value)
+		_node.InviteTTLHours = value
 	}
 	if value, ok := _c.mutation.SuspiciousLoginEmailEnabled(); ok {
 		_spec.SetField(instancesettings.FieldSuspiciousLoginEmailEnabled, field.TypeBool, value)

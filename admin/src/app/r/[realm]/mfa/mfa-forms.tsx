@@ -63,7 +63,7 @@ export function RealmMfaCard({
         <Field
           label="Step-up window (minutes)"
           htmlFor="mfa-age"
-          hint="How recent a second factor must be for sensitive actions (changing a password, every change in this console...). 1 to 1440."
+          hint="How recent a second factor must be for sensitive actions (changing a password, every change in this console...). 1 to 1440, and at most the session idle timeout (Settings): an idle session ends first."
         >
           <Input
             id="mfa-age"

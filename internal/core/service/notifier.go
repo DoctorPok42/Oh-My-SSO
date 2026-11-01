@@ -26,6 +26,7 @@ const (
 	defaultLockoutThreshold        = 5
 	defaultLockoutDurationMinutes  = 15
 	defaultPasswordResetTTLMinutes = 30
+	defaultInviteTTLHours          = 4
 	settingsCacheTTL               = time.Minute
 )
 
@@ -38,6 +39,7 @@ func DefaultInstanceSettings(realmID string) *domain.InstanceSettings {
 		LockoutThreshold:        defaultLockoutThreshold,
 		LockoutDurationMinutes:  defaultLockoutDurationMinutes,
 		PasswordResetTTLMinutes: defaultPasswordResetTTLMinutes,
+		InviteTTLHours:          defaultInviteTTLHours,
 		SessionIdleMinutes:      int(defaultSessionIdleTimeout / time.Minute),
 		SessionMaxHours:         int(defaultSessionMaxLifetime / time.Hour),
 		RememberMeEnabled:       true,

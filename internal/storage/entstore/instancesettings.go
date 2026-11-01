@@ -61,6 +61,7 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 		SetNillableKeyRotationGraceHours(p.KeyRotationGraceHours).
 		SetNillableMfaStepUpMaxAgeMinutes(p.MFAStepUpMaxAgeMinutes).
 		SetNillablePasswordResetTTLMinutes(p.PasswordResetTTLMinutes).
+		SetNillableInviteTTLHours(p.InviteTTLHours).
 		SetNillableSuspiciousLoginEmailEnabled(p.SuspiciousLoginEmailEnabled).
 		SetNillableMfaTrustedDeviceEnabled(p.MFATrustedDeviceEnabled).
 		SetNillableMfaTrustedDeviceDays(p.MFATrustedDeviceDays).
@@ -100,6 +101,7 @@ func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings 
 		KeyRotationGraceHours:       e.KeyRotationGraceHours,
 		MFAStepUpMaxAgeMinutes:      e.MfaStepUpMaxAgeMinutes,
 		PasswordResetTTLMinutes:     e.PasswordResetTTLMinutes,
+		InviteTTLHours:              e.InviteTTLHours,
 		SuspiciousLoginEmailEnabled: e.SuspiciousLoginEmailEnabled,
 		MFATrustedDeviceEnabled:     e.MfaTrustedDeviceEnabled,
 		MFATrustedDeviceDays:        e.MfaTrustedDeviceDays,

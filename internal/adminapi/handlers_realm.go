@@ -472,6 +472,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		MinPasswordLength           *int      `json:"min_password_length"`
 		PasswordExpiryDays          *int      `json:"password_expiry_days"`
 		PasswordResetTTLMinutes     *int      `json:"password_reset_ttl_minutes"`
+		InviteTTLHours              *int      `json:"invite_ttl_hours"`
 		SessionIdleMinutes          *int      `json:"session_idle_minutes"`
 		SessionMaxHours             *int      `json:"session_max_hours"`
 		RememberMeEnabled           *bool     `json:"remember_me_enabled"`

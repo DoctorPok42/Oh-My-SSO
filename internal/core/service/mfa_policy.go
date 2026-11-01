@@ -353,6 +353,12 @@ func (s *MFAPolicyService) SetRealmPolicy(ctx context.Context, in SetRealmMFAPol
 	if settings.ManagedBy == domain.InstanceSettingsManagedByConfig && !in.Actor.FromConfig {
 		return nil, ErrManagedByConfig
 	}
+	// A session ends after session_idle_minutes without activity: a longer
+	// step-up window would never be reached, the sign-in page comes first.
+	if maxAge != nil && settings.SessionIdleMinutes > 0 && *maxAge > settings.SessionIdleMinutes {
+		return nil, fmt.Errorf("%w: the step-up window (%d min) cannot be longer than the session idle timeout (%d min, Settings > Session policy): the session would end first and ask to sign in again",
+			ErrInvalidMFAPolicy, *maxAge, settings.SessionIdleMinutes)
+	}
 
 	by := in.Actor.TriggeredBy
 	updated, err := s.settings.Update(ctx, settings.ID, repository.UpdateInstanceSettingsParams{

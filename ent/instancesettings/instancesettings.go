@@ -53,6 +53,8 @@ const (
 	FieldMfaTrustedDeviceDays = "mfa_trusted_device_days"
 	// FieldPasswordResetTTLMinutes holds the string denoting the password_reset_ttl_minutes field in the database.
 	FieldPasswordResetTTLMinutes = "password_reset_ttl_minutes"
+	// FieldInviteTTLHours holds the string denoting the invite_ttl_hours field in the database.
+	FieldInviteTTLHours = "invite_ttl_hours"
 	// FieldSuspiciousLoginEmailEnabled holds the string denoting the suspicious_login_email_enabled field in the database.
 	FieldSuspiciousLoginEmailEnabled = "suspicious_login_email_enabled"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -94,6 +96,7 @@ var Columns = []string{
 	FieldMfaTrustedDeviceEnabled,
 	FieldMfaTrustedDeviceDays,
 	FieldPasswordResetTTLMinutes,
+	FieldInviteTTLHours,
 	FieldSuspiciousLoginEmailEnabled,
 	FieldUpdatedAt,
 	FieldUpdatedBy,
@@ -146,6 +149,8 @@ var (
 	DefaultMfaTrustedDeviceDays int
 	// DefaultPasswordResetTTLMinutes holds the default value on creation for the "password_reset_ttl_minutes" field.
 	DefaultPasswordResetTTLMinutes int
+	// DefaultInviteTTLHours holds the default value on creation for the "invite_ttl_hours" field.
+	DefaultInviteTTLHours int
 	// DefaultSuspiciousLoginEmailEnabled holds the default value on creation for the "suspicious_login_email_enabled" field.
 	DefaultSuspiciousLoginEmailEnabled bool
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -254,6 +259,11 @@ func ByMfaTrustedDeviceDays(opts ...sql.OrderTermOption) OrderOption {
 // ByPasswordResetTTLMinutes orders the results by the password_reset_ttl_minutes field.
 func ByPasswordResetTTLMinutes(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPasswordResetTTLMinutes, opts...).ToFunc()
+}
+
+// ByInviteTTLHours orders the results by the invite_ttl_hours field.
+func ByInviteTTLHours(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldInviteTTLHours, opts...).ToFunc()
 }
 
 // BySuspiciousLoginEmailEnabled orders the results by the suspicious_login_email_enabled field.

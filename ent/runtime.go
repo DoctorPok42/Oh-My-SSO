@@ -471,12 +471,16 @@ func init() {
 	instancesettingsDescPasswordResetTTLMinutes := instancesettingsFields[19].Descriptor()
 	// instancesettings.DefaultPasswordResetTTLMinutes holds the default value on creation for the password_reset_ttl_minutes field.
 	instancesettings.DefaultPasswordResetTTLMinutes = instancesettingsDescPasswordResetTTLMinutes.Default.(int)
+	// instancesettingsDescInviteTTLHours is the schema descriptor for invite_ttl_hours field.
+	instancesettingsDescInviteTTLHours := instancesettingsFields[20].Descriptor()
+	// instancesettings.DefaultInviteTTLHours holds the default value on creation for the invite_ttl_hours field.
+	instancesettings.DefaultInviteTTLHours = instancesettingsDescInviteTTLHours.Default.(int)
 	// instancesettingsDescSuspiciousLoginEmailEnabled is the schema descriptor for suspicious_login_email_enabled field.
-	instancesettingsDescSuspiciousLoginEmailEnabled := instancesettingsFields[20].Descriptor()
+	instancesettingsDescSuspiciousLoginEmailEnabled := instancesettingsFields[21].Descriptor()
 	// instancesettings.DefaultSuspiciousLoginEmailEnabled holds the default value on creation for the suspicious_login_email_enabled field.
 	instancesettings.DefaultSuspiciousLoginEmailEnabled = instancesettingsDescSuspiciousLoginEmailEnabled.Default.(bool)
 	// instancesettingsDescUpdatedAt is the schema descriptor for updated_at field.
-	instancesettingsDescUpdatedAt := instancesettingsFields[21].Descriptor()
+	instancesettingsDescUpdatedAt := instancesettingsFields[22].Descriptor()
 	// instancesettings.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	instancesettings.DefaultUpdatedAt = instancesettingsDescUpdatedAt.Default.(func() time.Time)
 	// instancesettings.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

@@ -63,4 +63,4 @@ volumes:
 
 networks:
   oh-my-sso-network:
-    driver: bridge
+    driver: bridge

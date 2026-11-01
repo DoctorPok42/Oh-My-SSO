@@ -58,6 +58,8 @@ type InstanceSettings struct {
 	MfaTrustedDeviceDays int `json:"mfa_trusted_device_days,omitempty"`
 	// PasswordResetTTLMinutes holds the value of the "password_reset_ttl_minutes" field.
 	PasswordResetTTLMinutes int `json:"password_reset_ttl_minutes,omitempty"`
+	// InviteTTLHours holds the value of the "invite_ttl_hours" field.
+	InviteTTLHours int `json:"invite_ttl_hours,omitempty"`
 	// SuspiciousLoginEmailEnabled holds the value of the "suspicious_login_email_enabled" field.
 	SuspiciousLoginEmailEnabled bool `json:"suspicious_login_email_enabled,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -99,7 +101,7 @@ func (*InstanceSettings) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case instancesettings.FieldRememberMeEnabled, instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled, instancesettings.FieldMfaTrustedDeviceEnabled, instancesettings.FieldSuspiciousLoginEmailEnabled:
 			values[i] = new(sql.NullBool)
-		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldMfaTrustedDeviceDays, instancesettings.FieldPasswordResetTTLMinutes:
+		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldMfaTrustedDeviceDays, instancesettings.FieldPasswordResetTTLMinutes, instancesettings.FieldInviteTTLHours:
 			values[i] = new(sql.NullInt64)
 		case instancesettings.FieldID, instancesettings.FieldRealmID, instancesettings.FieldManagedBy, instancesettings.FieldUpdatedBy:
 			values[i] = new(sql.NullString)
@@ -242,6 +244,12 @@ func (_m *InstanceSettings) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.PasswordResetTTLMinutes = int(value.Int64)
 			}
+		case instancesettings.FieldInviteTTLHours:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field invite_ttl_hours", values[i])
+			} else if value.Valid {
+				_m.InviteTTLHours = int(value.Int64)
+			}
 		case instancesettings.FieldSuspiciousLoginEmailEnabled:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field suspicious_login_email_enabled", values[i])
@@ -357,6 +365,9 @@ func (_m *InstanceSettings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("password_reset_ttl_minutes=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PasswordResetTTLMinutes))
+	builder.WriteString(", ")
+	builder.WriteString("invite_ttl_hours=")
+	builder.WriteString(fmt.Sprintf("%v", _m.InviteTTLHours))
 	builder.WriteString(", ")
 	builder.WriteString("suspicious_login_email_enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SuspiciousLoginEmailEnabled))

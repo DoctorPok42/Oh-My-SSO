@@ -12,3 +12,4 @@ certs/
 # env
 .env
 .env.compose
+.env.production

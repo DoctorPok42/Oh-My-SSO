@@ -16,7 +16,6 @@ import (
 )
 
 
-const InviteActivationTTL = 4 * time.Hour
 
 var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._@+-]{0,127}$`)
 
@@ -407,7 +406,11 @@ func (s *AdminService) ResendActivation(ctx context.Context, actor AdminActor, r
 }
 
 func (s *AdminService) issueActivation(ctx context.Context, actor AdminActor, realm *domain.Realm, u *domain.User, sendEmail bool) (*InviteResult, error) {
-	token, expires, err := s.d.PasswordReset.IssueActivationToken(ctx, u, InviteActivationTTL, actor.By())
+	hours := defaultInviteTTLHours
+	if st, serr := s.GetSettings(ctx, realm); serr == nil && st.InviteTTLHours > 0 {
+		hours = st.InviteTTLHours
+	}
+	token, expires, err := s.d.PasswordReset.IssueActivationToken(ctx, u, time.Duration(hours)*time.Hour, actor.By())
 	if err != nil {
 		return nil, err
 	}
