@@ -66,7 +66,12 @@ func GenerateSigningKey(
 		return nil, fmt.Errorf("generate signing key: %w", err)
 	}
 
+	// The kid is the wallet's key id when it is a UUID, so a key is found
+	// as easily in the wallet as in the console.
 	kid := uuid.NewString()
+	if _, perr := uuid.Parse(generated.KMSKeyReference); perr == nil {
+		kid = generated.KMSKeyReference
+	}
 	var certPEM string
 	if saml {
 		now := time.Now

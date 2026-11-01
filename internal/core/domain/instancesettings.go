@@ -28,6 +28,7 @@ type InstanceSettings struct {
 	KeyRotationGraceHours       int
 	MFAStepUpMaxAgeMinutes      int
 	PasswordResetTTLMinutes     int
+	InviteTTLHours              int
 	SuspiciousLoginEmailEnabled bool
 	MFATrustedDeviceEnabled     bool
 	MFATrustedDeviceDays        int

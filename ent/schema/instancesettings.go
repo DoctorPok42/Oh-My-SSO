@@ -60,6 +60,8 @@ func (InstanceSettings) Fields() []ent.Field {
 		field.Bool("mfa_trusted_device_enabled").Default(true),
 		field.Int("mfa_trusted_device_days").Default(30),
 		field.Int("password_reset_ttl_minutes").Default(30),
+		// How long an invitation / activation link stays valid.
+		field.Int("invite_ttl_hours").Default(4),
 		field.Bool("suspicious_login_email_enabled").Default(false),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.String("updated_by").Optional(),

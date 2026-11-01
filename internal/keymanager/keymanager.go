@@ -9,6 +9,12 @@ const (
 	KeyTypeEC  KeyType = "ec"
 )
 
+// KeyRemover is implemented by wallets that can delete a key. Used once a
+// signing key has expired, so that it no longer lingers in the wallet.
+type KeyRemover interface {
+	DeleteKey(ctx context.Context, kmsKeyReference string) error
+}
+
 type GeneratedKey struct {
 	KMSKeyReference string
 	PublicKeyPEM string

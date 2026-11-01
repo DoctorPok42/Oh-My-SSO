@@ -9,6 +9,7 @@ export type SettingsPatch = Partial<
     | "min_password_length"
     | "password_expiry_days"
     | "password_reset_ttl_minutes"
+    | "invite_ttl_hours"
     | "session_idle_minutes"
     | "session_max_hours"
     | "remember_me_enabled"
@@ -27,6 +28,7 @@ export const NUMBERS = [
   "min_password_length",
   "password_expiry_days",
   "password_reset_ttl_minutes",
+  "invite_ttl_hours",
   "session_idle_minutes",
   "session_max_hours",
   "remember_me_idle_days",

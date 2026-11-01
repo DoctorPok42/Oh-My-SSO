@@ -309,6 +309,7 @@ export type Settings = {
   min_password_length: number;
   password_expiry_days: number;
   password_reset_ttl_minutes: number;
+  invite_ttl_hours: number;
   session_idle_minutes: number;
   session_max_hours: number;
   remember_me_enabled: boolean;

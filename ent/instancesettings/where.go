@@ -157,6 +157,11 @@ func PasswordResetTTLMinutes(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldPasswordResetTTLMinutes, v))
 }
 
+// InviteTTLHours applies equality check predicate on the "invite_ttl_hours" field. It's identical to InviteTTLHoursEQ.
+func InviteTTLHours(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldInviteTTLHours, v))
+}
+
 // SuspiciousLoginEmailEnabled applies equality check predicate on the "suspicious_login_email_enabled" field. It's identical to SuspiciousLoginEmailEnabledEQ.
 func SuspiciousLoginEmailEnabled(v bool) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldSuspiciousLoginEmailEnabled, v))
@@ -849,6 +854,46 @@ func PasswordResetTTLMinutesLT(v int) predicate.InstanceSettings {
 // PasswordResetTTLMinutesLTE applies the LTE predicate on the "password_reset_ttl_minutes" field.
 func PasswordResetTTLMinutesLTE(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldLTE(FieldPasswordResetTTLMinutes, v))
+}
+
+// InviteTTLHoursEQ applies the EQ predicate on the "invite_ttl_hours" field.
+func InviteTTLHoursEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldInviteTTLHours, v))
+}
+
+// InviteTTLHoursNEQ applies the NEQ predicate on the "invite_ttl_hours" field.
+func InviteTTLHoursNEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldInviteTTLHours, v))
+}
+
+// InviteTTLHoursIn applies the In predicate on the "invite_ttl_hours" field.
+func InviteTTLHoursIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldInviteTTLHours, vs...))
+}
+
+// InviteTTLHoursNotIn applies the NotIn predicate on the "invite_ttl_hours" field.
+func InviteTTLHoursNotIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldInviteTTLHours, vs...))
+}
+
+// InviteTTLHoursGT applies the GT predicate on the "invite_ttl_hours" field.
+func InviteTTLHoursGT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldInviteTTLHours, v))
+}
+
+// InviteTTLHoursGTE applies the GTE predicate on the "invite_ttl_hours" field.
+func InviteTTLHoursGTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldInviteTTLHours, v))
+}
+
+// InviteTTLHoursLT applies the LT predicate on the "invite_ttl_hours" field.
+func InviteTTLHoursLT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldInviteTTLHours, v))
+}
+
+// InviteTTLHoursLTE applies the LTE predicate on the "invite_ttl_hours" field.
+func InviteTTLHoursLTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldInviteTTLHours, v))
 }
 
 // SuspiciousLoginEmailEnabledEQ applies the EQ predicate on the "suspicious_login_email_enabled" field.

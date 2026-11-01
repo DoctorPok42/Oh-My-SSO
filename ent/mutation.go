@@ -13258,6 +13258,8 @@ type InstanceSettingsMutation struct {
 	addmfa_trusted_device_days     *int
 	password_reset_ttl_minutes     *int
 	addpassword_reset_ttl_minutes  *int
+	invite_ttl_hours               *int
+	addinvite_ttl_hours            *int
 	suspicious_login_email_enabled *bool
 	updated_at                     *time.Time
 	updated_by                     *string
@@ -14326,6 +14328,62 @@ func (m *InstanceSettingsMutation) ResetPasswordResetTTLMinutes() {
 	m.addpassword_reset_ttl_minutes = nil
 }
 
+// SetInviteTTLHours sets the "invite_ttl_hours" field.
+func (m *InstanceSettingsMutation) SetInviteTTLHours(i int) {
+	m.invite_ttl_hours = &i
+	m.addinvite_ttl_hours = nil
+}
+
+// InviteTTLHours returns the value of the "invite_ttl_hours" field in the mutation.
+func (m *InstanceSettingsMutation) InviteTTLHours() (r int, exists bool) {
+	v := m.invite_ttl_hours
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInviteTTLHours returns the old "invite_ttl_hours" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldInviteTTLHours(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInviteTTLHours is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInviteTTLHours requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInviteTTLHours: %w", err)
+	}
+	return oldValue.InviteTTLHours, nil
+}
+
+// AddInviteTTLHours adds i to the "invite_ttl_hours" field.
+func (m *InstanceSettingsMutation) AddInviteTTLHours(i int) {
+	if m.addinvite_ttl_hours != nil {
+		*m.addinvite_ttl_hours += i
+	} else {
+		m.addinvite_ttl_hours = &i
+	}
+}
+
+// AddedInviteTTLHours returns the value that was added to the "invite_ttl_hours" field in this mutation.
+func (m *InstanceSettingsMutation) AddedInviteTTLHours() (r int, exists bool) {
+	v := m.addinvite_ttl_hours
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetInviteTTLHours resets all changes to the "invite_ttl_hours" field.
+func (m *InstanceSettingsMutation) ResetInviteTTLHours() {
+	m.invite_ttl_hours = nil
+	m.addinvite_ttl_hours = nil
+}
+
 // SetSuspiciousLoginEmailEnabled sets the "suspicious_login_email_enabled" field.
 func (m *InstanceSettingsMutation) SetSuspiciousLoginEmailEnabled(b bool) {
 	m.suspicious_login_email_enabled = &b
@@ -14508,7 +14566,7 @@ func (m *InstanceSettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstanceSettingsMutation) Fields() []string {
-	fields := make([]string, 0, 22)
+	fields := make([]string, 0, 23)
 	if m.realm != nil {
 		fields = append(fields, instancesettings.FieldRealmID)
 	}
@@ -14566,6 +14624,9 @@ func (m *InstanceSettingsMutation) Fields() []string {
 	if m.password_reset_ttl_minutes != nil {
 		fields = append(fields, instancesettings.FieldPasswordResetTTLMinutes)
 	}
+	if m.invite_ttl_hours != nil {
+		fields = append(fields, instancesettings.FieldInviteTTLHours)
+	}
 	if m.suspicious_login_email_enabled != nil {
 		fields = append(fields, instancesettings.FieldSuspiciousLoginEmailEnabled)
 	}
@@ -14621,6 +14682,8 @@ func (m *InstanceSettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.MfaTrustedDeviceDays()
 	case instancesettings.FieldPasswordResetTTLMinutes:
 		return m.PasswordResetTTLMinutes()
+	case instancesettings.FieldInviteTTLHours:
+		return m.InviteTTLHours()
 	case instancesettings.FieldSuspiciousLoginEmailEnabled:
 		return m.SuspiciousLoginEmailEnabled()
 	case instancesettings.FieldUpdatedAt:
@@ -14674,6 +14737,8 @@ func (m *InstanceSettingsMutation) OldField(ctx context.Context, name string) (e
 		return m.OldMfaTrustedDeviceDays(ctx)
 	case instancesettings.FieldPasswordResetTTLMinutes:
 		return m.OldPasswordResetTTLMinutes(ctx)
+	case instancesettings.FieldInviteTTLHours:
+		return m.OldInviteTTLHours(ctx)
 	case instancesettings.FieldSuspiciousLoginEmailEnabled:
 		return m.OldSuspiciousLoginEmailEnabled(ctx)
 	case instancesettings.FieldUpdatedAt:
@@ -14822,6 +14887,13 @@ func (m *InstanceSettingsMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetPasswordResetTTLMinutes(v)
 		return nil
+	case instancesettings.FieldInviteTTLHours:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInviteTTLHours(v)
+		return nil
 	case instancesettings.FieldSuspiciousLoginEmailEnabled:
 		v, ok := value.(bool)
 		if !ok {
@@ -14887,6 +14959,9 @@ func (m *InstanceSettingsMutation) AddedFields() []string {
 	if m.addpassword_reset_ttl_minutes != nil {
 		fields = append(fields, instancesettings.FieldPasswordResetTTLMinutes)
 	}
+	if m.addinvite_ttl_hours != nil {
+		fields = append(fields, instancesettings.FieldInviteTTLHours)
+	}
 	return fields
 }
 
@@ -14919,6 +14994,8 @@ func (m *InstanceSettingsMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedMfaTrustedDeviceDays()
 	case instancesettings.FieldPasswordResetTTLMinutes:
 		return m.AddedPasswordResetTTLMinutes()
+	case instancesettings.FieldInviteTTLHours:
+		return m.AddedInviteTTLHours()
 	}
 	return nil, false
 }
@@ -15011,6 +15088,13 @@ func (m *InstanceSettingsMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddPasswordResetTTLMinutes(v)
+		return nil
+	case instancesettings.FieldInviteTTLHours:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddInviteTTLHours(v)
 		return nil
 	}
 	return fmt.Errorf("unknown InstanceSettings numeric field %s", name)
@@ -15110,6 +15194,9 @@ func (m *InstanceSettingsMutation) ResetField(name string) error {
 		return nil
 	case instancesettings.FieldPasswordResetTTLMinutes:
 		m.ResetPasswordResetTTLMinutes()
+		return nil
+	case instancesettings.FieldInviteTTLHours:
+		m.ResetInviteTTLHours()
 		return nil
 	case instancesettings.FieldSuspiciousLoginEmailEnabled:
 		m.ResetSuspiciousLoginEmailEnabled()

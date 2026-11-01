@@ -199,4 +199,4 @@ func encodePublicKeyPEM(pub crypto.PublicKey) (string, error) {
 		return "", fmt.Errorf("local_dev keymanager: marshal public key: %w", err)
 	}
 	return string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})), nil
-}
+}

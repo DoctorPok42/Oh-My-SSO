@@ -70,6 +70,23 @@ func (k *KeyManager) GenerateKey(ctx context.Context, keyType keymanager.KeyType
 	return &keymanager.GeneratedKey{KMSKeyReference: name, PublicKeyPEM: pubPEM}, nil
 }
 
+var _ keymanager.KeyRemover = (*KeyManager)(nil)
+
+// DeleteKey removes a transit key. Vault refuses until deletion_allowed is set.
+func (k *KeyManager) DeleteKey(ctx context.Context, kmsKeyReference string) error {
+	// POST /transit/keys/:name/config
+	if _, err := k.client.Logical().WriteWithContext(ctx, k.path("keys", kmsKeyReference)+"/config", map[string]interface{}{
+		"deletion_allowed": true,
+	}); err != nil {
+		return fmt.Errorf("vault keymanager: allow key deletion: %w", err)
+	}
+	// DELETE /transit/keys/:name
+	if _, err := k.client.Logical().DeleteWithContext(ctx, k.path("keys", kmsKeyReference)); err != nil {
+		return fmt.Errorf("vault keymanager: delete key: %w", err)
+	}
+	return nil
+}
+
 func (k *KeyManager) readLatestPublicKey(ctx context.Context, name string) (string, error) {
 	// GET /transit/keys/:name
 	secret, err := k.client.Logical().ReadWithContext(ctx, k.path("keys", name))

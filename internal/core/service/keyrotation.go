@@ -405,11 +405,42 @@ func (s *KeyRotationService) RetireExpired(ctx context.Context, realmID, trigger
 		}
 		k.Status, k.RetiredAt = domain.SigningKeyRetired, now
 		retired = append(retired, k)
+		// An expired key must not stay visible in the wallet, as if valid.
+		if rm, ok := s.km.(keymanager.KeyRemover); ok && k.KMSKeyReference != "" {
+			if err := rm.DeleteKey(ctx, k.KMSKeyReference); err != nil {
+				s.logger.WarnContext(ctx, "retire expired keys: could not remove key from the wallet",
+					"realm_id", realmID, "kid", k.Kid, "error", err)
+			}
+		}
 		if err := s.log(ctx, k.ID, domain.KeyRotationRetired, triggeredBy, keyRotationReasonGraceEnded); err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return retired, errors.Join(errs...)
+}
+
+// RunRetirer retires the expired keys of every realm (and removes them from
+// the wallet) every interval, until ctx ends.
+func (s *KeyRotationService) RunRetirer(ctx context.Context, realms func(context.Context) ([]*domain.Realm, error), interval time.Duration) {
+	t := time.NewTicker(interval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		list, err := realms(ctx)
+		if err != nil {
+			s.logger.WarnContext(ctx, "key retirer: could not list realms", "error", err)
+			continue
+		}
+		for _, r := range list {
+			if _, err := s.RetireExpired(ctx, r.ID, "system"); err != nil {
+				s.logger.WarnContext(ctx, "key retirer: retire expired keys", "realm_id", r.ID, "error", err)
+			}
+		}
+	}
 }
 
 // List returns every key of a realm (retired included), newest first.

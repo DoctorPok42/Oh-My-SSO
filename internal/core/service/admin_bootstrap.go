@@ -367,6 +367,9 @@ func (s *AdminService) ensureMasterSettings(ctx context.Context, realmID, actor 
 	_, err = s.d.Settings.Update(ctx, st.ID, repository.UpdateInstanceSettingsParams{
 		MFARequiredGlobally:      &yes,
 		MFAStepUpMaxAgeMinutes:   &stepUpMaxAge,
+		// An idle session must last the whole step-up window, or the
+		// console asks to sign in again before the window ends.
+		SessionIdleMinutes:       &stepUpMaxAge,
 		NotificationEmailEnabled: &yes,
 		// Accounts of master administer the whole instance: no
 		// remembered sessions there by default ("Keep me signed in" off).
