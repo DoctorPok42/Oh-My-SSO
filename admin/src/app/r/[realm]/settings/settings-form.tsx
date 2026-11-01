@@ -63,7 +63,11 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
               "NIST advises against periodic changes: keep 0 unless a rule requires it.",
             )}
             {num("password_reset_ttl_minutes", "Reset link validity (minutes)", "5 to 1440.")}
-            {num("invite_ttl_hours", "Invitation link validity (hours)", "1 to 720. Applies to new invitations and resent activation links.")}
+            {num(
+              "invite_ttl_hours",
+              "Invitation link validity (hours)",
+              "1 to 720. Applies to new invitations and resent activation links.",
+            )}
           </div>
         </Card>
         <Card>
