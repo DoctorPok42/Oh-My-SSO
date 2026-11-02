@@ -48,6 +48,40 @@ func (_u *AuditLogUpdate) ClearUserID() *AuditLogUpdate {
 	return _u
 }
 
+// SetActorType sets the "actor_type" field.
+func (_u *AuditLogUpdate) SetActorType(v schema.AuditLogActorType) *AuditLogUpdate {
+	_u.mutation.SetActorType(v)
+	return _u
+}
+
+// SetNillableActorType sets the "actor_type" field if the given value is not nil.
+func (_u *AuditLogUpdate) SetNillableActorType(v *schema.AuditLogActorType) *AuditLogUpdate {
+	if v != nil {
+		_u.SetActorType(*v)
+	}
+	return _u
+}
+
+// SetTargetUserID sets the "target_user_id" field.
+func (_u *AuditLogUpdate) SetTargetUserID(v string) *AuditLogUpdate {
+	_u.mutation.SetTargetUserID(v)
+	return _u
+}
+
+// SetNillableTargetUserID sets the "target_user_id" field if the given value is not nil.
+func (_u *AuditLogUpdate) SetNillableTargetUserID(v *string) *AuditLogUpdate {
+	if v != nil {
+		_u.SetTargetUserID(*v)
+	}
+	return _u
+}
+
+// ClearTargetUserID clears the value of the "target_user_id" field.
+func (_u *AuditLogUpdate) ClearTargetUserID() *AuditLogUpdate {
+	_u.mutation.ClearTargetUserID()
+	return _u
+}
+
 // SetAction sets the "action" field.
 func (_u *AuditLogUpdate) SetAction(v string) *AuditLogUpdate {
 	_u.mutation.SetAction(v)
@@ -245,6 +279,15 @@ func (_u *AuditLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.UserIDCleared() {
 		_spec.ClearField(auditlog.FieldUserID, field.TypeString)
 	}
+	if value, ok := _u.mutation.ActorType(); ok {
+		_spec.SetField(auditlog.FieldActorType, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.TargetUserID(); ok {
+		_spec.SetField(auditlog.FieldTargetUserID, field.TypeString, value)
+	}
+	if _u.mutation.TargetUserIDCleared() {
+		_spec.ClearField(auditlog.FieldTargetUserID, field.TypeString)
+	}
 	if value, ok := _u.mutation.Action(); ok {
 		_spec.SetField(auditlog.FieldAction, field.TypeString, value)
 	}
@@ -321,6 +364,40 @@ func (_u *AuditLogUpdateOne) SetNillableUserID(v *string) *AuditLogUpdateOne {
 // ClearUserID clears the value of the "user_id" field.
 func (_u *AuditLogUpdateOne) ClearUserID() *AuditLogUpdateOne {
 	_u.mutation.ClearUserID()
+	return _u
+}
+
+// SetActorType sets the "actor_type" field.
+func (_u *AuditLogUpdateOne) SetActorType(v schema.AuditLogActorType) *AuditLogUpdateOne {
+	_u.mutation.SetActorType(v)
+	return _u
+}
+
+// SetNillableActorType sets the "actor_type" field if the given value is not nil.
+func (_u *AuditLogUpdateOne) SetNillableActorType(v *schema.AuditLogActorType) *AuditLogUpdateOne {
+	if v != nil {
+		_u.SetActorType(*v)
+	}
+	return _u
+}
+
+// SetTargetUserID sets the "target_user_id" field.
+func (_u *AuditLogUpdateOne) SetTargetUserID(v string) *AuditLogUpdateOne {
+	_u.mutation.SetTargetUserID(v)
+	return _u
+}
+
+// SetNillableTargetUserID sets the "target_user_id" field if the given value is not nil.
+func (_u *AuditLogUpdateOne) SetNillableTargetUserID(v *string) *AuditLogUpdateOne {
+	if v != nil {
+		_u.SetTargetUserID(*v)
+	}
+	return _u
+}
+
+// ClearTargetUserID clears the value of the "target_user_id" field.
+func (_u *AuditLogUpdateOne) ClearTargetUserID() *AuditLogUpdateOne {
+	_u.mutation.ClearTargetUserID()
 	return _u
 }
 
@@ -550,6 +627,15 @@ func (_u *AuditLogUpdateOne) sqlSave(ctx context.Context) (_node *AuditLog, err 
 	}
 	if _u.mutation.UserIDCleared() {
 		_spec.ClearField(auditlog.FieldUserID, field.TypeString)
+	}
+	if value, ok := _u.mutation.ActorType(); ok {
+		_spec.SetField(auditlog.FieldActorType, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.TargetUserID(); ok {
+		_spec.SetField(auditlog.FieldTargetUserID, field.TypeString, value)
+	}
+	if _u.mutation.TargetUserIDCleared() {
+		_spec.ClearField(auditlog.FieldTargetUserID, field.TypeString)
 	}
 	if value, ok := _u.mutation.Action(); ok {
 		_spec.SetField(auditlog.FieldAction, field.TypeString, value)

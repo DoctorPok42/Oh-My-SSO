@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -177,7 +178,7 @@ func (s *AdminService) CreateClientScope(ctx context.Context, actor AdminActor, 
 	if cs, err = s.d.Scopes.Update(ctx, cs.ID, repository.UpdateClientScopeParams{Protocol: protocol, IsDefault: &isDefault, ClaimMappers: mappers}); err != nil {
 		return ClientScopeView{}, err
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "client_scope.create", "ClientScope", cs.ID, domain.AuditLogInfo, map[string]interface{}{
+	s.auditAdmin(ctx, actor, realm.ID, audit.ClientScopeCreated, "ClientScope", cs.ID, domain.AuditLogInfo, map[string]interface{}{
 		"name": name, "protocol": string(*protocol), "mappers": len(mappers),
 	})
 	return scopeView(cs, 0), nil
@@ -224,7 +225,7 @@ func (s *AdminService) UpdateClientScope(ctx context.Context, actor AdminActor, 
 	if cs, err = s.d.Scopes.Update(ctx, cs.ID, upd); err != nil {
 		return ClientScopeView{}, fmt.Errorf("update client scope: %w", err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "client_scope.update", "ClientScope", cs.ID, domain.AuditLogInfo, map[string]interface{}{"changed": changed})
+	s.auditAdmin(ctx, actor, realm.ID, audit.ClientScopeUpdated, "ClientScope", cs.ID, domain.AuditLogInfo, map[string]interface{}{"changed": changed})
 	return s.GetClientScope(ctx, realm, cs.ID)
 }
 
@@ -245,6 +246,6 @@ func (s *AdminService) DeleteClientScope(ctx context.Context, actor AdminActor, 
 	if err := s.d.Scopes.Delete(ctx, cs.ID); err != nil {
 		return fmt.Errorf("delete client scope: %w", err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "client_scope.delete", "ClientScope", cs.ID, domain.AuditLogWarning, map[string]interface{}{"name": cs.Name})
+	s.auditAdmin(ctx, actor, realm.ID, audit.ClientScopeDeleted, "ClientScope", cs.ID, domain.AuditLogWarning, map[string]interface{}{"name": cs.Name})
 	return nil
 }

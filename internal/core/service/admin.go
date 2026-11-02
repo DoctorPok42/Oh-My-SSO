@@ -159,8 +159,16 @@ func NewAdminService(d AdminDeps) *AdminService {
 
 // auditAdmin writes one AuditLog entry for an admin action, in the realm
 // it changed. A failed write is logged, never returned: the change itself
-// is done, and refusing to report it would be worse.
+// is done, and refusing to report it would be worse. The user it is about
+// is the resource when that is a User; auditAdminAbout names it otherwise.
 func (s *AdminService) auditAdmin(ctx context.Context, actor AdminActor, realmID, action, resourceType, resourceID string,
+	level domain.AuditLogLevel, details map[string]interface{}) {
+	s.auditAdminAbout(ctx, actor, realmID, "", action, resourceType, resourceID, level, details)
+}
+
+// auditAdminAbout is auditAdmin for an action about a user whose resource
+// is not the User itself (one of their sessions, a timeout on them...).
+func (s *AdminService) auditAdminAbout(ctx context.Context, actor AdminActor, realmID, targetUserID, action, resourceType, resourceID string,
 	level domain.AuditLogLevel, details map[string]interface{}) {
 	if s.d.Audit == nil {
 		return
@@ -170,7 +178,9 @@ func (s *AdminService) auditAdmin(ctx context.Context, actor AdminActor, realmID
 	if _, err := s.d.Audit.Create(ctx, repository.CreateAuditLogParams{
 		RealmID:      realmID,
 		UserID:       actor.UserID,
-		Action:       "admin." + action,
+		ActorType:    domain.AuditActorAdmin,
+		TargetUserID: targetUserID,
+		Action:       action,
 		ResourceType: resourceType,
 		ResourceID:   resourceID,
 		IPAddress:    actor.IPAddress,

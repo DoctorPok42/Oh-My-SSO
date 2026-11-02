@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 )
 
@@ -146,7 +147,7 @@ func (s *MFAService) RegenerateBackupCodes(ctx context.Context, user *domain.Use
 	if err != nil {
 		return nil, err
 	}
-	s.auditEvent(ctx, user, "mfa_backup_codes_regenerated", "MfaBackupCode", user.ID, domain.AuditLogWarning, nil)
+	s.auditEvent(ctx, user, audit.MFABackupCodesRegenerated, "MfaBackupCode", user.ID, domain.AuditLogWarning, nil)
 	s.notify(ctx, user, domain.NotificationBackupCodesRegenerated, nil)
 	return codes, nil
 }

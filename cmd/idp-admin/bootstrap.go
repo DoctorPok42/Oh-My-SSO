@@ -36,7 +36,8 @@ func cliAdmin(notifier service.Notifier) (*service.AdminService, *ent.Client) {
 		Realms: entstore.NewRealmRepository(client), Users: users, Clients: clients, Scopes: scopes,
 		Roles: roles, Groups: groups, Permissions: entstore.NewPermissionRepository(client),
 		Settings: settings, Audit: audit, Admin: entstore.NewAdminRepository(client),
-		KeyRotation: service.NewKeyRotationService(signingKeys, entstore.NewKeyRotationLogRepository(client), settings, km, backend),
+		KeyRotation: service.NewKeyRotationService(signingKeys, entstore.NewKeyRotationLogRepository(client), settings, km, backend,
+			service.WithKeyRotationAudit(entstore.NewAuditLogRepository(client))),
 		PasswordReset: service.NewPasswordResetService(service.PasswordResetDeps{
 			Users: users, Tokens: entstore.NewPasswordResetTokenRepository(client), Settings: settings, Audit: audit,
 		}),

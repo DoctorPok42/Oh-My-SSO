@@ -114,7 +114,7 @@ func TestOIDC_Integration_Consent(t *testing.T) {
 		c := stored(t)
 		require.Equal(t, domain.ConsentGranted, c.Status)
 		require.ElementsMatch(t, []string{"profile", "email", "offline_access"}, c.Scopes)
-		require.Equal(t, 1, audited(t, "consent_granted"))
+		require.Equal(t, 1, audited(t, "consent.granted"))
 	})
 
 	t.Run("the same scopes again: no page", func(t *testing.T) {
@@ -190,8 +190,8 @@ func TestOIDC_Integration_Consent(t *testing.T) {
 		require.NotContains(t, page, "more than before", "after a revocation it is a first use again")
 		require.Equal(t, "access_denied", errorFromRedirect(t, e.answer(t, b, page, "deny"), partnerRedirectURI))
 		require.Equal(t, domain.ConsentRevoked, stored(t).Status, "a refusal stores nothing")
-		require.Equal(t, 1, audited(t, "consent_denied"))
-		require.Equal(t, 1, audited(t, "consent_revoked"))
+		require.Equal(t, 1, audited(t, "consent.denied"))
+		require.Equal(t, 1, audited(t, "consent.revoked"))
 	})
 
 	t.Run("require_consent off: never asked", func(t *testing.T) {

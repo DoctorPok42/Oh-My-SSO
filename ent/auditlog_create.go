@@ -42,6 +42,34 @@ func (_c *AuditLogCreate) SetNillableUserID(v *string) *AuditLogCreate {
 	return _c
 }
 
+// SetActorType sets the "actor_type" field.
+func (_c *AuditLogCreate) SetActorType(v schema.AuditLogActorType) *AuditLogCreate {
+	_c.mutation.SetActorType(v)
+	return _c
+}
+
+// SetNillableActorType sets the "actor_type" field if the given value is not nil.
+func (_c *AuditLogCreate) SetNillableActorType(v *schema.AuditLogActorType) *AuditLogCreate {
+	if v != nil {
+		_c.SetActorType(*v)
+	}
+	return _c
+}
+
+// SetTargetUserID sets the "target_user_id" field.
+func (_c *AuditLogCreate) SetTargetUserID(v string) *AuditLogCreate {
+	_c.mutation.SetTargetUserID(v)
+	return _c
+}
+
+// SetNillableTargetUserID sets the "target_user_id" field if the given value is not nil.
+func (_c *AuditLogCreate) SetNillableTargetUserID(v *string) *AuditLogCreate {
+	if v != nil {
+		_c.SetTargetUserID(*v)
+	}
+	return _c
+}
+
 // SetAction sets the "action" field.
 func (_c *AuditLogCreate) SetAction(v string) *AuditLogCreate {
 	_c.mutation.SetAction(v)
@@ -206,6 +234,10 @@ func (_c *AuditLogCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *AuditLogCreate) defaults() {
+	if _, ok := _c.mutation.ActorType(); !ok {
+		v := auditlog.DefaultActorType
+		_c.mutation.SetActorType(v)
+	}
 	if _, ok := _c.mutation.Timestamp(); !ok {
 		v := auditlog.DefaultTimestamp()
 		_c.mutation.SetTimestamp(v)
@@ -233,6 +265,9 @@ func (_c *AuditLogCreate) check() error {
 		if err := auditlog.RealmIDValidator(v); err != nil {
 			return &ValidationError{Name: "realm_id", err: fmt.Errorf(`ent: validator failed for field "AuditLog.realm_id": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.ActorType(); !ok {
+		return &ValidationError{Name: "actor_type", err: errors.New(`ent: missing required field "AuditLog.actor_type"`)}
 	}
 	if _, ok := _c.mutation.Action(); !ok {
 		return &ValidationError{Name: "action", err: errors.New(`ent: missing required field "AuditLog.action"`)}
@@ -297,6 +332,14 @@ func (_c *AuditLogCreate) createSpec() (*AuditLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UserID(); ok {
 		_spec.SetField(auditlog.FieldUserID, field.TypeString, value)
 		_node.UserID = value
+	}
+	if value, ok := _c.mutation.ActorType(); ok {
+		_spec.SetField(auditlog.FieldActorType, field.TypeString, value)
+		_node.ActorType = value
+	}
+	if value, ok := _c.mutation.TargetUserID(); ok {
+		_spec.SetField(auditlog.FieldTargetUserID, field.TypeString, value)
+		_node.TargetUserID = value
 	}
 	if value, ok := _c.mutation.Action(); ok {
 		_spec.SetField(auditlog.FieldAction, field.TypeString, value)

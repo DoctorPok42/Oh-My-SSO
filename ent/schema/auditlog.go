@@ -25,6 +25,18 @@ const (
 	AuditLogCritical   AuditLogLevel = "critical"
 )
 
+// AuditLogActorType tells who did the action. user_id is the actor's id
+// when the actor is a person (user or admin), never the target.
+type AuditLogActorType string
+
+const (
+	AuditActorUser      AuditLogActorType = "user"      // a user of the realm, for their own account
+	AuditActorAdmin     AuditLogActorType = "admin"     // an administrator (admin console)
+	AuditActorCLI       AuditLogActorType = "cli"       // an operator on the command line
+	AuditActorSystem    AuditLogActorType = "system"    // the server itself (lockout, key retirer, e-mails...)
+	AuditActorAnonymous AuditLogActorType = "anonymous" // nobody signed in (a failed sign-in)
+)
+
 type AuditLogStatus string
 
 const (
@@ -40,7 +52,11 @@ func (AuditLog) Fields() []ent.Field {
 			Immutable().
 			DefaultFunc(uuid.NewString),
 		field.String("realm_id").NotEmpty().Immutable(),
+		// user_id: the actor (who did it). The user the action is about
+		// is target_user_id.
 		field.String("user_id").Optional(),
+		field.String("actor_type").GoType(AuditLogActorType("")).Default(string(AuditActorSystem)),
+		field.String("target_user_id").Optional(),
 		field.String("action").NotEmpty(),
 		field.String("resource_type").Optional(),
 		field.String("resource_id").Optional(),
@@ -69,5 +85,7 @@ func (AuditLog) Indexes() []ent.Index {
 		index.Fields("resource_type", "resource_id"),
 		index.Fields("user_id", "timestamp"),
 		index.Fields("realm_id", "timestamp"),
+		index.Fields("target_user_id", "timestamp"),
+		index.Fields("realm_id", "action", "timestamp"),
 	}
 }

@@ -458,7 +458,16 @@
   const back = $("back-to-accounts");
   if (back) back.addEventListener("click", showAccounts);
 
-  if (current === "password") updateLinks(false);
+  // Signing in again as the browser's account (prompt=login, max_age,
+  // ForceAuthn): start with its best method, like its tile. With a passkey
+  // that is enough on its own: no password before it. No click yet, so the
+  // passkey waits for "Continue".
+  const hintMethods = app.dataset.hintMethods || "";
+  if (app.dataset.mode === "login" && hintMethods) {
+    tile = { account: app.dataset.hintAccount || "", identifier: $("identifier").value, methods: hintMethods };
+    methods = firstStepMethods(hintMethods);
+    show(methods[0], false);
+  } else if (current === "password") updateLinks(false);
 
   // Step-up: the session exists, the application wants a (recent) second
   // factor. Offer the factors the user has AND the application accepts,

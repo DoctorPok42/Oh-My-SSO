@@ -502,7 +502,7 @@ func TestOIDC_Integration_DefinitionOfDone(t *testing.T) {
 		require.NoError(t, err)
 		found := false
 		for _, l := range logs {
-			if l.Action == "refresh_token_reuse_detected" {
+			if l.Action == "token.reuse_detected" {
 				found = true
 				require.Equal(t, domain.AuditLogWarning, l.Level)
 				require.Equal(t, e.alice.ID, l.UserID)

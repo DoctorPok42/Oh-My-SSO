@@ -15,7 +15,8 @@
 <div class="auth-card" id="app"
       data-base="{{.Base}}" data-client-param="{{.ClientParam}}" data-client-id="{{.ClientID}}" data-mode="{{.Mode}}"
       data-methods="{{.Methods}}" data-passkeys="{{if .Passkeys}}on{{end}}"
-      data-continue-url="{{.ContinueURL}}" data-continue-token="{{.ContinueToken}}" data-request-id="{{.RequestID}}">
+      data-continue-url="{{.ContinueURL}}" data-continue-token="{{.ContinueToken}}" data-request-id="{{.RequestID}}"
+      data-hint-methods="{{.LoginHintMethods}}" data-hint-account="{{.LoginHintAccount}}">
   {{template "logo"}}
   <header>
     <p class="auth-eyebrow">{{.RealmDisplay}}</p>

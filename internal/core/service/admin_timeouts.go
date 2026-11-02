@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -122,7 +123,7 @@ func (s *AdminService) CreateTimeout(ctx context.Context, actor AdminActor, real
 	if c.SignOut != nil {
 		details["sessions_revoked"], details["tokens_revoked"] = c.SignOut.Sessions, c.SignOut.Tokens
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "timeout.create", "Timeout", c.Timeout.ID, domain.AuditLogWarning, details)
+	s.auditAdminAbout(ctx, actor, realm.ID, timeoutTargetUser(c.Timeout), audit.TimeoutCreated, "Timeout", c.Timeout.ID, domain.AuditLogWarning, details)
 	v := s.changeView(ctx, c)
 	return &v, nil
 }
@@ -140,7 +141,7 @@ func (s *AdminService) UpdateTimeout(ctx context.Context, actor AdminActor, real
 		return nil, asAdminError(err)
 	}
 	if len(c.Changed) > 0 {
-		s.auditAdmin(ctx, actor, realm.ID, "timeout.update", "Timeout", c.Timeout.ID, domain.AuditLogWarning,
+		s.auditAdminAbout(ctx, actor, realm.ID, timeoutTargetUser(c.Timeout), audit.TimeoutUpdated, "Timeout", c.Timeout.ID, domain.AuditLogWarning,
 			map[string]interface{}{"changed": c.Changed, "target_type": string(c.Target.Type), "target_name": c.Target.Name,
 				"ends_at": formatEnd(c.Timeout.EndsAt)})
 	}
@@ -156,7 +157,7 @@ func (s *AdminService) LiftTimeout(ctx context.Context, actor AdminActor, realm 
 	if err != nil {
 		return nil, asAdminError(err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "timeout.lift", "Timeout", c.Timeout.ID, domain.AuditLogWarning,
+	s.auditAdminAbout(ctx, actor, realm.ID, timeoutTargetUser(c.Timeout), audit.TimeoutLifted, "Timeout", c.Timeout.ID, domain.AuditLogWarning,
 		map[string]interface{}{"target_type": string(c.Target.Type), "target_name": c.Target.Name})
 	v := s.changeView(ctx, c)
 	return &v, nil
@@ -179,7 +180,7 @@ func (s *AdminService) RecoverTimeouts(ctx context.Context, actor string) ([]Tim
 	out := make([]TimeoutView, 0, len(lifted))
 	for _, c := range lifted {
 		out = append(out, s.timeoutView(ctx, c.Timeout, c.Target, names))
-		s.writeCLIAudit(ctx, realm.ID, "recovery_timeout_lift", "Timeout", c.Timeout.ID, actor, map[string]interface{}{
+		s.writeCLIAudit(ctx, realm.ID, audit.RecoveryTimeoutLifted, "Timeout", c.Timeout.ID, actor, map[string]interface{}{
 			"target_type": string(c.Target.Type), "target_name": c.Target.Name})
 	}
 	if err != nil {
@@ -280,4 +281,12 @@ func timeoutAdminError(tr *TimeoutRefusal) *AdminError {
 		return &AdminError{Kind: AdminInvalid, Code: "invalid_request", Field: tr.Field, Message: tr.Message}
 	}
 	return &AdminError{Kind: AdminRefused, Code: tr.Code, Field: tr.Field, Message: tr.Message}
+}
+
+// timeoutTargetUser: the user a timeout is about (empty for a group or a client).
+func timeoutTargetUser(t *domain.Timeout) string {
+	if t.TargetType == domain.TimeoutTargetUser {
+		return t.TargetID
+	}
+	return ""
 }

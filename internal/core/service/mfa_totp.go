@@ -15,6 +15,7 @@ import (
 	"github.com/pquerna/otp/hotp"
 	"github.com/pquerna/otp/totp"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -191,7 +192,7 @@ func (s *MFAService) ConfirmTOTPEnrollment(ctx context.Context, user *domain.Use
 		res.Session = upd
 	}
 
-	s.auditEvent(ctx, user, "mfa_method_enrolled", "MfaMethod", activated.ID, domain.AuditLogInfo, map[string]interface{}{
+	s.auditEvent(ctx, user, audit.MFAMethodEnrolled, "MfaMethod", activated.ID, domain.AuditLogInfo, map[string]interface{}{
 		"type":     string(activated.Type),
 		"replaced": hadTOTP,
 	})

@@ -50,7 +50,7 @@ func TestAccountConsoleQueries(t *testing.T) {
 	}
 
 	audit := entstore.NewAuditLogRepository(client)
-	for _, action := range []string{"account.profile_updated", "admin.realm.update", "mfa_method_enrolled"} {
+	for _, action := range []string{"user.profile_updated", "realm.updated", "mfa.method_enrolled"} {
 		_, err := audit.Create(ctx, repository.CreateAuditLogParams{
 			RealmID: realm.ID, UserID: alice.ID, Action: action, ResourceType: "User", ResourceID: alice.ID,
 			Level: domain.AuditLogInfo, Status: domain.AuditLogSuccess,
@@ -60,11 +60,11 @@ func TestAccountConsoleQueries(t *testing.T) {
 	admin := entstore.NewAdminRepository(client)
 	rows, total, err := admin.SearchAuditLogs(ctx, repository.AuditSearch{
 		RealmID: realm.ID, UserID: alice.ID,
-		Actions: []string{"account.profile_updated", "mfa_method_enrolled"},
+		Actions: []string{"user.profile_updated", "mfa.method_enrolled"},
 		Page:    repository.Page{Limit: 10},
 	})
 	require.NoError(t, err)
 	require.Equal(t, 2, total)
 	got := []string{rows[0].Action, rows[1].Action}
-	require.ElementsMatch(t, []string{"account.profile_updated", "mfa_method_enrolled"}, got)
+	require.ElementsMatch(t, []string{"user.profile_updated", "mfa.method_enrolled"}, got)
 }

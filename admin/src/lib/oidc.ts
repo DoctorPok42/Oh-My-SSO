@@ -42,8 +42,9 @@ export function redirectUri(): string {
 
 /**
  * Starts a sign-in. Step-up ("confirm it's you") is the same flow with
- * prompt=login and max_age=0: the IdP asks for the password and the second
- * factor again even if its session is alive (OIDC Core §3.1.2.1).
+ * prompt=login and max_age=0: the IdP asks to sign in again even if its
+ * session is alive (OIDC Core §3.1.2.1): a passkey alone, or the password
+ * and the second factor.
  */
 export async function startLogin(returnTo: string, stepUp: boolean): Promise<{ url: URL; state: LoginState }> {
   const config = await oidcConfig();

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -19,10 +20,7 @@ import (
 const (
 	// Used when the client row has no usable value.
 	defaultAccessTokenTTL  = 5 * time.Minute
-	defaultRefreshTokenTTL = 30 * 24 * time.Hour
-
-	auditActionRefreshTokenReuse = "refresh_token_reuse_detected"
-)
+	defaultRefreshTokenTTL = 30 * 24 * time.Hour)
 
 
 func (s *IdentityCoreService) LookupClient(ctx context.Context, realmID string, protocol domain.ClientAppProtocol, protocolID string) (*core.ProtocolClient, error) {
@@ -311,7 +309,8 @@ func (s *IdentityCoreService) refreshTokenReplayed(ctx context.Context, tok *dom
 		return
 	}
 	entry := repository.CreateAuditLogParams{
-		Action:       auditActionRefreshTokenReuse,
+		Action:       audit.TokenReuseDetected,
+		ActorType:    domain.AuditActorSystem, // detected by the server; the owner is the target
 		ResourceType: "Token",
 		ResourceID:   tok.FamilyID,
 		Level:        domain.AuditLogWarning,
@@ -325,7 +324,7 @@ func (s *IdentityCoreService) refreshTokenReplayed(ctx context.Context, tok *dom
 	}
 	// The session row outlives its revocation: it tells whose token it was.
 	if sess, err := s.sessions.sessions.GetByID(ctx, tok.SessionID); err == nil {
-		entry.RealmID, entry.UserID = sess.RealmID, sess.UserID
+		entry.RealmID, entry.TargetUserID = sess.RealmID, sess.UserID
 	} else if c, err := s.clients.GetByID(ctx, tok.ClientRefID); err == nil {
 		entry.RealmID = c.RealmID
 	}

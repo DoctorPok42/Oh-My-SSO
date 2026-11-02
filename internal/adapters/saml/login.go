@@ -193,7 +193,11 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, p *pending
 	}
 	page.RememberMe, page.RememberMeDays = loginui.RememberMeOffer(a.core.SessionOptions(r.Context(), realm.ID))
 	if mode == "login" {
-		page.LoginHint, page.Accounts = a.signInChoices(r, realm, app.ID)
+		var reauth *core.Account
+		page.LoginHint, reauth, page.Accounts = a.signInChoices(r, realm, app.ID)
+		if reauth != nil {
+			page.SetReauthAccount(*reauth)
+		}
 		if len(page.Accounts) > 0 {
 			page.Mode = "pick"
 		}
@@ -201,24 +205,30 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, p *pending
 	a.pages.RenderLogin(w, http.StatusOK, page)
 }
 
-// signInChoices: with a session (ForceAuthn), its account pre-filled;
-// without one, the accounts remembered on this device ("Pick an account").
-func (a *Adapter) signInChoices(r *http.Request, realm Realm, clientRef string) (string, []loginui.Account) {
+// signInChoices: with a session (ForceAuthn), its account pre-filled and
+// starting with its best method (a passkey alone signs in, no password
+// first); without one, the accounts remembered on this device ("Pick an
+// account").
+func (a *Adapter) signInChoices(r *http.Request, realm Realm, clientRef string) (string, *core.Account, []loginui.Account) {
 	ctx := r.Context()
-	if sess := a.currentSession(r, realm); sess != nil {
-		if acc, err := a.core.SessionAccount(ctx, sess.ID); err == nil {
-			return acc.Identifier, nil
-		}
-		return "", nil
-	}
 	var device string
 	if c, err := r.Cookie(a.cfg.DeviceCookieName); err == nil {
 		device = c.Value
 	}
+	if sess := a.currentSession(r, realm); sess != nil {
+		accounts, err := a.core.KnownAccounts(ctx, core.AccountQuery{RealmID: realm.ID, DeviceID: device, Current: sess, ClientRef: clientRef})
+		if err == nil && len(accounts) > 0 && accounts[0].SignedIn {
+			return accounts[0].Identifier, &accounts[0], nil
+		}
+		if acc, err := a.core.SessionAccount(ctx, sess.ID); err == nil {
+			return acc.Identifier, nil, nil
+		}
+		return "", nil, nil
+	}
 	accounts, err := a.core.KnownAccounts(ctx, core.AccountQuery{RealmID: realm.ID, DeviceID: device, ClientRef: clientRef})
 	if err != nil {
 		a.logger.WarnContext(ctx, "saml: known accounts", "error", err)
-		return "", nil
+		return "", nil, nil
 	}
-	return "", loginui.AccountsFrom(accounts)
+	return "", nil, loginui.AccountsFrom(accounts)
 }

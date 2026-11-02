@@ -76,6 +76,17 @@ func UserID(v string) predicate.AuditLog {
 	return predicate.AuditLog(sql.FieldEQ(FieldUserID, v))
 }
 
+// ActorType applies equality check predicate on the "actor_type" field. It's identical to ActorTypeEQ.
+func ActorType(v schema.AuditLogActorType) predicate.AuditLog {
+	vc := string(v)
+	return predicate.AuditLog(sql.FieldEQ(FieldActorType, vc))
+}
+
+// TargetUserID applies equality check predicate on the "target_user_id" field. It's identical to TargetUserIDEQ.
+func TargetUserID(v string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldEQ(FieldTargetUserID, v))
+}
+
 // Action applies equality check predicate on the "action" field. It's identical to ActionEQ.
 func Action(v string) predicate.AuditLog {
 	return predicate.AuditLog(sql.FieldEQ(FieldAction, v))
@@ -256,6 +267,165 @@ func UserIDEqualFold(v string) predicate.AuditLog {
 // UserIDContainsFold applies the ContainsFold predicate on the "user_id" field.
 func UserIDContainsFold(v string) predicate.AuditLog {
 	return predicate.AuditLog(sql.FieldContainsFold(FieldUserID, v))
+}
+
+// ActorTypeEQ applies the EQ predicate on the "actor_type" field.
+func ActorTypeEQ(v schema.AuditLogActorType) predicate.AuditLog {
+	vc := string(v)
+	return predicate.AuditLog(sql.FieldEQ(FieldActorType, vc))
+}
+
+// ActorTypeNEQ applies the NEQ predicate on the "actor_type" field.
+func ActorTypeNEQ(v schema.AuditLogActorType) predicate.AuditLog {
+	vc := string(v)
+	return predicate.AuditLog(sql.FieldNEQ(FieldActorType, vc))
+}
+
+// ActorTypeIn applies the In predicate on the "actor_type" field.
+func ActorTypeIn(vs ...schema.AuditLogActorType) predicate.AuditLog {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = string(vs[i])
+	}
+	return predicate.AuditLog(sql.FieldIn(FieldActorType, v...))
+}
+
+// ActorTypeNotIn applies the NotIn predicate on the "actor_type" field.
+func ActorTypeNotIn(vs ...schema.AuditLogActorType) predicate.AuditLog {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = string(vs[i])
+	}
+	return predicate.AuditLog(sql.FieldNotIn(FieldActorType, v...))
+}
+
+// ActorTypeGT applies the GT predicate on the "actor_type" field.
+func ActorTypeGT(v schema.AuditLogActorType) predicate.AuditLog {
+	vc := string(v)
+	return predicate.AuditLog(sql.FieldGT(FieldActorType, vc))
+}
+
+// ActorTypeGTE applies the GTE predicate on the "actor_type" field.
+func ActorTypeGTE(v schema.AuditLogActorType) predicate.AuditLog {
+	vc := string(v)
+	return predicate.AuditLog(sql.FieldGTE(FieldActorType, vc))
+}
+
+// ActorTypeLT applies the LT predicate on the "actor_type" field.
+func ActorTypeLT(v schema.AuditLogActorType) predicate.AuditLog {
+	vc := string(v)
+	return predicate.AuditLog(sql.FieldLT(FieldActorType, vc))
+}
+
+// ActorTypeLTE applies the LTE predicate on the "actor_type" field.
+func ActorTypeLTE(v schema.AuditLogActorType) predicate.AuditLog {
+	vc := string(v)
+	return predicate.AuditLog(sql.FieldLTE(FieldActorType, vc))
+}
+
+// ActorTypeContains applies the Contains predicate on the "actor_type" field.
+func ActorTypeContains(v schema.AuditLogActorType) predicate.AuditLog {
+	vc := string(v)
+	return predicate.AuditLog(sql.FieldContains(FieldActorType, vc))
+}
+
+// ActorTypeHasPrefix applies the HasPrefix predicate on the "actor_type" field.
+func ActorTypeHasPrefix(v schema.AuditLogActorType) predicate.AuditLog {
+	vc := string(v)
+	return predicate.AuditLog(sql.FieldHasPrefix(FieldActorType, vc))
+}
+
+// ActorTypeHasSuffix applies the HasSuffix predicate on the "actor_type" field.
+func ActorTypeHasSuffix(v schema.AuditLogActorType) predicate.AuditLog {
+	vc := string(v)
+	return predicate.AuditLog(sql.FieldHasSuffix(FieldActorType, vc))
+}
+
+// ActorTypeEqualFold applies the EqualFold predicate on the "actor_type" field.
+func ActorTypeEqualFold(v schema.AuditLogActorType) predicate.AuditLog {
+	vc := string(v)
+	return predicate.AuditLog(sql.FieldEqualFold(FieldActorType, vc))
+}
+
+// ActorTypeContainsFold applies the ContainsFold predicate on the "actor_type" field.
+func ActorTypeContainsFold(v schema.AuditLogActorType) predicate.AuditLog {
+	vc := string(v)
+	return predicate.AuditLog(sql.FieldContainsFold(FieldActorType, vc))
+}
+
+// TargetUserIDEQ applies the EQ predicate on the "target_user_id" field.
+func TargetUserIDEQ(v string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldEQ(FieldTargetUserID, v))
+}
+
+// TargetUserIDNEQ applies the NEQ predicate on the "target_user_id" field.
+func TargetUserIDNEQ(v string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldNEQ(FieldTargetUserID, v))
+}
+
+// TargetUserIDIn applies the In predicate on the "target_user_id" field.
+func TargetUserIDIn(vs ...string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldIn(FieldTargetUserID, vs...))
+}
+
+// TargetUserIDNotIn applies the NotIn predicate on the "target_user_id" field.
+func TargetUserIDNotIn(vs ...string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldNotIn(FieldTargetUserID, vs...))
+}
+
+// TargetUserIDGT applies the GT predicate on the "target_user_id" field.
+func TargetUserIDGT(v string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldGT(FieldTargetUserID, v))
+}
+
+// TargetUserIDGTE applies the GTE predicate on the "target_user_id" field.
+func TargetUserIDGTE(v string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldGTE(FieldTargetUserID, v))
+}
+
+// TargetUserIDLT applies the LT predicate on the "target_user_id" field.
+func TargetUserIDLT(v string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldLT(FieldTargetUserID, v))
+}
+
+// TargetUserIDLTE applies the LTE predicate on the "target_user_id" field.
+func TargetUserIDLTE(v string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldLTE(FieldTargetUserID, v))
+}
+
+// TargetUserIDContains applies the Contains predicate on the "target_user_id" field.
+func TargetUserIDContains(v string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldContains(FieldTargetUserID, v))
+}
+
+// TargetUserIDHasPrefix applies the HasPrefix predicate on the "target_user_id" field.
+func TargetUserIDHasPrefix(v string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldHasPrefix(FieldTargetUserID, v))
+}
+
+// TargetUserIDHasSuffix applies the HasSuffix predicate on the "target_user_id" field.
+func TargetUserIDHasSuffix(v string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldHasSuffix(FieldTargetUserID, v))
+}
+
+// TargetUserIDIsNil applies the IsNil predicate on the "target_user_id" field.
+func TargetUserIDIsNil() predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldIsNull(FieldTargetUserID))
+}
+
+// TargetUserIDNotNil applies the NotNil predicate on the "target_user_id" field.
+func TargetUserIDNotNil() predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldNotNull(FieldTargetUserID))
+}
+
+// TargetUserIDEqualFold applies the EqualFold predicate on the "target_user_id" field.
+func TargetUserIDEqualFold(v string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldEqualFold(FieldTargetUserID, v))
+}
+
+// TargetUserIDContainsFold applies the ContainsFold predicate on the "target_user_id" field.
+func TargetUserIDContainsFold(v string) predicate.AuditLog {
+	return predicate.AuditLog(sql.FieldContainsFold(FieldTargetUserID, v))
 }
 
 // ActionEQ applies the EQ predicate on the "action" field.

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -32,8 +33,8 @@ type ConsentDeps struct {
 	Sessions ConsentSessions
 	// Tokens: revoking a consent also revokes the tokens of that client.
 	Tokens repository.TokenRepository
-	// Audit: consent_granted, consent_denied, consent_revoked,
-	// consent_policy_changed. nil: nothing is audited (tests).
+	// Audit: consent.granted, consent.denied, consent.revoked,
+	// consent.policy_changed. nil: nothing is audited (tests).
 	Audit repository.AuditLogRepository
 	// Notifier: the "an application can access your account" e-mail.
 	// nil: NopNotifier.
@@ -203,7 +204,7 @@ func (s *ConsentService) Grant(ctx context.Context, g core.ConsentGrant) (*domai
 func (s *ConsentService) granted(ctx context.Context, sess *domain.Session, client *domain.ClientApp,
 	g core.ConsentGrant, c *domain.Consent, added []string, expanded bool) {
 	s.writeAudit(ctx, repository.CreateAuditLogParams{
-		RealmID: sess.RealmID, UserID: sess.UserID, Action: "consent_granted",
+		RealmID: sess.RealmID, UserID: sess.UserID, Action: audit.ConsentGranted,
 		ResourceType: "Consent", ResourceID: c.ID, IPAddress: g.IPAddress, UserAgent: g.UserAgent,
 		Level: domain.AuditLogInfo, Status: domain.AuditLogSuccess,
 		Details: map[string]interface{}{
@@ -232,7 +233,7 @@ func (s *ConsentService) Deny(ctx context.Context, d core.ConsentDenial) error {
 		return err
 	}
 	s.writeAudit(ctx, repository.CreateAuditLogParams{
-		RealmID: sess.RealmID, UserID: sess.UserID, Action: "consent_denied",
+		RealmID: sess.RealmID, UserID: sess.UserID, Action: audit.ConsentDenied,
 		ResourceType: "ClientApp", ResourceID: client.ID, IPAddress: d.IPAddress, UserAgent: d.UserAgent,
 		Level: domain.AuditLogInfo, Status: domain.AuditLogFailure,
 		Details: map[string]interface{}{"client": clientDisplayName(client), "scopes": normalizeScopes(d.Scopes)},
@@ -320,8 +321,9 @@ func (s *ConsentService) Revoke(ctx context.Context, in RevokeConsentInput) (*Re
 			return nil, fmt.Errorf("revoke consent: tokens: %w", err)
 		}
 	}
+	actorType, actorID := domain.AuditActorFromTrigger(in.Actor.TriggeredBy, in.UserID)
 	s.writeAudit(ctx, repository.CreateAuditLogParams{
-		RealmID: in.RealmID, UserID: userIDFromTrigger(in.Actor.TriggeredBy), Action: "consent_revoked",
+		RealmID: in.RealmID, UserID: actorID, ActorType: actorType, TargetUserID: in.UserID, Action: audit.ConsentRevoked,
 		ResourceType: "Consent", ResourceID: c.ID,
 		Level: domain.AuditLogInfo, Status: domain.AuditLogSuccess,
 		Details: map[string]interface{}{
@@ -358,8 +360,9 @@ func (s *ConsentService) SetClientRequirement(ctx context.Context, in SetClientC
 	if err != nil {
 		return nil, fmt.Errorf("set client consent: %w", err)
 	}
+	actorType, actorID := domain.AuditActorFromTrigger(in.Actor.TriggeredBy, "")
 	s.writeAudit(ctx, repository.CreateAuditLogParams{
-		RealmID: in.RealmID, UserID: userIDFromTrigger(in.Actor.TriggeredBy), Action: "consent_policy_changed",
+		RealmID: in.RealmID, UserID: actorID, ActorType: actorType, Action: audit.ConsentPolicyChanged,
 		ResourceType: "ClientApp", ResourceID: client.ID,
 		Level: domain.AuditLogWarning, Status: domain.AuditLogSuccess,
 		Details: map[string]interface{}{"require_consent": updated.RequireConsent, "triggered_by": in.Actor.TriggeredBy},

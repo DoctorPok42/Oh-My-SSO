@@ -55,7 +55,7 @@ func TestOIDC_Integration_TrustedDevice(t *testing.T) {
 	trustB()
 
 	t.Run("audited", func(t *testing.T) {
-		n, err := e.ent.AuditLog.Query().Where(auditlog.Action("mfa_device_trusted"), auditlog.UserID(e.alice.ID)).Count(ctx)
+		n, err := e.ent.AuditLog.Query().Where(auditlog.Action("trusted_device.added"), auditlog.UserID(e.alice.ID)).Count(ctx)
 		require.NoError(t, err)
 		require.Equal(t, 1, n)
 	})
@@ -107,7 +107,7 @@ func TestOIDC_Integration_TrustedDevice(t *testing.T) {
 		require.Equal(t, "authenticated", login(b, webClientID)["status"])
 		require.NoError(t, e.sessions.RevokeAllForUser(ctx, e.alice.ID, domain.SessionRevokedAdminRevoked))
 		require.Equal(t, "mfa_required", login(b, webClientID)["status"])
-		n, err := e.ent.AuditLog.Query().Where(auditlog.Action("mfa_device_trust_revoked"), auditlog.UserID(e.alice.ID)).Count(ctx)
+		n, err := e.ent.AuditLog.Query().Where(auditlog.Action("trusted_device.revoked"), auditlog.UserID(e.alice.ID)).Count(ctx)
 		require.NoError(t, err)
 		require.Equal(t, 2, n, "forget, then the revocation")
 	})

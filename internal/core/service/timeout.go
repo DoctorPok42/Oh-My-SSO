@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -628,7 +629,9 @@ func (s *TimeoutService) auditEnforced(ctx context.Context, t *domain.Timeout, b
 	}
 	if _, err := s.d.Audit.Create(ctx, repository.CreateAuditLogParams{
 		RealmID:      t.RealmID,
-		Action:       "timeout_enforced",
+		ActorType:    domain.AuditActorSystem, // the consequence of timeout.created (triggered_by)
+		TargetUserID: timeoutTargetUser(t),
+		Action:       audit.TimeoutEnforced,
 		ResourceType: "Timeout",
 		ResourceID:   t.ID,
 		Level:        domain.AuditLogWarning,

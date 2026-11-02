@@ -254,7 +254,11 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, ar *authRe
 	page := a.loginPage(r, ar, pc, mode, allowed)
 	if mode == "login" {
 		realm, _ := realmFrom(r.Context())
-		page.LoginHint, page.Accounts = a.signInChoices(r, realm, ar.LoginHint, pc.App.ID)
+		var reauth *core.Account
+		page.LoginHint, reauth, page.Accounts = a.signInChoices(r, realm, ar.LoginHint, pc.App.ID)
+		if reauth != nil {
+			page.SetReauthAccount(*reauth)
+		}
 		if len(page.Accounts) > 0 {
 			page.Mode = "pick"
 		}
@@ -262,32 +266,53 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, ar *authRe
 	a.pages.RenderLogin(w, http.StatusOK, page)
 }
 
-// signInChoices: what the password form starts with.
+// signInChoices: what the sign-in form starts with.
 //
-//   - The browser has a session (prompt=login, max_age): its account,
-//     pre-filled. The user signs in again as themselves.
+//   - The browser has a session (prompt=login, max_age): its account
+//     (reauth), pre-filled and starting with its best method (a passkey
+//     alone signs in, no password first). The user signs in again as
+//     themselves.
 //   - Else, with a login_hint: that hint, as before.
 //   - Else: the accounts remembered on this device ("Pick an account"),
 //     none of them signed in.
-func (a *Adapter) signInChoices(r *http.Request, realm Realm, loginHint, clientRef string) (string, []loginui.Account) {
+func (a *Adapter) signInChoices(r *http.Request, realm Realm, loginHint, clientRef string) (string, *core.Account, []loginui.Account) {
 	ctx := r.Context()
 	if sess := a.currentSession(r, realm); sess != nil {
-		if loginHint == "" {
-			if acc, err := a.core.SessionAccount(ctx, sess.ID); err == nil {
-				loginHint = acc.Identifier
-			}
+		acc := a.reauthAccount(r, realm, sess, clientRef)
+		if acc == nil || (loginHint != "" && loginHint != acc.Identifier) {
+			return loginHint, nil, nil
 		}
-		return loginHint, nil
+		return acc.Identifier, acc, nil
 	}
 	if loginHint != "" {
-		return loginHint, nil
+		return loginHint, nil, nil
 	}
 	accounts, err := a.core.KnownAccounts(ctx, core.AccountQuery{RealmID: realm.ID, DeviceID: a.deviceID(r), ClientRef: clientRef})
 	if err != nil {
 		a.logger.WarnContext(ctx, "oidc: known accounts", "error", err)
-		return "", nil
+		return "", nil, nil
 	}
-	return "", loginui.AccountsFrom(accounts)
+	return "", nil, loginui.AccountsFrom(accounts)
+}
+
+// reauthAccount: the account of the browser's session with its sign-in
+// methods for this application (nil if it cannot be read).
+func (a *Adapter) reauthAccount(r *http.Request, realm Realm, sess *domain.Session, clientRef string) *core.Account {
+	ctx := r.Context()
+	accounts, err := a.core.KnownAccounts(ctx, core.AccountQuery{
+		RealmID: realm.ID, DeviceID: a.deviceID(r), Current: sess, ClientRef: clientRef,
+	})
+	if err == nil && len(accounts) > 0 && accounts[0].SignedIn {
+		return &accounts[0]
+	}
+	if err != nil {
+		a.logger.WarnContext(ctx, "oidc: known accounts", "error", err)
+	}
+	acc, err := a.core.SessionAccount(ctx, sess.ID) // password only
+	if err != nil {
+		return nil
+	}
+	return acc
 }
 
 // renderPicker: prompt=select_account with a valid session. The signed-in

@@ -47,20 +47,24 @@ func init() {
 	auditlogDescRealmID := auditlogFields[1].Descriptor()
 	// auditlog.RealmIDValidator is a validator for the "realm_id" field. It is called by the builders before save.
 	auditlog.RealmIDValidator = auditlogDescRealmID.Validators[0].(func(string) error)
+	// auditlogDescActorType is the schema descriptor for actor_type field.
+	auditlogDescActorType := auditlogFields[3].Descriptor()
+	// auditlog.DefaultActorType holds the default value on creation for the actor_type field.
+	auditlog.DefaultActorType = schema.AuditLogActorType(auditlogDescActorType.Default.(string))
 	// auditlogDescAction is the schema descriptor for action field.
-	auditlogDescAction := auditlogFields[3].Descriptor()
+	auditlogDescAction := auditlogFields[5].Descriptor()
 	// auditlog.ActionValidator is a validator for the "action" field. It is called by the builders before save.
 	auditlog.ActionValidator = auditlogDescAction.Validators[0].(func(string) error)
 	// auditlogDescTimestamp is the schema descriptor for timestamp field.
-	auditlogDescTimestamp := auditlogFields[6].Descriptor()
+	auditlogDescTimestamp := auditlogFields[8].Descriptor()
 	// auditlog.DefaultTimestamp holds the default value on creation for the timestamp field.
 	auditlog.DefaultTimestamp = auditlogDescTimestamp.Default.(func() time.Time)
 	// auditlogDescLevel is the schema descriptor for level field.
-	auditlogDescLevel := auditlogFields[9].Descriptor()
+	auditlogDescLevel := auditlogFields[11].Descriptor()
 	// auditlog.DefaultLevel holds the default value on creation for the level field.
 	auditlog.DefaultLevel = schema.AuditLogLevel(auditlogDescLevel.Default.(string))
 	// auditlogDescStatus is the schema descriptor for status field.
-	auditlogDescStatus := auditlogFields[10].Descriptor()
+	auditlogDescStatus := auditlogFields[12].Descriptor()
 	// auditlog.DefaultStatus holds the default value on creation for the status field.
 	auditlog.DefaultStatus = schema.AuditLogStatus(auditlogDescStatus.Default.(string))
 	// auditlogDescID is the schema descriptor for id field.

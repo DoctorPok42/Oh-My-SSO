@@ -14,6 +14,7 @@ import (
 
 	"sso.internal/sso/ent"
 	valkeycache "sso.internal/sso/internal/cache/valkey"
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
@@ -237,6 +238,14 @@ func mfaReset(ctx context.Context, args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
+	_, _ = entstore.NewAuditLogRepository(env.client).Create(ctx, repository.CreateAuditLogParams{
+		RealmID: user.RealmID, ActorType: domain.AuditActorCLI, Action: audit.MFAReset,
+		ResourceType: "User", ResourceID: user.ID, Level: domain.AuditLogWarning, Status: domain.AuditLogSuccess,
+		Details: map[string]interface{}{
+			"triggered_by": cliActor(), "reason": *reason,
+			"methods_deleted": res.MethodsDeleted, "backup_codes_deleted": res.BackupCodesDeleted,
+		},
+	})
 	fmt.Fprintf(out, "MFA reset for %s: %d factor(s) and %d backup code(s) deleted, every session revoked.\n", user.Username, res.MethodsDeleted, res.BackupCodesDeleted)
 	fmt.Fprintln(out, "The user can log in with their password and enroll new factors.")
 	return nil

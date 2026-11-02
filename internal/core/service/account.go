@@ -13,6 +13,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -152,7 +153,7 @@ func (s *AccountService) UpdateName(ctx context.Context, user *domain.User, in N
 	if err := s.d.Admin.SetUserProfile(ctx, user.ID, profile); err != nil {
 		return nil, fmt.Errorf("update name: %w", err)
 	}
-	s.audit(ctx, user, "account.profile_updated", "User", user.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev,
+	s.audit(ctx, user, audit.UserProfileUpdated, "User", user.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev,
 		map[string]interface{}{"fields": changed})
 	out := *user
 	out.Profile = profile
@@ -209,7 +210,7 @@ func (s *AccountService) ChangePassword(ctx context.Context, in ChangePasswordIn
 		return nil, fmt.Errorf("change password: %w", err)
 	}
 	if !ok {
-		s.audit(ctx, user, "account.password_changed", "User", user.ID, domain.AuditLogWarning, domain.AuditLogFailure, in.Event,
+		s.audit(ctx, user, audit.UserPasswordChanged, "User", user.ID, domain.AuditLogWarning, domain.AuditLogFailure, in.Event,
 			map[string]interface{}{"reason": "wrong_current_password"})
 		return nil, ErrWrongPassword
 	}
@@ -236,7 +237,7 @@ func (s *AccountService) ChangePassword(ctx context.Context, in ChangePasswordIn
 	if err != nil {
 		return nil, fmt.Errorf("change password: sign out other sessions: %w", err)
 	}
-	s.audit(ctx, user, "account.password_changed", "User", user.ID, domain.AuditLogWarning, domain.AuditLogSuccess, in.Event,
+	s.audit(ctx, user, audit.UserPasswordChanged, "User", user.ID, domain.AuditLogWarning, domain.AuditLogSuccess, in.Event,
 		map[string]interface{}{"sessions_ended": n})
 	s.d.Notifier.Notify(ctx, domain.NotificationEvent{
 		Kind:       domain.NotificationPasswordChanged,
@@ -367,7 +368,7 @@ func (s *AccountService) RevokeSession(ctx context.Context, user *domain.User, c
 		}
 		return fmt.Errorf("revoke session: %w", err)
 	}
-	s.audit(ctx, user, "account.session_revoked", "Session", se.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev, nil)
+	s.audit(ctx, user, audit.SessionRevoked, "Session", se.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev, nil)
 	return nil
 }
 
@@ -378,7 +379,7 @@ func (s *AccountService) RevokeOtherSessions(ctx context.Context, user *domain.U
 	if err != nil {
 		return n, err
 	}
-	s.audit(ctx, user, "account.sessions_revoked", "User", user.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev,
+	s.audit(ctx, user, audit.SessionRevokedAll, "User", user.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev,
 		map[string]interface{}{"count": n})
 	return n, nil
 }
@@ -514,7 +515,7 @@ func (s *AccountService) RevokeApp(ctx context.Context, user *domain.User, clien
 	})
 	switch {
 	case err == nil:
-		return &RevokeAppResult{TokensRevoked: res.TokensRevoked}, nil // ConsentService wrote "consent_revoked"
+		return &RevokeAppResult{TokensRevoked: res.TokensRevoked}, nil // ConsentService wrote "consent.revoked"
 	case !errors.Is(err, ErrConsentNotFound):
 		return nil, err
 	}
@@ -525,7 +526,7 @@ func (s *AccountService) RevokeApp(ctx context.Context, user *domain.User, clien
 	if n == 0 {
 		return nil, ErrAppNotFound
 	}
-	s.audit(ctx, user, "account.app_access_revoked", "ClientApp", c.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev,
+	s.audit(ctx, user, audit.ConsentAppAccessRevoked, "ClientApp", c.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev,
 		map[string]interface{}{"client": clientDisplayName(c), "tokens_revoked": n})
 	return &RevokeAppResult{TokensRevoked: n}, nil
 }
@@ -549,7 +550,7 @@ func (s *AccountService) RevokeTrustedDevice(ctx context.Context, user *domain.U
 	if err := s.d.TrustedDevices.RevokeOne(ctx, user.ID, id); err != nil {
 		return err
 	}
-	s.audit(ctx, user, "account.trusted_device_revoked", "TrustedDevice", id, domain.AuditLogInfo, domain.AuditLogSuccess, ev, nil)
+	s.audit(ctx, user, audit.TrustedDeviceRevoked, "TrustedDevice", id, domain.AuditLogInfo, domain.AuditLogSuccess, ev, nil)
 	return nil
 }
 
@@ -562,7 +563,7 @@ func (s *AccountService) RevokeTrustedDevices(ctx context.Context, user *domain.
 	if err != nil {
 		return 0, err
 	}
-	s.audit(ctx, user, "account.trusted_devices_revoked", "User", user.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev,
+	s.audit(ctx, user, audit.TrustedDeviceRevokedAll, "User", user.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev,
 		map[string]interface{}{"count": n})
 	return n, nil
 }
@@ -608,17 +609,16 @@ func (s *AccountService) SignIns(ctx context.Context, user *domain.User, offset,
 // sent, sign-ins, which have their own list...) are not about something
 // the user would recognise.
 var AccountActivityActions = []string{
-	// by the user
-	"account.profile_updated", "account.password_changed", "account.session_revoked", "account.sessions_revoked",
-	"account.app_access_revoked", "account.trusted_device_revoked", "account.trusted_devices_revoked",
-	"mfa_method_enrolled", "mfa_method_removed", "mfa_backup_codes_regenerated",
-	"mfa_device_trusted", "mfa_device_trust_revoked",
-	"consent_granted", "consent_revoked", "known_account.forget",
-	"password_reset_requested", "password_reset", "account_locked",
+	// by the user (some also by an administrator, or the server)
+	audit.UserProfileUpdated, audit.UserPasswordChanged, audit.SessionRevoked, audit.SessionRevokedAll,
+	audit.ConsentAppAccessRevoked, audit.TrustedDeviceRevoked, audit.TrustedDeviceRevokedAll,
+	audit.MFAMethodEnrolled, audit.MFAMethodRemoved, audit.MFABackupCodesRegenerated,
+	audit.TrustedDeviceAdded,
+	audit.ConsentGranted, audit.ConsentRevoked, audit.KnownAccountForgotten,
+	audit.UserPasswordResetRequested, audit.UserPasswordReset, audit.UserLocked,
 	// by an administrator, about the user
-	"admin.user.invite", "admin.user.activation_link", "admin.user.update", "admin.user.groups", "admin.user.roles",
-	"admin.user.mfa_reset", "admin.user.unlock", "admin.session.revoke_all",
-	"admin.trusted_device.revoke_all", "mfa_reset",
+	audit.UserInvited, audit.UserActivationLinkSent, audit.UserUpdated, audit.UserGroupsChanged, audit.UserRolesChanged,
+	audit.MFAReset, audit.UserUnlocked,
 }
 
 // ActivityEntry is one entry of the "Account activity" list.
@@ -651,7 +651,7 @@ func (s *AccountService) Activity(ctx context.Context, user *domain.User, offset
 	out := make([]ActivityEntry, 0, len(rows))
 	for _, r := range rows {
 		e := ActivityEntry{At: r.Timestamp, Action: r.Action, Failed: r.Status == domain.AuditLogFailure, Details: r.Details}
-		if r.UserID != "" && r.UserID != user.ID {
+		if r.ActorType == domain.AuditActorAdmin || r.ActorType == domain.AuditActorCLI || (r.UserID != "" && r.UserID != user.ID) {
 			e.ByAdmin = true
 		} else {
 			e.IPAddress, e.UserAgent = r.IPAddress, r.UserAgent
@@ -672,7 +672,7 @@ func (s *AccountService) audit(ctx context.Context, user *domain.User, action, r
 		return
 	}
 	if _, err := s.d.Audit.Create(ctx, repository.CreateAuditLogParams{
-		RealmID: user.RealmID, UserID: user.ID, Action: action,
+		RealmID: user.RealmID, UserID: user.ID, ActorType: domain.AuditActorUser, TargetUserID: user.ID, Action: action,
 		ResourceType: resourceType, ResourceID: resourceID,
 		IPAddress: ev.IPAddress, UserAgent: ev.UserAgent,
 		Level: level, Status: status, Details: details,

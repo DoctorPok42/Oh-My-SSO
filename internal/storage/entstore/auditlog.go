@@ -19,10 +19,13 @@ func NewAuditLogRepository(client *ent.Client) repository.AuditLogRepository {
 }
 
 func (r *entAuditLogRepository) Create(ctx context.Context, p repository.CreateAuditLogParams) (*domain.AuditLog, error) {
+	p = p.Normalized()
 	builder := r.client.AuditLog.
 		Create().
 		SetRealmID(p.RealmID).
 		SetNillableUserID(nonEmpty(p.UserID)).
+		SetActorType(entschema.AuditLogActorType(p.ActorType)).
+		SetNillableTargetUserID(nonEmpty(p.TargetUserID)).
 		SetAction(p.Action).
 		SetNillableResourceType(nonEmpty(p.ResourceType)).
 		SetNillableResourceID(nonEmpty(p.ResourceID)).
@@ -97,6 +100,8 @@ func toDomainAuditLog(e *ent.AuditLog) *domain.AuditLog {
 		ID:           e.ID,
 		RealmID:      e.RealmID,
 		UserID:       e.UserID,
+		ActorType:    domain.AuditActorType(e.ActorType),
+		TargetUserID: e.TargetUserID,
 		Action:       e.Action,
 		ResourceType: e.ResourceType,
 		ResourceID:   e.ResourceID,

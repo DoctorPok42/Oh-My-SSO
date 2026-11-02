@@ -87,25 +87,27 @@ const (
 // AuditLogMutation represents an operation that mutates the AuditLog nodes in the graph.
 type AuditLogMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *string
-	user_id       *string
-	action        *string
-	resource_type *string
-	resource_id   *string
-	timestamp     *time.Time
-	ip_address    *string
-	user_agent    *string
-	level         *schema.AuditLogLevel
-	status        *schema.AuditLogStatus
-	details       *map[string]interface{}
-	clearedFields map[string]struct{}
-	realm         *string
-	clearedrealm  bool
-	done          bool
-	oldValue      func(context.Context) (*AuditLog, error)
-	predicates    []predicate.AuditLog
+	op             Op
+	typ            string
+	id             *string
+	user_id        *string
+	actor_type     *schema.AuditLogActorType
+	target_user_id *string
+	action         *string
+	resource_type  *string
+	resource_id    *string
+	timestamp      *time.Time
+	ip_address     *string
+	user_agent     *string
+	level          *schema.AuditLogLevel
+	status         *schema.AuditLogStatus
+	details        *map[string]interface{}
+	clearedFields  map[string]struct{}
+	realm          *string
+	clearedrealm   bool
+	done           bool
+	oldValue       func(context.Context) (*AuditLog, error)
+	predicates     []predicate.AuditLog
 }
 
 var _ ent.Mutation = (*AuditLogMutation)(nil)
@@ -295,6 +297,91 @@ func (m *AuditLogMutation) UserIDCleared() bool {
 func (m *AuditLogMutation) ResetUserID() {
 	m.user_id = nil
 	delete(m.clearedFields, auditlog.FieldUserID)
+}
+
+// SetActorType sets the "actor_type" field.
+func (m *AuditLogMutation) SetActorType(slat schema.AuditLogActorType) {
+	m.actor_type = &slat
+}
+
+// ActorType returns the value of the "actor_type" field in the mutation.
+func (m *AuditLogMutation) ActorType() (r schema.AuditLogActorType, exists bool) {
+	v := m.actor_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldActorType returns the old "actor_type" field's value of the AuditLog entity.
+// If the AuditLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AuditLogMutation) OldActorType(ctx context.Context) (v schema.AuditLogActorType, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldActorType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldActorType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldActorType: %w", err)
+	}
+	return oldValue.ActorType, nil
+}
+
+// ResetActorType resets all changes to the "actor_type" field.
+func (m *AuditLogMutation) ResetActorType() {
+	m.actor_type = nil
+}
+
+// SetTargetUserID sets the "target_user_id" field.
+func (m *AuditLogMutation) SetTargetUserID(s string) {
+	m.target_user_id = &s
+}
+
+// TargetUserID returns the value of the "target_user_id" field in the mutation.
+func (m *AuditLogMutation) TargetUserID() (r string, exists bool) {
+	v := m.target_user_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTargetUserID returns the old "target_user_id" field's value of the AuditLog entity.
+// If the AuditLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AuditLogMutation) OldTargetUserID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTargetUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTargetUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTargetUserID: %w", err)
+	}
+	return oldValue.TargetUserID, nil
+}
+
+// ClearTargetUserID clears the value of the "target_user_id" field.
+func (m *AuditLogMutation) ClearTargetUserID() {
+	m.target_user_id = nil
+	m.clearedFields[auditlog.FieldTargetUserID] = struct{}{}
+}
+
+// TargetUserIDCleared returns if the "target_user_id" field was cleared in this mutation.
+func (m *AuditLogMutation) TargetUserIDCleared() bool {
+	_, ok := m.clearedFields[auditlog.FieldTargetUserID]
+	return ok
+}
+
+// ResetTargetUserID resets all changes to the "target_user_id" field.
+func (m *AuditLogMutation) ResetTargetUserID() {
+	m.target_user_id = nil
+	delete(m.clearedFields, auditlog.FieldTargetUserID)
 }
 
 // SetAction sets the "action" field.
@@ -747,12 +834,18 @@ func (m *AuditLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AuditLogMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 13)
 	if m.realm != nil {
 		fields = append(fields, auditlog.FieldRealmID)
 	}
 	if m.user_id != nil {
 		fields = append(fields, auditlog.FieldUserID)
+	}
+	if m.actor_type != nil {
+		fields = append(fields, auditlog.FieldActorType)
+	}
+	if m.target_user_id != nil {
+		fields = append(fields, auditlog.FieldTargetUserID)
 	}
 	if m.action != nil {
 		fields = append(fields, auditlog.FieldAction)
@@ -793,6 +886,10 @@ func (m *AuditLogMutation) Field(name string) (ent.Value, bool) {
 		return m.RealmID()
 	case auditlog.FieldUserID:
 		return m.UserID()
+	case auditlog.FieldActorType:
+		return m.ActorType()
+	case auditlog.FieldTargetUserID:
+		return m.TargetUserID()
 	case auditlog.FieldAction:
 		return m.Action()
 	case auditlog.FieldResourceType:
@@ -824,6 +921,10 @@ func (m *AuditLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldRealmID(ctx)
 	case auditlog.FieldUserID:
 		return m.OldUserID(ctx)
+	case auditlog.FieldActorType:
+		return m.OldActorType(ctx)
+	case auditlog.FieldTargetUserID:
+		return m.OldTargetUserID(ctx)
 	case auditlog.FieldAction:
 		return m.OldAction(ctx)
 	case auditlog.FieldResourceType:
@@ -864,6 +965,20 @@ func (m *AuditLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUserID(v)
+		return nil
+	case auditlog.FieldActorType:
+		v, ok := value.(schema.AuditLogActorType)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetActorType(v)
+		return nil
+	case auditlog.FieldTargetUserID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTargetUserID(v)
 		return nil
 	case auditlog.FieldAction:
 		v, ok := value.(string)
@@ -961,6 +1076,9 @@ func (m *AuditLogMutation) ClearedFields() []string {
 	if m.FieldCleared(auditlog.FieldUserID) {
 		fields = append(fields, auditlog.FieldUserID)
 	}
+	if m.FieldCleared(auditlog.FieldTargetUserID) {
+		fields = append(fields, auditlog.FieldTargetUserID)
+	}
 	if m.FieldCleared(auditlog.FieldResourceType) {
 		fields = append(fields, auditlog.FieldResourceType)
 	}
@@ -993,6 +1111,9 @@ func (m *AuditLogMutation) ClearField(name string) error {
 	case auditlog.FieldUserID:
 		m.ClearUserID()
 		return nil
+	case auditlog.FieldTargetUserID:
+		m.ClearTargetUserID()
+		return nil
 	case auditlog.FieldResourceType:
 		m.ClearResourceType()
 		return nil
@@ -1021,6 +1142,12 @@ func (m *AuditLogMutation) ResetField(name string) error {
 		return nil
 	case auditlog.FieldUserID:
 		m.ResetUserID()
+		return nil
+	case auditlog.FieldActorType:
+		m.ResetActorType()
+		return nil
+	case auditlog.FieldTargetUserID:
+		m.ResetTargetUserID()
 		return nil
 	case auditlog.FieldAction:
 		m.ResetAction()

@@ -694,7 +694,7 @@ func TestIdentityCore_IssueIdentityAssertion(t *testing.T) {
 		_, err := f.core.IssueIdentityAssertion(ctx, sess.ID, clientOther, nil)
 		require.ErrorIs(t, err, core.ErrForbidden)
 		require.Len(t, f.audit.entries, 1)
-		require.Equal(t, "authorization_denied", f.audit.entries[0].Action)
+		require.Equal(t, "auth.access_denied", f.audit.entries[0].Action)
 		require.Equal(t, aliceID, f.audit.entries[0].UserID)
 	})
 

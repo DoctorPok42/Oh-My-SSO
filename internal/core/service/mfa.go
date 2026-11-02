@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/mfastore"
@@ -333,7 +334,7 @@ func (s *MFAService) trustedDevice(ctx context.Context, in BeginLoginInput) (day
 		return days, false
 	}
 	if reasons := s.signInRisk(ctx, in); len(reasons) > 0 {
-		s.auditEvent(ctx, in.User, "mfa_trusted_device_challenged", "TrustedDevice", d.ID, domain.AuditLogInfo, map[string]interface{}{
+		s.auditEvent(ctx, in.User, audit.AuthTrustedDeviceChallenged, "TrustedDevice", d.ID, domain.AuditLogInfo, map[string]interface{}{
 			"reasons": reasons,
 		})
 		return days, false
@@ -786,7 +787,7 @@ func (s *MFAService) DeleteFactor(ctx context.Context, user *domain.User, method
 		return fmt.Errorf("delete mfa factor: %w", err)
 	}
 
-	s.auditEvent(ctx, user, "mfa_method_removed", "MfaMethod", m.ID, domain.AuditLogWarning, map[string]interface{}{
+	s.auditEvent(ctx, user, audit.MFAMethodRemoved, "MfaMethod", m.ID, domain.AuditLogWarning, map[string]interface{}{
 		"type": string(m.Type),
 	})
 	if m.Status == domain.MfaMethodActive {
@@ -805,6 +806,9 @@ type ResetResult struct {
 // their sessions (reason "mfa_reset"). It is the way out for someone who
 // lost every factor. The user can log in with their password again and
 // enroll new factors (subject to the policies).
+//
+// The caller writes the audit entry (mfa.reset): it knows the actor, the
+// admin console its address, the CLI its OS user. One reset, one entry.
 func (s *MFAService) ResetUser(ctx context.Context, user *domain.User, triggeredBy, reason string) (*ResetResult, error) {
 	n, err := s.methods.DeleteByUser(ctx, user.ID)
 	if err != nil {
@@ -817,23 +821,8 @@ func (s *MFAService) ResetUser(ctx context.Context, user *domain.User, triggered
 	if err := s.sessions.RevokeAllForUser(ctx, user.ID, domain.SessionRevokedMFAReset); err != nil {
 		return nil, fmt.Errorf("mfa reset: %w", err)
 	}
-	if s.audit != nil {
-		_, _ = s.audit.Create(ctx, repository.CreateAuditLogParams{
-			RealmID:      user.RealmID,
-			UserID:       userIDFromTrigger(triggeredBy),
-			Action:       "mfa_reset",
-			ResourceType: "User",
-			ResourceID:   user.ID,
-			Level:        domain.AuditLogWarning,
-			Status:       domain.AuditLogSuccess,
-			Details: map[string]interface{}{
-				"triggered_by":         triggeredBy,
-				"reason":               reason,
-				"methods_deleted":      n,
-				"backup_codes_deleted": c,
-			},
-		})
-	}
+	s.logger.InfoContext(ctx, "mfa reset", "user_id", user.ID, "triggered_by", triggeredBy, "reason", reason,
+		"methods_deleted", n, "backup_codes_deleted", c)
 	if n > 0 {
 		s.notify(ctx, user, domain.NotificationMfaReset, nil)
 	}

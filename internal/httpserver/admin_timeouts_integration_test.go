@@ -112,7 +112,7 @@ func TestAdmin_Integration_Timeouts(t *testing.T) {
 		for _, it := range out["items"].([]any) {
 			actions = append(actions, it.(map[string]any)["action"].(string))
 		}
-		for _, a := range []string{"admin.timeout.create", "admin.timeout.update", "admin.timeout.lift", "timeout_enforced"} {
+		for _, a := range []string{"timeout.created", "timeout.updated", "timeout.lifted", "timeout.enforced"} {
 			require.True(t, slices.Contains(actions, a), "%s in %v", a, actions)
 		}
 	})

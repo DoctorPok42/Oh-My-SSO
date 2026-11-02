@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/keymanager"
@@ -57,6 +58,7 @@ var stagedPurposes = map[domain.SigningKeyPurpose]bool{
 type KeyRotationService struct {
 	keys       repository.SigningKeyRepository
 	logs       repository.KeyRotationLogRepository
+	audit      repository.AuditLogRepository // nil: KeyRotationLog only
 	settings   repository.InstanceSettingsRepository
 	km         keymanager.KeyManager
 	kmsBackend string // "vault", "local_dev", "ovhkms": stored on each key
@@ -73,6 +75,12 @@ func WithKeyRotationClock(now func() time.Time) KeyRotationOption {
 
 func WithKeyRotationLogger(l *slog.Logger) KeyRotationOption {
 	return func(s *KeyRotationService) { s.logger = l }
+}
+
+// WithKeyRotationAudit also writes each step to the realm's audit log
+// (signing_key.created, .rotated, .activated, .retired, .compromised).
+func WithKeyRotationAudit(a repository.AuditLogRepository) KeyRotationOption {
+	return func(s *KeyRotationService) { s.audit = a }
 }
 
 func NewKeyRotationService(
@@ -213,7 +221,7 @@ func (s *KeyRotationService) Rotate(ctx context.Context, in RotateInput) (*Rotat
 	if staged {
 		reason = joinReason(in.Reason, "staged: published, signs after activation")
 	}
-	if err := s.log(ctx, newKey.ID, domain.KeyRotationCreated, in.TriggeredBy, reason); err != nil {
+	if err := s.log(ctx, newKey, domain.KeyRotationCreated, in.TriggeredBy, reason); err != nil {
 		errs = append(errs, err)
 	}
 	if staged {
@@ -245,7 +253,7 @@ func (s *KeyRotationService) Rotate(ctx context.Context, in RotateInput) (*Rotat
 			}
 			old.Status, old.RetiredAt = domain.SigningKeyRetired, s.now()
 			res.Retired = append(res.Retired, old)
-			if err := s.log(ctx, old.ID, domain.KeyRotationCompromised, in.TriggeredBy, in.Reason); err != nil {
+			if err := s.log(ctx, old, domain.KeyRotationCompromised, in.TriggeredBy, in.Reason); err != nil {
 				errs = append(errs, err)
 			}
 			continue
@@ -283,7 +291,7 @@ func (s *KeyRotationService) demote(ctx context.Context, old, newKey *domain.Sig
 		return false, fmt.Errorf("mark key %s rotating: %w", old.Kid, err)
 	}
 	old.Status, old.RetireAfter = domain.SigningKeyRotating, retireAfter
-	if err := s.log(ctx, old.ID, domain.KeyRotationRotated, by, joinReason(reason, "superseded by kid "+newKey.Kid)); err != nil {
+	if err := s.log(ctx, old, domain.KeyRotationRotated, by, joinReason(reason, "superseded by kid "+newKey.Kid)); err != nil {
 		return true, err
 	}
 	return true, nil
@@ -346,7 +354,7 @@ func (s *KeyRotationService) Activate(ctx context.Context, in ActivateInput) (*R
 	res := &RotateResult{NewKey: pending, Grace: grace}
 
 	var errs []error
-	if err := s.log(ctx, pending.ID, domain.KeyRotationActivated, in.TriggeredBy, in.Reason); err != nil {
+	if err := s.log(ctx, pending, domain.KeyRotationActivated, in.TriggeredBy, in.Reason); err != nil {
 		errs = append(errs, err)
 	}
 	retireAfter := s.now().Add(grace)
@@ -412,7 +420,7 @@ func (s *KeyRotationService) RetireExpired(ctx context.Context, realmID, trigger
 					"realm_id", realmID, "kid", k.Kid, "error", err)
 			}
 		}
-		if err := s.log(ctx, k.ID, domain.KeyRotationRetired, triggeredBy, keyRotationReasonGraceEnded); err != nil {
+		if err := s.log(ctx, k, domain.KeyRotationRetired, triggeredBy, keyRotationReasonGraceEnded); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -506,9 +514,10 @@ func (s *KeyRotationService) validate(in RotateInput) error {
 	return nil
 }
 
-func (s *KeyRotationService) log(ctx context.Context, keyID string, action domain.KeyRotationAction, by, reason string) error {
+func (s *KeyRotationService) log(ctx context.Context, key *domain.SigningKey, action domain.KeyRotationAction, by, reason string) error {
+	s.auditStep(ctx, key, action, by, reason)
 	_, err := s.logs.Create(ctx, repository.CreateKeyRotationLogParams{
-		SigningKeyID: keyID,
+		SigningKeyID: key.ID,
 		Action:       action,
 		TriggeredBy:  by,
 		Reason:       reason,
@@ -517,6 +526,45 @@ func (s *KeyRotationService) log(ctx context.Context, keyID string, action domai
 		return fmt.Errorf("write key rotation log (%s): %w", action, err)
 	}
 	return nil
+}
+
+// auditStep writes one key rotation step to the audit log. A failure is
+// logged only: KeyRotationLog stays the reference for keys.
+func (s *KeyRotationService) auditStep(ctx context.Context, key *domain.SigningKey, step domain.KeyRotationAction, by, reason string) {
+	if s.audit == nil || key.RealmID == "" {
+		return
+	}
+	action, level := "", domain.AuditLogInfo
+	switch step {
+	case domain.KeyRotationCreated:
+		action = audit.SigningKeyCreated
+	case domain.KeyRotationRotated:
+		action = audit.SigningKeyRotated
+	case domain.KeyRotationActivated:
+		action, level = audit.SigningKeyActivated, domain.AuditLogWarning
+	case domain.KeyRotationRetired, domain.KeyRotationDeleted:
+		action = audit.SigningKeyRetired
+	case domain.KeyRotationCompromised:
+		action, level = audit.SigningKeyCompromised, domain.AuditLogCritical
+	default:
+		return
+	}
+	actorType, actorID := domain.AuditActorFromTrigger(by, "")
+	details := map[string]interface{}{
+		"kid": key.Kid, "purpose": string(key.Purpose), "key_type": string(key.KeyType), "triggered_by": by,
+	}
+	if reason != "" {
+		details["reason"] = reason
+	}
+	if !key.RetireAfter.IsZero() && step == domain.KeyRotationRotated {
+		details["retire_after"] = key.RetireAfter.UTC().Format(time.RFC3339)
+	}
+	if _, err := s.audit.Create(ctx, repository.CreateAuditLogParams{
+		RealmID: key.RealmID, UserID: actorID, ActorType: actorType, Action: action,
+		ResourceType: "SigningKey", ResourceID: key.ID, Level: level, Status: domain.AuditLogSuccess, Details: details,
+	}); err != nil {
+		s.logger.WarnContext(ctx, "key rotation: audit write failed", "kid", key.Kid, "action", action, "error", err)
+	}
 }
 
 func filterPurpose(keys []*domain.SigningKey, purpose domain.SigningKeyPurpose) []*domain.SigningKey {

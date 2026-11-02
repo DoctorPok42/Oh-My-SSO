@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -221,7 +222,7 @@ func (s *AdminService) Bootstrap(ctx context.Context, in BootstrapInput) (*Boots
 	res.ActivationURL = s.activationURL(realm.Name, token)
 	res.ActivationExpires = expires
 
-	s.writeCLIAudit(ctx, realm.ID, "bootstrap", "Realm", realm.ID, in.Actor, map[string]interface{}{
+	s.writeCLIAudit(ctx, realm.ID, audit.InstanceBootstrapped, "Realm", realm.ID, in.Actor, map[string]interface{}{
 		"admin_user_id": user.ID, "admin_username": user.Username, "client_created": secret != "",
 	})
 	return res, nil
@@ -288,7 +289,7 @@ func (s *AdminService) RecoverAdmin(ctx context.Context, in RecoverAdminInput) (
 		return nil, fmt.Errorf("recover: activation link: %w", err)
 	}
 
-	s.writeCLIAudit(ctx, realm.ID, "recovery_admin", "User", user.ID, in.Actor, map[string]interface{}{
+	s.writeCLIAudit(ctx, realm.ID, audit.RecoveryAdmin, "User", user.ID, in.Actor, map[string]interface{}{
 		"new_username": username, "email": addr.Address,
 	})
 	s.alertAdmins(ctx, realm.ID, current, "a new administrator account", in.Actor, username)
@@ -312,7 +313,7 @@ func (s *AdminService) RecoverClientSecret(ctx context.Context, actor string) (s
 	if app != nil {
 		appID = app.ID
 	}
-	s.writeCLIAudit(ctx, realm.ID, "recovery_client_secret", "ClientApp", appID, actor, nil)
+	s.writeCLIAudit(ctx, realm.ID, audit.RecoveryClientSecret, "ClientApp", appID, actor, nil)
 	current, err := s.d.Admin.ActiveGroupMemberIDs(ctx, admins.ID)
 	if err != nil {
 		return secret, 0, nil // the secret is changed: do not hide it because of the alert
@@ -608,7 +609,8 @@ func (s *AdminService) writeCLIAudit(ctx context.Context, realmID, action, resou
 	}
 	if _, err := s.d.Audit.Create(ctx, repository.CreateAuditLogParams{
 		RealmID:      realmID,
-		Action:       "admin." + action,
+		ActorType:    domain.AuditActorCLI,
+		Action:       action,
 		ResourceType: resourceType,
 		ResourceID:   resourceID,
 		Level:        domain.AuditLogCritical,

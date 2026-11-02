@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -107,9 +108,9 @@ func (s *AdminService) CreateRealm(ctx context.Context, actor AdminActor, in Cre
 	res.Warning = warning
 
 	details := map[string]interface{}{"name": name, "display_name": display}
-	s.auditAdmin(ctx, actor, realm.ID, "realm.create", "Realm", realm.ID, domain.AuditLogWarning, details)
+	s.auditAdmin(ctx, actor, realm.ID, audit.RealmCreated, "Realm", realm.ID, domain.AuditLogWarning, details)
 	// Instance-level action: the master realm keeps a trace too.
-	s.auditAdmin(ctx, actor, actor.RealmID, "realm.create", "Realm", realm.ID, domain.AuditLogWarning, details)
+	s.auditAdmin(ctx, actor, actor.RealmID, audit.RealmCreated, "Realm", realm.ID, domain.AuditLogWarning, details)
 	return res, nil
 }
 
@@ -160,9 +161,9 @@ func (s *AdminService) UpdateRealm(ctx context.Context, actor AdminActor, name s
 	if params.Status != nil {
 		level = domain.AuditLogWarning
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "realm.update", "Realm", realm.ID, level, details)
+	s.auditAdmin(ctx, actor, realm.ID, audit.RealmUpdated, "Realm", realm.ID, level, details)
 	if realm.ID != actor.RealmID {
-		s.auditAdmin(ctx, actor, actor.RealmID, "realm.update", "Realm", realm.ID, level, details)
+		s.auditAdmin(ctx, actor, actor.RealmID, audit.RealmUpdated, "Realm", realm.ID, level, details)
 	}
 	return realmView(updated), nil
 }
@@ -338,7 +339,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 	if err != nil {
 		return nil, err
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "settings.update", "InstanceSettings", st.ID, domain.AuditLogWarning, settingsChanges(p))
+	s.auditAdmin(ctx, actor, realm.ID, audit.SettingsUpdated, "InstanceSettings", st.ID, domain.AuditLogWarning, settingsChanges(p))
 	return view, nil
 }
 

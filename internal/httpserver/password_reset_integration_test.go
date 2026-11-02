@@ -240,7 +240,7 @@ func TestPasswordReset_Integration(t *testing.T) {
 			}
 			n := 0
 			for _, l := range logs {
-				if l.Action == "notification_sent" && l.Status == domain.AuditLogSuccess {
+				if l.Action == "notification.sent" && l.Status == domain.AuditLogSuccess {
 					n++
 				}
 			}

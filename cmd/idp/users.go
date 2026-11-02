@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
@@ -116,7 +117,8 @@ func usersUnlock(ctx context.Context, args []string, out io.Writer) error {
 	}
 	_, _ = entstore.NewAuditLogRepository(env.client).Create(ctx, repository.CreateAuditLogParams{
 		RealmID:      user.RealmID,
-		Action:       "account_unlocked",
+		ActorType:    domain.AuditActorCLI,
+		Action:       audit.UserUnlocked,
 		ResourceType: "User",
 		ResourceID:   user.ID,
 		Level:        domain.AuditLogWarning,

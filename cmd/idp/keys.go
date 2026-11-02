@@ -105,6 +105,7 @@ func openKeysEnv(ctx context.Context, realmName string) (*keysEnv, error) {
 		entstore.NewInstanceSettingsRepository(client),
 		km,
 		backend,
+		service.WithKeyRotationAudit(entstore.NewAuditLogRepository(client)),
 	)
 	return &keysEnv{rotation: rotation, realm: realm, backend: backend, close: func() { client.Close() }}, nil
 }
