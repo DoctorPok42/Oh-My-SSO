@@ -39,16 +39,34 @@ export const TOKEN_LOCATIONS = [
   { value: "saml_attribute", label: "SAML attribute" },
 ];
 
-/** "admin.client.update" -> "Client updated" style labels for the most common actions. */
-export function actionLabel(action: string): string {
-  return action
-    .replace(/^admin\./, "")
-    .replaceAll("_", " ")
-    .replaceAll(".", " · ");
+/**
+ * A readable label for an action code: the catalogue's label when given,
+ * else "client.secret_rotated" -> "Client · secret rotated".
+ */
+export function actionLabel(action: string, catalog?: ReadonlyMap<string, string>): string {
+  const known = catalog?.get(action);
+  if (known) return known;
+  const text = action.replaceAll("_", " ").replaceAll(".", " · ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 export function isNotification(action: string): boolean {
-  return action.startsWith("notification") || action.includes("email_sent") || action.includes("notification_sent");
+  return action.startsWith("notification.");
+}
+
+/** Who did it, as the audit log's actor badge says it. */
+export const ACTOR_TYPE_LABELS: Record<string, string> = {
+  user: "User",
+  admin: "Admin",
+  cli: "CLI",
+  system: "System",
+  anonymous: "Anonymous",
+};
+
+/** The actor's name for a list: the username, else the kind of actor. */
+export function actorName(entry: { actor_type?: string; actor: { username: string; id: string } | null }): string {
+  if (entry.actor) return entry.actor.username || entry.actor.id;
+  return ACTOR_TYPE_LABELS[entry.actor_type ?? "system"]?.toLowerCase() ?? "system";
 }
 
 export const KEY_PURPOSE_LABELS: Record<string, string> = {

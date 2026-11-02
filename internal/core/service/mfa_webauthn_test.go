@@ -138,7 +138,7 @@ func TestMFA_PasskeyAttacks(t *testing.T) {
 		var codeErr *service.MFACodeError
 		require.ErrorAs(t, err, &codeErr)
 		last := f.audit.entries[len(f.audit.entries)-1]
-		require.Equal(t, "mfa_passkey_clone_warning", last.Action)
+		require.Equal(t, "mfa.passkey_clone_detected", last.Action)
 		require.Equal(t, domain.AuditLogCritical, last.Level)
 	})
 

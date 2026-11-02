@@ -63,6 +63,14 @@ type Login struct {
 	Methods     string // stepup: allowed methods, comma separated ("" = any)
 	Passkeys    bool
 	LoginHint   string
+	// LoginHintMethods: the sign-in methods of the LoginHint account, best
+	// first ("passkey,password"), when it is the browser's signed-in account
+	// asked to sign in again (prompt=login, max_age, ForceAuthn): the form
+	// starts with the first one, like its tile would. A passkey alone is
+	// enough, no password before it. LoginHintAccount: its tile's ID ("" if
+	// not remembered on this device).
+	LoginHintMethods string
+	LoginHintAccount string
 	// CancelURL: the link at the bottom ("" = no link), with CancelText
 	// ("" = "Cancel and go back to the application").
 	CancelURL  string
@@ -121,6 +129,18 @@ func AccountsFrom(in []core.Account) []Account {
 		})
 	}
 	return out
+}
+
+// SetReauthAccount pre-fills the form with the signed-in account that must
+// sign in again, and starts it with that account's best method.
+func (l *Login) SetReauthAccount(a core.Account) {
+	l.LoginHint = a.Identifier
+	methods := make([]string, 0, len(a.Methods))
+	for _, m := range a.Methods {
+		methods = append(methods, string(m))
+	}
+	l.LoginHintMethods = strings.Join(methods, ",")
+	l.LoginHintAccount = a.ID
 }
 
 // initials: first letter of the first two words ("Alice Martin" -> "AM").

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	valkeycache "sso.internal/sso/internal/cache/valkey"
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
@@ -238,7 +239,7 @@ func timeoutsCreate(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	}
 	t := c.Timeout
-	auditCLI(ctx, env, "timeout_created", c, map[string]interface{}{
+	auditCLI(ctx, env, audit.TimeoutCreated, c, map[string]interface{}{
 		"starts_at": t.StartsAt.UTC().Format(time.RFC3339), "ends_at": endLabel(t.EndsAt), "reason": t.Reason})
 	fmt.Fprintf(out, "timeout %s: %s %s suspended\n", t.ID, t.TargetType, c.Target.Name)
 	fmt.Fprintf(out, "  from:   %s\n  until:  %s\n  reason: %s\n", fmtTime(t.StartsAt), endLabel(t.EndsAt), t.Reason)
@@ -301,7 +302,7 @@ func timeoutsUpdate(ctx context.Context, args []string, out io.Writer) error {
 		fmt.Fprintf(out, "timeout %s: nothing changed\n", c.Timeout.ID)
 		return nil
 	}
-	auditCLI(ctx, env, "timeout_updated", c, map[string]interface{}{"changed": c.Changed})
+	auditCLI(ctx, env, audit.TimeoutUpdated, c, map[string]interface{}{"changed": c.Changed})
 	fmt.Fprintf(out, "timeout %s (%s %s): %s changed, until %s\n", c.Timeout.ID, c.Timeout.TargetType, c.Target.Name,
 		strings.Join(c.Changed, " and "), endLabel(c.Timeout.EndsAt))
 	return nil
@@ -326,20 +327,26 @@ func timeoutsLift(ctx context.Context, args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	auditCLI(ctx, env, "timeout_lifted", c, nil)
+	auditCLI(ctx, env, audit.TimeoutLifted, c, nil)
 	fmt.Fprintf(out, "timeout %s lifted: %s %s can sign in again\n", c.Timeout.ID, c.Timeout.TargetType, c.Target.Name)
 	return nil
 }
 
 // auditCLI records a change made from the command line (the admin console
-// writes "admin.timeout.*" entries; the sign-out writes "timeout_enforced").
+// writes the same timeout.* actions as an admin; the sign-out writes
+// timeout.enforced).
 func auditCLI(ctx context.Context, env *mfaEnv, action string, c *service.TimeoutChange, details map[string]interface{}) {
 	d := map[string]interface{}{"triggered_by": cliActor(), "target_type": string(c.Timeout.TargetType), "target_name": c.Target.Name}
 	for k, v := range details {
 		d[k] = v
 	}
+	target := ""
+	if c.Timeout.TargetType == domain.TimeoutTargetUser {
+		target = c.Timeout.TargetID
+	}
 	_, _ = entstore.NewAuditLogRepository(env.client).Create(ctx, repository.CreateAuditLogParams{
-		RealmID: env.realm.ID, Action: action, ResourceType: "Timeout", ResourceID: c.Timeout.ID,
+		RealmID: env.realm.ID, ActorType: domain.AuditActorCLI, TargetUserID: target,
+		Action: action, ResourceType: "Timeout", ResourceID: c.Timeout.ID,
 		Level: domain.AuditLogWarning, Status: domain.AuditLogSuccess, Details: d,
 	})
 }

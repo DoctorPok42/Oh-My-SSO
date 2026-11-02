@@ -285,7 +285,7 @@ func TestKnownAccounts_Forget(t *testing.T) {
 		require.Equal(t, aliceID, row.UserID)
 		require.Empty(t, f.list(t, deviceA, nil))
 		require.Len(t, f.audit.entries, 1)
-		require.Equal(t, "known_account.forget", f.audit.entries[0].Action)
+		require.Equal(t, "known_account.forgotten", f.audit.entries[0].Action)
 		require.Equal(t, aliceID, f.audit.entries[0].UserID)
 	})
 
@@ -331,7 +331,7 @@ func TestSessionService_LogoutIsAudited(t *testing.T) {
 
 	require.Len(t, audit.entries, 1)
 	e := audit.entries[0]
-	require.Equal(t, "logout", e.Action)
+	require.Equal(t, "auth.logout", e.Action)
 	require.Equal(t, "Session", e.ResourceType)
 	require.Equal(t, sess.ID, e.ResourceID)
 	require.Equal(t, aliceID, e.UserID)

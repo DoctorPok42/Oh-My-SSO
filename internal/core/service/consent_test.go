@@ -327,7 +327,7 @@ func TestIdentityCore_GrantConsent_AuditAndEmail(t *testing.T) {
 	sess := f.aliceSession(t).Session
 
 	f.grant(t, sess.ID, clientConsent, "profile")
-	granted := f.auditActions("consent_granted")
+	granted := f.auditActions("consent.granted")
 	require.Len(t, granted, 1)
 	require.Equal(t, aliceID, granted[0].UserID)
 	require.Equal(t, "Partner App", granted[0].Details["client"])
@@ -340,7 +340,7 @@ func TestIdentityCore_GrantConsent_AuditAndEmail(t *testing.T) {
 
 	// The same approval again: nothing new, nothing written, no e-mail.
 	f.grant(t, sess.ID, clientConsent, "profile")
-	require.Len(t, f.auditActions("consent_granted"), 1)
+	require.Len(t, f.auditActions("consent.granted"), 1)
 	require.Len(t, f.notifier.kinds(), 1)
 
 	// More scopes: the e-mail lists only the new ones.
@@ -370,7 +370,7 @@ func TestIdentityCore_DenyConsent(t *testing.T) {
 	require.NoError(t, f.core.DenyConsent(context.Background(), core.ConsentDenial{
 		SessionID: sess.ID, ClientRef: clientConsent, Scopes: []string{"email"},
 	}))
-	denied := f.auditActions("consent_denied")
+	denied := f.auditActions("consent.denied")
 	require.Len(t, denied, 1)
 	require.Equal(t, domain.AuditLogFailure, denied[0].Status)
 	require.Zero(t, f.consents.count(), "a refusal is not remembered: the next request asks again")
@@ -405,7 +405,7 @@ func TestConsentService_Revoke(t *testing.T) {
 	require.False(t, f.tokens.get("at-bob").Revoked, "other users keep theirs")
 	require.False(t, f.tokens.get("saml-participant").Revoked, "Single Logout still needs the participant record")
 	require.Equal(t, domain.ConsentRevoked, f.consents.row(aliceID, clientConsent).Status)
-	require.Len(t, f.auditActions("consent_revoked"), 1)
+	require.Len(t, f.auditActions("consent.revoked"), 1)
 
 	// Asked again, as for a first use.
 	d := f.check(t, sess.ID, clientConsent, false, "profile")
@@ -444,7 +444,7 @@ func TestConsentService_ListAndClientSetting(t *testing.T) {
 		Required: false, Actor: service.PolicyActor{TriggeredBy: "cli:admin"}})
 	require.NoError(t, err)
 	require.False(t, app.RequireConsent)
-	require.Len(t, f.auditActions("consent_policy_changed"), 1)
+	require.Len(t, f.auditActions("consent.policy_changed"), 1)
 	require.False(t, f.check(t, sess.ID, clientConsent, false, "email", "groups").Required, "off: never asked")
 
 	f.clients.byID[clientConsent].ManagedBy = domain.ClientAppManagedByConfig

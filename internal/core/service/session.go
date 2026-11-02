@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/sessioncache"
@@ -436,7 +437,7 @@ func (s *SessionService) auditLogout(ctx context.Context, sess *domain.Session, 
 	if _, err := s.audit.Create(ctx, repository.CreateAuditLogParams{
 		RealmID:      sess.RealmID,
 		UserID:       sess.UserID,
-		Action:       "logout",
+		Action:       audit.AuthLogout,
 		ResourceType: "Session",
 		ResourceID:   sess.ID,
 		IPAddress:    ev.IPAddress,

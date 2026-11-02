@@ -557,7 +557,7 @@ func TestTimeoutSignOut(t *testing.T) {
 		require.Equal(t, f.now, f.repo.get(c.Timeout.ID).EnforcedAt)
 
 		last := f.audit.entries[len(f.audit.entries)-1]
-		require.Equal(t, "timeout_enforced", last.Action)
+		require.Equal(t, "timeout.enforced", last.Action)
 		require.Equal(t, 2, last.Details["sessions_revoked"])
 		require.Equal(t, "cli:test", last.Details["triggered_by"])
 	})

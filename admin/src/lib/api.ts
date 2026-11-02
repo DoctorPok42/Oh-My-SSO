@@ -113,6 +113,24 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
 }
 
 /**
+ * A file from the Admin API (the audit log export), streamed as it comes:
+ * for a Route Handler to pass on. null when there is no session.
+ */
+export async function apiDownload(path: string, reqHeaders: Headers): Promise<Response | null> {
+  const session = await getSession();
+  if (!session) return null;
+  return fetch(`${env().ADMIN_API_URL}/api/v1${path}`, {
+    headers: {
+      Authorization: `Bearer ${session.accessToken}`,
+      "X-Admin-Client-IP": clientIp(reqHeaders),
+      "X-Admin-Client-User-Agent": (reqHeaders.get("user-agent") ?? "").slice(0, 512),
+    },
+    cache: "no-store",
+    signal: AbortSignal.timeout(10 * 60_000), // a large export takes a while
+  });
+}
+
+/**
  * The browser's IP for the audit log. Behind a reverse proxy the first
  * X-Forwarded-For entry; it is informative only.
  */

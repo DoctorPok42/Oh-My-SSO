@@ -290,50 +290,6 @@ func (s *Server) handleRevokeSession(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *Server) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
-	p := page(r)
-	q := r.URL.Query()
-	from, ok1 := timeParam(r, "from")
-	to, ok2 := timeParam(r, "to")
-	if !ok1 || !ok2 {
-		writeError(w, http.StatusBadRequest, "invalid_request", "from / to: RFC 3339 time or YYYY-MM-DD")
-		return
-	}
-	if len(q.Get("to")) == len("2006-01-02") {
-		to = to.Add(24 * time.Hour) // a date means "this whole day"
-	}
-	status := domain.AuditLogStatus(q.Get("status"))
-	switch status {
-	case "", domain.AuditLogSuccess, domain.AuditLogFailure:
-	default:
-		writeError(w, http.StatusBadRequest, "invalid_request", "status must be success or failure")
-		return
-	}
-	// level=warning,error,critical: any of these (comma separated).
-	var levels []domain.AuditLogLevel
-	for _, l := range strings.Split(q.Get("level"), ",") {
-		switch lv := domain.AuditLogLevel(strings.TrimSpace(l)); lv {
-		case "":
-		case domain.AuditLogDebug, domain.AuditLogInfo, domain.AuditLogSuspicious, domain.AuditLogWarning,
-			domain.AuditLogError, domain.AuditLogCritical:
-			levels = append(levels, lv)
-		default:
-			writeError(w, http.StatusBadRequest, "invalid_request",
-				"level must be a comma-separated list of debug, info, suspicious, warning, error, critical")
-			return
-		}
-	}
-	v, total, err := s.d.Admin.SearchAudit(r.Context(), realmFrom(r), repository.AuditSearch{
-		UserID: q.Get("user"), ClientRef: q.Get("client"), Action: q.Get("action"), Status: status,
-		Levels: levels, From: from, To: to, Page: p,
-	})
-	if err != nil {
-		writeServiceError(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, list[service.AuditView]{Items: items(v), Total: total, Offset: p.Offset, Limit: p.Limit})
-}
-
 
 func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	p := page(r)

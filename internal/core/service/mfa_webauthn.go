@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/mfastore"
@@ -194,7 +195,7 @@ func (s *MFAService) FinishPasskeyRegistration(ctx context.Context, user *domain
 	}
 	res.Session = upd
 
-	s.auditEvent(ctx, user, "mfa_method_enrolled", "MfaMethod", m.ID, domain.AuditLogInfo, map[string]interface{}{
+	s.auditEvent(ctx, user, audit.MFAMethodEnrolled, "MfaMethod", m.ID, domain.AuditLogInfo, map[string]interface{}{
 		"type":            string(t),
 		"requested":       string(kind),
 		"backup_eligible": np.BackupEligible,
@@ -406,7 +407,7 @@ func (s *MFAService) auditCloneWarning(ctx context.Context, user *domain.User, m
 		return
 	}
 	_, _ = s.audit.Create(ctx, repository.CreateAuditLogParams{
-		RealmID: user.RealmID, UserID: user.ID, Action: "mfa_passkey_clone_warning",
+		RealmID: user.RealmID, UserID: user.ID, Action: audit.MFAPasskeyCloneDetected,
 		ResourceType: "MfaMethod", ResourceID: m.ID,
 		Level: domain.AuditLogCritical, Status: domain.AuditLogFailure,
 		Details: map[string]interface{}{"type": string(m.Type)},

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/lockoutstore"
@@ -80,7 +81,7 @@ type LockoutDeps struct {
 	Unknown  lockoutstore.Store                    // state of identifiers without an account
 	Settings repository.InstanceSettingsRepository // nil: defaults (5 tries, 15 min)
 	Notifier Notifier                              // optional: "account locked" e-mail
-	Audit    repository.AuditLogRepository         // optional: "account_locked" entry
+	Audit    repository.AuditLogRepository         // optional: "user.locked" entry
 	Now      func() time.Time                      // optional (tests)
 	Logger   *slog.Logger                          // optional
 }
@@ -212,8 +213,9 @@ func (s *LockoutService) onLocked(ctx context.Context, subj LockoutSubject, res 
 	if s.audit != nil {
 		_, _ = s.audit.Create(ctx, repository.CreateAuditLogParams{
 			RealmID:      u.RealmID,
-			UserID:       u.ID,
-			Action:       "account_locked",
+			ActorType:    domain.AuditActorSystem, // the lockout policy, not the user
+			TargetUserID: u.ID,
+			Action:       audit.UserLocked,
 			ResourceType: "User",
 			ResourceID:   u.ID,
 			IPAddress:    subj.IPAddress,

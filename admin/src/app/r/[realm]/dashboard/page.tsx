@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopyField } from "@/components/ui/copy-button";
 import { apiPath, load } from "@/lib/api";
 import { formatPercent, formatRelative } from "@/lib/format";
-import { actionLabel, isNotification } from "@/lib/labels";
+import { actionLabel, actorName, isNotification } from "@/lib/labels";
 import type { Dashboard } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -80,7 +80,7 @@ export default async function DashboardPage({ params }: Readonly<{ params: Promi
                       {actionLabel(a.action)}
                     </p>
                     <p className="text-[12px] text-text-muted">
-                      {a.actor?.username ?? "system"} · {formatRelative(a.timestamp)}
+                      {actorName(a)} · {formatRelative(a.timestamp)}
                     </p>
                   </div>
                   <StatusBadge status={a.status} />

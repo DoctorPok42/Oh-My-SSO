@@ -669,16 +669,32 @@ func (r *entAdminRepository) SessionClients(ctx context.Context, sessionIDs []st
 func (r *entAdminRepository) SearchAuditLogs(ctx context.Context, f repository.AuditSearch) ([]*domain.AuditLog, int, error) {
 	preds := []predicate.AuditLog{auditlog.RealmID(f.RealmID)}
 	if f.UserID != "" {
-		preds = append(preds, auditlog.Or(
-			auditlog.UserID(f.UserID),
-			auditlog.And(auditlog.ResourceType("User"), auditlog.ResourceID(f.UserID)),
-		))
+		preds = append(preds, auditlog.Or(auditlog.UserID(f.UserID), auditlog.TargetUserID(f.UserID)))
 	}
 	if f.ClientRef != "" {
 		preds = append(preds, auditlog.ResourceType("ClientApp"), auditlog.ResourceID(f.ClientRef))
 	}
 	if f.Action != "" {
 		preds = append(preds, auditlog.Action(f.Action))
+	}
+	if len(f.ExcludeActions) > 0 {
+		preds = append(preds, auditlog.ActionNotIn(f.ExcludeActions...))
+	}
+	if f.ActionPrefix != "" {
+		preds = append(preds, auditlog.ActionHasPrefix(f.ActionPrefix))
+	}
+	if len(f.ActorTypes) > 0 {
+		types := make([]entschema.AuditLogActorType, 0, len(f.ActorTypes))
+		for _, t := range f.ActorTypes {
+			types = append(types, entschema.AuditLogActorType(t))
+		}
+		preds = append(preds, auditlog.ActorTypeIn(types...))
+	}
+	if !f.Before.IsZero() {
+		preds = append(preds, auditlog.Or(
+			auditlog.TimestampLT(f.Before.Timestamp),
+			auditlog.And(auditlog.TimestampEQ(f.Before.Timestamp), auditlog.IDLT(f.Before.ID)),
+		))
 	}
 	if len(f.Actions) > 0 {
 		preds = append(preds, auditlog.ActionIn(f.Actions...))

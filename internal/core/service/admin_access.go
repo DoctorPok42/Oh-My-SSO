@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -179,7 +180,7 @@ func (s *AdminService) CreateRole(ctx context.Context, actor AdminActor, realm *
 	if err := s.d.Admin.SetRoleClientScopes(ctx, r.ID, scopes); err != nil {
 		return AccessView{}, err
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "role.create", "Role", r.ID, domain.AuditLogInfo, map[string]interface{}{
+	s.auditAdmin(ctx, actor, realm.ID, audit.RoleCreated, "Role", r.ID, domain.AuditLogInfo, map[string]interface{}{
 		"name": name, "permission_ids": perms, "client_scope_ids": scopes,
 	})
 	// Just created: no member, and the grants are the ones just set.
@@ -239,7 +240,7 @@ func (s *AdminService) UpdateRole(ctx context.Context, actor AdminActor, realm *
 		details["client_scope_ids"] = scopes
 	}
 	if len(details) > 0 {
-		s.auditAdmin(ctx, actor, realm.ID, "role.update", "Role", r.ID, domain.AuditLogInfo, details)
+		s.auditAdmin(ctx, actor, realm.ID, audit.RoleUpdated, "Role", r.ID, domain.AuditLogInfo, details)
 	}
 	return s.roleView(ctx, r)
 }
@@ -255,7 +256,7 @@ func (s *AdminService) DeleteRole(ctx context.Context, actor AdminActor, realm *
 	if err := s.d.Roles.Delete(ctx, r.ID); err != nil {
 		return fmt.Errorf("delete role: %w", err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "role.delete", "Role", r.ID, domain.AuditLogWarning, map[string]interface{}{"name": r.Name})
+	s.auditAdmin(ctx, actor, realm.ID, audit.RoleDeleted, "Role", r.ID, domain.AuditLogWarning, map[string]interface{}{"name": r.Name})
 	return nil
 }
 
@@ -281,7 +282,7 @@ func (s *AdminService) CreateGroup(ctx context.Context, actor AdminActor, realm 
 	if err := s.d.Admin.SetGroupClientScopes(ctx, g.ID, scopes); err != nil {
 		return AccessView{}, err
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "group.create", "Group", g.ID, domain.AuditLogInfo, map[string]interface{}{
+	s.auditAdmin(ctx, actor, realm.ID, audit.GroupCreated, "Group", g.ID, domain.AuditLogInfo, map[string]interface{}{
 		"name": name, "permission_ids": perms, "client_scope_ids": scopes,
 	})
 	return groupViewOf(g, 0, repository.Grants{PermissionIDs: perms, ClientScopeIDs: scopes}), nil
@@ -340,7 +341,7 @@ func (s *AdminService) UpdateGroup(ctx context.Context, actor AdminActor, realm 
 		details["client_scope_ids"] = scopes
 	}
 	if len(details) > 0 {
-		s.auditAdmin(ctx, actor, realm.ID, "group.update", "Group", g.ID, domain.AuditLogInfo, details)
+		s.auditAdmin(ctx, actor, realm.ID, audit.GroupUpdated, "Group", g.ID, domain.AuditLogInfo, details)
 	}
 	return s.groupView(ctx, g)
 }
@@ -356,7 +357,7 @@ func (s *AdminService) DeleteGroup(ctx context.Context, actor AdminActor, realm 
 	if err := s.d.Groups.Delete(ctx, g.ID); err != nil {
 		return fmt.Errorf("delete group: %w", err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "group.delete", "Group", g.ID, domain.AuditLogWarning, map[string]interface{}{"name": g.Name})
+	s.auditAdmin(ctx, actor, realm.ID, audit.GroupDeleted, "Group", g.ID, domain.AuditLogWarning, map[string]interface{}{"name": g.Name})
 	return nil
 }
 
@@ -423,7 +424,7 @@ func (s *AdminService) CreatePermission(ctx context.Context, actor AdminActor, r
 	if err != nil {
 		return PermissionView{}, fmt.Errorf("create permission: %w", err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "permission.create", "Permission", p.ID, domain.AuditLogInfo, map[string]interface{}{"name": name})
+	s.auditAdmin(ctx, actor, realm.ID, audit.PermissionCreated, "Permission", p.ID, domain.AuditLogInfo, map[string]interface{}{"name": name})
 	return PermissionView{ID: p.ID, Name: p.Name, Description: p.Description, Resource: p.Resource, Action: p.Action}, nil
 }
 
@@ -441,6 +442,6 @@ func (s *AdminService) DeletePermission(ctx context.Context, actor AdminActor, r
 	if err := s.d.Permissions.Delete(ctx, p.ID); err != nil {
 		return fmt.Errorf("delete permission: %w", err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "permission.delete", "Permission", p.ID, domain.AuditLogWarning, map[string]interface{}{"name": p.Name})
+	s.auditAdmin(ctx, actor, realm.ID, audit.PermissionDeleted, "Permission", p.ID, domain.AuditLogWarning, map[string]interface{}{"name": p.Name})
 	return nil
 }

@@ -121,7 +121,7 @@ func TestActivityText_EveryAction(t *testing.T) {
 		require.NotEmpty(t, text, action)
 	}
 	require.Equal(t, "Access removed for Payroll",
-		activityText(service.ActivityEntry{Action: "consent_revoked", Details: map[string]any{"client": "Payroll"}}))
+		activityText(service.ActivityEntry{Action: "consent.revoked", Details: map[string]any{"client": "Payroll"}}))
 	require.Equal(t, "Added a passkey",
-		activityText(service.ActivityEntry{Action: "mfa_method_enrolled", Details: map[string]any{"type": "passkey"}}))
+		activityText(service.ActivityEntry{Action: "mfa.method_enrolled", Details: map[string]any{"type": "passkey"}}))
 }

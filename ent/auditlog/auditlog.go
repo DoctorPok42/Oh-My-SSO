@@ -19,6 +19,10 @@ const (
 	FieldRealmID = "realm_id"
 	// FieldUserID holds the string denoting the user_id field in the database.
 	FieldUserID = "user_id"
+	// FieldActorType holds the string denoting the actor_type field in the database.
+	FieldActorType = "actor_type"
+	// FieldTargetUserID holds the string denoting the target_user_id field in the database.
+	FieldTargetUserID = "target_user_id"
 	// FieldAction holds the string denoting the action field in the database.
 	FieldAction = "action"
 	// FieldResourceType holds the string denoting the resource_type field in the database.
@@ -55,6 +59,8 @@ var Columns = []string{
 	FieldID,
 	FieldRealmID,
 	FieldUserID,
+	FieldActorType,
+	FieldTargetUserID,
 	FieldAction,
 	FieldResourceType,
 	FieldResourceID,
@@ -79,6 +85,8 @@ func ValidColumn(column string) bool {
 var (
 	// RealmIDValidator is a validator for the "realm_id" field. It is called by the builders before save.
 	RealmIDValidator func(string) error
+	// DefaultActorType holds the default value on creation for the "actor_type" field.
+	DefaultActorType schema.AuditLogActorType
 	// ActionValidator is a validator for the "action" field. It is called by the builders before save.
 	ActionValidator func(string) error
 	// DefaultTimestamp holds the default value on creation for the "timestamp" field.
@@ -109,6 +117,16 @@ func ByRealmID(opts ...sql.OrderTermOption) OrderOption {
 // ByUserID orders the results by the user_id field.
 func ByUserID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUserID, opts...).ToFunc()
+}
+
+// ByActorType orders the results by the actor_type field.
+func ByActorType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldActorType, opts...).ToFunc()
+}
+
+// ByTargetUserID orders the results by the target_user_id field.
+func ByTargetUserID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTargetUserID, opts...).ToFunc()
 }
 
 // ByAction orders the results by the action field.

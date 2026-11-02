@@ -42,11 +42,18 @@ export type HealthLine = {
   latency_ms: number;
 };
 
+/** Who did an audited action: a person (user, admin), the CLI, the server itself, or nobody signed in. */
+export type AuditActorType = "user" | "admin" | "cli" | "system" | "anonymous";
+
 export type AuditEntry = {
   id: string;
   timestamp: string;
   action: string;
+  actor_type: AuditActorType;
+  /** The person who did it (null: the server, the CLI or nobody signed in). */
   actor: { id: string; username: string; admin: boolean } | null;
+  /** The user the action is about (null: none). An empty username: the account is gone. */
+  target: { id: string; username: string } | null;
   resource_type: string;
   resource_id: string;
   status: "success" | "failure";
@@ -55,6 +62,9 @@ export type AuditEntry = {
   user_agent: string;
   details: Record<string, unknown>;
 };
+
+/** One action the audit log can hold (GET /realms/{realm}/audit-logs/actions). */
+export type AuditAction = { name: string; category: string; label: string };
 
 export type Dashboard = {
   active_sessions: number;

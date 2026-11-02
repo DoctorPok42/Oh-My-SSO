@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -142,17 +143,21 @@ func (s *LoginSecurityService) record(ctx context.Context, sess *domain.Session,
 	)
 	switch {
 	case a.Suspicious():
-		action, level, kind = "suspicious_login", domain.AuditLogSuspicious, domain.NotificationSuspiciousLogin
+		action, level, kind = audit.AuthLoginSuspicious, domain.AuditLogSuspicious, domain.NotificationSuspiciousLogin
 	case a.NewDevice:
-		action, level, kind = "new_device_login", domain.AuditLogInfo, domain.NotificationNewDeviceLogin
+		action, level, kind = audit.AuthLoginNewDevice, domain.AuditLogInfo, domain.NotificationNewDeviceLogin
 	default:
-		return
+		// An ordinary sign-in: one entry, no e-mail.
+		action, level = audit.AuthLogin, domain.AuditLogInfo
 	}
 
 	if s.audit != nil {
 		details := map[string]interface{}{
 			"new_device":  a.NewDevice,
 			"new_network": a.NewNetwork,
+		}
+		if m := signInMethod(sess); m != "" {
+			details["mfa_method"] = m
 		}
 		if a.CountryCode != "" {
 			details["country"] = a.CountryCode
@@ -179,6 +184,9 @@ func (s *LoginSecurityService) record(ctx context.Context, sess *domain.Session,
 			Status:       domain.AuditLogSuccess,
 			Details:      details,
 		})
+	}
+	if kind == "" {
+		return
 	}
 	s.notifier.Notify(ctx, domain.NotificationEvent{
 		Kind:              kind,

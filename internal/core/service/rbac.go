@@ -9,13 +9,13 @@ import (
 	"strings"
 
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
 
 var ErrForbidden = core.ErrForbidden // alias: same variable as core
 
-const auditActionAuthorizationDenied = "authorization_denied"
 
 const (
 	denyUserNotFound     = "user_not_found"
@@ -263,7 +263,7 @@ func (s *RBACService) deny(ctx context.Context, in AuthorizeInput, reason string
 	_, err := s.audit.Create(ctx, repository.CreateAuditLogParams{
 		RealmID:      in.RealmID,
 		UserID:       in.UserID,
-		Action:       auditActionAuthorizationDenied,
+		Action:       audit.AuthAccessDenied,
 		ResourceType: "ClientApp",
 		ResourceID:   in.ClientRef,
 		IPAddress:    in.IPAddress,

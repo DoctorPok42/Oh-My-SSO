@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -423,7 +424,7 @@ func (s *AdminService) CreateClient(ctx context.Context, actor AdminActor, realm
 		}
 	}
 
-	s.auditAdmin(ctx, actor, realm.ID, "client.create", "ClientApp", app.ID, domain.AuditLogInfo, map[string]interface{}{
+	s.auditAdmin(ctx, actor, realm.ID, audit.ClientCreated, "ClientApp", app.ID, domain.AuditLogInfo, map[string]interface{}{
 		"name": app.Name, "protocol": string(app.Protocol), "client_id": app.ClientID, "entity_id": app.EntityID,
 		"role_ids": roles, "group_ids": groups,
 	})
@@ -607,7 +608,7 @@ func (s *AdminService) UpdateClient(ctx context.Context, actor AdminActor, realm
 		changed = append(changed, "mfa_policy")
 	}
 	slices.Sort(changed)
-	s.auditAdmin(ctx, actor, realm.ID, "client.update", "ClientApp", app.ID, domain.AuditLogInfo, map[string]interface{}{"changed": changed})
+	s.auditAdmin(ctx, actor, realm.ID, audit.ClientUpdated, "ClientApp", app.ID, domain.AuditLogInfo, map[string]interface{}{"changed": changed})
 
 	app, err = s.d.Clients.GetByID(ctx, app.ID)
 	if err != nil {
@@ -629,7 +630,7 @@ func (s *AdminService) DeleteClient(ctx context.Context, actor AdminActor, realm
 	if err := s.d.Clients.Delete(ctx, app.ID); err != nil {
 		return fmt.Errorf("delete client: %w", err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "client.delete", "ClientApp", app.ID, domain.AuditLogWarning, map[string]interface{}{
+	s.auditAdmin(ctx, actor, realm.ID, audit.ClientDeleted, "ClientApp", app.ID, domain.AuditLogWarning, map[string]interface{}{
 		"name": app.Name, "client_id": app.ClientID, "entity_id": app.EntityID,
 	})
 	return nil
@@ -652,7 +653,7 @@ func (s *AdminService) RotateClientSecret(ctx context.Context, actor AdminActor,
 	if err != nil {
 		return "", asAdminError(err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "client.secret_rotate", "ClientApp", app.ID, domain.AuditLogWarning, nil)
+	s.auditAdmin(ctx, actor, realm.ID, audit.ClientSecretRotated, "ClientApp", app.ID, domain.AuditLogWarning, nil)
 	return secret, nil
 }
 
@@ -668,7 +669,7 @@ func (s *AdminService) AddClientCertificate(ctx context.Context, actor AdminActo
 		return ClientView{}, asAdminError(err)
 	}
 	fp, _ := CertificateFingerprint(cert.PEM)
-	s.auditAdmin(ctx, actor, realm.ID, "client.certificate_add", "ClientApp", app.ID, domain.AuditLogWarning, map[string]interface{}{"fingerprint": fp})
+	s.auditAdmin(ctx, actor, realm.ID, audit.ClientCertificateAdded, "ClientApp", app.ID, domain.AuditLogWarning, map[string]interface{}{"fingerprint": fp})
 	return s.clientView(ctx, updated)
 }
 
@@ -681,7 +682,7 @@ func (s *AdminService) RemoveClientCertificate(ctx context.Context, actor AdminA
 	if err != nil {
 		return ClientView{}, asAdminError(err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "client.certificate_remove", "ClientApp", app.ID, domain.AuditLogWarning, map[string]interface{}{"fingerprint": fingerprint})
+	s.auditAdmin(ctx, actor, realm.ID, audit.ClientCertificateRemoved, "ClientApp", app.ID, domain.AuditLogWarning, map[string]interface{}{"fingerprint": fingerprint})
 	return s.clientView(ctx, updated)
 }
 

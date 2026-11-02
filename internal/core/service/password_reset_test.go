@@ -116,7 +116,7 @@ func TestPasswordReset_DefinitionOfDone(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, used.Used)
 		require.Equal(t, domain.NotificationPasswordChanged, f.notifier.last().Kind)
-		require.Contains(t, f.audit.actions(), "password_reset")
+		require.Contains(t, f.audit.actions(), "user.password_reset")
 	})
 
 	t.Run("expired token is refused, password unchanged", func(t *testing.T) {

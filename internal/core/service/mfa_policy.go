@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -580,10 +581,12 @@ func (s *MFAPolicyService) logPolicyChange(ctx context.Context, realmID, resourc
 		return
 	}
 	details["triggered_by"] = actor.TriggeredBy
+	actorType, actorID := domain.AuditActorFromTrigger(actor.TriggeredBy, "")
 	_, _ = s.audit.Create(ctx, repository.CreateAuditLogParams{
 		RealmID:      realmID,
-		UserID:       userIDFromTrigger(actor.TriggeredBy),
-		Action:       "mfa_policy_changed",
+		UserID:       actorID,
+		ActorType:    actorType,
+		Action:       audit.MFAPolicyChanged,
 		ResourceType: resourceType,
 		ResourceID:   resourceID,
 		Level:        domain.AuditLogWarning,
@@ -592,12 +595,6 @@ func (s *MFAPolicyService) logPolicyChange(ctx context.Context, realmID, resourc
 	})
 }
 
-func userIDFromTrigger(triggeredBy string) string {
-	if id, ok := strings.CutPrefix(triggeredBy, "user:"); ok {
-		return id
-	}
-	return ""
-}
 
 func methodNames(in []domain.MfaMethodType) []string {
 	out := make([]string, 0, len(in))

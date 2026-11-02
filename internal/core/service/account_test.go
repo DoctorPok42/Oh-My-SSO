@@ -234,7 +234,7 @@ func TestAccount_UpdateName(t *testing.T) {
 	require.Equal(t, "Dana Scully Fox", stored.Profile["name"])
 	require.Equal(t, "fr", stored.Profile["locale"], "the other profile keys stay")
 	require.Equal(t, stored.Profile, u.Profile)
-	require.Equal(t, []string{"account.profile_updated:success"}, f.actions())
+	require.Equal(t, []string{"user.profile_updated:success"}, f.actions())
 
 	_, err = f.svc.UpdateName(ctx, u, service.NameInput{GivenName: "Dana", FamilyName: "Scully Fox"}, ev)
 	require.NoError(t, err)
@@ -266,7 +266,7 @@ func TestAccount_ChangePassword(t *testing.T) {
 
 	_, err := change("wrong password", "a-brand-new-passphrase")
 	require.ErrorIs(t, err, service.ErrWrongPassword)
-	require.Equal(t, []string{"account.password_changed:failure"}, f.actions())
+	require.Equal(t, []string{"user.password_changed:failure"}, f.actions())
 
 	_, err = change(alicePassword, alicePassword)
 	require.ErrorIs(t, err, service.ErrPasswordUnchanged)
@@ -296,7 +296,7 @@ func TestAccount_ChangePassword(t *testing.T) {
 	sess, _ = f.sessions.GetByID(ctx, someoneElse.ID)
 	require.Equal(t, domain.SessionActive, sess.Status, "never another user's session")
 
-	require.Contains(t, f.actions(), "account.password_changed:success")
+	require.Contains(t, f.actions(), "user.password_changed:success")
 	e := f.notifier.last()
 	require.Equal(t, domain.NotificationPasswordChanged, e.Kind)
 	require.Equal(t, f.user.ID, e.UserID)
@@ -364,7 +364,7 @@ func TestAccount_RevokeSession(t *testing.T) {
 	sess, _ = f.sessions.GetByID(ctx, other.ID)
 	require.Equal(t, domain.SessionRevokedByUser, sess.RevokedReason)
 	require.True(t, f.tokens.byJTI["jti-1"].Revoked)
-	require.Equal(t, []string{"account.session_revoked:success"}, f.actions())
+	require.Equal(t, []string{"session.revoked:success"}, f.actions())
 
 	require.ErrorIs(t, f.svc.RevokeSession(ctx, user, current.ID, other.ID, ev), service.ErrSessionNotFound, "already signed out")
 }
@@ -384,7 +384,7 @@ func TestAccount_RevokeOtherSessions(t *testing.T) {
 	require.Equal(t, domain.SessionActive, sess.Status)
 	sess, _ = f.sessions.GetByID(ctx, theirs.ID)
 	require.Equal(t, domain.SessionActive, sess.Status)
-	require.Equal(t, []string{"account.sessions_revoked:success"}, f.actions())
+	require.Equal(t, []string{"session.revoked_all:success"}, f.actions())
 }
 
 func TestAccount_Apps(t *testing.T) {
@@ -427,12 +427,12 @@ func TestAccount_RevokeApp(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, res.TokensRevoked)
 	require.Equal(t, domain.ConsentRevoked, f.consents.rows["consent-1"].Status)
-	require.Contains(t, f.actions(), "consent_revoked:success")
+	require.Contains(t, f.actions(), "consent.revoked:success")
 
 	res, err = f.svc.RevokeApp(ctx, user, "c-wiki", ev)
 	require.NoError(t, err, "no consent screen: its tokens go")
 	require.Equal(t, 1, res.TokensRevoked)
-	require.Contains(t, f.actions(), "account.app_access_revoked:success")
+	require.Contains(t, f.actions(), "consent.app_access_revoked:success")
 
 	_, err = f.svc.RevokeApp(ctx, user, "c-wiki", ev)
 	require.ErrorIs(t, err, service.ErrAppNotFound, "nothing left to revoke")
@@ -468,7 +468,7 @@ func TestAccount_TrustedDevices(t *testing.T) {
 	require.Equal(t, 1, n)
 	left, _ := f.devices.ListByUser(ctx, f.other.ID, f.clock.Now())
 	require.Len(t, left, 1, "the other user's trust stays")
-	require.Equal(t, []string{"account.trusted_device_revoked:success", "account.trusted_devices_revoked:success"}, f.actions())
+	require.Equal(t, []string{"trusted_device.revoked:success", "trusted_device.revoked_all:success"}, f.actions())
 }
 
 func TestAccount_SignIns(t *testing.T) {
@@ -492,8 +492,8 @@ func TestAccount_SignIns(t *testing.T) {
 func TestAccount_Activity(t *testing.T) {
 	f := newAcctFixture(t)
 	f.admin.audit = []*domain.AuditLog{
-		{Action: "mfa_method_enrolled", UserID: f.user.ID, IPAddress: "198.51.100.7", Details: map[string]interface{}{"type": "totp"}},
-		{Action: "admin.user.mfa_reset", UserID: "an-admin-of-master", IPAddress: "10.0.0.9", UserAgent: "admin browser"},
+		{Action: "mfa.method_enrolled", UserID: f.user.ID, IPAddress: "198.51.100.7", Details: map[string]interface{}{"type": "totp"}},
+		{Action: "mfa.reset", UserID: "an-admin-of-master", IPAddress: "10.0.0.9", UserAgent: "admin browser"},
 	}
 	list, more, err := f.svc.Activity(context.Background(), f.user, 0, 25)
 	require.NoError(t, err)
