@@ -63,10 +63,11 @@ func (r *entAuditLogRepository) ListByResource(ctx context.Context, resourceType
 	return toDomainAuditLogs(rows), nil
 }
 
+// ListByUser: what the user did (actor) and what was done to them (target).
 func (r *entAuditLogRepository) ListByUser(ctx context.Context, userID string) ([]*domain.AuditLog, error) {
 	rows, err := r.client.AuditLog.
 		Query().
-		Where(auditlog.UserID(userID)).
+		Where(auditlog.Or(auditlog.UserID(userID), auditlog.TargetUserID(userID))).
 		Order(ent.Desc(auditlog.FieldTimestamp)).
 		All(ctx)
 	if err != nil {

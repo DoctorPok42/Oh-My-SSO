@@ -107,8 +107,15 @@ func TestOIDC_Integration_TrustedDevice(t *testing.T) {
 		require.Equal(t, "authenticated", login(b, webClientID)["status"])
 		require.NoError(t, e.sessions.RevokeAllForUser(ctx, e.alice.ID, domain.SessionRevokedAdminRevoked))
 		require.Equal(t, "mfa_required", login(b, webClientID)["status"])
-		n, err := e.ent.AuditLog.Query().Where(auditlog.Action("trusted_device.revoked"), auditlog.UserID(e.alice.ID)).Count(ctx)
+		// Forget: done by alice herself.
+		n, err := e.ent.AuditLog.Query().Where(auditlog.Action("trusted_device.revoked"),
+			auditlog.ActorType("user"), auditlog.UserID(e.alice.ID), auditlog.TargetUserID(e.alice.ID)).Count(ctx)
 		require.NoError(t, err)
-		require.Equal(t, 2, n, "forget, then the revocation")
+		require.Equal(t, 1, n, "forget")
+		// Signed out everywhere: the server ends every trust, about alice.
+		n, err = e.ent.AuditLog.Query().Where(auditlog.Action("trusted_device.revoked_all"),
+			auditlog.ActorType("system"), auditlog.TargetUserID(e.alice.ID)).Count(ctx)
+		require.NoError(t, err)
+		require.Equal(t, 1, n, "the revocation")
 	})
 }

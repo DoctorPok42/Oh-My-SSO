@@ -505,7 +505,9 @@ func TestOIDC_Integration_DefinitionOfDone(t *testing.T) {
 			if l.Action == "token.reuse_detected" {
 				found = true
 				require.Equal(t, domain.AuditLogWarning, l.Level)
-				require.Equal(t, e.alice.ID, l.UserID)
+				require.Equal(t, domain.AuditActorSystem, l.ActorType, "detected by the server")
+				require.Empty(t, l.UserID)
+				require.Equal(t, e.alice.ID, l.TargetUserID)
 			}
 		}
 		require.True(t, found, "a replay leaves an AuditLog entry")
