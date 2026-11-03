@@ -222,7 +222,7 @@ func TestIdentityCore_RefreshTokenRotation(t *testing.T) {
 		}
 		_, err = f.core.RotateRefreshToken(ctx, next.RefreshToken, clientOIDC, nil)
 		require.ErrorIs(t, err, core.ErrTokenInvalid, "the thief's (or the app's) newer token is dead too")
-		require.Contains(t, f.audit.actions(), "refresh_token_reuse_detected")
+		require.Contains(t, f.audit.actions(), "token.reuse_detected")
 
 		// The session itself is not revoked: the user just logs in again.
 		_, err = f.core.GetSession(ctx, sess.Session.ID)

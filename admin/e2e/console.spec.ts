@@ -108,14 +108,27 @@ test("rotate the realm's JWT signing key", async ({ page, baseURL }) => {
 test("the audit log records every change", async ({ page }) => {
   await page.goto(r("audit"));
   for (const action of [
-    "admin.client.create",
-    "admin.client.secret_rotate",
-    "admin.user.invite",
-    "admin.realm.create",
+    "client.created",
+    "client.secret_rotated",
+    "user.invited",
+    "realm.created",
+    "signing_key.rotated",
   ]) {
     await page.goto(`${r("audit")}?action=${action}`);
     await expect(page.getByText(action, { exact: true }).first()).toBeVisible();
   }
+  // Done by an administrator: the actor badge says so.
+  await page.goto(`${r("audit")}?action=client.created&actor=admin`);
+  await expect(page.getByRole("cell").getByText("Admin", { exact: true }).first()).toBeVisible();
+});
+
+test("the audit log exports the filtered entries", async ({ page }) => {
+  await page.goto(`${r("audit")}?action=client.*`);
+  await page.getByRole("button", { name: "Export" }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("menuitem", { name: "CSV (spreadsheet)" }).first().click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^audit-.+\.csv$/);
 });
 
 test("disable and enable the realm", async ({ page }) => {

@@ -73,7 +73,7 @@ func TestLockout_LocksAfterThreshold(t *testing.T) {
 	require.Equal(t, 5, e.FailedAttempts)
 	require.Equal(t, until, e.ExpiresAt)
 	require.Equal(t, "198.51.100.9", e.IPAddress)
-	require.Contains(t, f.audit.actions(), "account_locked")
+	require.Contains(t, f.audit.actions(), "user.locked")
 
 	// The lock ends on its own.
 	f.clock.Advance(15 * time.Minute)

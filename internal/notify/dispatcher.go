@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -28,7 +29,7 @@ import (
 // the user can ask for another reset link, and alerts are best effort.
 //
 // Each e-mail actually attempted writes one AuditLog entry,
-// action="notification_sent", with the recipient, the template and the
+// action="notification.sent" (actor: system, target: the recipient), with the recipient, the template and the
 // outcome in details (status "sent" or "failed").
 type Dispatcher struct {
 	cfg      DispatcherConfig
@@ -241,8 +242,9 @@ func (d *Dispatcher) writeAudit(ctx context.Context, e domain.NotificationEvent,
 	}
 	if _, err := d.audit.Create(ctx, repository.CreateAuditLogParams{
 		RealmID:      e.RealmID,
-		UserID:       e.UserID,
-		Action:       "notification_sent",
+		ActorType:    domain.AuditActorSystem, // the server sends; the user receives
+		TargetUserID: e.UserID,
+		Action:       audit.NotificationSent,
 		ResourceType: "User",
 		ResourceID:   e.UserID,
 		Level:        level,

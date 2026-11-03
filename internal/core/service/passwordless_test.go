@@ -217,7 +217,7 @@ func TestPasswordless_SignIn(t *testing.T) {
 		phone.SetSignCount(0) // goes backwards: a copy of the key answers
 		_, err = f.passwordless(t, f.mfa, aliceID, "", phone)
 		require.ErrorIs(t, err, service.ErrPasskeySignInFailed)
-		require.Contains(t, f.audit.actions(), "mfa_passkey_clone_warning")
+		require.Contains(t, f.audit.actions(), "mfa.passkey_clone_detected")
 	})
 
 	t.Run("a passkey of another realm never signs in here", func(t *testing.T) {

@@ -164,9 +164,12 @@ func BuildCore() *Core {
 		Audit:    c.Audit,
 	})
 
+	// Failed sign-ins go to the audit log too (auth.login_failed, auth.mfa_failed).
+	loginAttempts := service.AuditedLoginAttempts(entstore.NewLoginAttemptRepository(client), c.Audit, nil)
+
 	c.Auth = service.NewAuthService(
 		c.Users,
-		entstore.NewLoginAttemptRepository(client),
+		loginAttempts,
 		service.WithTimeoutChecker(c.Timeouts),
 		service.WithLockout(c.Lockout),
 	)
@@ -179,6 +182,7 @@ func BuildCore() *Core {
 		c.Settings,
 		c.KeyManager,
 		c.KMSBackend,
+		service.WithKeyRotationAudit(c.Audit),
 	)
 
 	encrypter, ok := c.KeyManager.(keymanager.Encrypter)
@@ -202,7 +206,7 @@ func BuildCore() *Core {
 		Envelope:      service.NewEnvelopeService(c.SigningKeys, encrypter, c.KMSBackend),
 		Store:         valkeycache.NewMFAStore(c.Valkey),
 		Limiter:       valkeycache.NewRateLimiter(c.Valkey),
-		LoginAttempts: entstore.NewLoginAttemptRepository(client),
+		LoginAttempts: loginAttempts,
 		Audit:         c.Audit,
 		Realms:        c.Realms,
 		Clients:       c.Clients,

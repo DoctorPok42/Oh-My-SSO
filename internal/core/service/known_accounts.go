@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -77,15 +78,26 @@ func (s *KnownAccountService) List(ctx context.Context, q core.AccountQuery) ([]
 type SignInMethodsFunc func(ctx context.Context, u *domain.User) []core.SignInMethod
 
 // ListWithMethods is List with core.Account.Methods filled for every
-// signed-out account (the signed-in one goes on with its session). methods
-// nil: password only.
+// account. The signed-in one gets them too: its tile goes on with the
+// session, but a new sign-in as that account (prompt=login, max_age,
+// ForceAuthn) starts with its best method. methods nil: password only.
 func (s *KnownAccountService) ListWithMethods(ctx context.Context, q core.AccountQuery, methods SignInMethodsFunc) ([]core.Account, error) {
 	var out []core.Account
 	currentUser := ""
+	accountMethods := func(u *domain.User, last string) []core.SignInMethod {
+		m := []core.SignInMethod{core.SignInPassword}
+		if methods != nil {
+			if got := methods(ctx, u); len(got) > 0 {
+				m = got
+			}
+		}
+		return preferFirstStep(m, last)
+	}
 	if q.Current != nil && q.Current.RealmID == q.RealmID {
 		if u, ok := s.showable(ctx, q.RealmID, q.Current.UserID); ok {
 			acc := AccountOf(u)
 			acc.SignedIn = true
+			acc.Methods = accountMethods(u, "")
 			out = append(out, acc)
 			currentUser = u.ID
 		}
@@ -102,6 +114,7 @@ func (s *KnownAccountService) ListWithMethods(ctx context.Context, q core.Accoun
 	for _, row := range rows {
 		if row.UserID == currentUser {
 			out[0].ID = row.ID // the current account is remembered too
+			out[0].Methods = preferFirstStep(out[0].Methods, row.LastMethod)
 			continue
 		}
 		u, ok := s.showable(ctx, q.RealmID, row.UserID)
@@ -110,13 +123,7 @@ func (s *KnownAccountService) ListWithMethods(ctx context.Context, q core.Accoun
 		}
 		acc := AccountOf(u)
 		acc.ID = row.ID
-		acc.Methods = []core.SignInMethod{core.SignInPassword}
-		if methods != nil {
-			if m := methods(ctx, u); len(m) > 0 {
-				acc.Methods = m
-			}
-		}
-		acc.Methods = preferFirstStep(acc.Methods, row.LastMethod)
+		acc.Methods = accountMethods(u, row.LastMethod)
 		out = append(out, acc)
 	}
 	return out, nil
@@ -174,7 +181,7 @@ func (s *KnownAccountService) Forget(ctx context.Context, in ForgetAccountInput)
 	}
 	if s.audit != nil {
 		if _, err := s.audit.Create(ctx, repository.CreateAuditLogParams{
-			RealmID: row.RealmID, UserID: row.UserID, Action: "known_account.forget",
+			RealmID: row.RealmID, UserID: row.UserID, Action: audit.KnownAccountForgotten,
 			ResourceType: "KnownAccount", ResourceID: row.ID, IPAddress: in.IPAddress, UserAgent: in.UserAgent,
 			Level: domain.AuditLogInfo, Status: domain.AuditLogSuccess,
 		}); err != nil {

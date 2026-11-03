@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -107,7 +108,7 @@ func (s *AdminService) RevokeSession(ctx context.Context, actor AdminActor, real
 	if err := s.d.Sessions.Revoke(ctx, se.ID, domain.SessionRevokedAdminRevoked); err != nil {
 		return fmt.Errorf("revoke session: %w", err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "session.revoke", "Session", se.ID, domain.AuditLogWarning, map[string]interface{}{
+	s.auditAdminAbout(ctx, actor, realm.ID, se.UserID, audit.SessionRevoked, "Session", se.ID, domain.AuditLogWarning, map[string]interface{}{
 		"user_id": se.UserID,
 	})
 	return nil
@@ -122,18 +123,22 @@ func (s *AdminService) RevokeUserSessions(ctx context.Context, actor AdminActor,
 	if err := s.d.Sessions.RevokeAllForUser(ctx, u.ID, domain.SessionRevokedAdminRevoked); err != nil {
 		return fmt.Errorf("revoke sessions: %w", err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "session.revoke_all", "User", u.ID, domain.AuditLogWarning, nil)
+	s.auditAdmin(ctx, actor, realm.ID, audit.SessionRevokedAll, "User", u.ID, domain.AuditLogWarning, nil)
 	return nil
 }
 
 
-// AuditView: an audit entry, with the actor's name resolved (an admin of
-// the master realm, a user of the realm, or the system).
+// AuditView: an audit entry, with the names resolved. Actor is who did it
+// (nil when nobody: the server itself, or a failed sign-in), ActorType
+// tells which kind of actor it is; Target is the user it is about (nil:
+// none), Resource the object it changed.
 type AuditView struct {
 	ID           string                 `json:"id"`
 	Timestamp    time.Time              `json:"timestamp"`
 	Action       string                 `json:"action"`
+	ActorType    domain.AuditActorType  `json:"actor_type"`
 	Actor        *AuditActor            `json:"actor"`
+	Target       *AuditUserRef          `json:"target"`
 	ResourceType string                 `json:"resource_type"`
 	ResourceID   string                 `json:"resource_id"`
 	Status       string                 `json:"status"`
@@ -149,21 +154,34 @@ type AuditActor struct {
 	Admin    bool   `json:"admin"` // an administrator of the master realm
 }
 
+// AuditUserRef names a user; Username is empty when the account is gone.
+type AuditUserRef struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+}
+
 func (s *AdminService) SearchAudit(ctx context.Context, realm *domain.Realm, f repository.AuditSearch) ([]AuditView, int, error) {
 	f.RealmID = realm.ID
 	rows, total, err := s.d.Admin.SearchAuditLogs(ctx, f)
 	if err != nil {
 		return nil, 0, err
 	}
+	out, err := s.auditViews(ctx, rows)
+	return out, total, err
+}
+
+func (s *AdminService) auditViews(ctx context.Context, rows []*domain.AuditLog) ([]AuditView, error) {
 	ids := []string{}
 	for _, r := range rows {
-		if r.UserID != "" && !slices.Contains(ids, r.UserID) {
-			ids = append(ids, r.UserID)
+		for _, id := range []string{r.UserID, r.TargetUserID} {
+			if id != "" && !slices.Contains(ids, id) {
+				ids = append(ids, id)
+			}
 		}
 	}
 	users, err := s.d.Admin.UsersByIDs(ctx, ids)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	byID := map[string]*domain.User{}
 	for _, u := range users {
@@ -171,24 +189,93 @@ func (s *AdminService) SearchAudit(ctx context.Context, realm *domain.Realm, f r
 	}
 	out := make([]AuditView, 0, len(rows))
 	for _, r := range rows {
-		v := AuditView{ID: r.ID, Timestamp: r.Timestamp, Action: r.Action, ResourceType: r.ResourceType,
-			ResourceID: r.ResourceID, Status: string(r.Status), Level: string(r.Level), IPAddress: r.IPAddress,
-			UserAgent: r.UserAgent, Details: r.Details}
+		v := AuditView{ID: r.ID, Timestamp: r.Timestamp, Action: r.Action, ActorType: r.ActorType,
+			ResourceType: r.ResourceType, ResourceID: r.ResourceID, Status: string(r.Status), Level: string(r.Level),
+			IPAddress: r.IPAddress, UserAgent: r.UserAgent, Details: r.Details}
 		if v.Details == nil {
 			v.Details = map[string]interface{}{}
 		}
 		if r.UserID != "" {
-			a := &AuditActor{ID: r.UserID}
+			a := &AuditActor{ID: r.UserID, Admin: r.ActorType == domain.AuditActorAdmin}
 			if u := byID[r.UserID]; u != nil {
 				a.Username = u.Username
-				a.Admin = u.RealmID != realm.ID // the admin console's accounts live in master
 			}
 			v.Actor = a
 		}
+		if r.TargetUserID != "" {
+			t := &AuditUserRef{ID: r.TargetUserID}
+			if u := byID[r.TargetUserID]; u != nil {
+				t.Username = u.Username
+			} else if name, ok := r.Details["username"].(string); ok {
+				t.Username = name // a deleted account (user.deleted keeps its name)
+			}
+			v.Target = t
+		}
 		out = append(out, v)
 	}
-	return out, total, nil
+	return out, nil
 }
+
+// AuditExportLimit caps one export: past it, the file says it is cut and
+// the admin narrows the period.
+const AuditExportLimit = 100_000
+
+const auditExportPage = 200
+
+// ExportAudit calls emit with every entry matching f, newest first, page
+// by page (keyset paging: a long log costs the same per page). It stops
+// after limit entries and reports whether more were left.
+func (s *AdminService) ExportAudit(ctx context.Context, realm *domain.Realm, f repository.AuditSearch, limit int,
+	emit func(AuditView) error) (n int, truncated bool, err error) {
+	if limit <= 0 || limit > AuditExportLimit {
+		limit = AuditExportLimit
+	}
+	f.RealmID = realm.ID
+	f.Page = repository.Page{Limit: auditExportPage, NoTotal: true}
+	f.Before = repository.AuditCursor{}
+	for {
+		rows, _, err := s.d.Admin.SearchAuditLogs(ctx, f)
+		if err != nil {
+			return n, false, err
+		}
+		views, err := s.auditViews(ctx, rows)
+		if err != nil {
+			return n, false, err
+		}
+		for _, v := range views {
+			if n == limit {
+				return n, true, nil
+			}
+			if err := emit(v); err != nil {
+				return n, false, err
+			}
+			n++
+		}
+		if len(rows) < auditExportPage {
+			return n, false, nil
+		}
+		last := rows[len(rows)-1]
+		f.Before = repository.AuditCursor{Timestamp: last.Timestamp, ID: last.ID}
+	}
+}
+
+// RecordAuditExport writes who exported the log, with which filters and
+// how many entries left with the file.
+func (s *AdminService) RecordAuditExport(ctx context.Context, actor AdminActor, realm *domain.Realm, format string,
+	n int, truncated bool, filters map[string][]string) {
+	f := map[string]interface{}{}
+	for k, v := range filters {
+		if k != "format" && len(v) > 0 && v[0] != "" {
+			f[k] = v[0]
+		}
+	}
+	s.auditAdmin(ctx, actor, realm.ID, audit.AuditLogExported, "AuditLog", "", domain.AuditLogWarning, map[string]interface{}{
+		"format": format, "entries": n, "truncated": truncated, "filters": f,
+	})
+}
+
+// AuditActions is the catalogue of actions the filter offers.
+func (s *AdminService) AuditActions() []audit.ActionInfo { return audit.Catalog }
 
 
 // Dashboard: the KPIs of a realm. Infrastructure health is added by the
@@ -281,7 +368,11 @@ func (s *AdminService) Dashboard(ctx context.Context, realm *domain.Realm) (*Das
 	})
 	run(func() (err error) {
 		// The dashboard shows no total: not counted.
-		d.RecentActivity, _, err = s.SearchAudit(ctx, realm, repository.AuditSearch{Page: repository.Page{Limit: 6, NoTotal: true}})
+		// Changes and security events, not the routine of every sign-in.
+		d.RecentActivity, _, err = s.SearchAudit(ctx, realm, repository.AuditSearch{
+			ExcludeActions: []string{audit.AuthLogin, audit.AuthLogout, audit.NotificationSent},
+			Page:           repository.Page{Limit: 6, NoTotal: true},
+		})
 		return err
 	})
 	wg.Wait()

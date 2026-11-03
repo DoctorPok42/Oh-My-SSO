@@ -41,9 +41,9 @@ describe("searchHref", () => {
   it("encodes what it keeps", () => {
     expect(
       searchHref("/r/demo/audit", [
-        ["action", "admin.client.update"],
+        ["action", "client.updated"],
         ["user", "a b&c"],
       ]),
-    ).toBe("/r/demo/audit?action=admin.client.update&user=a+b%26c");
+    ).toBe("/r/demo/audit?action=client.updated&user=a+b%26c");
   });
 });

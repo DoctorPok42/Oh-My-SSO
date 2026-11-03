@@ -315,7 +315,7 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, status, "%v", out)
 
 	// The audit log of demo tells who did it: an admin of master.
-	status, out = e.call(t, at, http.MethodGet, "/api/v1/realms/demo/audit-logs?action=admin.client.create", nil)
+	status, out = e.call(t, at, http.MethodGet, "/api/v1/realms/demo/audit-logs?action=client.created", nil)
 	require.Equal(t, http.StatusOK, status, "%v", out)
 	require.EqualValues(t, 1, out["total"])
 	entry := out["items"].([]any)[0].(map[string]any)
@@ -433,7 +433,7 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	require.NoError(t, err)
 	found := false
 	for _, l := range logs {
-		if l.Action == "admin.recovery_admin" {
+		if l.Action == "recovery.admin" {
 			found = true
 			require.Equal(t, domain.AuditLogCritical, l.Level)
 			require.Equal(t, "cli:test@host", l.Details["triggered_by"])
@@ -530,7 +530,7 @@ func TestAdmin_Integration_RightsFromToken(t *testing.T) {
 	require.NoError(t, err)
 	n := 0
 	for _, l := range denied {
-		if l.Action == "authorization_denied" && l.UserID == aliceID {
+		if l.Action == "auth.access_denied" && l.UserID == aliceID {
 			n++
 		}
 	}

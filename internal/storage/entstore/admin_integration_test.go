@@ -204,9 +204,9 @@ func TestAdminRepository_Integration(t *testing.T) {
 	t.Run("audit search", func(t *testing.T) {
 		audit := entstore.NewAuditLogRepository(f.client)
 		for _, p := range []repository.CreateAuditLogParams{
-			{RealmID: f.realm.ID, UserID: "admin-1", Action: "admin.user.update", ResourceType: "User", ResourceID: alice.ID},
+			{RealmID: f.realm.ID, UserID: "admin-1", Action: "user.updated", ResourceType: "User", ResourceID: alice.ID},
 			{RealmID: f.realm.ID, UserID: alice.ID, Action: "login", Status: domain.AuditLogFailure, Level: domain.AuditLogWarning},
-			{RealmID: f.realm.ID, UserID: "admin-1", Action: "admin.client.update", ResourceType: "ClientApp", ResourceID: app.ID},
+			{RealmID: f.realm.ID, UserID: "admin-1", Action: "client.updated", ResourceType: "ClientApp", ResourceID: app.ID},
 		} {
 			if p.Status == "" {
 				p.Status = domain.AuditLogSuccess

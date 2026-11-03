@@ -98,7 +98,7 @@ func TestAdmin_Integration_TrustedDevices(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, status, "%v", out)
 		require.Empty(t, devicesOf(t))
 
-		status, out = e.call(t, at, http.MethodGet, "/api/v1/realms/demo/audit-logs?action=admin.trusted_device.revoke", nil)
+		status, out = e.call(t, at, http.MethodGet, "/api/v1/realms/demo/audit-logs?action=trusted_device.revoked", nil)
 		require.Equal(t, http.StatusOK, status, "%v", out)
 		require.EqualValues(t, 1, out["total"])
 	})

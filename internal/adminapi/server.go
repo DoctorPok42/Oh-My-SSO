@@ -155,6 +155,8 @@ func New(cfg Config, d Deps) *Server {
 			r.With(write("session", "revoke")...).Delete("/sessions/{id}", s.handleRevokeSession)
 
 			r.With(read("audit_log")).Get("/audit-logs", s.handleAuditLogs)
+			r.With(read("audit_log")).Get("/audit-logs/actions", s.handleAuditActions)
+			r.With(read("audit_log")).Get("/audit-logs/export", s.handleAuditExport)
 
 			r.With(read("user")).Get("/users", s.handleListUsers)
 			r.With(write("user", "write")...).Post("/users", s.handleInviteUser)

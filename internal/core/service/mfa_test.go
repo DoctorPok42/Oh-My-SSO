@@ -399,7 +399,7 @@ func TestMFA_TOTPEnrollment(t *testing.T) {
 		require.True(t, res.Session.MFAVerified, "confirming with a fresh code verifies the session")
 		require.Equal(t, "totp", res.Session.MFAMethodType)
 		require.Equal(t, f.now, res.Session.MFAVerifiedAt)
-		require.Equal(t, "mfa_method_enrolled", f.audit.entries[len(f.audit.entries)-1].Action)
+		require.Equal(t, "mfa.method_enrolled", f.audit.entries[len(f.audit.entries)-1].Action)
 	})
 
 	t.Run("expired enrollment", func(t *testing.T) {
@@ -807,9 +807,11 @@ func TestMFA_FactorManagement(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, domain.SessionRevoked, got.Status)
 		require.Equal(t, domain.SessionRevokedMFAReset, got.RevokedReason)
-		last := f.audit.entries[len(f.audit.entries)-1]
-		require.Equal(t, "mfa_reset", last.Action)
-		require.Equal(t, "lost phone", last.Details["reason"])
+		// The caller (admin console, CLI) writes the mfa.reset entry with
+		// its actor: the service writes none, so a reset is logged once.
+		for _, e := range f.audit.entries {
+			require.NotEqual(t, "mfa.reset", e.Action)
+		}
 	})
 }
 
@@ -898,7 +900,7 @@ func TestMFAPolicyService(t *testing.T) {
 		p, err = f.policy.SetRolePolicy(ctx, service.SetRoleMFAPolicyInput{RealmID: realmA, RoleName: "admin"})
 		require.NoError(t, err)
 		require.True(t, p.RequiredSince.IsZero())
-		require.Equal(t, "mfa_policy_changed", f.audit.entries[len(f.audit.entries)-1].Action)
+		require.Equal(t, "mfa.policy_changed", f.audit.entries[len(f.audit.entries)-1].Action)
 	})
 
 	t.Run("validation", func(t *testing.T) {

@@ -24,6 +24,10 @@ type AuditLog struct {
 	RealmID string `json:"realm_id,omitempty"`
 	// UserID holds the value of the "user_id" field.
 	UserID string `json:"user_id,omitempty"`
+	// ActorType holds the value of the "actor_type" field.
+	ActorType schema.AuditLogActorType `json:"actor_type,omitempty"`
+	// TargetUserID holds the value of the "target_user_id" field.
+	TargetUserID string `json:"target_user_id,omitempty"`
 	// Action holds the value of the "action" field.
 	Action string `json:"action,omitempty"`
 	// ResourceType holds the value of the "resource_type" field.
@@ -75,7 +79,7 @@ func (*AuditLog) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case auditlog.FieldDetails:
 			values[i] = new([]byte)
-		case auditlog.FieldID, auditlog.FieldRealmID, auditlog.FieldUserID, auditlog.FieldAction, auditlog.FieldResourceType, auditlog.FieldResourceID, auditlog.FieldIPAddress, auditlog.FieldUserAgent, auditlog.FieldLevel, auditlog.FieldStatus:
+		case auditlog.FieldID, auditlog.FieldRealmID, auditlog.FieldUserID, auditlog.FieldActorType, auditlog.FieldTargetUserID, auditlog.FieldAction, auditlog.FieldResourceType, auditlog.FieldResourceID, auditlog.FieldIPAddress, auditlog.FieldUserAgent, auditlog.FieldLevel, auditlog.FieldStatus:
 			values[i] = new(sql.NullString)
 		case auditlog.FieldTimestamp:
 			values[i] = new(sql.NullTime)
@@ -111,6 +115,18 @@ func (_m *AuditLog) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
 				_m.UserID = value.String
+			}
+		case auditlog.FieldActorType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field actor_type", values[i])
+			} else if value.Valid {
+				_m.ActorType = schema.AuditLogActorType(value.String)
+			}
+		case auditlog.FieldTargetUserID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field target_user_id", values[i])
+			} else if value.Valid {
+				_m.TargetUserID = value.String
 			}
 		case auditlog.FieldAction:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -214,6 +230,12 @@ func (_m *AuditLog) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("user_id=")
 	builder.WriteString(_m.UserID)
+	builder.WriteString(", ")
+	builder.WriteString("actor_type=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ActorType))
+	builder.WriteString(", ")
+	builder.WriteString("target_user_id=")
+	builder.WriteString(_m.TargetUserID)
 	builder.WriteString(", ")
 	builder.WriteString("action=")
 	builder.WriteString(_m.Action)

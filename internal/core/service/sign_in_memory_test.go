@@ -42,6 +42,23 @@ func TestSignInMemory_Tile(t *testing.T) {
 		f.accounts.PasswordChosen(ctx, service.PasswordChosenInput{RealmID: realmA, DeviceID: device, AccountID: accountID, UserID: userID, Offered: offered})
 	}
 
+	t.Run("the signed-in account has its methods too: signing in again starts with the passkey", func(t *testing.T) {
+		f := newKnownFixture()
+		current := f.signIn(aliceID, deviceA, false) // not remembered: no tile row
+		out, err := f.accounts.ListWithMethods(ctx, core.AccountQuery{RealmID: realmA, DeviceID: deviceA, Current: current}, both)
+		require.NoError(t, err)
+		require.Len(t, out, 1)
+		require.True(t, out[0].SignedIn)
+		require.Equal(t, pkFirst, out[0].Methods)
+
+		f, acc := setup(t) // remembered, and the password was chosen on its tile
+		chose(f, deviceA, acc.ID, aliceID, core.SignInPasskey, core.SignInPassword)
+		out, err = f.accounts.ListWithMethods(ctx, core.AccountQuery{RealmID: realmA, DeviceID: deviceA,
+			Current: &domain.Session{ID: "s", RealmID: realmA, UserID: aliceID}}, both)
+		require.NoError(t, err)
+		require.Equal(t, pwFirst, out[0].Methods, "the choice made on this device still counts")
+	})
+
 	t.Run("the password typed on the tile comes first next time, the passkey brings itself back", func(t *testing.T) {
 		f, acc := setup(t)
 		chose(f, deviceA, acc.ID, aliceID, core.SignInPasskey, core.SignInPassword)

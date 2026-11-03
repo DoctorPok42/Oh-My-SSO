@@ -13,6 +13,8 @@ var (
 	AuditLogsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
 		{Name: "user_id", Type: field.TypeString, Nullable: true},
+		{Name: "actor_type", Type: field.TypeString, Default: "system"},
+		{Name: "target_user_id", Type: field.TypeString, Nullable: true},
 		{Name: "action", Type: field.TypeString},
 		{Name: "resource_type", Type: field.TypeString, Nullable: true},
 		{Name: "resource_id", Type: field.TypeString, Nullable: true},
@@ -32,7 +34,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "audit_logs_realms_audit_logs",
-				Columns:    []*schema.Column{AuditLogsColumns[11]},
+				Columns:    []*schema.Column{AuditLogsColumns[13]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -41,17 +43,27 @@ var (
 			{
 				Name:    "auditlog_resource_type_resource_id",
 				Unique:  false,
-				Columns: []*schema.Column{AuditLogsColumns[3], AuditLogsColumns[4]},
+				Columns: []*schema.Column{AuditLogsColumns[5], AuditLogsColumns[6]},
 			},
 			{
 				Name:    "auditlog_user_id_timestamp",
 				Unique:  false,
-				Columns: []*schema.Column{AuditLogsColumns[1], AuditLogsColumns[5]},
+				Columns: []*schema.Column{AuditLogsColumns[1], AuditLogsColumns[7]},
 			},
 			{
 				Name:    "auditlog_realm_id_timestamp",
 				Unique:  false,
-				Columns: []*schema.Column{AuditLogsColumns[11], AuditLogsColumns[5]},
+				Columns: []*schema.Column{AuditLogsColumns[13], AuditLogsColumns[7]},
+			},
+			{
+				Name:    "auditlog_target_user_id_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{AuditLogsColumns[3], AuditLogsColumns[7]},
+			},
+			{
+				Name:    "auditlog_realm_id_action_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{AuditLogsColumns[13], AuditLogsColumns[4], AuditLogsColumns[7]},
 			},
 		},
 	}

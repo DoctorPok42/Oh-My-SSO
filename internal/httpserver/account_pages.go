@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"sso.internal/sso/internal/adapters/accountui"
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/notify"
@@ -785,68 +786,67 @@ func activityText(e service.ActivityEntry) string {
 		return "a second step"
 	}
 	switch e.Action {
-	case "account.profile_updated":
+	case audit.UserProfileUpdated:
 		return "Name changed"
-	case "account.password_changed":
+	case audit.UserPasswordChanged:
 		if e.Failed {
 			return "Password change refused (wrong current password)"
 		}
 		return "Password changed"
-	case "account.session_revoked":
+	case audit.SessionRevoked:
 		return "A session was signed out"
-	case "account.sessions_revoked":
+	case audit.SessionRevokedAll:
+		if e.ByAdmin {
+			return "Signed out everywhere"
+		}
 		return "All other sessions were signed out"
-	case "account.app_access_revoked":
+	case audit.ConsentAppAccessRevoked:
 		if c := detail("client"); c != "" {
 			return "Access removed for " + c
 		}
 		return "Access removed for an application"
-	case "account.trusted_device_revoked", "mfa_device_trust_revoked":
+	case audit.TrustedDeviceRevoked:
 		return "A device will ask for the second step again"
-	case "account.trusted_devices_revoked":
+	case audit.TrustedDeviceRevokedAll:
 		return "Every device will ask for the second step again"
-	case "mfa_method_enrolled":
+	case audit.MFAMethodEnrolled:
 		return "Added " + factor()
-	case "mfa_method_removed":
+	case audit.MFAMethodRemoved:
 		return "Removed " + factor()
-	case "mfa_backup_codes_regenerated":
+	case audit.MFABackupCodesRegenerated:
 		return "New backup codes"
-	case "mfa_device_trusted":
+	case audit.TrustedDeviceAdded:
 		return "A device no longer asks for the second step"
-	case "consent_granted":
+	case audit.ConsentGranted:
 		if c := detail("client"); c != "" {
 			return "Approved " + c
 		}
 		return "Approved an application"
-	case "consent_revoked":
+	case audit.ConsentRevoked:
 		if c := detail("client"); c != "" {
 			return "Access removed for " + c
 		}
 		return "Access removed for an application"
-	case "known_account.forget":
+	case audit.KnownAccountForgotten:
 		return "Account forgotten on a device"
-	case "password_reset_requested":
+	case audit.UserPasswordResetRequested:
 		return "Password reset link requested"
-	case "password_reset":
+	case audit.UserPasswordReset:
 		return "Password reset with an e-mail link"
-	case "account_locked":
+	case audit.UserLocked:
 		return "Account locked after wrong passwords"
-	case "admin.user.invite":
+	case audit.UserInvited:
 		return "Account created"
-	case "admin.user.activation_link":
+	case audit.UserActivationLinkSent:
 		return "New activation link sent"
-	case "admin.user.update":
+	case audit.UserUpdated:
 		return "Account details changed"
-	case "admin.user.groups", "admin.user.roles":
+	case audit.UserGroupsChanged, audit.UserRolesChanged:
 		return "Access rights changed"
-	case "admin.user.mfa_reset", "mfa_reset":
+	case audit.MFAReset:
 		return "Second steps reset"
-	case "admin.user.unlock":
+	case audit.UserUnlocked:
 		return "Account unlocked"
-	case "admin.session.revoke_all":
-		return "Signed out everywhere"
-	case "admin.trusted_device.revoke_all":
-		return "Every device will ask for the second step again"
 	}
 	return "Account updated"
 }

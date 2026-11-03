@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -232,7 +233,7 @@ func (s *AdminService) RevokeTrustedDevice(ctx context.Context, actor AdminActor
 		}
 		return err
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "trusted_device.revoke", "TrustedDevice", deviceID, domain.AuditLogWarning, map[string]interface{}{
+	s.auditAdminAbout(ctx, actor, realm.ID, u.ID, audit.TrustedDeviceRevoked, "TrustedDevice", deviceID, domain.AuditLogWarning, map[string]interface{}{
 		"user_id": u.ID,
 	})
 	return nil
@@ -251,7 +252,7 @@ func (s *AdminService) RevokeTrustedDevices(ctx context.Context, actor AdminActo
 	if err != nil {
 		return err
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "trusted_device.revoke_all", "User", u.ID, domain.AuditLogWarning, map[string]interface{}{
+	s.auditAdmin(ctx, actor, realm.ID, audit.TrustedDeviceRevokedAll, "User", u.ID, domain.AuditLogWarning, map[string]interface{}{
 		"devices": n,
 	})
 	return nil
@@ -370,7 +371,7 @@ func (s *AdminService) InviteUser(ctx context.Context, actor AdminActor, realm *
 	if err := s.d.Admin.SetUserRoles(ctx, u.ID, roles); err != nil {
 		return nil, err
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "user.invite", "User", u.ID, domain.AuditLogInfo, map[string]interface{}{
+	s.auditAdmin(ctx, actor, realm.ID, audit.UserInvited, "User", u.ID, domain.AuditLogInfo, map[string]interface{}{
 		"username": username, "email": email, "group_ids": groups, "role_ids": roles,
 	})
 	res, err := s.issueActivation(ctx, actor, realm, u, in.SendEmail)
@@ -425,7 +426,7 @@ func (s *AdminService) issueActivation(ctx context.Context, actor AdminActor, re
 	} else {
 		res.ActivationURL = s.activationURL(realm.Name, token)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "user.activation_link", "User", u.ID, domain.AuditLogInfo, map[string]interface{}{
+	s.auditAdmin(ctx, actor, realm.ID, audit.UserActivationLinkSent, "User", u.ID, domain.AuditLogInfo, map[string]interface{}{
 		"emailed": res.Emailed, "expires_at": expires.UTC().Format(time.RFC3339),
 	})
 	return res, nil
@@ -518,7 +519,7 @@ func (s *AdminService) UpdateUser(ctx context.Context, actor AdminActor, realm *
 		if deactivate {
 			level = domain.AuditLogWarning
 		}
-		s.auditAdmin(ctx, actor, realm.ID, "user.update", "User", u.ID, level, changes)
+		s.auditAdmin(ctx, actor, realm.ID, audit.UserUpdated, "User", u.ID, level, changes)
 	}
 	return s.GetUser(ctx, realm, u.ID)
 }
@@ -539,7 +540,7 @@ func (s *AdminService) DeleteUser(ctx context.Context, actor AdminActor, realm *
 	if err := s.d.Users.Delete(ctx, u.ID); err != nil {
 		return fmt.Errorf("delete user: %w", err)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "user.delete", "User", u.ID, domain.AuditLogWarning, map[string]interface{}{
+	s.auditAdmin(ctx, actor, realm.ID, audit.UserDeleted, "User", u.ID, domain.AuditLogWarning, map[string]interface{}{
 		"username": u.Username, "email": u.Email,
 	})
 	return nil
@@ -572,7 +573,7 @@ func (s *AdminService) SetUserGroups(ctx context.Context, actor AdminActor, real
 	if err := s.d.Admin.SetUserGroups(ctx, u.ID, ids); err != nil {
 		return nil, err
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "user.groups", "User", u.ID, domain.AuditLogInfo, map[string]interface{}{"group_ids": ids})
+	s.auditAdmin(ctx, actor, realm.ID, audit.UserGroupsChanged, "User", u.ID, domain.AuditLogInfo, map[string]interface{}{"group_ids": ids})
 	return s.GetUser(ctx, realm, u.ID)
 }
 
@@ -590,7 +591,7 @@ func (s *AdminService) SetUserRoles(ctx context.Context, actor AdminActor, realm
 	if err := s.d.Admin.SetUserRoles(ctx, u.ID, ids); err != nil {
 		return nil, err
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "user.roles", "User", u.ID, domain.AuditLogInfo, map[string]interface{}{"role_ids": ids})
+	s.auditAdmin(ctx, actor, realm.ID, audit.UserRolesChanged, "User", u.ID, domain.AuditLogInfo, map[string]interface{}{"role_ids": ids})
 	return s.GetUser(ctx, realm, u.ID)
 }
 
@@ -612,8 +613,8 @@ func (s *AdminService) ResetUserMFA(ctx context.Context, actor AdminActor, realm
 	if err != nil {
 		return nil, err
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "user.mfa_reset", "User", u.ID, domain.AuditLogWarning, map[string]interface{}{
-		"reason": reason, "methods_deleted": res.MethodsDeleted,
+	s.auditAdmin(ctx, actor, realm.ID, audit.MFAReset, "User", u.ID, domain.AuditLogWarning, map[string]interface{}{
+		"reason": reason, "methods_deleted": res.MethodsDeleted, "backup_codes_deleted": res.BackupCodesDeleted,
 	})
 	return res, nil
 }
@@ -627,7 +628,7 @@ func (s *AdminService) UnlockUser(ctx context.Context, actor AdminActor, realm *
 	if err := s.d.Lockout.Unlock(ctx, u); err != nil {
 		return err
 	}
-	s.auditAdmin(ctx, actor, realm.ID, "user.unlock", "User", u.ID, domain.AuditLogWarning, nil)
+	s.auditAdmin(ctx, actor, realm.ID, audit.UserUnlocked, "User", u.ID, domain.AuditLogWarning, nil)
 	return nil
 }
 

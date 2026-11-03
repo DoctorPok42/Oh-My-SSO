@@ -325,7 +325,7 @@ func TestRBAC_Authorize(t *testing.T) {
 		require.Len(t, audit.entries, 1)
 
 		e := audit.entries[0]
-		require.Equal(t, "authorization_denied", e.Action)
+		require.Equal(t, "auth.access_denied", e.Action)
 		require.Equal(t, domain.AuditLogFailure, e.Status)
 		require.Equal(t, domain.AuditLogWarning, e.Level)
 		require.Equal(t, "ClientApp", e.ResourceType)

@@ -147,17 +147,21 @@ func TestLoginSecurity_RecordsAndNotifies(t *testing.T) {
 	}
 	usual := day0.AddDate(0, 0, 20)
 
-	t.Run("usual sign-in: nothing written, nothing sent", func(t *testing.T) {
+	t.Run("usual sign-in: one auth.login entry, nothing sent", func(t *testing.T) {
 		svc, _, audit, notifier := newSvc()
 		svc.SessionCreated(ctx, login(usual, "203.0.113.10", "laptop"))
-		require.Empty(t, audit.actions())
+		require.Equal(t, []string{"auth.login"}, audit.actions())
+		e := audit.entries[0]
+		require.Equal(t, domain.AuditLogInfo, e.Level)
+		require.Equal(t, "Session", e.ResourceType)
+		require.Equal(t, "203.0.113.10", e.IPAddress)
 		require.Empty(t, notifier.kinds())
 	})
 
 	t.Run("new device", func(t *testing.T) {
 		svc, _, audit, notifier := newSvc()
 		svc.SessionCreated(ctx, login(usual, "203.0.113.10", "phone"))
-		require.Equal(t, []string{"new_device_login"}, audit.actions())
+		require.Equal(t, []string{"auth.login_new_device"}, audit.actions())
 		require.Equal(t, domain.AuditLogInfo, audit.entries[0].Level)
 		require.Equal(t, []domain.NotificationKind{domain.NotificationNewDeviceLogin}, notifier.kinds())
 	})
@@ -165,7 +169,7 @@ func TestLoginSecurity_RecordsAndNotifies(t *testing.T) {
 	t.Run("suspicious: AuditLog level suspicious, event with reasons", func(t *testing.T) {
 		svc, _, audit, notifier := newSvc()
 		svc.SessionCreated(ctx, login(usual, "198.51.100.3", "phone"))
-		require.Equal(t, []string{"suspicious_login"}, audit.actions())
+		require.Equal(t, []string{"auth.login_suspicious"}, audit.actions())
 		require.Equal(t, domain.AuditLogSuspicious, audit.entries[0].Level)
 		e := notifier.last()
 		require.Equal(t, domain.NotificationSuspiciousLogin, e.Kind)
@@ -183,7 +187,7 @@ func TestLoginSecurity_RecordsAndNotifies(t *testing.T) {
 		_, _, err := sessions.Create(ctx, service.CreateSessionInput{RealmID: "r1", UserID: "u1", IPAddress: "198.51.100.3"})
 		require.NoError(t, err)
 		// No device fingerprint given: only the new country counts.
-		require.Equal(t, []string{"suspicious_login"}, audit.actions())
+		require.Equal(t, []string{"auth.login_suspicious"}, audit.actions())
 	})
 }
 
@@ -270,7 +274,7 @@ func TestAnalyzeLogin_NewSignInMethod(t *testing.T) {
 			Sessions: hist, Audit: audit, Notifier: notifier, GeoIP: fakeGeo{}, Synchronous: true,
 		})
 		svc.SessionCreated(context.Background(), withMethod(login(usual, "203.0.113.10", "laptop"), "backup_codes"))
-		require.Equal(t, []string{"suspicious_login"}, audit.actions())
+		require.Equal(t, []string{"auth.login_suspicious"}, audit.actions())
 		require.Equal(t, domain.AuditLogSuspicious, audit.entries[0].Level)
 		require.Equal(t, "backup_codes", audit.entries[0].Details["sign_in_method"])
 		e := notifier.last()

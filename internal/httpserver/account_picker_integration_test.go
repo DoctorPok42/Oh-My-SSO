@@ -81,7 +81,7 @@ func (e *oidcTestEnv) sessionRow(t *testing.T, id string) *ent.Session {
 func (e *oidcTestEnv) logouts(t *testing.T, sessionID string) []*ent.AuditLog {
 	t.Helper()
 	rows, err := e.ent.AuditLog.Query().
-		Where(auditlog.Action("logout"), auditlog.ResourceID(sessionID)).All(context.Background())
+		Where(auditlog.Action("auth.logout"), auditlog.ResourceID(sessionID)).All(context.Background())
 	require.NoError(t, err)
 	return rows
 }
@@ -209,7 +209,7 @@ func TestOIDC_Integration_AccountPicker(t *testing.T) {
 		n, err := e.ent.KnownAccount.Query().Where(knownaccount.ID(accountID)).Count(context.Background())
 		require.NoError(t, err)
 		require.Zero(t, n)
-		forgets, err := e.ent.AuditLog.Query().Where(auditlog.Action("known_account.forget")).Count(context.Background())
+		forgets, err := e.ent.AuditLog.Query().Where(auditlog.Action("known_account.forgotten")).Count(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, 1, forgets)
 
@@ -334,7 +334,7 @@ func TestSAMLIntegration_AccountPicker(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, env.realmURL+"/auth/logout", nil)
 		resp, _ := b.do(req)
 		require.Equal(t, http.StatusNoContent, resp.StatusCode)
-		n, err := env.ent.AuditLog.Query().Where(auditlog.Action("logout")).All(ctx)
+		n, err := env.ent.AuditLog.Query().Where(auditlog.Action("auth.logout")).All(ctx)
 		require.NoError(t, err)
 		require.Len(t, n, 1)
 		require.Equal(t, "auth_api", n[0].Details["via"])
@@ -359,7 +359,7 @@ func TestSAMLSingleLogout_IsAudited(t *testing.T) {
 	resp, _ := b.get(lu)
 	require.Equal(t, http.StatusFound, resp.StatusCode)
 
-	logs, err := env.ent.AuditLog.Query().Where(auditlog.Action("logout")).All(context.Background())
+	logs, err := env.ent.AuditLog.Query().Where(auditlog.Action("auth.logout")).All(context.Background())
 	require.NoError(t, err)
 	require.Len(t, logs, 1)
 	require.Equal(t, "saml_slo", logs[0].Details["via"])

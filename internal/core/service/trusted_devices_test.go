@@ -62,7 +62,7 @@ func TestTrustedDevice_SkipsTheSecondFactor(t *testing.T) {
 	d, err := f.devices.Get(ctx, aliceID, laptop)
 	require.NoError(t, err)
 	require.Equal(t, f.now.Add(-30*time.Second).Add(30*24*time.Hour), d.ExpiresAt, "fixed: 30 days from the box")
-	require.Contains(t, f.audit.actions(), "mfa_device_trusted")
+	require.Contains(t, f.audit.actions(), "trusted_device.added")
 
 	dec := f.beginOn(t, aliceID, "", laptop)
 	require.Equal(t, service.LoginAuthenticated, dec.Outcome, "no second factor on the trusted laptop")
@@ -169,7 +169,7 @@ func TestTrustedDevice_SuspiciousSignInAsks(t *testing.T) {
 	require.Equal(t, service.LoginMFARequired, dec.Outcome, "a new country: the second factor again")
 	require.Equal(t, 30, dec.TrustDeviceDays)
 	last := f.audit.entries[len(f.audit.entries)-1]
-	require.Equal(t, "mfa_trusted_device_challenged", last.Action)
+	require.Equal(t, "auth.trusted_device_challenged", last.Action)
 	require.Equal(t, []string{domain.SuspiciousNewCountry}, last.Details["reasons"])
 
 	f.risk.reasons, f.risk.err = nil, errors.New("history unavailable")
@@ -208,8 +208,12 @@ func TestTrustedDevice_Revocation(t *testing.T) {
 		_, err := f.devices.Get(ctx, aliceID, laptop)
 		require.Error(t, err)
 		last := f.audit.entries[len(f.audit.entries)-1]
-		require.Equal(t, "mfa_device_trust_revoked", last.Action)
+		require.Equal(t, "trusted_device.revoked_all", last.Action)
 		require.Equal(t, "password_reset", last.Details["reason"])
+		// A consequence of the sign-out, not the user's own act.
+		require.Equal(t, domain.AuditActorSystem, last.ActorType)
+		require.Empty(t, last.UserID)
+		require.Equal(t, aliceID, last.TargetUserID)
 		require.Equal(t, service.LoginMFARequired, f.beginOn(t, aliceID, "", laptop).Outcome)
 	})
 

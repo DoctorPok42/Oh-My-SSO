@@ -189,7 +189,7 @@ func TestRBAC_RoleAllowedOnOneClientOnly_Integration(t *testing.T) {
 
 	var denials []*domain.AuditLog
 	for _, l := range logs {
-		if l.Action == "authorization_denied" {
+		if l.Action == "auth.access_denied" {
 			denials = append(denials, l)
 		}
 	}

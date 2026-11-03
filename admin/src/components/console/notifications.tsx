@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatRelative } from "@/lib/format";
-import { actionLabel, isNotification } from "@/lib/labels";
+import { actionLabel, actorName, isNotification } from "@/lib/labels";
 import type { AuditEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { recentAlerts } from "@/app/r/[realm]/header-actions";
@@ -56,7 +56,7 @@ export function Notifications({ realm, enabled }: { realm: string; enabled: bool
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{actionLabel(i.action)}</span>
                 <span className="block text-[12px] text-text-muted">
-                  {i.actor?.username ?? "system"} · {formatRelative(i.timestamp)}
+                  {actorName(i)} · {formatRelative(i.timestamp)}
                 </span>
               </span>
               <span

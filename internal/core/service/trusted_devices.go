@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -111,7 +112,7 @@ func (s *TrustedDeviceService) Trust(ctx context.Context, user *domain.User, dev
 	if err != nil {
 		return nil, fmt.Errorf("trust device: %w", err)
 	}
-	s.record(ctx, user.RealmID, user.ID, "mfa_device_trusted", d.ID, ip, userAgent, map[string]interface{}{
+	s.record(ctx, domain.AuditActorUser, user.RealmID, user.ID, audit.TrustedDeviceAdded, d.ID, ip, userAgent, map[string]interface{}{
 		"days": int(period / (24 * time.Hour)), "expires_at": d.ExpiresAt.UTC().Format(time.RFC3339),
 	})
 	return d, nil
@@ -159,7 +160,7 @@ func (s *TrustedDeviceService) RevokeDevice(ctx context.Context, realmID, userID
 		return fmt.Errorf("revoke trusted device: %w", err)
 	}
 	if n > 0 {
-		s.record(ctx, realmID, userID, "mfa_device_trust_revoked", "", "", "", map[string]interface{}{"reason": reason, "devices": n})
+		s.record(ctx, domain.AuditActorUser, realmID, userID, audit.TrustedDeviceRevoked, "", "", "", map[string]interface{}{"reason": reason, "devices": n})
 	}
 	return nil
 }
@@ -180,7 +181,7 @@ func (s *TrustedDeviceService) AllSessionsRevoked(ctx context.Context, userID st
 		s.logger.WarnContext(ctx, "trusted devices: revoke all", "user_id", userID, "error", err)
 		return
 	}
-	s.record(ctx, rows[0].RealmID, userID, "mfa_device_trust_revoked", "", "", "", map[string]interface{}{
+	s.record(ctx, domain.AuditActorSystem, rows[0].RealmID, userID, audit.TrustedDeviceRevokedAll, "", "", "", map[string]interface{}{
 		"reason": string(reason), "devices": n,
 	})
 }
@@ -212,16 +213,23 @@ func (s *TrustedDeviceService) RevokeAll(ctx context.Context, userID string) (in
 	return n, nil
 }
 
-func (s *TrustedDeviceService) record(ctx context.Context, realmID, userID, action, id, ip, userAgent string, details map[string]interface{}) {
+// record writes one entry about userID's trusted devices. actor: the user (trust
+// given, "Forget" on a tile) or the system (the consequence of every session
+// being revoked, whatever revoked them: details.reason).
+func (s *TrustedDeviceService) record(ctx context.Context, actor domain.AuditActorType, realmID, userID, action, id, ip, userAgent string, details map[string]interface{}) {
 	if s.audit == nil {
 		return
 	}
 	level := domain.AuditLogInfo
-	if action == "mfa_device_trust_revoked" {
+	if action != audit.TrustedDeviceAdded {
 		level = domain.AuditLogWarning
 	}
+	actorID := userID
+	if actor != domain.AuditActorUser {
+		actorID = ""
+	}
 	if _, err := s.audit.Create(ctx, repository.CreateAuditLogParams{
-		RealmID: realmID, UserID: userID, Action: action, ResourceType: "TrustedDevice", ResourceID: id,
+		RealmID: realmID, UserID: actorID, ActorType: actor, TargetUserID: userID, Action: action, ResourceType: "TrustedDevice", ResourceID: id,
 		IPAddress: ip, UserAgent: userAgent, Level: level, Status: domain.AuditLogSuccess, Details: details,
 	}); err != nil {
 		s.logger.WarnContext(ctx, "audit: trusted device", "action", action, "user_id", userID, "error", err)

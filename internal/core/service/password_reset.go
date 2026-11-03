@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -145,7 +146,7 @@ func (s *PasswordResetService) RequestReset(ctx context.Context, in RequestReset
 		return fmt.Errorf("password reset: store token: %w", err)
 	}
 
-	s.auditEvent(ctx, user, "password_reset_requested", in.IPAddress, in.UserAgent, domain.AuditLogInfo, map[string]interface{}{
+	s.auditEvent(ctx, user, audit.UserPasswordResetRequested, in.IPAddress, in.UserAgent, domain.AuditLogInfo, map[string]interface{}{
 		"expires_at": expires.UTC().Format(time.RFC3339),
 	})
 	s.notifier.Notify(ctx, domain.NotificationEvent{
@@ -177,10 +178,10 @@ func (s *PasswordResetService) IssueActivationToken(ctx context.Context, user *d
 	}); err != nil {
 		return "", time.Time{}, fmt.Errorf("activation link: store token: %w", err)
 	}
-	s.auditEvent(ctx, user, "activation_link_issued", "", "", domain.AuditLogInfo, map[string]interface{}{
-		"issued_by":  issuedBy,
-		"expires_at": expires.UTC().Format(time.RFC3339),
-	})
+	// No audit entry here: the caller writes it (user.invited,
+	// user.activation_link_sent, instance.bootstrapped...), with its actor.
+	s.logger.InfoContext(ctx, "activation link issued", "user_id", user.ID, "issued_by", issuedBy,
+		"expires_at", expires.UTC().Format(time.RFC3339))
 	return raw, expires, nil
 }
 
@@ -260,7 +261,7 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 		}
 	}
 
-	s.auditEvent(ctx, user, "password_reset", in.IPAddress, in.UserAgent, domain.AuditLogWarning, map[string]interface{}{
+	s.auditEvent(ctx, user, audit.UserPasswordReset, in.IPAddress, in.UserAgent, domain.AuditLogWarning, map[string]interface{}{
 		"sessions_revoked": true,
 	})
 	s.notifier.Notify(ctx, domain.NotificationEvent{
@@ -291,9 +292,11 @@ func (s *PasswordResetService) auditEvent(ctx context.Context, user *domain.User
 	if s.audit == nil {
 		return
 	}
-	_, _ = s.audit.Create(ctx, repository.CreateAuditLogParams{
+	p := repository.CreateAuditLogParams{
 		RealmID:      user.RealmID,
 		UserID:       user.ID,
+		ActorType:    domain.AuditActorUser,
+		TargetUserID: user.ID,
 		Action:       action,
 		ResourceType: "User",
 		ResourceID:   user.ID,
@@ -302,7 +305,14 @@ func (s *PasswordResetService) auditEvent(ctx context.Context, user *domain.User
 		Level:        level,
 		Status:       domain.AuditLogSuccess,
 		Details:      details,
-	})
+	}
+	if action == audit.UserPasswordResetRequested {
+		// Anyone can ask for a link with an address: nobody is signed in.
+		p.UserID, p.ActorType = "", domain.AuditActorAnonymous
+	}
+	if _, err := s.audit.Create(ctx, p); err != nil {
+		s.logger.WarnContext(ctx, "password reset: audit write failed", "action", action, "user_id", user.ID, "error", err)
+	}
 }
 
 // newResetToken returns a random URL-safe token and its stored hash.

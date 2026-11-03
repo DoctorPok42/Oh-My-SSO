@@ -119,21 +119,41 @@ type SessionSearch struct {
 // AuditSearch filters the audit log of one realm, newest first.
 type AuditSearch struct {
 	RealmID string
-	// UserID matches entries done by the user OR about the user.
+	// UserID matches entries done by the user (actor) OR about the user
+	// (target).
 	UserID string
 	// ClientRef matches entries about a client (resource ClientApp).
 	ClientRef string
 	Action    string // exact action name; empty: any
+	// ActionPrefix: names starting with it ("auth." for every sign-in
+	// event); empty: any.
+	ActionPrefix string
 	// Actions: any of these action names (the account console's activity
 	// list shows only the actions it can describe); empty: any.
 	Actions []string
-	Status  domain.AuditLogStatus // empty: any
+	// ExcludeActions: none of these (the dashboard leaves out routine
+	// sign-ins and e-mails); empty: no exclusion.
+	ExcludeActions []string
+	// ActorTypes: any of these kinds of actor; empty: any.
+	ActorTypes []domain.AuditActorType
+	Status     domain.AuditLogStatus // empty: any
 	// Levels: any of these levels (the console's bell asks for warning and
 	// above); empty: any.
 	Levels   []domain.AuditLogLevel
 	From, To time.Time // zero: unbounded
+	// Before: only entries older than this one (keyset paging, newest
+	// first: the export walks the whole log this way). Zero: no bound.
+	Before AuditCursor
 	Page
 }
+
+// AuditCursor points at one entry in the (timestamp, id) order.
+type AuditCursor struct {
+	Timestamp time.Time
+	ID        string
+}
+
+func (c AuditCursor) IsZero() bool { return c.ID == "" && c.Timestamp.IsZero() }
 
 // Memberships of a user: its groups and roles.
 type Memberships struct {
