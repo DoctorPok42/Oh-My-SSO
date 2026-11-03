@@ -76,6 +76,20 @@ type buttonData struct{ URL, Label string }
 
 var funcs = map[string]any{
 	"button": func(url, label string) buttonData { return buttonData{URL: url, Label: label} },
+
+	// Conditional comments that only Outlook for Windows reads (it renders
+	// with Word, which ignores max-width and does not always inherit fonts).
+	// html/template removes the comments written in a template, so they come
+	// from these functions; their content is fixed, nothing is interpolated.
+	"outlookHead": func() htmltemplate.HTML {
+		return `<!--[if mso]><style>table{mso-table-lspace:0pt;mso-table-rspace:0pt;}td,p,a,h1,li,strong{font-family:'Segoe UI',Arial,sans-serif;}</style><![endif]-->`
+	},
+	"outlookColumnStart": func() htmltemplate.HTML {
+		return `<!--[if mso]><table role="presentation" width="560" align="center" cellpadding="0" cellspacing="0"><tr><td><![endif]-->`
+	},
+	"outlookColumnEnd": func() htmltemplate.HTML {
+		return `<!--[if mso]></td></tr></table><![endif]-->`
+	},
 }
 
 // Templates holds every e-mail, parsed once.

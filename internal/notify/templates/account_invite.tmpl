@@ -13,10 +13,10 @@ the account until a password is chosen with this link.
 {{end}}
 
 {{define "html"}}{{template "title" "Your account is ready"}}
-<p style="margin:0 0 12px 0;">Hello{{if .Username}} {{.Username}}{{end}},</p>
-<p style="margin:0 0 12px 0;">An administrator created an account for you on {{.Realm}}. To start, choose your password. The link below works once and expires in <strong>{{.ExpiresIn}}</strong>.</p>
+<p>Hello{{if .Username}} {{.Username}}{{end}},</p>
+<p>An administrator created an account for you on {{.Realm}}. To start, choose your password. The link below works once and expires in <strong>{{.ExpiresIn}}</strong>.</p>
 {{template "button" (button .ResetURL "Choose my password")}}
-<p style="margin:0 0 12px 0;font-size:13px;color:#59636e;">Button not working? Copy this address into your browser:<br><a href="{{.ResetURL}}" style="color:#1f6feb;word-break:break-all;">{{.ResetURL}}</a></p>
-<p style="margin:0 0 12px 0;">If the link has expired, ask your administrator for a new one.</p>
+{{template "link" .ResetURL}}
+<p>If the link has expired, ask your administrator for a new one.</p>
 {{template "muted" "If you were not expecting this, you can ignore this e-mail: nobody can use the account until a password is chosen with this link."}}
 {{end}}

@@ -1,43 +1,75 @@
 {{/*
   HTML layout of every e-mail. E-mail clients are not browsers: no external
-  CSS, no JavaScript, styles inline, layout with tables (Outlook still
-  renders HTML with Word). https://www.caniemail.com/ tells what works where.
+  CSS, no JavaScript, styles inline, layout with tables (Outlook for Windows
+  still renders HTML with Word). https://www.caniemail.com/ tells what works
+  where; Mailpit's "HTML Check" tab scores an e-mail with the same data
+  (`idp mail test --all` sends every template there).
+
+  The rules that keep every client, and that score, happy:
+  - Colors, widths and alignment are HTML attributes (bgcolor, width, align,
+    cellpadding): every client supports them, unlike their CSS versions.
+  - padding only on <td>: Outlook for Windows ignores it anywhere else. A
+    button is therefore a table cell with a link inside, not a styled <a>.
+  - Paragraphs keep the default margins of the client (1em above and below):
+    no margin to override, nothing for a client to drop.
+  - No display, no shorthand background, no font-weight (use <strong>), no
+    margin:auto, no CSS on <body>: they are partly or not supported.
+  - Outlook for Windows ignores max-width: a 560px table only it can see
+    (conditional comments, written by the outlook* functions because
+    html/template removes HTML comments) keeps the column narrow there.
 */}}
 {{define "layout.html"}}<!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
 <meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
 <title>{{.Subject}}</title>
+{{outlookHead}}
 </head>
-<body style="margin:0;padding:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2328;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f5f7;">
+<body bgcolor="#f4f5f7">
+<table role="presentation" width="100%" bgcolor="#f4f5f7" cellpadding="0" cellspacing="0">
 <tr><td align="center" style="padding:32px 16px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:#ffffff;border:1px solid #e4e6ea;border-radius:8px;">
-<tr><td style="padding:28px 32px 4px 32px;font-size:13px;color:#59636e;">{{.Realm}}</td></tr>
-<tr><td style="padding:0 32px 28px 32px;font-size:15px;line-height:1.55;">
-{{template "html" .}}
+{{outlookColumnStart}}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+<tr><td align="left" bgcolor="#ffffff" style="padding:16px 32px;border:1px solid #e4e6ea;border-radius:8px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;mso-line-height-rule:exactly;color:#1f2328;">
+{{if .Realm}}<p style="font-size:13px;color:#59636e;">{{.Realm}}</p>
+{{end}}{{template "html" .}}
+</td></tr>
+<tr><td align="left" style="font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;mso-line-height-rule:exactly;color:#636c76;">
+<p>This is an automatic message from {{.Product}} about your account{{if .Username}} <strong>{{.Username}}</strong>{{end}}. Replies are not read.</p>
 </td></tr>
 </table>
-<p style="max-width:560px;margin:16px auto 0 auto;font-size:12px;line-height:1.5;color:#7d8590;">
-This is an automatic message from {{.Product}} about your account{{if .Username}} <strong>{{.Username}}</strong>{{end}}. Replies are not read.
-</p>
+{{outlookColumnEnd}}
 </td></tr>
 </table>
 </body>
 </html>
 {{end}}
 
-{{define "title"}}<h1 style="margin:8px 0 16px 0;font-size:20px;line-height:1.3;color:#1f2328;">{{.}}</h1>{{end}}
+{{define "title"}}<h1 style="font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:20px;color:#1f2328;">{{.}}</h1>{{end}}
 
-{{define "button"}}<p style="margin:24px 0;"><a href="{{.URL}}" style="display:inline-block;background:#1f6feb;color:#ffffff;text-decoration:none;font-weight:600;padding:11px 20px;border-radius:6px;">{{.Label}}</a></p>{{end}}
-
-{{define "details"}}<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;font-size:14px;color:#59636e;">
-{{if .When}}<tr><td style="padding:2px 16px 2px 0;">When</td><td style="color:#1f2328;">{{.When}}</td></tr>{{end}}
-{{if .Device}}<tr><td style="padding:2px 16px 2px 0;">Device</td><td style="color:#1f2328;">{{.Device}}</td></tr>{{end}}
-{{if .IPAddress}}<tr><td style="padding:2px 16px 2px 0;">IP address</td><td style="color:#1f2328;">{{.IPAddress}}</td></tr>{{end}}
-{{if .Location}}<tr><td style="padding:2px 16px 2px 0;">Location</td><td style="color:#1f2328;">{{.Location}} (approximate)</td></tr>{{end}}
+{{/*
+  The margin gives the button room even when it ends the e-mail. The link
+  repeats the background color of its cell: spam filters (SpamAssassin's
+  HTML_FONT_LOW_CONTRAST) do not see a cell's bgcolor and would read white
+  text on the white card.
+*/}}
+{{define "button"}}<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;">
+<tr><td align="center" bgcolor="#1f6feb" style="padding:12px 22px;border-radius:6px;"><a href="{{.URL}}" target="_blank" style="font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:15px;color:#ffffff;background-color:#1f6feb;text-decoration:none;"><strong>{{.Label}}</strong></a></td></tr>
 </table>{{end}}
 
-{{define "muted"}}<p style="margin:16px 0 0 0;font-size:13px;color:#59636e;">{{.}}</p>{{end}}
+{{/* A long link without spaces would widen the table on a phone: break-all lets it wrap. */}}
+{{define "link"}}<p style="font-size:13px;color:#59636e;">Button not working? Copy this address into your browser:<br><a href="{{.}}" target="_blank" style="color:#1f6feb;word-break:break-all;">{{.}}</a></p>{{end}}
+
+{{define "details"}}<table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14px;color:#59636e;">
+{{if .When}}<tr><td width="110" valign="top">When</td><td style="color:#1f2328;">{{.When}}</td></tr>{{end}}
+{{if .Device}}<tr><td width="110" valign="top">Device</td><td style="color:#1f2328;">{{.Device}}</td></tr>{{end}}
+{{if .IPAddress}}<tr><td width="110" valign="top">IP address</td><td style="color:#1f2328;">{{.IPAddress}}</td></tr>{{end}}
+{{if .Location}}<tr><td width="110" valign="top">Location</td><td style="color:#1f2328;">{{.Location}} (approximate)</td></tr>{{end}}
+</table>{{end}}
+
+{{define "muted"}}<p style="font-size:13px;color:#59636e;">{{.}}</p>{{end}}

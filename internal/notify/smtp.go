@@ -10,6 +10,7 @@ import (
 	"net/smtp"
 	"net/textproto"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -50,8 +51,8 @@ type SMTPConfig struct {
 	Security Security
 	// From is the sender, "Name <address>" or just "address".
 	From string
-	// HeloName is the name we give in EHLO (default "localhost"). Some
-	// servers want a real host name.
+	// HeloName is the name we give in EHLO. Default: the domain of From
+	// (see defaultHeloName).
 	HeloName string
 	Timeout  time.Duration // whole conversation; default 30 s
 }
@@ -92,17 +93,32 @@ func NewSMTPEmailSender(cfg SMTPConfig, templates *Templates) (*SMTPEmailSender,
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = 30 * time.Second
 	}
-	if cfg.HeloName == "" {
-		cfg.HeloName = "localhost"
-	}
 	from, err := mail.ParseAddress(cfg.From)
 	if err != nil {
 		return nil, fmt.Errorf("notify: SMTP_FROM %q is not an e-mail address: %w", cfg.From, err)
+	}
+	if cfg.HeloName == "" {
+		cfg.HeloName = defaultHeloName(from.Address)
 	}
 	if templates == nil {
 		return nil, errors.New("notify: templates are required")
 	}
 	return &SMTPEmailSender{cfg: cfg, from: from, templates: templates, now: time.Now}, nil
+}
+
+// defaultHeloName is the EHLO name when SMTP_HELO_NAME is not set. RFC 5321
+// §4.1.1.1 asks for a fully qualified domain name: a server can refuse
+// "localhost" (Postfix reject_non_fqdn_helo_hostname) and spam filters read
+// it in the Received header. The domain of the sender is a real name that
+// matches the rest of the message (Message-ID, SPF/DKIM checks); "localhost"
+// stays only when the sender has no real domain (development).
+func defaultHeloName(fromAddress string) string {
+	if i := strings.LastIndexByte(fromAddress, '@'); i >= 0 {
+		if domain := fromAddress[i+1:]; strings.Contains(domain, ".") {
+			return domain
+		}
+	}
+	return "localhost"
 }
 
 // Config returns the effective configuration (defaults applied).
