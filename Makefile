@@ -62,7 +62,7 @@ ADMIN := go run ./cmd/idp-admin
 	keys-list keys-rotate keys-retire keys-rotate-saml keys-activate-saml \
 	saml-clients saml-sp saml-sp-register \
 	mfa-list mfa-reset mfa-policy \
-	users-status users-unlock settings-show alerts-on mail-test \
+	users-status users-unlock settings-show alerts-on mail-test mail-preview \
 	consent-on consent-off consents consent-revoke \
 	timeouts timeout-user timeout-group timeout-client timeout-lift \
 	test test-integration test-all coverage lint fmt vuln \
@@ -285,6 +285,10 @@ alerts-on:
 ## mail-test: Send a test e-mail with the SMTP_* settings (make mail-test to=you@example.com)
 mail-test:
 	$(IDP) mail test --to $(to)
+
+## mail-preview: Send every e-mail template with sample data, to review them (and their HTML Check score) in Mailpit (make mail-preview to=you@example.com)
+mail-preview:
+	$(IDP) mail test --to $(to) --all
 
 ## consent-on: Require the consent screen for a client (client_id or SAML entity_id)
 consent-on:

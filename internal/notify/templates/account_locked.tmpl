@@ -16,12 +16,13 @@ sign in without it. If your password is short, or used on other sites,
 choose a new long one with the link above.
 {{end}}
 
-{{define "html"}}{{template "title" "Sign-in is temporarily blocked"}}
-<p style="margin:0 0 12px 0;">Hello{{if .Username}} {{.Username}}{{end}},</p>
-<p style="margin:0 0 12px 0;">After <strong>{{.FailedAttempts}} wrong passwords</strong> in a row, sign-in to your {{.Realm}} account is blocked for {{.LockDuration}}, until {{.LockedUntil}}.</p>
-<p style="margin:0;font-size:14px;color:#59636e;">Last attempt:</p>
+{{define "html"}}{{template "badge.warning" "Security"}}
+{{template "title" "Sign-in is temporarily blocked"}}
+<p>Hello{{if .Username}} {{.Username}}{{end}},</p>
+<p>After <strong>{{.FailedAttempts}} wrong passwords</strong> in a row, sign-in to your {{.Realm}} account is blocked for {{.LockDuration}}, until <strong>{{.LockedUntil}}</strong>.</p>
+<p style="font-size:13px;line-height:20px;color:#565b70;">Last attempt</p>
 {{template "details" .}}
-<p style="margin:0 0 12px 0;"><strong>Was it you?</strong> Wait and try again, or reset your password, which also unblocks your account right away.</p>
+<p><strong>Was it you?</strong> Wait and try again, or reset your password, which also unblocks your account right away.</p>
 {{template "button" (button .ForgotPasswordURL "Reset my password")}}
-<p style="margin:0 0 12px 0;"><strong>Not you?</strong> Someone is probably trying to guess your password. They cannot sign in without it. If your password is short, or used on other sites, choose a new long one with the button above.</p>
+{{template "notyou" "Someone is probably trying to guess your password. They cannot sign in without it. If your password is short, or used on other sites, choose a new long one with the button above."}}
 {{end}}

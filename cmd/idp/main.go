@@ -108,7 +108,7 @@ func main() {
 		case "dev":
 			os.Exit(runDevCommand(os.Args[2:]))
 		default:
-			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|activate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n  idp oidc clients <create|list|rotate-secret> [flags]\n  idp saml clients <create|list|add-cert|remove-cert> [flags]\n  idp consents <set-client|list|revoke> [flags]\n  idp users <status|unlock> [flags]\n  idp timeouts <list|create|update|lift> [flags]\n  idp settings <show|set> [flags]\n  idp mail test --to <address>\n  idp dev seed [flags]\n", os.Args[1])
+			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|activate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n  idp oidc clients <create|list|rotate-secret> [flags]\n  idp saml clients <create|list|add-cert|remove-cert> [flags]\n  idp consents <set-client|list|revoke> [flags]\n  idp users <status|unlock> [flags]\n  idp timeouts <list|create|update|lift> [flags]\n  idp settings <show|set> [flags]\n  			idp mail test --to <address> [--all]\n  idp dev seed [flags]\n", os.Args[1])
 			os.Exit(2)
 		}
 	}
