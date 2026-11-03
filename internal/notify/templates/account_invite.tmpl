@@ -12,9 +12,10 @@ If you were not expecting this, you can ignore this e-mail: nobody can use
 the account until a password is chosen with this link.
 {{end}}
 
-{{define "html"}}{{template "title" "Your account is ready"}}
+{{define "html"}}{{template "badge.info" "Account"}}
+{{template "title" "Your account is ready"}}
 <p>Hello{{if .Username}} {{.Username}}{{end}},</p>
-<p>An administrator created an account for you on {{.Realm}}. To start, choose your password. The link below works once and expires in <strong>{{.ExpiresIn}}</strong>.</p>
+<p>An administrator created an account for you on <strong>{{.Realm}}</strong>. To start, choose your password. The link below works once and expires in <strong>{{.ExpiresIn}}</strong>.</p>
 {{template "button" (button .ResetURL "Choose my password")}}
 {{template "link" .ResetURL}}
 <p>If the link has expired, ask your administrator for a new one.</p>

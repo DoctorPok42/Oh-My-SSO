@@ -12,7 +12,8 @@ Next time you sign in, you may be asked to set up a second step again.
 If you did not ask for this, contact your administrator.
 {{end}}
 
-{{define "html"}}{{template "title" "Your two-step verification was reset"}}
+{{define "html"}}{{template "badge.warning" "Security"}}
+{{template "title" "Your two-step verification was reset"}}
 <p>Hello{{if .Username}} {{.Username}}{{end}},</p>
 <p>An administrator removed every second step for signing in (authenticator apps, passkeys, security keys and backup codes) from your {{.Realm}} account and signed you out everywhere.</p>
 {{template "details" .}}

@@ -14,12 +14,13 @@ session) and check the sign-in methods of your account:
 {{.ForgotPasswordURL}}
 {{end}}
 
-{{define "html"}}{{template "title" "Unusual sign-in to your account"}}
+{{define "html"}}{{template "badge.danger" "Security alert"}}
+{{template "title" "Unusual sign-in to your account"}}
 <p>Hello{{if .Username}} {{.Username}}{{end}},</p>
 <p>Someone signed in to your {{.Realm}} account, and it does not look like your usual sign-ins:</p>
 <ul>{{range .Reasons}}<li>{{.}}</li>{{end}}</ul>
 {{template "details" .}}
 <p>If this was you (a trip, a new phone...), there is nothing to do.</p>
-<p><strong>Not you?</strong> Change your password now (it signs out every session) and check the sign-in methods of your account.</p>
+{{template "notyou" "Change your password now (it signs out every session) and check the sign-in methods of your account."}}
 {{template "button" (button .ForgotPasswordURL "Change my password")}}
 {{end}}

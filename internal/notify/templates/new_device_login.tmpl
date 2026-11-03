@@ -11,11 +11,12 @@ If it was not you, change your password now (this signs out every session):
 {{.ForgotPasswordURL}}
 {{end}}
 
-{{define "html"}}{{template "title" "New sign-in to your account"}}
+{{define "html"}}{{template "badge.info" "Security"}}
+{{template "title" "New sign-in to your account"}}
 <p>Hello{{if .Username}} {{.Username}}{{end}},</p>
 <p>Your {{.Realm}} account was just used to sign in from a device we have not seen before.</p>
 {{template "details" .}}
 <p>If this was you, there is nothing to do.</p>
-<p><strong>Not you?</strong> Change your password now: it signs out every session.</p>
+{{template "notyou" "Change your password now: it signs out every session."}}
 {{template "button" (button .ForgotPasswordURL "Change my password")}}
 {{end}}

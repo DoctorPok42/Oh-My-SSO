@@ -17,7 +17,7 @@ import (
 
 
 const mailUsage = `usage:
-  idp mail test --to <address>
+  idp mail test --to <address> [--all]
 `
 
 
@@ -60,6 +60,7 @@ func runMailCommand(args []string) int {
 func mailTest(ctx context.Context, args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("mail test", flag.ContinueOnError)
 	to := fs.String("to", "", "recipient (required)")
+	all := fs.Bool("all", false, "send every e-mail template with sample data")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -70,11 +71,20 @@ func mailTest(ctx context.Context, args []string, out io.Writer) error {
 	if sender == nil {
 		return errors.New("SMTP_HOST is not set")
 	}
-	err := sender.Send(ctx, *to, notify.TemplateTest, notify.Data{
+	now := time.Now().UTC()
+	if *all {
+		for _, tmpl := range notify.AllTemplates {
+			if err := sender.Send(ctx, *to, tmpl, notify.PreviewData(tmpl, "Oh-My-SSO", now)); err != nil {
+				return fmt.Errorf("send %s e-mail: %w", tmpl, err)
+			}
+			fmt.Fprintf(out, "%s e-mail sent to %s\n", tmpl, *to)
+		}
+		return nil
+	}
+	if err := sender.Send(ctx, *to, notify.TemplateTest, notify.Data{
 		Product: "Oh-My-SSO",
-		When:    time.Now().UTC().Format("Mon 2 Jan 2006, 15:04 UTC"),
-	})
-	if err != nil {
+		When:    now.Format("Mon 2 Jan 2006, 15:04 UTC"),
+	}); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "test e-mail sent to %s\n", *to)

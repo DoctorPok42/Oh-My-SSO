@@ -1,19 +1,25 @@
 {{/*
-  HTML layout of every e-mail. E-mail clients are not browsers: no external
-  CSS, no JavaScript, styles inline, layout with tables (Outlook for Windows
-  still renders HTML with Word). https://www.caniemail.com/ tells what works
-  where; Mailpit's "HTML Check" tab scores an e-mail with the same data
-  (`idp mail test --all` sends every template there).
+  HTML layout of every e-mail, styled with the OMSSO design system (light
+  palette: page #f4f5fa, surface #ffffff, border #e2e5ee, text #13151f /
+  #565b70, accent #3557d6; IBM Plex Sans with system fallbacks).
+
+  E-mail clients are not browsers: no external CSS, no JavaScript, styles
+  inline, layout with tables (Outlook for Windows still renders HTML with
+  Word). https://www.caniemail.com/ tells what works where; Mailpit's "HTML
+  Check" tab scores an e-mail with the same data (idp mail test --all sends
+  every template there).
 
   The rules that keep every client, and that score, happy:
   - Colors, widths and alignment are HTML attributes (bgcolor, width, align,
     cellpadding): every client supports them, unlike their CSS versions.
-  - padding only on <td>: Outlook for Windows ignores it anywhere else. A
-    button is therefore a table cell with a link inside, not a styled <a>.
+  - padding only on td: Outlook for Windows ignores it anywhere else. A
+    button, a badge or a callout is therefore a table cell, not a styled tag.
   - Paragraphs keep the default margins of the client (1em above and below):
     no margin to override, nothing for a client to drop.
-  - No display, no shorthand background, no font-weight (use <strong>), no
-    margin:auto, no CSS on <body>: they are partly or not supported.
+  - No display, no shorthand background, no font-weight (use strong), no
+    margin:auto, no CSS on body: they are partly or not supported.
+  - Web fonts are not loaded: IBM Plex Sans is used where it is installed,
+    the system font everywhere else.
   - Outlook for Windows ignores max-width: a 560px table only it can see
     (conditional comments, written by the outlook* functions because
     html/template removes HTML comments) keeps the column narrow there.
@@ -30,16 +36,24 @@
 <title>{{.Subject}}</title>
 {{outlookHead}}
 </head>
-<body bgcolor="#f4f5f7">
-<table role="presentation" width="100%" bgcolor="#f4f5f7" cellpadding="0" cellspacing="0">
-<tr><td align="center" style="padding:32px 16px;">
+<body bgcolor="#f4f5fa">
+<table role="presentation" width="100%" bgcolor="#f4f5fa" cellpadding="0" cellspacing="0">
+<tr><td align="center" style="padding:40px 16px;">
 {{outlookColumnStart}}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
-<tr><td align="left" bgcolor="#ffffff" style="padding:16px 32px;border:1px solid #e4e6ea;border-radius:8px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;mso-line-height-rule:exactly;color:#1f2328;">
-{{if .Realm}}<p style="font-size:13px;color:#59636e;">{{.Realm}}</p>
-{{end}}{{template "html" .}}
+<tr><td align="left" style="padding:0 4px 16px 4px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td width="28" height="28" align="center" valign="middle" bgcolor="#3557d6" style="border-radius:7px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:28px;mso-line-height-rule:exactly;color:#ffffff;"><strong>O</strong></td>
+<td align="left" valign="middle" style="padding:0 0 0 10px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;mso-line-height-rule:exactly;color:#13151f;"><strong>{{.Product}}</strong></td>
+{{if .Realm}}<td align="right" valign="middle" style="font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;mso-line-height-rule:exactly;color:#565b70;">{{.Realm}}</td>
+{{end}}</tr>
+</table>
 </td></tr>
-<tr><td align="left" style="font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;mso-line-height-rule:exactly;color:#636c76;">
+<tr><td align="left" bgcolor="#ffffff" style="padding:8px 32px 20px 32px;border:1px solid #e2e5ee;border-radius:12px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;mso-line-height-rule:exactly;color:#13151f;">
+{{template "html" .}}
+</td></tr>
+<tr><td align="left" style="padding:8px 4px 0 4px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;mso-line-height-rule:exactly;color:#565b70;">
 <p>This is an automatic message from {{.Product}} about your account{{if .Username}} <strong>{{.Username}}</strong>{{end}}. Replies are not read.</p>
 </td></tr>
 </table>
@@ -50,7 +64,21 @@
 </html>
 {{end}}
 
-{{define "title"}}<h1 style="font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:20px;color:#1f2328;">{{.}}</h1>{{end}}
+{{/* Category of the e-mail, above the title. One template per tone, the argument is the label. */}}
+{{define "badge.info"}}<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0 0 0;">
+<tr><td bgcolor="#eaeefc" style="padding:3px 10px;border-radius:999px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;mso-line-height-rule:exactly;color:#2c47b8;"><strong>{{.}}</strong></td></tr>
+</table>{{end}}
+{{define "badge.success"}}<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0 0 0;">
+<tr><td bgcolor="#e5f6ea" style="padding:3px 10px;border-radius:999px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;mso-line-height-rule:exactly;color:#15803d;"><strong>{{.}}</strong></td></tr>
+</table>{{end}}
+{{define "badge.warning"}}<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0 0 0;">
+<tr><td bgcolor="#fdf1df" style="padding:3px 10px;border-radius:999px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;mso-line-height-rule:exactly;color:#b45309;"><strong>{{.}}</strong></td></tr>
+</table>{{end}}
+{{define "badge.danger"}}<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0 0 0;">
+<tr><td bgcolor="#fce8e8" style="padding:3px 10px;border-radius:999px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;mso-line-height-rule:exactly;color:#b91c1c;"><strong>{{.}}</strong></td></tr>
+</table>{{end}}
+
+{{define "title"}}<h1 style="font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:22px;line-height:30px;mso-line-height-rule:exactly;color:#13151f;">{{.}}</h1>{{end}}
 
 {{/*
   The margin gives the button room even when it ends the e-mail. The link
@@ -58,18 +86,28 @@
   HTML_FONT_LOW_CONTRAST) do not see a cell's bgcolor and would read white
   text on the white card.
 */}}
-{{define "button"}}<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;">
-<tr><td align="center" bgcolor="#1f6feb" style="padding:12px 22px;border-radius:6px;"><a href="{{.URL}}" target="_blank" style="font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:15px;color:#ffffff;background-color:#1f6feb;text-decoration:none;"><strong>{{.Label}}</strong></a></td></tr>
+{{define "button"}}<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+<tr><td align="center" bgcolor="#3557d6" style="padding:12px 22px;border-radius:8px;"><a href="{{.URL}}" target="_blank" style="font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;color:#ffffff;background-color:#3557d6;text-decoration:none;"><strong>{{.Label}}</strong></a></td></tr>
 </table>{{end}}
 
 {{/* A long link without spaces would widen the table on a phone: break-all lets it wrap. */}}
-{{define "link"}}<p style="font-size:13px;color:#59636e;">Button not working? Copy this address into your browser:<br><a href="{{.}}" target="_blank" style="color:#1f6feb;word-break:break-all;">{{.}}</a></p>{{end}}
+{{define "link"}}<p style="font-size:13px;line-height:20px;color:#565b70;">Button not working? Copy this address into your browser:<br><a href="{{.}}" target="_blank" style="font-family:'IBM Plex Mono',SFMono-Regular,Consolas,Menlo,monospace;font-size:12px;color:#3557d6;word-break:break-all;">{{.}}</a></p>{{end}}
 
-{{define "details"}}<table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14px;color:#59636e;">
-{{if .When}}<tr><td width="110" valign="top">When</td><td style="color:#1f2328;">{{.When}}</td></tr>{{end}}
-{{if .Device}}<tr><td width="110" valign="top">Device</td><td style="color:#1f2328;">{{.Device}}</td></tr>{{end}}
-{{if .IPAddress}}<tr><td width="110" valign="top">IP address</td><td style="color:#1f2328;">{{.IPAddress}}</td></tr>{{end}}
-{{if .Location}}<tr><td width="110" valign="top">Location</td><td style="color:#1f2328;">{{.Location}} (approximate)</td></tr>{{end}}
+{{/* Where and when: a soft panel, labels in secondary text, values in primary text. */}}
+{{define "details"}}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">
+<tr><td bgcolor="#fafbfd" style="padding:10px 16px;border:1px solid #e2e5ee;border-radius:8px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;mso-line-height-rule:exactly;color:#565b70;">
+{{if .When}}<tr><td width="110" valign="top" style="padding:4px 0;">When</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.When}}</td></tr>{{end}}
+{{if .Device}}<tr><td width="110" valign="top" style="padding:4px 0;">Device</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.Device}}</td></tr>{{end}}
+{{if .IPAddress}}<tr><td width="110" valign="top" style="padding:4px 0;">IP address</td><td valign="top" style="padding:4px 0;font-family:'IBM Plex Mono',SFMono-Regular,Consolas,Menlo,monospace;font-size:13px;color:#13151f;">{{.IPAddress}}</td></tr>{{end}}
+{{if .Location}}<tr><td width="110" valign="top" style="padding:4px 0;">Location</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.Location}} <span style="color:#565b70;">(approximate)</span></td></tr>{{end}}
+</table>
+</td></tr>
 </table>{{end}}
 
-{{define "muted"}}<p style="font-size:13px;color:#59636e;">{{.}}</p>{{end}}
+{{/* "Not you?" advice: a warning callout. The argument is the sentence after "Not you?". */}}
+{{define "notyou"}}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0 0;">
+<tr><td bgcolor="#fdf1df" style="padding:12px 16px;border-radius:8px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;mso-line-height-rule:exactly;color:#13151f;"><strong>Not you?</strong> {{.}}</td></tr>
+</table>{{end}}
+
+{{define "muted"}}<p style="font-size:13px;line-height:20px;color:#565b70;">{{.}}</p>{{end}}

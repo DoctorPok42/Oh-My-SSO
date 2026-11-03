@@ -14,13 +14,14 @@ to remove this application's access.
 {{.ForgotPasswordURL}}
 {{end}}
 
-{{define "html"}}{{if .AppAccessAdded}}{{template "title" (printf "%s can now access more of your account" .AppName)}}{{else}}{{template "title" (printf "%s can now access your account" .AppName)}}{{end}}
+{{define "html"}}{{template "badge.info" "Applications"}}
+{{if .AppAccessAdded}}{{template "title" (printf "%s can now access more of your account" .AppName)}}{{else}}{{template "title" (printf "%s can now access your account" .AppName)}}{{end}}
 <p>Hello{{if .Username}} {{.Username}}{{end}},</p>
 {{if .AppAccessAdded}}<p>You allowed the application <strong>{{.AppName}}</strong> to receive more information from your {{.Realm}} account:</p>
 {{else}}<p>You allowed the application <strong>{{.AppName}}</strong> to use your {{.Realm}} account. It receives who you are{{if .AppAccess}}, and:{{else}}.{{end}}</p>
 {{end}}{{if .AppAccess}}<ul>{{range .AppAccess}}<li>{{.}}</li>{{end}}</ul>{{end}}
 {{template "details" .}}
 <p>If this was you, there is nothing to do.</p>
-<p><strong>Not you?</strong> Someone else is using your account: change your password now (it signs out every session) and ask your administrator to remove this application's access.</p>
+{{template "notyou" "Someone else is using your account: change your password now (it signs out every session) and ask your administrator to remove this application's access."}}
 {{template "button" (button .ForgotPasswordURL "Change my password")}}
 {{end}}
