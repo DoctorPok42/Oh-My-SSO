@@ -20,6 +20,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Segmented } from "@/components/ui/segmented";
 import { TogglePill } from "@/components/ui/toggle-pill";
+import { useT } from "@/i18n/client";
 import { clientBody, draftFromClient, emptyDraft, type ClientDraft } from "@/lib/client-form";
 import { formatDate } from "@/lib/format";
 import { MFA_METHOD_LABELS, NAME_ID_FORMATS, STANDARD_SCOPES } from "@/lib/labels";
@@ -38,10 +39,11 @@ type Secret = { title: string; items: { label: string; value: string }[] } | nul
 export function NewClientButton() {
   const { openNew } = useDrawerUrl();
   const stepUp = useStepUp();
+  const { t } = useT();
   return (
     <Button onClick={() => stepUp.ensure(openNew, "new=1")}>
       <Plus />
-      New client
+      {t("clients.new", "New client")}
     </Button>
   );
 }
@@ -56,23 +58,22 @@ export function ClientRowActions({
   writable: boolean;
 }>) {
   const { openEdit } = useDrawerUrl();
+  const { t } = useT();
   return (
     <div className="flex justify-end gap-2">
       <Button variant="secondary" size="xs" onClick={() => openEdit(client.id)}>
-        {writable && client.managed_by !== "config" ? "Edit" : "View"}
+        {writable && client.managed_by !== "config" ? t("common.edit", "Edit") : t("common.view", "View")}
       </Button>
       {writable && client.managed_by !== "config" && (
         <ConfirmAction
-          trigger="Delete"
-          title={`Delete ${client.name}?`}
-          description={
-            <>
-              Users can no longer sign in to this application, and every token it holds is revoked. This cannot be
-              undone.
-            </>
-          }
-          confirmLabel="Delete client"
-          success="Client deleted"
+          trigger={t("common.delete", "Delete")}
+          title={t("clients.delete.title", "Delete {name}?", { name: client.name })}
+          description={t(
+            "clients.delete.text",
+            "Users can no longer sign in to this application, and every token it holds is revoked. This cannot be undone.",
+          )}
+          confirmLabel={t("clients.delete.confirm", "Delete client")}
+          success={t("clients.delete.done", "Client deleted")}
           action={() => deleteClient(realm, client.id)}
         />
       )}
@@ -106,6 +107,7 @@ export function ClientDrawer({
 }>) {
   const { close, openEdit } = useDrawerUrl();
   const { run, pending } = useAction();
+  const { t, tm, locale } = useT();
   const [draft, setDraft] = useState<ClientDraft>(() => (client ? draftFromClient(client) : emptyDraft()));
   const [secret, setSecret] = useState<Secret>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -134,10 +136,10 @@ export function ClientDrawer({
       if (!r.ok) return setFieldError({ field: r.field, message: r.message });
       if (r.data.secret) {
         setSecret({
-          title: `${r.data.client.name} is ready`,
+          title: t("clients.ready", "{name} is ready", { name: r.data.client.name }),
           items: [
-            { label: "Client ID", value: r.data.client.client_id ?? "" },
-            { label: "Client secret", value: r.data.secret },
+            { label: t("clients.field.client_id", "Client ID"), value: r.data.client.client_id ?? "" },
+            { label: t("clients.field.secret", "Client secret"), value: r.data.secret },
           ],
         });
       }
@@ -147,7 +149,7 @@ export function ClientDrawer({
     if (!client) return;
     const r = await run(() => updateClient(realm, client.id, clientBody(draft, "update")), {
       quiet: true,
-      success: "Client saved",
+      success: t("clients.saved", "Client saved"),
       intent,
     });
     if (!r.ok) setFieldError({ field: r.field, message: r.message });
@@ -161,25 +163,31 @@ export function ClientDrawer({
         open={mode !== null}
         onClose={close}
         width="lg"
-        title={mode === "create" ? "New client" : (client?.name ?? "Client")}
+        title={mode === "create" ? t("clients.new", "New client") : (client?.name ?? t("clients.client", "Client"))}
         description={
           mode === "create"
-            ? "An application that signs its users in with this realm."
+            ? t("clients.new_description", "An application that signs its users in with this realm.")
             : client && (
                 <span className="flex flex-wrap items-center gap-2">
                   <StatusBadge status={client.status} />
-                  {managed && <Badge tone="neutral">Managed by config</Badge>}
-                  <span>Created {formatDate(client.created_at)}</span>
+                  {managed && <Badge tone="neutral">{t("status.managed_by_config", "Managed by config")}</Badge>}
+                  <span>
+                    {t("common.created_on", "Created {date}", { date: formatDate(client.created_at, locale) })}
+                  </span>
                 </span>
               )
         }
         footer={
           <>
             <Button onClick={save} loading={pending} disabled={locked || pending}>
-              {pending ? "Saving…" : mode === "create" ? "Create client" : "Save"}
+              {pending
+                ? t("common.saving", "Saving…")
+                : mode === "create"
+                  ? t("clients.create", "Create client")
+                  : t("common.save", "Save")}
             </Button>
             <Button variant="secondary" onClick={close}>
-              Cancel
+              {t("common.cancel", "Cancel")}
             </Button>
             {mode === "edit" && client && canSuspend && client.client_id !== "sso-admin" && (
               <SuspendLink className="ml-auto" realm={realm} type="client" id={client.id} name={client.name} />
@@ -191,14 +199,14 @@ export function ClientDrawer({
         {fieldError && !fieldError.field && <Banner tone="danger">{fieldError.message}</Banner>}
 
         <fieldset disabled={locked} className="space-y-5">
-          <Field label="Name" htmlFor="c-name" error={err("name")}>
+          <Field label={t("clients.field.name", "Name")} htmlFor="c-name" error={err("name")}>
             <Input id="c-name" value={draft.name} onChange={(e) => set("name", e.target.value)} placeholder="Payroll" />
           </Field>
 
           <div className="flex flex-wrap items-end justify-between gap-4">
-            <Field label="Protocol">
+            <Field label={t("clients.field.protocol", "Protocol")}>
               <Segmented
-                label="Protocol"
+                label={t("clients.field.protocol", "Protocol")}
                 value={draft.protocol}
                 disabled={mode !== "create" || locked}
                 onChange={(p) => setDraft((d) => ({ ...d, protocol: p, scopes: [] }))}
@@ -208,13 +216,13 @@ export function ClientDrawer({
                 ]}
               />
             </Field>
-            <Field label="Status">
+            <Field label={t("clients.field.status", "Status")}>
               <TogglePill
                 checked={draft.active}
                 onCheckedChange={locked ? undefined : (v) => set("active", v)}
-                onLabel="Active"
-                offLabel="Disabled"
-                label="Active"
+                onLabel={t("status.active", "Active")}
+                offLabel={t("status.disabled", "Disabled")}
+                label={t("status.active", "Active")}
               />
             </Field>
           </div>
@@ -226,11 +234,16 @@ export function ClientDrawer({
           )}
 
           <Field
-            label="Client scopes"
-            hint="Extra claim sets this client receives. Required: always granted; optional: only when asked for."
+            label={t("clients.field.scopes", "Client scopes")}
+            hint={t(
+              "clients.field.scopes_hint",
+              "Extra claim sets this client receives. Required: always granted; optional: only when asked for.",
+            )}
           >
             {scopeChoices.length === 0 ? (
-              <p className="text-[13px] text-text-muted">No client scope for this protocol yet.</p>
+              <p className="text-[13px] text-text-muted">
+                {t("clients.no_scope", "No client scope for this protocol yet.")}
+              </p>
             ) : (
               <div className="divide-y divide-border rounded-lg border border-border">
                 {scopeChoices.map((s) => {
@@ -253,9 +266,9 @@ export function ClientDrawer({
                       {chosen && (
                         <TogglePill
                           checked={chosen.required}
-                          onLabel="Required"
-                          offLabel="Optional"
-                          label={`${s.name} required`}
+                          onLabel={t("clients.scope.required", "Required")}
+                          offLabel={t("clients.scope.optional", "Optional")}
+                          label={t("clients.scope.required_label", "{name} required", { name: s.name })}
                           onCheckedChange={
                             locked
                               ? undefined
@@ -275,54 +288,74 @@ export function ClientDrawer({
           </Field>
 
           <div className="space-y-4 rounded-lg border border-border p-4">
-            <p className="text-[13px] font-semibold">Access</p>
+            <p className="text-[13px] font-semibold">{t("clients.access.title", "Access")}</p>
             {!canReadAccess && (
-              <p className="text-[12px] text-text-muted">Roles and groups are hidden: you may not read them.</p>
+              <p className="text-[12px] text-text-muted">
+                {t("clients.access.hidden", "Roles and groups are hidden: you may not read them.")}
+              </p>
             )}
-            <Field label="Allowed roles" hint="None selected: every role may sign in.">
+            <Field
+              label={t("clients.access.roles", "Allowed roles")}
+              hint={t("clients.access.roles_hint", "None selected: every role may sign in.")}
+            >
               <ChipSelect
-                label="Allowed roles"
+                label={t("clients.access.roles", "Allowed roles")}
                 options={roles}
                 value={draft.roleIds}
                 onChange={(v) => set("roleIds", v)}
                 disabled={locked}
-                empty="No role in this realm."
+                empty={t("clients.access.no_role", "No role in this realm.")}
               />
             </Field>
-            <Field label="Allowed groups" hint="None selected: every group may sign in.">
+            <Field
+              label={t("clients.access.groups", "Allowed groups")}
+              hint={t("clients.access.groups_hint", "None selected: every group may sign in.")}
+            >
               <ChipSelect
-                label="Allowed groups"
+                label={t("clients.access.groups", "Allowed groups")}
                 options={groups}
                 value={draft.groupIds}
                 onChange={(v) => set("groupIds", v)}
                 disabled={locked}
-                empty="No group in this realm."
+                empty={t("clients.access.no_group", "No group in this realm.")}
               />
             </Field>
             <CheckboxField
               id="c-consent"
-              label="Show the consent screen"
-              hint="Users approve what this application receives the first time (and when it asks for more)."
+              label={t("clients.consent", "Show the consent screen")}
+              hint={t(
+                "clients.consent_hint",
+                "Users approve what this application receives the first time (and when it asks for more).",
+              )}
               checked={draft.requireConsent}
               onCheckedChange={(v) => set("requireConsent", v === true)}
             />
           </div>
 
           <div className="space-y-4 rounded-lg border border-border p-4">
-            <p className="text-[13px] font-semibold">Multi-factor authentication</p>
-            <Field label="Policy" hint="The strictest of the realm, client and role policies applies.">
+            <p className="text-[13px] font-semibold">{t("clients.mfa.title", "Multi-factor authentication")}</p>
+            <Field
+              label={t("clients.mfa.policy", "Policy")}
+              hint={t("clients.mfa.policy_hint", "The strictest of the realm, client and role policies applies.")}
+            >
               <NativeSelect
                 value={draft.mfaPolicy}
                 onChange={(e) => set("mfaPolicy", e.target.value as ClientDraft["mfaPolicy"])}
               >
-                <option value="inherit">Inherit (realm and role policies)</option>
-                <option value="required">Always require a second factor</option>
+                <option value="inherit">{t("clients.mfa.inherit", "Inherit (realm and role policies)")}</option>
+                <option value="required">{t("clients.mfa.required", "Always require a second factor")}</option>
               </NativeSelect>
             </Field>
-            <Field label="Accepted methods" hint="None selected: any enrolled method.">
+            <Field
+              label={t("clients.mfa.methods", "Accepted methods")}
+              hint={t("clients.mfa.methods_hint", "None selected: any enrolled method.")}
+            >
               <ChipSelect
-                label="Accepted MFA methods"
-                options={mfaMethods.map((m) => ({ id: m, name: MFA_METHOD_LABELS[m] ?? m }))}
+                label={t("clients.mfa.methods_label", "Accepted MFA methods")}
+                options={mfaMethods.map((id) => {
+                  const label = MFA_METHOD_LABELS[id];
+                  return { id, name: label ? tm(label) : id };
+                })}
                 value={draft.mfaMethods}
                 onChange={(v) => set("mfaMethods", v)}
                 disabled={locked}
@@ -339,7 +372,7 @@ export function ClientDrawer({
             aria-expanded={showAdvanced}
           >
             <ChevronDown className={showAdvanced ? "size-4 rotate-180" : "size-4"} />
-            Advanced SAML settings
+            {t("clients.saml.advanced", "Advanced SAML settings")}
           </button>
         )}
         {!isOidc && showAdvanced && (
@@ -355,10 +388,10 @@ export function ClientDrawer({
             locked={locked}
             onSecret={(value) =>
               setSecret({
-                title: "New client secret",
+                title: t("clients.secret.new", "New client secret"),
                 items: [
-                  { label: "Client ID", value: client.client_id ?? "" },
-                  { label: "Client secret", value },
+                  { label: t("clients.field.client_id", "Client ID"), value: client.client_id ?? "" },
+                  { label: t("clients.field.secret", "Client secret"), value },
                 ],
               })
             }
@@ -369,7 +402,7 @@ export function ClientDrawer({
       <SecretOnceDialog
         open={!!secret}
         title={secret?.title ?? ""}
-        description="Configure the application with these values."
+        description={t("clients.secret.configure", "Configure the application with these values.")}
         items={secret?.items ?? []}
         onDone={() => setSecret(null)}
       />
@@ -392,13 +425,16 @@ function OidcFields({
   client: Client | null;
   err: (f: string) => string | undefined;
 }>) {
+  const { t } = useT();
   return (
     <>
       <Field
-        label="Client ID"
+        label={t("clients.field.client_id", "Client ID")}
         htmlFor="c-client-id"
         optional={mode === "create"}
-        hint={mode === "create" ? "Leave empty to derive it from the name." : undefined}
+        hint={
+          mode === "create" ? t("clients.field.client_id_hint", "Leave empty to derive it from the name.") : undefined
+        }
         error={err("client_id")}
       >
         {mode === "create" ? (
@@ -414,28 +450,31 @@ function OidcFields({
         )}
       </Field>
 
-      <Field label="Client type">
+      <Field label={t("clients.field.type", "Client type")}>
         <Segmented
-          label="Client type"
+          label={t("clients.field.type", "Client type")}
           value={draft.isPublic ? "public" : "confidential"}
           disabled={mode !== "create"}
           onChange={(v) => set("isPublic", v === "public")}
           options={[
-            { value: "confidential", label: "Confidential (server)" },
-            { value: "public", label: "Public (SPA, mobile)" },
+            { value: "confidential", label: t("clients.type.confidential", "Confidential (server)") },
+            { value: "public", label: t("clients.type.public", "Public (SPA, mobile)") },
           ]}
         />
         <p className="mt-1.5 text-[12px] text-text-muted">
           {draft.isPublic
-            ? "No secret: a browser or phone app cannot keep one. PKCE is mandatory."
-            : "Has a secret, kept on the application's server."}
+            ? t("clients.type.public_hint", "No secret: a browser or phone app cannot keep one. PKCE is mandatory.")
+            : t("clients.type.confidential_hint", "Has a secret, kept on the application's server.")}
         </p>
       </Field>
 
       <Field
-        label="Redirect URIs"
+        label={t("clients.field.redirect_uris", "Redirect URIs")}
         htmlFor="c-redirect"
-        hint="One per line, exact match (no wildcard). https, or http on localhost."
+        hint={t(
+          "clients.field.redirect_uris_hint",
+          "One per line, exact match (no wildcard). https, or http on localhost.",
+        )}
         error={err("redirect_uris")}
       >
         <Textarea
@@ -448,10 +487,10 @@ function OidcFields({
         />
       </Field>
       <Field
-        label="Post-logout redirect URIs"
+        label={t("clients.field.logout_uris", "Post-logout redirect URIs")}
         htmlFor="c-logout"
         optional
-        hint="Where users may land after signing out (one per line)."
+        hint={t("clients.field.logout_uris_hint", "Where users may land after signing out (one per line).")}
         error={err("post_logout_redirect_uris")}
       >
         <Textarea
@@ -463,9 +502,15 @@ function OidcFields({
         />
       </Field>
 
-      <Field label="Standard scopes" hint="openid is always on: it makes the request an OpenID Connect one.">
+      <Field
+        label={t("clients.field.standard_scopes", "Standard scopes")}
+        hint={t(
+          "clients.field.standard_scopes_hint",
+          "openid is always on: it makes the request an OpenID Connect one.",
+        )}
+      >
         <ChipSelect
-          label="Standard scopes"
+          label={t("clients.field.standard_scopes", "Standard scopes")}
           options={STANDARD_SCOPES.map((s) => ({ id: s, name: s }))}
           value={draft.standardScopes}
           onChange={(v) => set("standardScopes", v.includes("openid") ? v : ["openid", ...v])}
@@ -474,7 +519,7 @@ function OidcFields({
 
       {!draft.isPublic && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Token endpoint auth method" htmlFor="c-auth">
+          <Field label={t("clients.field.auth_method", "Token endpoint auth method")} htmlFor="c-auth">
             <NativeSelect id="c-auth" value={draft.authMethod} onChange={(e) => set("authMethod", e.target.value)}>
               <option value="client_secret_basic">client_secret_basic</option>
               <option value="client_secret_post">client_secret_post</option>
@@ -483,7 +528,7 @@ function OidcFields({
           <div className="flex items-end pb-2.5">
             <CheckboxField
               id="c-pkce"
-              label="Require PKCE"
+              label={t("clients.field.pkce", "Require PKCE")}
               checked={draft.requirePkce}
               onCheckedChange={(v) => set("requirePkce", v === true)}
             />
@@ -492,7 +537,12 @@ function OidcFields({
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Access token (min)" htmlFor="c-at" hint="Empty: default" error={err("access_token_ttl")}>
+        <Field
+          label={t("clients.field.access_ttl", "Access token (min)")}
+          htmlFor="c-at"
+          hint={t("clients.field.ttl_hint", "Empty: default")}
+          error={err("access_token_ttl")}
+        >
           <Input
             id="c-at"
             inputMode="decimal"
@@ -500,7 +550,12 @@ function OidcFields({
             onChange={(e) => set("accessTtlMinutes", e.target.value)}
           />
         </Field>
-        <Field label="ID token (min)" htmlFor="c-it" hint="Empty: default" error={err("id_token_ttl")}>
+        <Field
+          label={t("clients.field.id_ttl", "ID token (min)")}
+          htmlFor="c-it"
+          hint={t("clients.field.ttl_hint", "Empty: default")}
+          error={err("id_token_ttl")}
+        >
           <Input
             id="c-it"
             inputMode="decimal"
@@ -508,7 +563,12 @@ function OidcFields({
             onChange={(e) => set("idTtlMinutes", e.target.value)}
           />
         </Field>
-        <Field label="Refresh token (days)" htmlFor="c-rt" hint="Empty: default" error={err("refresh_token_ttl")}>
+        <Field
+          label={t("clients.field.refresh_ttl", "Refresh token (days)")}
+          htmlFor="c-rt"
+          hint={t("clients.field.ttl_hint", "Empty: default")}
+          error={err("refresh_token_ttl")}
+        >
           <Input
             id="c-rt"
             inputMode="decimal"
@@ -532,12 +592,13 @@ function SamlFields({
   mode: "create" | "edit" | null;
   err: (f: string) => string | undefined;
 }>) {
+  const { t, tm } = useT();
   return (
     <>
       <Field
-        label="Entity ID"
+        label={t("clients.field.entity_id", "Entity ID")}
         htmlFor="c-entity"
-        hint="The service provider's identifier, from its metadata."
+        hint={t("clients.field.entity_id_hint", "The service provider's identifier, from its metadata.")}
         error={err("entity_id")}
       >
         <Input
@@ -549,9 +610,9 @@ function SamlFields({
         />
       </Field>
       <Field
-        label="ACS URL"
+        label={t("clients.field.acs", "ACS URL")}
         htmlFor="c-acs"
-        hint="Assertion Consumer Service: where the IdP posts the response."
+        hint={t("clients.field.acs_hint", "Assertion Consumer Service: where the IdP posts the response.")}
         error={err("acs_url")}
       >
         <Input
@@ -562,11 +623,11 @@ function SamlFields({
           placeholder="https://sp.example.com/saml/acs"
         />
       </Field>
-      <Field label="NameID format" htmlFor="c-nameid" error={err("name_id_format")}>
+      <Field label={t("clients.field.nameid", "NameID format")} htmlFor="c-nameid" error={err("name_id_format")}>
         <NativeSelect id="c-nameid" value={draft.nameIdFormat} onChange={(e) => set("nameIdFormat", e.target.value)}>
           {NAME_ID_FORMATS.map((f) => (
             <option key={f.value} value={f.value}>
-              {f.label}
+              {tm(f.label)}
             </option>
           ))}
         </NativeSelect>
@@ -575,16 +636,22 @@ function SamlFields({
         <>
           <CheckboxField
             id="c-pairwise"
-            label="Pairwise identifier"
-            hint="This service provider gets its own persistent NameID per user: it cannot be matched with other providers."
+            label={t("clients.field.pairwise", "Pairwise identifier")}
+            hint={t(
+              "clients.field.pairwise_hint",
+              "This service provider gets its own persistent NameID per user: it cannot be matched with other providers.",
+            )}
             checked={draft.pairwise}
             onCheckedChange={(v) => set("pairwise", v === true)}
           />
           <Field
-            label="Signing certificate (PEM)"
+            label={t("clients.field.certificate", "Signing certificate (PEM)")}
             htmlFor="c-cert"
             optional
-            hint="The service provider's certificate, to verify its signed requests. More can be added later (rotation)."
+            hint={t(
+              "clients.field.certificate_hint",
+              "The service provider's certificate, to verify its signed requests. More can be added later (rotation).",
+            )}
             error={err("certificates")}
           >
             <Textarea
@@ -603,9 +670,15 @@ function SamlFields({
 }
 
 function SamlAdvanced({ draft, set }: Readonly<{ draft: ClientDraft; set: SetFn }>) {
+  const { t } = useT();
   return (
     <div className="space-y-4 rounded-lg border border-border p-4">
-      <Field label="SLO URL" htmlFor="c-slo" optional hint="Single Logout endpoint of the service provider.">
+      <Field
+        label={t("clients.saml.slo", "SLO URL")}
+        htmlFor="c-slo"
+        optional
+        hint={t("clients.saml.slo_hint", "Single Logout endpoint of the service provider.")}
+      >
         <Input
           id="c-slo"
           className="font-mono text-[13px]"
@@ -613,21 +686,27 @@ function SamlAdvanced({ draft, set }: Readonly<{ draft: ClientDraft; set: SetFn 
           onChange={(e) => set("sloUrl", e.target.value)}
         />
       </Field>
-      <Field label="Default RelayState" htmlFor="c-relay" optional>
+      <Field label={t("clients.saml.relay_state", "Default RelayState")} htmlFor="c-relay" optional>
         <Input id="c-relay" value={draft.relayState} onChange={(e) => set("relayState", e.target.value)} />
       </Field>
       <div className="flex flex-wrap gap-6 text-[13px]">
         <span className="flex items-center gap-2">
-          Assertion signed <TogglePill checked onLabel="Always" offLabel="No" label="Assertion signed" />
+          {t("clients.saml.assertion_signed", "Assertion signed")}{" "}
+          <TogglePill
+            checked
+            onLabel={t("clients.saml.always", "Always")}
+            offLabel={t("common.no", "No")}
+            label={t("clients.saml.assertion_signed", "Assertion signed")}
+          />
         </span>
         <span className="flex items-center gap-2">
-          Response signed
+          {t("clients.saml.response_signed", "Response signed")}
           <TogglePill
             checked={draft.wantResponseSigned}
             onCheckedChange={(v) => set("wantResponseSigned", v)}
-            onLabel="Yes"
-            offLabel="No"
-            label="Response signed"
+            onLabel={t("common.yes", "Yes")}
+            offLabel={t("common.no", "No")}
+            label={t("clients.saml.response_signed", "Response signed")}
           />
         </span>
       </div>
@@ -648,6 +727,7 @@ function EditOnlySections({
   onSecret: (secret: string) => void;
 }>) {
   const { run, pending } = useAction();
+  const { t, locale } = useT();
   const [pem, setPem] = useState("");
   const [notBefore, setNotBefore] = useState("");
   const [notAfter, setNotAfter] = useState("");
@@ -657,8 +737,11 @@ function EditOnlySections({
     <div className="space-y-5 border-t border-border pt-5">
       {client.oidc?.client_type === "confidential" && (
         <Field
-          label="Client secret"
-          hint="Stored hashed: it cannot be shown again. Regenerate it if it was lost or leaked."
+          label={t("clients.field.secret", "Client secret")}
+          hint={t(
+            "clients.secret.hint",
+            "Stored hashed: it cannot be shown again. Regenerate it if it was lost or leaked.",
+          )}
         >
           <div className="flex items-center gap-3">
             <code className="flex-1 rounded-sm border border-border bg-surface-alt px-3 py-2 font-mono text-[13px] text-text-muted">
@@ -668,15 +751,18 @@ function EditOnlySections({
               trigger={
                 <>
                   <RefreshCw className="size-3.5" />
-                  Regenerate
+                  {t("clients.secret.regenerate", "Regenerate")}
                 </>
               }
               size="sm"
               variant="secondary"
               disabled={locked}
-              title="Regenerate the client secret?"
-              description="The current secret stops working at once: the application fails until it is configured with the new one."
-              confirmLabel="Regenerate secret"
+              title={t("clients.secret.regenerate_title", "Regenerate the client secret?")}
+              description={t(
+                "clients.secret.regenerate_text",
+                "The current secret stops working at once: the application fails until it is configured with the new one.",
+              )}
+              confirmLabel={t("clients.secret.regenerate_confirm", "Regenerate secret")}
               action={() => rotateClientSecret(realm, client.id)}
               onDone={(d) => onSecret(d.secret)}
             />
@@ -687,18 +773,18 @@ function EditOnlySections({
       {client.saml && (
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-[13px] font-semibold text-text-secondary">Certificates</p>
+            <p className="text-[13px] font-semibold text-text-secondary">{t("clients.certs.title", "Certificates")}</p>
             {!locked && !adding && (
               <Button size="xs" variant="secondary" onClick={() => setAdding(true)}>
                 <Plus className="size-3.5" />
-                Add (rotate)
+                {t("clients.certs.add_rotate", "Add (rotate)")}
               </Button>
             )}
           </div>
           <div className="space-y-2">
             {client.saml.certificates.length === 0 && (
               <p className="text-[13px] text-text-muted">
-                No certificate: signed requests from this provider are refused.
+                {t("clients.certs.none", "No certificate: signed requests from this provider are refused.")}
               </p>
             )}
             {client.saml.certificates.map((c) => (
@@ -712,16 +798,19 @@ function EditOnlySections({
                 <p className="mt-1 truncate text-[12px] text-text-muted">{c.subject}</p>
                 <div className="mt-1 flex items-center justify-between text-[12px] text-text-muted">
                   <span>
-                    Valid {formatDate(c.not_before ?? undefined)} → {formatDate(c.not_after ?? c.expires_at)}
+                    {t("clients.certs.valid", "Valid {from} → {to}", {
+                      from: formatDate(c.not_before ?? undefined, locale),
+                      to: formatDate(c.not_after ?? c.expires_at, locale),
+                    })}
                   </span>
                   {!locked && client.saml!.certificates.length > 1 && (
                     <ConfirmAction
-                      trigger="Retire"
-                      title="Retire this certificate?"
-                      description="Requests signed with it are refused from now on."
-                      confirmLabel="Retire"
+                      trigger={t("clients.certs.retire", "Retire")}
+                      title={t("clients.certs.retire_title", "Retire this certificate?")}
+                      description={t("clients.certs.retire_text", "Requests signed with it are refused from now on.")}
+                      confirmLabel={t("clients.certs.retire", "Retire")}
                       action={() => removeCertificate(realm, client.id, c.fingerprint)}
-                      success="Certificate retired"
+                      success={t("clients.certs.retired", "Certificate retired")}
                     />
                   )}
                 </div>
@@ -730,7 +819,7 @@ function EditOnlySections({
           </div>
           {adding && (
             <div className="mt-3 space-y-3 rounded-lg border border-border p-3">
-              <Field label="New certificate (PEM)" htmlFor="cert-pem">
+              <Field label={t("clients.certs.new", "New certificate (PEM)")} htmlFor="cert-pem">
                 <Textarea
                   id="cert-pem"
                   className="font-mono text-[12px]"
@@ -740,15 +829,18 @@ function EditOnlySections({
                 />
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Valid from" htmlFor="cert-nb" optional>
+                <Field label={t("clients.certs.valid_from", "Valid from")} htmlFor="cert-nb" optional>
                   <Input id="cert-nb" type="date" value={notBefore} onChange={(e) => setNotBefore(e.target.value)} />
                 </Field>
-                <Field label="Valid until" htmlFor="cert-na" optional>
+                <Field label={t("clients.certs.valid_until", "Valid until")} htmlFor="cert-na" optional>
                   <Input id="cert-na" type="date" value={notAfter} onChange={(e) => setNotAfter(e.target.value)} />
                 </Field>
               </div>
               <p className="text-[12px] text-text-muted">
-                Rotation: add the new certificate before the provider starts using it; retire the old one afterwards.
+                {t(
+                  "clients.certs.rotation",
+                  "Rotation: add the new certificate before the provider starts using it; retire the old one afterwards.",
+                )}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -763,7 +855,7 @@ function EditOnlySections({
                           not_before: notBefore ? new Date(notBefore).toISOString() : null,
                           not_after: notAfter ? new Date(notAfter).toISOString() : null,
                         }),
-                      { success: "Certificate added" },
+                      { success: t("clients.certs.added", "Certificate added") },
                     );
                     if (r.ok) {
                       setAdding(false);
@@ -773,10 +865,10 @@ function EditOnlySections({
                     }
                   }}
                 >
-                  Add certificate
+                  {t("clients.certs.add", "Add certificate")}
                 </Button>
                 <Button size="xs" variant="secondary" onClick={() => setAdding(false)}>
-                  Cancel
+                  {t("common.cancel", "Cancel")}
                 </Button>
               </div>
             </div>
@@ -785,7 +877,10 @@ function EditOnlySections({
       )}
 
       {client.attribute_mappings && Object.keys(client.attribute_mappings).length > 0 && (
-        <Field label="Attribute mappings" hint="Set by the configuration file or the CLI; read-only here.">
+        <Field
+          label={t("clients.mappings", "Attribute mappings")}
+          hint={t("clients.mappings_hint", "Set by the configuration file or the CLI; read-only here.")}
+        >
           <pre className="overflow-x-auto rounded-lg border border-border bg-surface-alt p-3 font-mono text-[12px]">
             {JSON.stringify(client.attribute_mappings, null, 2)}
           </pre>

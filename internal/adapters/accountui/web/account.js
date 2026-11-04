@@ -4,9 +4,22 @@
   "use strict";
   const $ = (id) => document.getElementById(id);
 
+  // Texts in the page's language: the omsso-i18n block holds the
+  // translations of the "account.js." keys (package i18n), none in English.
+  const dict = (() => { try { return JSON.parse($("omsso-i18n").textContent) || {}; } catch { return {}; } })();
+  const t = (key, def) => dict[key] || def;
+  const lang = document.documentElement.lang || "en";
+
+  // --- language: right after a change, the same language for this
+  // person's accounts in the other organizations signed in on this browser
+  // (each one copies it from the omsso_locale cookie, with its own session).
+  for (const url of (document.body.dataset.localeSync || "").split(" ").filter(Boolean)) {
+    fetch(url, { method: "POST", credentials: "same-origin" }).catch(() => { /* best effort */ });
+  }
+
   // --- times: shown in UTC by the server, here in the reader's time zone.
-  const full = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
-  const date = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
+  const full = new Intl.DateTimeFormat(lang, { dateStyle: "medium", timeStyle: "short" });
+  const date = new Intl.DateTimeFormat(lang, { dateStyle: "medium" });
   function localTimes(root) {
     for (const t of root.querySelectorAll("time[datetime]")) {
       const d = new Date(t.dateTime);
@@ -64,9 +77,9 @@
     if (copy) {
       try {
         await navigator.clipboard.writeText(codesText());
-        copy.textContent = "Copied";
+        copy.textContent = t("account.js.codes.copied", "Copied");
       } catch {
-        copy.textContent = "Select the codes to copy them";
+        copy.textContent = t("account.js.codes.copy_failed", "Select the codes to copy them");
       }
       return;
     }
@@ -110,19 +123,21 @@
     };
   };
   const messages = {
-    step_up_required: "For your security, confirm it's you first: reload this page.",
-    recent_login_required: "For your security, sign in again first: reload this page.",
-    passkey_already_registered: "This device or key is already on your account.",
-    webauthn_rejected: "Your device's answer was not accepted. Try again.",
-    webauthn_ceremony_expired: "This attempt has expired. Try again.",
-    passkeys_disabled: "Passkeys are not enabled on this server.",
-    unauthenticated: "Your session has ended. Reload the page to sign in again.",
-    rate_limited: "Too many attempts. Wait a few minutes, then try again.",
+    step_up_required: t("account.js.error.step_up_required", "For your security, confirm it's you first: reload this page."),
+    recent_login_required: t("account.js.error.recent_login_required", "For your security, sign in again first: reload this page."),
+    passkey_already_registered: t("account.js.error.passkey_already_registered", "This device or key is already on your account."),
+    webauthn_rejected: t("account.js.error.webauthn_rejected", "Your device's answer was not accepted. Try again."),
+    webauthn_ceremony_expired: t("account.js.error.webauthn_ceremony_expired", "This attempt has expired. Try again."),
+    passkeys_disabled: t("account.js.error.passkeys_disabled", "Passkeys are not enabled on this server."),
+    unauthenticated: t("account.js.error.unauthenticated", "Your session has ended. Reload the page to sign in again."),
+    rate_limited: t("account.js.error.rate_limited", "Too many attempts. Wait a few minutes, then try again."),
+    cancelled: t("account.js.error.cancelled", "The request was cancelled or timed out. Try again."),
+    unsupported: t("account.js.error.unsupported", "This browser cannot use passkeys."),
   };
   const showError = (code) => {
     $("passkey-status").hidden = true;
     const el = $("passkey-error");
-    el.textContent = messages[code] || "Something went wrong. Please try again.";
+    el.textContent = messages[code] || t("account.js.error.generic", "Something went wrong. Please try again.");
     el.hidden = false;
   };
   const post = async (path, body) => {
@@ -147,7 +162,7 @@
       const opts = await post("/account/mfa/webauthn/register/options", { kind, name: $("passkey-name").value.trim() });
       if (opts.status !== 200) return showError(opts.data.error);
       const status = $("passkey-status");
-      status.textContent = "Follow the instructions of your browser or device...";
+      status.textContent = t("account.js.passkey.follow", "Follow the instructions of your browser or device...");
       status.hidden = false;
       let cred;
       try {
@@ -178,6 +193,4 @@
       button.disabled = false;
     }
   });
-  messages.cancelled = "The request was cancelled or timed out. Try again.";
-  messages.unsupported = "This browser cannot use passkeys.";
 })();

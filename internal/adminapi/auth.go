@@ -1,6 +1,7 @@
 package adminapi
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"net"
@@ -87,7 +88,7 @@ func (s *Server) allowlist(next http.Handler) http.Handler {
 				}
 			}
 			if !allowed {
-				writeError(w, http.StatusForbidden, "ip_not_allowed", "this address may not call the Admin API")
+				writeErrorT(w, r, http.StatusForbidden, "ip_not_allowed", i18n.M("admin.error.ip_not_allowed", "this address may not call the Admin API"))
 				return
 			}
 		}
@@ -102,17 +103,17 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 		raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if !ok || strings.TrimSpace(raw) == "" {
 			w.Header().Set("WWW-Authenticate", `Bearer realm="admin"`)
-			writeError(w, http.StatusUnauthorized, "unauthenticated", "sign in to the admin console")
+			writeErrorT(w, r, http.StatusUnauthorized, "unauthenticated", i18n.M("admin.error.unauthenticated", "sign in to the admin console"))
 			return
 		}
 		unauthorized := func() {
 			w.Header().Set("WWW-Authenticate", `Bearer realm="admin", error="invalid_token"`)
-			writeError(w, http.StatusUnauthorized, "invalid_token", "the session ended: sign in again")
+			writeErrorT(w, r, http.StatusUnauthorized, "invalid_token", i18n.M("admin.error.session_ended", "the session ended: sign in again"))
 		}
 
 		master, client, err := s.adminIdentity(ctx)
 		if errors.Is(err, repository.ErrNotFound) {
-			writeError(w, http.StatusServiceUnavailable, "not_bootstrapped", "run `idp-admin bootstrap` first")
+			writeErrorT(w, r, http.StatusServiceUnavailable, "not_bootstrapped", i18n.M("admin.error.not_bootstrapped", "run `idp-admin bootstrap` first"))
 			return
 		}
 		if err != nil {
@@ -240,7 +241,7 @@ func (s *Server) require(resource, action string) func(http.Handler) http.Handle
 			})
 			switch {
 			case errors.Is(err, service.ErrForbidden):
-				writeError(w, http.StatusForbidden, "forbidden", "you need the permission "+resource+":"+action)
+				writeErrorT(w, r, http.StatusForbidden, "forbidden", i18n.M("admin.error.forbidden", "you need the permission {permission}", "permission", resource+":"+action))
 			case err != nil:
 				writeServiceError(w, r, err)
 			default:

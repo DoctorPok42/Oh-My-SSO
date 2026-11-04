@@ -2,25 +2,17 @@ import { cache, Suspense } from "react";
 import { NavLink } from "@/components/console/nav-link";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
-import { offsetParam, Pagination } from "@/components/console/pagination";
+import { Pagination } from "@/components/console/pagination";
+import { offsetParam } from "@/lib/pagination";
 import { SearchForm } from "@/components/console/search-form";
-import { TableSkeleton } from "@/components/console/skeletons";
+import { ColumnHeads, TableSkeleton } from "@/components/console/skeletons";
 import { ManagedBadge, StatusBadge } from "@/components/console/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SegmentedLinks } from "@/components/ui/segmented";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { apiPath, getMe, load, loadCached } from "@/lib/api";
 import type { ApiResult } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
@@ -31,8 +23,13 @@ import { cn } from "@/lib/utils";
 import { AccessDrawer, AccessRowActions, NewAccessButton } from "./access-drawer";
 import { NewPermissionButton, PermissionDelete } from "./permissions";
 import { InviteUserButton, UserDrawer, UserRowActions } from "./user-drawer";
+import { m } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 
-export const metadata = { title: PAGES.users.title };
+export async function generateMetadata() {
+  const { tm } = await getI18n();
+  return { title: tm(PAGES.users.title) };
+}
 
 const LIMIT = 25;
 type Tab = "users" | "roles" | "groups" | "permissions";
@@ -59,6 +56,7 @@ export default async function UsersPage({
   const base = `/r/${encodeURIComponent(realm)}/users`;
   const me = await getMe();
   const readAccess = me.ok && can(me.data, "access");
+  const { t } = await getI18n();
 
   let content: React.ReactNode;
   if (tab === "users") {
@@ -74,24 +72,29 @@ export default async function UsersPage({
           <Input
             name="q"
             defaultValue={sp.q}
-            placeholder="Name, username or e-mail"
+            placeholder={t("users.search_placeholder", "Name, username or e-mail")}
             className="h-9 w-72"
-            aria-label="Search users"
+            aria-label={t("search.label", "Search users")}
           />
           <div className="w-44">
-            <NativeSelect name="status" defaultValue={status ?? ""} className="h-9" aria-label="Status">
-              <option value="">Any status</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-              <option value="inactive">Inactive</option>
+            <NativeSelect
+              name="status"
+              defaultValue={status ?? ""}
+              className="h-9"
+              aria-label={t("columns.status", "Status")}
+            >
+              <option value="">{t("users.any_status", "Any status")}</option>
+              <option value="active">{t("status.active", "Active")}</option>
+              <option value="suspended">{t("status.suspended", "Suspended")}</option>
+              <option value="inactive">{t("status.inactive", "Inactive")}</option>
             </NativeSelect>
           </div>
           <button type="submit" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
-            Search
+            {t("common.search", "Search")}
           </button>
           {(sp.q || status) && (
             <NavLink href={base} className="text-[13px] text-accent hover:underline">
-              Clear
+              {t("common.clear", "Clear")}
             </NavLink>
           )}
         </SearchForm>
@@ -102,7 +105,10 @@ export default async function UsersPage({
     );
   } else if (tab === "roles" || tab === "groups") {
     const writable = me.ok && canWrite(me.data, "access");
-    const columns = [tab === "roles" ? "Role" : "Group", ...COLUMNS.access.slice(1)];
+    const columns = [
+      tab === "roles" ? m("columns.role", "Role") : m("columns.group", "Group"),
+      ...COLUMNS.access.slice(1),
+    ];
     content = (
       <>
         <Suspense key={tab} fallback={<TableSkeleton columns={columns} />}>
@@ -122,12 +128,16 @@ export default async function UsersPage({
   }
 
   const tabs = [
-    { href: base, label: "Users", active: tab === "users" },
+    { href: base, label: t("users.tab.users", "Users"), active: tab === "users" },
     ...(readAccess
       ? [
-          { href: `${base}?tab=roles`, label: "Roles", active: tab === "roles" },
-          { href: `${base}?tab=groups`, label: "Groups", active: tab === "groups" },
-          { href: `${base}?tab=permissions`, label: "Permissions", active: tab === "permissions" },
+          { href: `${base}?tab=roles`, label: t("users.tab.roles", "Roles"), active: tab === "roles" },
+          { href: `${base}?tab=groups`, label: t("users.tab.groups", "Groups"), active: tab === "groups" },
+          {
+            href: `${base}?tab=permissions`,
+            label: t("users.tab.permissions", "Permissions"),
+            active: tab === "permissions",
+          },
         ]
       : []),
   ];
@@ -141,7 +151,7 @@ export default async function UsersPage({
     <>
       <PageHeader {...PAGES.users} />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <SegmentedLinks label="Users and access" items={tabs} />
+        <SegmentedLinks label={t("users.tabs_label", "Users and access")} items={tabs} />
         {action}
       </div>
       {content}
@@ -241,25 +251,21 @@ async function UsersTable({
   const list = await load<List<UserSummary>>(apiPath(["realms", realm, "users"], { q, status, offset, limit: LIMIT }));
   if (!list.ok) return <ErrorState error={list} />;
   const items = list.data.items;
+  const tr = await getI18n();
+  const { t } = tr;
   return (
     <TableContainer>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Groups</TableHead>
-            <TableHead>MFA</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Last login</TableHead>
-            <TableHead>
-              <span className="sr-only">Actions</span>
-            </TableHead>
+            <ColumnHeads columns={COLUMNS.users} />
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 && (
-            <TableEmpty colSpan={7}>{q || status ? "No user matches." : "No user yet: invite one."}</TableEmpty>
+            <TableEmpty colSpan={7}>
+              {q || status ? t("users.no_match", "No user matches.") : t("users.empty", "No user yet: invite one.")}
+            </TableEmpty>
           )}
           {items.map((u) => (
             <TableRow key={u.id}>
@@ -279,12 +285,16 @@ async function UsersTable({
                 </div>
               </TableCell>
               <TableCell>
-                <Badge tone={u.mfa_enrolled ? "success" : "neutral"}>{u.mfa_enrolled ? "Enrolled" : "None"}</Badge>
+                <Badge tone={u.mfa_enrolled ? "success" : "neutral"}>
+                  {u.mfa_enrolled ? t("status.enrolled", "Enrolled") : t("chips.none", "None")}
+                </Badge>
               </TableCell>
               <TableCell>
                 <UserStatus user={u} />
               </TableCell>
-              <TableCell className="whitespace-nowrap text-text-secondary">{formatRelative(u.last_login_at)}</TableCell>
+              <TableCell className="whitespace-nowrap text-text-secondary">
+                {formatRelative(u.last_login_at, undefined, tr)}
+              </TableCell>
               <TableCell className="text-right">
                 <UserRowActions id={u.id} />
               </TableCell>
@@ -305,11 +315,11 @@ async function UsersTable({
 }
 
 function UserStatus({ user }: { user: UserSummary }) {
-  if (!user.has_password && user.status === "active") return <StatusBadge status="invited" label="Invited" />;
+  if (!user.has_password && user.status === "active") return <StatusBadge status="invited" />;
   return (
     <span className="flex flex-wrap gap-1">
       <StatusBadge status={user.status} />
-      {user.locked && <StatusBadge status="locked" label="Locked" />}
+      {user.locked && <StatusBadge status="locked" />}
     </span>
   );
 }
@@ -324,25 +334,23 @@ async function AccessTab({ realm, kind, writable }: { realm: string; kind: "role
   if (!list.ok) return <ErrorState error={list} />;
   const items = list.data.items;
   const permName = new Map((permissions.ok ? permissions.data.items : []).map((p) => [p.id, p.name]));
-  const label = kind === "roles" ? "Role" : "Group";
+  const { t } = await getI18n();
+  const label = kind === "roles" ? m("columns.role", "Role") : m("columns.group", "Group");
   return (
     <>
       <TableContainer>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{label}</TableHead>
-              <TableHead>Members</TableHead>
-              <TableHead>Permissions</TableHead>
-              <TableHead>Client scopes</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
+              <ColumnHeads columns={[label, ...COLUMNS.access.slice(1)]} />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.length === 0 && <TableEmpty colSpan={6}>No {kind} yet.</TableEmpty>}
+            {items.length === 0 && (
+              <TableEmpty colSpan={6}>
+                {kind === "roles" ? t("users.no_role", "No roles yet.") : t("users.no_group", "No groups yet.")}
+              </TableEmpty>
+            )}
             {items.map((a) => (
               <TableRow key={a.id}>
                 <TableCell>
@@ -381,27 +389,25 @@ async function PermissionsTab({ realm, writable }: { realm: string; writable: bo
   const list = await load<List<Permission>>(apiPath(["realms", realm, "permissions"]));
   if (!list.ok) return <ErrorState error={list} />;
   const items = list.data.items;
+  const { t } = await getI18n();
   return (
     <TableContainer>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Permission</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>
-              <span className="sr-only">Actions</span>
-            </TableHead>
+            <ColumnHeads columns={COLUMNS.permissions} />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.length === 0 && <TableEmpty colSpan={4}>No permission yet.</TableEmpty>}
+          {items.length === 0 && <TableEmpty colSpan={4}>{t("users.no_permission", "No permission yet.")}</TableEmpty>}
           {items.map((p) => (
             <TableRow key={p.id}>
               <TableCell className="font-mono text-[13px]">{p.name}</TableCell>
               <TableCell className="text-text-secondary">{p.description || "—"}</TableCell>
               <TableCell>
-                <Badge tone={p.system ? "neutral" : "accent"}>{p.system ? "System" : "Custom"}</Badge>
+                <Badge tone={p.system ? "neutral" : "accent"}>
+                  {p.system ? t("users.permission.system", "System") : t("users.permission.custom", "Custom")}
+                </Badge>
               </TableCell>
               <TableCell className="text-right">
                 {writable && !p.system && <PermissionDelete realm={realm} permission={p} />}

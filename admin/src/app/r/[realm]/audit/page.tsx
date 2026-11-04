@@ -2,24 +2,29 @@ import { Suspense } from "react";
 import { NavLink } from "@/components/console/nav-link";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
-import { offsetParam, Pagination } from "@/components/console/pagination";
+import { Pagination } from "@/components/console/pagination";
+import { offsetParam } from "@/lib/pagination";
 import { SearchForm } from "@/components/console/search-form";
-import { TableSkeleton } from "@/components/console/skeletons";
+import { ColumnHeads, TableSkeleton } from "@/components/console/skeletons";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SegmentedLinks } from "@/components/ui/segmented";
-import { Table, TableBody, TableContainer, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { apiPath, load, loadCached } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { ACTOR_TYPE_LABELS } from "@/lib/labels";
+import { ACTOR_TYPE_LABELS, actionLabel, categoryLabel } from "@/lib/labels";
 import { COLUMNS, PAGES } from "@/lib/pages";
 import type { AuditAction, AuditEntry, List } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AuditRows } from "./audit-rows";
 import { ExportMenu } from "./export-menu";
+import { getI18n } from "@/i18n/server";
 
-export const metadata = { title: PAGES.audit.title };
+export async function generateMetadata() {
+  const { tm } = await getI18n();
+  return { title: tm(PAGES.audit.title) };
+}
 
 const LIMIT = 50;
 
@@ -65,74 +70,87 @@ export default async function AuditPage({
   const actions = catalog.ok ? catalog.data.items : [];
   // "auth.*", "user.*"...: every action of a domain at once.
   const domains = [...new Map(actions.map((a) => [a.name.split(".")[0], a.category])).entries()];
+  const tr = await getI18n();
+  const { t, tm } = tr;
 
   return (
     <>
       <PageHeader {...PAGES.audit} actions={<ExportMenu base={base} filters={filters} />} />
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <SegmentedLinks
-          label="Status"
+          label={t("columns.status", "Status")}
           items={[
-            { href: withStatus(undefined), label: "All", active: !status },
-            { href: withStatus("success"), label: "Success", active: status === "success" },
-            { href: withStatus("failure"), label: "Failed", active: status === "failure" },
+            { href: withStatus(undefined), label: t("common.all", "All"), active: !status },
+            { href: withStatus("success"), label: t("status.success", "Success"), active: status === "success" },
+            { href: withStatus("failure"), label: t("audit.failed", "Failed"), active: status === "failure" },
           ]}
         />
         <SearchForm action={base} className="ml-auto flex flex-wrap items-end gap-2">
           {status && <input type="hidden" name="status" value={status} />}
           {sp.client && <input type="hidden" name="client" value={sp.client} />}
           <label className="flex flex-col text-[12px] text-text-muted">
-            Action
+            {t("columns.action", "Action")}
             <Input
               name="action"
               list="audit-actions"
               defaultValue={sp.action}
-              placeholder="Any action"
+              placeholder={t("audit.any_action", "Any action")}
               autoComplete="off"
               className="mt-1 h-9 w-60 font-mono text-[12px]"
             />
             <datalist id="audit-actions">
               {domains.map(([prefix, category]) => (
-                <option key={`${prefix}.*`} value={`${prefix}.*`} label={`${category}: every ${prefix}.* action`} />
+                <option
+                  key={`${prefix}.*`}
+                  value={`${prefix}.*`}
+                  label={t("audit.every_action", "{category}: every {prefix}.* action", {
+                    category: categoryLabel(category ?? "", tr),
+                    prefix: prefix ?? "",
+                  })}
+                />
               ))}
               {actions.map((a) => (
-                <option key={a.name} value={a.name} label={`${a.category}: ${a.label}`} />
+                <option
+                  key={a.name}
+                  value={a.name}
+                  label={`${categoryLabel(a.category, tr)}: ${actionLabel(a.name, new Map([[a.name, a.label]]), tr)}`}
+                />
               ))}
             </datalist>
           </label>
           <label className="flex flex-col text-[12px] text-text-muted">
-            Done by
+            {t("audit.done_by", "Done by")}
             <NativeSelect name="actor" defaultValue={actor ?? ""} className="mt-1 h-9 w-36 text-[13px]">
-              <option value="">Anyone</option>
-              {ACTOR_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {ACTOR_TYPE_LABELS[t]}
+              <option value="">{t("audit.anyone", "Anyone")}</option>
+              {ACTOR_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {tm(ACTOR_TYPE_LABELS[type]!)}
                 </option>
               ))}
             </NativeSelect>
           </label>
           <label className="flex flex-col text-[12px] text-text-muted">
-            User ID
+            {t("audit.user_id", "User ID")}
             <Input
               name="user"
               defaultValue={sp.user}
-              placeholder="done by or about"
+              placeholder={t("audit.user_id_placeholder", "done by or about")}
               className="mt-1 h-9 w-44 font-mono text-[12px]"
             />
           </label>
           <label className="flex flex-col text-[12px] text-text-muted">
-            From
+            {t("audit.from", "From")}
             <Input type="date" name="from" defaultValue={sp.from} className="mt-1 h-9 w-40" />
           </label>
           <label className="flex flex-col text-[12px] text-text-muted">
-            To
+            {t("audit.to", "To")}
             <Input type="date" name="to" defaultValue={sp.to} className="mt-1 h-9 w-40" />
           </label>
           <button type="submit" className={cn(buttonVariants({ size: "sm" }))}>
-            Apply
+            {t("common.apply", "Apply")}
           </button>
           <NavLink href={base} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-            Reset
+            {t("common.reset", "Reset")}
           </NavLink>
         </SearchForm>
       </div>
@@ -163,24 +181,22 @@ async function AuditTable({
     apiPath(["realms", realm, "audit-logs"], { ...filters, offset, limit: LIMIT }),
   );
   if (!list.ok) return <ErrorState error={list} />;
+  const { t, locale } = await getI18n();
   return (
     <TableContainer>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Timestamp</TableHead>
-            <TableHead>Actor</TableHead>
-            <TableHead>Action</TableHead>
-            <TableHead>Target</TableHead>
-            <TableHead>IP</TableHead>
-            <TableHead>Status</TableHead>
+            <ColumnHeads columns={COLUMNS.audit} />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {list.data.items.length === 0 && <TableEmpty colSpan={6}>No entry matches these filters.</TableEmpty>}
+          {list.data.items.length === 0 && (
+            <TableEmpty colSpan={6}>{t("audit.empty", "No entry matches these filters.")}</TableEmpty>
+          )}
           <AuditRows
             items={list.data.items}
-            times={Object.fromEntries(list.data.items.map((a) => [a.id, formatDateTime(a.timestamp)]))}
+            times={Object.fromEntries(list.data.items.map((a) => [a.id, formatDateTime(a.timestamp, locale)]))}
             actions={actions}
           />
         </TableBody>

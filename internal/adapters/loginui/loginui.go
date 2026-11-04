@@ -14,6 +14,7 @@ import (
 
 	"sso.internal/sso/internal/adapters/uikit"
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/i18n"
 )
 
 //go:embed web/*.html web/*.js web/*.css
@@ -25,23 +26,37 @@ var webFS embed.FS
 const PageCSP = "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; " +
 	"img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
 
-// Pages renders the templates.
+// Pages renders the templates, in the language of each request (see
+// package i18n: the templates call {{t "key" "English text"}}).
 type Pages struct {
-	t      *template.Template
+	t      map[string]*template.Template // one set per language
+	i18n   *i18n.Bundle
 	logger *slog.Logger
 }
 
-// New parses the embedded templates. logger may be nil (slog.Default()).
-func New(logger *slog.Logger) (*Pages, error) {
-	t, err := template.ParseFS(webFS, "web/*.html")
-	if err != nil {
-		return nil, err
-	}
+// New parses the embedded templates, once per language of the bundle.
+// logger may be nil (slog.Default()), bundle too (the embedded languages).
+func New(logger *slog.Logger, bundle *i18n.Bundle) (*Pages, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Pages{t: t, logger: logger}, nil
+	if bundle == nil {
+		bundle = i18n.MustDefault()
+	}
+	p := &Pages{t: map[string]*template.Template{}, i18n: bundle, logger: logger}
+	for _, l := range bundle.Languages() {
+		t, err := template.New("").Funcs(bundle.Get(l.Tag).FuncMap()).ParseFS(webFS, "web/*.html")
+		if err != nil {
+			return nil, err
+		}
+		p.t[l.Tag] = t
+	}
+	return p, nil
 }
+
+// Loc returns the texts of the request's language, for what the caller
+// writes into a page (a notice, the lines of the consent page...).
+func (p *Pages) Loc(r *http.Request) *i18n.Localizer { return p.i18n.For(r.Context()) }
 
 // Login is the data of the sign-in page.
 type Login struct {
@@ -212,10 +227,35 @@ type ConsentLine struct {
 	New         bool // not approved before
 }
 
-// Message is a short page with a title and one sentence.
+// ConsentText is the line of a standard scope, to translate.
+type ConsentText struct {
+	Title, Text i18n.Text
+}
+
+// ConsentLines turns the items of a consent into lines, in the reader's
+// language. standard: the protocol's own lines by scope; an item keeps its
+// text (a scope description written by an administrator) unless it is one
+// of them. isNew marks the items not approved before.
+func ConsentLines(loc *i18n.Localizer, items []core.ConsentItem, standard map[string]ConsentText, isNew func(core.ConsentItem) bool) []ConsentLine {
+	out := make([]ConsentLine, 0, len(items))
+	for _, it := range items {
+		line := ConsentLine{Title: it.Title, Description: it.Description, New: isNew(it)}
+		if st, ok := standard[it.Scope]; ok && it.Title == st.Title.Default {
+			line.Title = loc.Text(st.Title)
+			if it.Description == st.Text.Default && st.Text.Key != "" {
+				line.Description = loc.Text(st.Text)
+			}
+		}
+		out = append(out, line)
+	}
+	return out
+}
+
+// Message is a short page with a title and one sentence, translated when
+// it is rendered.
 type Message struct {
-	Title string
-	Text  string
+	Title i18n.Text
+	Text  i18n.Text
 }
 
 // AutoPost is a form that the browser submits by itself to Action (SAML
@@ -226,8 +266,8 @@ type AutoPost struct {
 	Assets string
 	// Title and Text are shown while the form submits (and stay visible
 	// without JavaScript, next to a "Continue" button).
-	Title string
-	Text  string
+	Title i18n.Text
+	Text  i18n.Text
 }
 
 // Field is one hidden input of an AutoPost form.
@@ -244,23 +284,23 @@ func RememberMeOffer(o core.SessionOptions) (show bool, days int) {
 }
 
 // RenderLogin writes the sign-in page.
-func (p *Pages) RenderLogin(w http.ResponseWriter, status int, data Login) {
+func (p *Pages) RenderLogin(w http.ResponseWriter, r *http.Request, status int, data Login) {
 	if data.ClientParam == "" {
 		data.ClientParam = "client_id"
 	}
-	p.render(w, status, "login.html", PageCSP, data)
+	p.render(w, r, status, "login.html", PageCSP, data)
 }
 
 // RenderForgotPassword writes the "forgot password" page.
-func (p *Pages) RenderForgotPassword(w http.ResponseWriter, data ForgotPassword) {
-	p.render(w, http.StatusOK, "forgot.html", PageCSP, data)
+func (p *Pages) RenderForgotPassword(w http.ResponseWriter, r *http.Request, data ForgotPassword) {
+	p.render(w, r, http.StatusOK, "forgot.html", PageCSP, data)
 }
 
 // RenderResetPassword writes the "choose a new password" page. The token is
 // not in the data: it stays in the URL fragment (#token=...), which the
 // browser never sends to the server; password.js reads it.
-func (p *Pages) RenderResetPassword(w http.ResponseWriter, data ResetPassword) {
-	p.render(w, http.StatusOK, "reset.html", PageCSP, data)
+func (p *Pages) RenderResetPassword(w http.ResponseWriter, r *http.Request, data ResetPassword) {
+	p.render(w, r, http.StatusOK, "reset.html", PageCSP, data)
 }
 
 // RenderConsent writes the consent page (no script). After the answer the
@@ -269,8 +309,8 @@ func (p *Pages) RenderResetPassword(w http.ResponseWriter, data ResetPassword) {
 // submission, so PageCSP's form-action 'self' blocked "Allow" and "Deny" in
 // Chromium: the page uses redirectCSP. The form itself has a fixed action
 // on this server.
-func (p *Pages) RenderConsent(w http.ResponseWriter, data Consent) {
-	p.render(w, http.StatusOK, "consent.html", redirectCSP, data)
+func (p *Pages) RenderConsent(w http.ResponseWriter, r *http.Request, data Consent) {
+	p.render(w, r, http.StatusOK, "consent.html", redirectCSP, data)
 }
 
 // RenderLogoutConfirm writes the sign-out confirmation page. After the
@@ -278,13 +318,13 @@ func (p *Pages) RenderConsent(w http.ResponseWriter, data Consent) {
 // post_logout_redirect_uri): like the auto-post form, the page has no
 // form-action rule, which browsers also apply to the redirects that follow
 // a submission. The form itself only posts to this server (fixed action).
-func (p *Pages) RenderLogoutConfirm(w http.ResponseWriter, data LogoutConfirm) {
-	p.render(w, http.StatusOK, "logout.html", redirectCSP, data)
+func (p *Pages) RenderLogoutConfirm(w http.ResponseWriter, r *http.Request, data LogoutConfirm) {
+	p.render(w, r, http.StatusOK, "logout.html", redirectCSP, data)
 }
 
 // RenderMessage writes a message page. assets: where Asset is mounted.
-func (p *Pages) RenderMessage(w http.ResponseWriter, status int, m Message, assets string) {
-	p.render(w, status, "message.html", PageCSP, struct {
+func (p *Pages) RenderMessage(w http.ResponseWriter, r *http.Request, status int, m Message, assets string) {
+	p.render(w, r, status, "message.html", PageCSP, struct {
 		Message
 		Assets string
 	}{m, assets})
@@ -303,24 +343,30 @@ var redirectCSP = autoPostCSP
 
 // RenderAutoPost writes a self-submitting form to f.Action, which must be an
 // absolute http(s) URL.
-func (p *Pages) RenderAutoPost(w http.ResponseWriter, f AutoPost) error {
+func (p *Pages) RenderAutoPost(w http.ResponseWriter, r *http.Request, f AutoPost) error {
 	u, err := url.Parse(f.Action)
 	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
 		return fmt.Errorf("loginui: auto-post action %q is not an http(s) URL", f.Action)
 	}
-	p.render(w, http.StatusOK, "autopost.html", autoPostCSP, f)
+	p.render(w, r, http.StatusOK, "autopost.html", autoPostCSP, f)
 	return nil
 }
 
-func (p *Pages) render(w http.ResponseWriter, status int, name, csp string, data any) {
+func (p *Pages) render(w http.ResponseWriter, r *http.Request, status int, name, csp string, data any) {
+	lang := p.i18n.Pick(i18n.PrefsFrom(r.Context()))
+	t, ok := p.t[lang]
+	if !ok {
+		t = p.t[i18n.English]
+	}
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
+	h.Set("Content-Language", lang)
 	h.Set("Cache-Control", "no-store")
 	h.Set("Content-Security-Policy", csp)
 	h.Set("X-Frame-Options", "DENY")
 	h.Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(status)
-	if err := p.t.ExecuteTemplate(w, name, data); err != nil {
+	if err := t.ExecuteTemplate(w, name, data); err != nil {
 		p.logger.Error("loginui: render page", "page", name, "error", err)
 	}
 }

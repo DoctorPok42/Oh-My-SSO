@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"fmt"
@@ -66,7 +67,7 @@ func (s *AdminService) ListTimeouts(ctx context.Context, realm *domain.Realm, st
 		current = &b
 	case TimeoutListAll:
 	default:
-		return nil, 0, adminInvalid("status", "status must be current, past or all")
+		return nil, 0, adminInvalid("status", i18n.M("admin.error.timeout_status", "status must be current, past or all"))
 	}
 	rows, total, err := s.d.Timeouts.List(ctx, realm.ID, current, page)
 	if err != nil {
@@ -276,11 +277,11 @@ func (n *timeoutNames) actor(ctx context.Context, s *AdminService, by string) st
 func timeoutAdminError(tr *TimeoutRefusal) *AdminError {
 	switch tr.Code {
 	case "not_found":
-		return &AdminError{Kind: AdminNotFound, Code: "not_found", Message: tr.Message}
+		return &AdminError{Kind: AdminNotFound, Code: "not_found", Message: tr.Message, Text: tr.Text}
 	case "invalid_request":
-		return &AdminError{Kind: AdminInvalid, Code: "invalid_request", Field: tr.Field, Message: tr.Message}
+		return &AdminError{Kind: AdminInvalid, Code: "invalid_request", Field: tr.Field, Message: tr.Message, Text: tr.Text}
 	}
-	return &AdminError{Kind: AdminRefused, Code: tr.Code, Field: tr.Field, Message: tr.Message}
+	return &AdminError{Kind: AdminRefused, Code: tr.Code, Field: tr.Field, Message: tr.Message, Text: tr.Text}
 }
 
 // timeoutTargetUser: the user a timeout is about (empty for a group or a client).

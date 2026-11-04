@@ -87,7 +87,7 @@ func serve() {
 	syncAdminCatalogue(admin, rights)
 	c.StartTimeoutEnforcer()
 
-	api := adminapi.New(adminapi.Config{PublicURL: c.PublicURL, AllowedNets: nets, KMSBackend: c.KMSBackend,
+	api := adminapi.New(adminapi.Config{PublicURL: c.PublicURL, AllowedNets: nets, KMSBackend: c.KMSBackend, Languages: app.Languages(),
 		LogRequests: os.Getenv("ADMIN_API_LOG_REQUESTS") == "true"}, adminapi.Deps{
 		Admin: admin, Realms: c.Realms, Users: c.Users, Clients: c.Clients, Tokens: c.Tokens,
 		Sessions: c.Sessions, RBAC: c.RBAC, MFA: c.MFA, Keys: c.IdentityCore, KeyRotation: c.KeyRotation,

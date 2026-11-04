@@ -5,6 +5,8 @@ import { Fragment, useMemo, useState } from "react";
 import { StatusBadge } from "@/components/console/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { m, type Msg } from "@/i18n";
+import { useT } from "@/i18n/client";
 import { ACTOR_TYPE_LABELS, actionLabel, isNotification } from "@/lib/labels";
 import type { AuditAction, AuditEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -20,26 +22,25 @@ const ACTOR_TONES: Record<string, "info" | "accent" | "neutral" | "warning"> = {
 };
 
 export function ActorBadge({ type }: { type: string }) {
+  const { tm } = useT();
+  const label = ACTOR_TYPE_LABELS[type];
   return (
-    <Badge tone={ACTOR_TONES[type] ?? "neutral"} title={actorHint(type)}>
-      {ACTOR_TYPE_LABELS[type] ?? type}
+    <Badge tone={ACTOR_TONES[type] ?? "neutral"} title={tm(actorHint(type))}>
+      {label ? tm(label) : type}
     </Badge>
   );
 }
 
-function actorHint(type: string): string {
-  switch (type) {
-    case "user":
-      return "Done by a user of the realm, on their own account";
-    case "admin":
-      return "Done by an administrator in the admin console";
-    case "cli":
-      return "Done by an operator on the command line";
-    case "anonymous":
-      return "Nobody was signed in (a failed sign-in, a reset request...)";
-    default:
-      return "Done by the server itself (lockout, key retirer, e-mails...)";
-  }
+const ACTOR_HINTS: Record<string, Msg> = {
+  user: m("audit.actor_hint.user", "Done by a user of the realm, on their own account"),
+  admin: m("audit.actor_hint.admin", "Done by an administrator in the admin console"),
+  cli: m("audit.actor_hint.cli", "Done by an operator on the command line"),
+  anonymous: m("audit.actor_hint.anonymous", "Nobody was signed in (a failed sign-in, a reset request...)"),
+  system: m("audit.actor_hint.system", "Done by the server itself (lockout, key retirer, e-mails...)"),
+};
+
+function actorHint(type: string): Msg {
+  return ACTOR_HINTS[type] ?? ACTOR_HINTS.system!;
 }
 
 // One line per entry; a click shows its details: who did it, whom and what
@@ -54,6 +55,8 @@ export function AuditRows({
   actions: AuditAction[];
 }) {
   const [open, setOpen] = useState<string | null>(null);
+  const tr = useT();
+  const { t, tm } = tr;
   const labels = useMemo(() => new Map(actions.map((a) => [a.name, a.label])), [actions]);
   return (
     <>
@@ -89,10 +92,12 @@ export function AuditRows({
                   <ChevronRight
                     className={cn("size-3.5 text-text-muted transition-transform", expanded && "rotate-90")}
                   />
-                  {isNotification(a.action) && <Mail className="size-3.5 text-text-muted" aria-label="e-mail" />}
+                  {isNotification(a.action) && (
+                    <Mail className="size-3.5 text-text-muted" aria-label={t("dashboard.email", "e-mail")} />
+                  )}
                   <span className="font-mono text-[12px]">{a.action}</span>
                 </button>
-                <p className="ml-5 text-[12px] text-text-muted">{actionLabel(a.action, labels)}</p>
+                <p className="ml-5 text-[12px] text-text-muted">{actionLabel(a.action, labels, tr)}</p>
               </TableCell>
               <TableCell className="text-[12px] text-text-secondary">
                 {target || a.resource_type ? (
@@ -124,32 +129,32 @@ export function AuditRows({
               <TableRow className="bg-surface-alt hover:bg-surface-alt!">
                 <TableCell colSpan={6}>
                   <dl className="grid gap-x-6 gap-y-2 text-[12px] sm:grid-cols-[140px_1fr]">
-                    <dt className="text-text-muted">Entry ID</dt>
+                    <dt className="text-text-muted">{t("audit.entry_id", "Entry ID")}</dt>
                     <dd className="font-mono">{a.id}</dd>
-                    <dt className="text-text-muted">Actor</dt>
+                    <dt className="text-text-muted">{t("columns.actor", "Actor")}</dt>
                     <dd className="flex flex-wrap items-center gap-2">
                       <ActorBadge type={a.actor_type} />
                       {a.actor ? (
                         <span>
-                          {a.actor.username || "deleted account"}{" "}
+                          {a.actor.username || t("audit.deleted_account", "deleted account")}{" "}
                           <span className="font-mono text-text-muted">{a.actor.id}</span>
                         </span>
                       ) : (
-                        <span className="text-text-muted">{actorHint(a.actor_type)}</span>
+                        <span className="text-text-muted">{tm(actorHint(a.actor_type))}</span>
                       )}
                     </dd>
-                    <dt className="text-text-muted">Target user</dt>
+                    <dt className="text-text-muted">{t("audit.target_user", "Target user")}</dt>
                     <dd>
                       {a.target ? (
                         <span>
-                          {a.target.username || "deleted account"}{" "}
+                          {a.target.username || t("audit.deleted_account", "deleted account")}{" "}
                           <span className="font-mono text-text-muted">{a.target.id}</span>
                         </span>
                       ) : (
                         "—"
                       )}
                     </dd>
-                    <dt className="text-text-muted">Resource</dt>
+                    <dt className="text-text-muted">{t("audit.resource", "Resource")}</dt>
                     <dd>
                       {a.resource_type ? (
                         <span>
@@ -159,11 +164,11 @@ export function AuditRows({
                         "—"
                       )}
                     </dd>
-                    <dt className="text-text-muted">IP address</dt>
+                    <dt className="text-text-muted">{t("columns.ip_address", "IP address")}</dt>
                     <dd className="font-mono">{a.ip_address || "—"}</dd>
-                    <dt className="text-text-muted">User agent</dt>
+                    <dt className="text-text-muted">{t("audit.user_agent", "User agent")}</dt>
                     <dd className="break-all">{a.user_agent || "—"}</dd>
-                    <dt className="text-text-muted">Details</dt>
+                    <dt className="text-text-muted">{t("audit.details", "Details")}</dt>
                     <dd>
                       <pre className="overflow-x-auto rounded-md border border-border bg-surface p-3 font-mono text-[12px]">
                         {JSON.stringify(a.details, null, 2)}

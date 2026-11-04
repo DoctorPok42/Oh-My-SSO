@@ -247,14 +247,14 @@ type RecoverAdminResult struct {
 func (s *AdminService) RecoverAdmin(ctx context.Context, in RecoverAdminInput) (*RecoverAdminResult, error) {
 	addr, err := mail.ParseAddress(strings.TrimSpace(in.Email))
 	if err != nil || addr.Name != "" {
-		return nil, adminInvalid("email", "a plain e-mail address is required")
+		return nil, adminInvalidEN("email", "a plain e-mail address is required")
 	}
 	realm, admins, err := s.bootstrappedMaster(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := s.d.Users.GetByRealmAndEmail(ctx, realm.ID, addr.Address); err == nil {
-		return nil, adminConflict("email_taken", "an account of the master realm already uses %s: recovery never "+
+		return nil, adminConflictEN("email_taken", "an account of the master realm already uses %s: recovery never "+
 			"touches existing accounts, give another address", addr.Address)
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return nil, err
@@ -326,7 +326,7 @@ func (s *AdminService) RecoverClientSecret(ctx context.Context, actor string) (s
 func checkBootstrapAccount(email, username string) (string, string, error) {
 	addr, err := mail.ParseAddress(strings.TrimSpace(email))
 	if err != nil || addr.Name != "" {
-		return "", "", adminInvalid("email", "a plain e-mail address is required (--email admin@example.com)")
+		return "", "", adminInvalidEN("email", "a plain e-mail address is required (--email admin@example.com)")
 	}
 	username = strings.TrimSpace(username)
 	if username == "" {
@@ -342,13 +342,13 @@ func checkConsoleURL(raw string, production bool) (string, error) {
 	raw = strings.TrimRight(strings.TrimSpace(raw), "/")
 	u, err := url.Parse(raw)
 	if err != nil || !u.IsAbs() || u.Host == "" || u.RawQuery != "" || u.Fragment != "" {
-		return "", adminInvalid("admin_url", "the admin console URL must be absolute, without query or fragment (e.g. https://admin.example.com)")
+		return "", adminInvalidEN("admin_url", "the admin console URL must be absolute, without query or fragment (e.g. https://admin.example.com)")
 	}
 	switch {
 	case u.Scheme == "https":
 	case u.Scheme == "http" && isLoopbackHost(u.Hostname()) && !production:
 	default:
-		return "", adminInvalid("admin_url", "the admin console URL must use https (http only for localhost in development)")
+		return "", adminInvalidEN("admin_url", "the admin console URL must use https (http only for localhost in development)")
 	}
 	return raw, nil
 }
@@ -557,7 +557,7 @@ func (s *AdminService) ensurePendingAdmin(ctx context.Context, realmID, username
 	case byName != nil && byMail != nil && byName.ID == byMail.ID && byName.PasswordHash == "":
 		return byName, nil // unfinished bootstrap: a new activation link is issued
 	default:
-		return nil, adminConflict("account_taken", "the username or e-mail is already used by another account of the master realm")
+		return nil, adminConflictEN("account_taken", "the username or e-mail is already used by another account of the master realm")
 	}
 }
 

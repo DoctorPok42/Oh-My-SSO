@@ -19,6 +19,7 @@ import (
 	"sso.internal/sso/internal/adapters/loginui"
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
+	"sso.internal/sso/internal/i18n"
 )
 
 
@@ -251,6 +252,7 @@ func (a *Adapter) authError(w http.ResponseWriter, r *http.Request, ar *authRequ
 }
 
 func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, ar *authRequest, pc *core.ProtocolClient, mode string, allowed []domain.MfaMethodType) {
+	r = r.WithContext(i18n.WithHints(r.Context(), ar.UILocales)) // the language the application asked for
 	page := a.loginPage(r, ar, pc, mode, allowed)
 	if mode == "login" {
 		realm, _ := realmFrom(r.Context())
@@ -263,7 +265,7 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, ar *authRe
 			page.Mode = "pick"
 		}
 	}
-	a.pages.RenderLogin(w, http.StatusOK, page)
+	a.pages.RenderLogin(w, r, http.StatusOK, page)
 }
 
 // signInChoices: what the sign-in form starts with.
@@ -319,6 +321,7 @@ func (a *Adapter) reauthAccount(r *http.Request, realm Realm, sess *domain.Sessi
 // account comes first; choosing it goes on with the session (a one-time
 // token, like the consent page).
 func (a *Adapter) renderPicker(w http.ResponseWriter, r *http.Request, ar *authRequest, pc *core.ProtocolClient, sess *domain.Session) {
+	r = r.WithContext(i18n.WithHints(r.Context(), ar.UILocales))
 	ctx := r.Context()
 	realm, _ := realmFrom(ctx)
 	accounts, err := a.core.KnownAccounts(ctx, core.AccountQuery{RealmID: realm.ID, DeviceID: a.deviceID(r), Current: sess, ClientRef: pc.App.ID})
@@ -338,7 +341,7 @@ func (a *Adapter) renderPicker(w http.ResponseWriter, r *http.Request, ar *authR
 	page.ContinueURL = "/r/" + realm.Name + "/oidc/login/continue"
 	page.ContinueToken = token
 	page.RequestID = ar.ID
-	a.pages.RenderLogin(w, http.StatusOK, page)
+	a.pages.RenderLogin(w, r, http.StatusOK, page)
 }
 
 type continueRequest struct {
@@ -434,16 +437,16 @@ func (a *Adapter) loginPage(r *http.Request, ar *authRequest, pc *core.ProtocolC
 type message = loginui.Message
 
 var (
-	msgExpired = message{Title: "This sign-in link has expired",
-		Text: "Go back to the application and start the sign-in again."}
-	msgOtherBrowser = message{Title: "Sign-in started in another browser",
-		Text: "For your security, a sign-in must be finished in the browser that started it. Go back to the application and start again here."}
-	msgLoggedOut = message{Title: "You are signed out", Text: "You can close this window."}
+	msgExpired = message{Title: i18n.M("message.expired.title", "This sign-in link has expired"),
+		Text: i18n.M("message.expired.text", "Go back to the application and start the sign-in again.")}
+	msgOtherBrowser = message{Title: i18n.M("message.other_browser.title", "Sign-in started in another browser"),
+		Text: i18n.M("message.other_browser.text", "For your security, a sign-in must be finished in the browser that started it. Go back to the application and start again here.")}
+	msgLoggedOut = message{Title: i18n.M("message.logged_out.title", "You are signed out"), Text: i18n.M("message.logged_out.text", "You can close this window.")}
 
-	msgLogoutExpired = message{Title: "This sign-out has expired",
-		Text: "Nothing was changed. Go back to the application and sign out again if you still want to."}
-	msgLogoutFailed = message{Title: "Sign-out failed",
-		Text: "Your session could not be ended. Try again in a moment."}
+	msgLogoutExpired = message{Title: i18n.M("message.logout_expired.title", "This sign-out has expired"),
+		Text: i18n.M("oidc.message.logout_expired.text", "Nothing was changed. Go back to the application and sign out again if you still want to.")}
+	msgLogoutFailed = message{Title: i18n.M("message.logout_failed.title", "Sign-out failed"),
+		Text: i18n.M("message.logout_failed.text", "Your session could not be ended. Try again in a moment.")}
 )
 
 func (a *Adapter) handleLoggedOut(w http.ResponseWriter, r *http.Request) {
@@ -452,7 +455,7 @@ func (a *Adapter) handleLoggedOut(w http.ResponseWriter, r *http.Request) {
 
 func (a *Adapter) renderMessage(w http.ResponseWriter, r *http.Request, status int, m message) {
 	realm, _ := realmFrom(r.Context())
-	a.pages.RenderMessage(w, status, m, "/r/"+realm.Name+"/oidc/assets")
+	a.pages.RenderMessage(w, r, status, m, "/r/"+realm.Name+"/oidc/assets")
 }
 
 func handleAsset(w http.ResponseWriter, r *http.Request) {

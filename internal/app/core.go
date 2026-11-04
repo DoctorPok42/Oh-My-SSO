@@ -336,6 +336,7 @@ func NewDispatcher(client *ent.Client, publicURL string, sender notify.EmailSend
 		Realms:   entstore.NewRealmRepository(client),
 		Settings: entstore.NewInstanceSettingsRepository(client),
 		Audit:    entstore.NewAuditLogRepository(client),
+		I18n:     Languages(),
 	})
 }
 
@@ -369,5 +370,6 @@ func (c *Core) AdminService() *service.AdminService {
 		Notifier: c.Notifier, PublicURL: c.PublicURL, EmailEnabled: c.EmailEnabled(), KMSBackend: c.KMSBackend,
 		TrustedDevices: c.TrustedDevices,
 		Timeouts:       c.Timeouts,
+		Languages:      Languages(),
 	})
 }

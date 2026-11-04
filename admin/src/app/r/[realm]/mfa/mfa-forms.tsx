@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { TogglePill } from "@/components/ui/toggle-pill";
+import { useT } from "@/i18n/client";
 import { MFA_METHOD_LABELS } from "@/lib/labels";
 import { realmMfaDraft, realmMfaPatch, TRUSTED_DEVICE_DAYS } from "@/lib/mfa-form";
 import type { MfaPolicies, RolePolicy } from "@/lib/types";
@@ -35,35 +36,43 @@ export function RealmMfaCard({
   const setRequired = (v: boolean) => set("required", v);
   const { locked, banner } = useEditLock({ canWrite: writable });
   const { run, pending } = useAction();
+  const { t } = useT();
   const patch = realmMfaPatch(policies, draft, system);
   const dirty = Object.keys(patch).length > 0;
   return (
     <Card>
-      <CardTitle>Realm policy</CardTitle>
-      <CardDescription>Applies to every account; roles and clients can only make it stricter.</CardDescription>
+      <CardTitle>{t("mfa.realm.title", "Realm policy")}</CardTitle>
+      <CardDescription>
+        {t("mfa.realm.description", "Applies to every account; roles and clients can only make it stricter.")}
+      </CardDescription>
       <div className="mt-4 space-y-4">
         {banner}
         <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-4 py-3">
           <div>
-            <p className="text-[14px] font-medium">Require a second factor for every account</p>
+            <p className="text-[14px] font-medium">
+              {t("mfa.realm.required", "Require a second factor for every account")}
+            </p>
             {system && (
               <p className="text-[12px] text-text-muted">
-                Always on in the master realm: its accounts administer the whole instance.
+                {t("mfa.realm.master_on", "Always on in the master realm: its accounts administer the whole instance.")}
               </p>
             )}
           </div>
           <TogglePill
             checked={required}
             onCheckedChange={locked || system ? undefined : setRequired}
-            onLabel="Required"
-            offLabel="Optional"
-            label="MFA required for every account"
+            onLabel={t("clients.scope.required", "Required")}
+            offLabel={t("clients.scope.optional", "Optional")}
+            label={t("mfa.realm.required_label", "MFA required for every account")}
           />
         </div>
         <Field
-          label="Step-up window (minutes)"
+          label={t("mfa.realm.step_up", "Step-up window (minutes)")}
           htmlFor="mfa-age"
-          hint="How recent a second factor must be for sensitive actions (changing a password, every change in this console...). 1 to 1440, and at most the session idle timeout (Settings): an idle session ends first."
+          hint={t(
+            "mfa.realm.step_up_hint",
+            "How recent a second factor must be for sensitive actions (changing a password, every change in this console...). 1 to 1440, and at most the session idle timeout (Settings): an idle session ends first.",
+          )}
         >
           <Input
             id="mfa-age"
@@ -78,26 +87,39 @@ export function RealmMfaCard({
         </Field>
         <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-4 py-3">
           <div>
-            <p className="text-[14px] font-medium">&quot;Don&apos;t ask again on this device&quot;</p>
+            <p className="text-[14px] font-medium">{t("mfa.realm.trusted", '"Don\'t ask again on this device"')}</p>
             <p className="text-[12px] text-text-muted">
               {system
-                ? "Always off in the master realm: its accounts always give a second factor."
-                : "After a second factor, users may skip it on that device. Applications and roles that require MFA still ask, and so does a sign-in that looks suspicious."}
+                ? t(
+                    "mfa.realm.trusted_master",
+                    "Always off in the master realm: its accounts always give a second factor.",
+                  )
+                : t(
+                    "mfa.realm.trusted_hint",
+                    "After a second factor, users may skip it on that device. Applications and roles that require MFA still ask, and so does a sign-in that looks suspicious.",
+                  )}
             </p>
           </div>
           <TogglePill
             checked={trusted}
             onCheckedChange={locked || system ? undefined : (v) => set("trusted", v)}
-            onLabel="Offered"
-            offLabel="Off"
-            label="Offer Don't ask again on this device"
+            onLabel={t("mfa.realm.offered", "Offered")}
+            offLabel={t("mfa.realm.off", "Off")}
+            label={t("mfa.realm.trusted_label", "Offer Don't ask again on this device")}
           />
         </div>
         {trusted && !system && (
           <Field
-            label="Trusted for (days)"
+            label={t("mfa.realm.trusted_days", "Trusted for (days)")}
             htmlFor="mfa-trusted-days"
-            hint={`A fixed period from the moment the box is ticked. ${TRUSTED_DEVICE_DAYS.min} to ${TRUSTED_DEVICE_DAYS.max}.`}
+            hint={t(
+              "mfa.realm.trusted_days_hint",
+              "A fixed period from the moment the box is ticked. {min} to {max}.",
+              {
+                min: TRUSTED_DEVICE_DAYS.min,
+                max: TRUSTED_DEVICE_DAYS.max,
+              },
+            )}
           >
             <Input
               id="mfa-trusted-days"
@@ -114,9 +136,11 @@ export function RealmMfaCard({
         <Button
           loading={pending}
           disabled={locked || pending || !dirty}
-          onClick={() => run(() => setRealmMfa(realm, patch), { success: "Realm MFA policy saved" })}
+          onClick={() =>
+            run(() => setRealmMfa(realm, patch), { success: t("mfa.realm.saved", "Realm MFA policy saved") })
+          }
         >
-          Save
+          {t("common.save", "Save")}
         </Button>
       </div>
     </Card>
@@ -142,60 +166,69 @@ export function RolePolicyActions({
   const [error, setError] = useState<string | null>(null);
   const stepUp = useStepUp();
   const { run, pending } = useAction();
+  const { t, tm } = useT();
   const managed = policy.managed_by === "config";
   if (!writable || managed) return null;
   return (
     <div className="flex justify-end gap-2">
       <Button variant="secondary" size="xs" onClick={() => stepUp.ensure(() => setOpen(true))}>
-        Edit
+        {t("common.edit", "Edit")}
       </Button>
       {policy.configured && (
         <ConfirmAction
           variant="secondary"
-          trigger="Reset"
-          title={`Back to the realm policy for ${policy.role.name}?`}
-          description="This role's own MFA rules are removed: the realm policy applies."
-          confirmLabel="Reset"
+          trigger={t("common.reset", "Reset")}
+          title={t("mfa.role.reset_title", "Back to the realm policy for {role}?", { role: policy.role.name })}
+          description={t("mfa.role.reset_text", "This role's own MFA rules are removed: the realm policy applies.")}
+          confirmLabel={t("common.reset", "Reset")}
           confirmVariant="primary"
-          success="Role policy removed"
+          success={t("mfa.role.removed", "Role policy removed")}
           action={() => deleteRoleMfa(realm, policy.role.id)}
         />
       )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
-          <DialogTitle>MFA for the role {policy.role.name}</DialogTitle>
-          <DialogDescription>Members of this role follow these rules on top of the realm policy.</DialogDescription>
+          <DialogTitle>{t("mfa.role.title", "MFA for the role {role}", { role: policy.role.name })}</DialogTitle>
+          <DialogDescription>
+            {t("mfa.role.description", "Members of this role follow these rules on top of the realm policy.")}
+          </DialogDescription>
           <div className="mt-5 space-y-4">
             <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
-              <span className="text-[14px] font-medium">Second factor required</span>
+              <span className="text-[14px] font-medium">{t("mfa.role.required", "Second factor required")}</span>
               <TogglePill
                 checked={required}
                 onCheckedChange={setRequired}
-                onLabel="Required"
-                offLabel="Optional"
-                label="Required"
+                onLabel={t("clients.scope.required", "Required")}
+                offLabel={t("clients.scope.optional", "Optional")}
+                label={t("clients.scope.required", "Required")}
               />
             </div>
             <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
-              <span className="text-[14px] font-medium">Step-up for sensitive actions</span>
+              <span className="text-[14px] font-medium">{t("columns.step_up", "Step-up for sensitive actions")}</span>
               <TogglePill
                 checked={stepUpSensitive}
                 onCheckedChange={setStepUpSensitive}
-                label="Step-up for sensitive actions"
+                label={t("columns.step_up", "Step-up for sensitive actions")}
               />
             </div>
-            <Field label="Accepted methods" hint="None selected: any method.">
+            <Field
+              label={t("clients.mfa.methods", "Accepted methods")}
+              hint={t("mfa.role.methods_hint", "None selected: any method.")}
+            >
               <ChipSelect
-                label="Accepted methods"
-                options={known.map((m) => ({ id: m, name: MFA_METHOD_LABELS[m] ?? m }))}
+                label={t("clients.mfa.methods", "Accepted methods")}
+                options={known.map((id) => {
+                  const label = MFA_METHOD_LABELS[id];
+                  return { id, name: label ? tm(label) : id };
+                })}
                 value={methods}
                 onChange={setMethods}
               />
             </Field>
             <Field
-              label="Enrollment grace period (days)"
+              label={t("mfa.role.grace", "Enrollment grace period (days)")}
               htmlFor="r-grace"
-              hint="Time new members get to set up a factor before it is enforced."
+              hint={t("mfa.role.grace_hint", "Time new members get to set up a factor before it is enforced.")}
             >
               <Input
                 id="r-grace"
@@ -210,7 +243,7 @@ export function RolePolicyActions({
           </div>
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setOpen(false)}>
-              Cancel
+              {t("common.cancel", "Cancel")}
             </Button>
             <Button
               loading={pending}
@@ -225,13 +258,13 @@ export function RolePolicyActions({
                       enrollment_grace_days: Number(grace) || 0,
                       step_up_for_sensitive_actions: stepUpSensitive,
                     }),
-                  { quiet: true, success: "Role policy saved" },
+                  { quiet: true, success: t("mfa.role.saved", "Role policy saved") },
                 );
                 if (r.ok) setOpen(false);
                 else setError(r.message);
               }}
             >
-              Save
+              {t("common.save", "Save")}
             </Button>
           </div>
         </DialogContent>

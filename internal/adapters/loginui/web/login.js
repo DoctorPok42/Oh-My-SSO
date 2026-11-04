@@ -3,6 +3,19 @@
   const app = document.getElementById("app");
   if (!app) return;
   const $ = (id) => document.getElementById(id);
+
+  // Texts in the page's language: the omsso-i18n block holds the
+  // translations of the "login.js." keys (package i18n), none in English.
+  const dict = (() => { try { return JSON.parse($("omsso-i18n").textContent) || {}; } catch { return {}; } })();
+  const t = (key, def, args) => {
+    let s = dict[key] || def;
+    for (const [k, v] of Object.entries(args || {})) s = s.split(`{${k}}`).join(String(v));
+    return s;
+  };
+  const plural = new Intl.PluralRules(document.documentElement.lang || "en");
+  const tn = (key, n, one, other) => (plural.select(n) === "one"
+    ? t(`${key}.one`, one, { count: n }) : t(`${key}.other`, other, { count: n }));
+
   const base = app.dataset.base;
   const clientParam = app.dataset.clientParam === "entity_id" ? "entity_id" : "client_id";
   const clientId = app.dataset.clientId;
@@ -22,34 +35,36 @@
   let attempt = 0; // +1 at each screen change: an older prompt's result is ignored
 
   const messages = {
-    invalid_credentials: "Wrong username or password.",
-    invalid_request: "Please fill in every field.",
-    invalid_mfa_code: "Wrong code. Try again.",
-    mfa_challenge_expired: "This attempt has expired. Please sign in again.",
-    rate_limited: "Too many attempts. Wait a few minutes, then try again.",
-    method_not_allowed: "This application does not accept this method.",
-    webauthn_ceremony_expired: "The passkey request has expired. Try again.",
-    webauthn_rejected: "The passkey was not accepted.",
-    passkey_rejected: "This passkey or security key could not sign you in.",
-    passkey_unavailable: "This account cannot use a passkey here. Enter your password.",
-    passkeys_disabled: "Passkeys are not enabled on this server.",
-    unauthenticated: "Your session has ended. Please sign in again.",
-    unknown_client: "This application is not available.",
-    access_suspended: "Your access is temporarily suspended. Contact your administrator.",
-    client_unavailable: "This application is temporarily unavailable. Try again later.",
+    invalid_credentials: t("login.js.error.invalid_credentials", "Wrong username or password."),
+    invalid_request: t("login.js.error.invalid_request", "Please fill in every field."),
+    invalid_mfa_code: t("login.js.error.invalid_mfa_code", "Wrong code. Try again."),
+    mfa_challenge_expired: t("login.js.error.mfa_challenge_expired", "This attempt has expired. Please sign in again."),
+    rate_limited: t("login.js.error.rate_limited", "Too many attempts. Wait a few minutes, then try again."),
+    method_not_allowed: t("login.js.error.method_not_allowed", "This application does not accept this method."),
+    webauthn_ceremony_expired: t("login.js.error.webauthn_ceremony_expired", "The passkey request has expired. Try again."),
+    webauthn_rejected: t("login.js.error.webauthn_rejected", "The passkey was not accepted."),
+    passkey_rejected: t("login.js.error.passkey_rejected", "This passkey or security key could not sign you in."),
+    passkey_unavailable: t("login.js.error.passkey_unavailable", "This account cannot use a passkey here. Enter your password."),
+    passkeys_disabled: t("login.js.error.passkeys_disabled", "Passkeys are not enabled on this server."),
+    unauthenticated: t("login.js.error.unauthenticated", "Your session has ended. Please sign in again."),
+    unknown_client: t("login.js.error.unknown_client", "This application is not available."),
+    access_suspended: t("login.js.error.access_suspended", "Your access is temporarily suspended. Contact your administrator."),
+    client_unavailable: t("login.js.error.client_unavailable", "This application is temporarily unavailable. Try again later."),
   };
 
   // What "Try another way" offers, in the server's order (best first).
   const labels = {
-    passkey: "Use a passkey or security key",
-    password: "Enter your password",
-    totp: "Get a code from your authenticator app",
-    backup_code: "Use a backup code",
+    passkey: t("login.js.way.passkey", "Use a passkey or security key"),
+    password: t("login.js.way.password", "Enter your password"),
+    totp: t("login.js.way.totp", "Get a code from your authenticator app"),
+    backup_code: t("login.js.way.backup_code", "Use a backup code"),
   };
 
   function showError(code, remaining) {
-    let text = messages[code] || "Something went wrong. Please try again.";
-    if (typeof remaining === "number") text += ` (${remaining} attempt${remaining === 1 ? "" : "s"} left)`;
+    let text = messages[code] || t("login.js.error.generic", "Something went wrong. Please try again.");
+    if (typeof remaining === "number") {
+      text += " " + tn("login.js.attempts_left", remaining, "({count} attempt left)", "({count} attempts left)");
+    }
     $("error").textContent = text;
     $("error").hidden = false;
   }
@@ -155,7 +170,7 @@
     clearError();
     hideAll();
     current = method;
-    $("title").textContent = step === "first" ? "Sign in" : "Confirm it's you";
+    $("title").textContent = step === "first" ? t("login.js.title.sign_in", "Sign in") : t("login.js.title.stepup", "Confirm it's you");
 
     if (method === "password") {
       const form = $("password-form");
@@ -167,10 +182,12 @@
       section.hidden = false;
       placeRemember(section, $("passkey-btn"));
       placeTrust(section, $("passkey-btn"));
-      const who = step === "first" && tile ? ` to sign in as ${tile.identifier}` : step === "first" ? " to sign in" : " to confirm it's you";
-      $("passkey-hint").textContent = `Use your passkey or security key${who}.`;
+      $("passkey-hint").textContent = step === "first" && tile
+        ? t("login.js.passkey.hint_as", "Use your passkey or security key to sign in as {account}.", { account: tile.identifier })
+        : step === "first" ? t("login.js.passkey.hint_sign_in", "Use your passkey or security key to sign in.")
+          : t("login.js.passkey.hint_confirm", "Use your passkey or security key to confirm it's you.");
       $("passkey-status").hidden = true;
-      $("passkey-btn").textContent = "Continue";
+      $("passkey-btn").textContent = t("login.js.continue", "Continue");
       $("passkey-btn").disabled = false;
       // The prompt covers the page: with "Don't ask again on this device"
       // on screen, it waits for "Continue" so the box can be ticked first.
@@ -181,8 +198,9 @@
       form.hidden = false;
       placeTrust(form, form.querySelector("button[type=submit]"));
       const backup = method === "backup_code";
-      $("code-hint").textContent = backup ? "Enter one of your backup codes." : "Enter the code from your authenticator app.";
-      $("code-label").textContent = backup ? "Backup code" : "Code";
+      $("code-hint").textContent = backup ? t("login.js.code.hint_backup", "Enter one of your backup codes.")
+        : t("login.js.code.hint_totp", "Enter the code from your authenticator app.");
+      $("code-label").textContent = backup ? t("login.js.code.label_backup", "Backup code") : t("login.js.code.label", "Code");
       $("code").setAttribute("inputmode", backup ? "text" : "numeric");
       $("code").value = "";
       $("code").focus();
@@ -195,7 +213,8 @@
     clearError();
     hideAll();
     if (remember) remember.hidden = true;
-    $("ways-hint").textContent = step === "first" ? "Choose how you want to sign in:" : "Choose how you want to confirm it's you:";
+    $("ways-hint").textContent = step === "first" ? t("login.js.ways.sign_in", "Choose how you want to sign in:")
+      : t("login.js.ways.confirm", "Choose how you want to confirm it's you:");
     const list = $("ways");
     list.replaceChildren();
     for (const m of methods) {
@@ -223,8 +242,9 @@
     methods = secondStepMethods(serverMethods);
     trustDays = nextStep === "second" ? offerDays || 0 : 0;
     trustBox.checked = false;
-    $("trust-device-hint").textContent = `For ${trustDays} days, unless an application requires a second factor. ` +
-      "Leave this unchecked on a shared or public computer.";
+    $("trust-device-hint").textContent = tn("login.js.trust.hint", trustDays,
+      "For {count} day, unless an application requires a second factor. Leave this unchecked on a shared or public computer.",
+      "For {count} days, unless an application requires a second factor. Leave this unchecked on a shared or public computer.");
     if (!methods.length) {
       hideAll();
       updateLinks(true);
@@ -363,8 +383,8 @@
     }
 
     // The prompt is open: "Try again" restarts it, whatever happened to it.
-    btn.textContent = "Try again";
-    status.textContent = "Waiting for your passkey or security key...";
+    btn.textContent = t("login.js.passkey.try_again", "Try again");
+    status.textContent = t("login.js.passkey.waiting", "Waiting for your passkey or security key...");
     status.hidden = false;
     let cred;
     try {
@@ -373,7 +393,7 @@
       if (!live()) return; // closed on purpose: the user went elsewhere
       // Cancelled, timed out, or the browser wanted a click first: the
       // user tries again (a click) or takes another way.
-      status.textContent = "The request was cancelled or timed out.";
+      status.textContent = t("login.js.passkey.cancelled", "The request was cancelled or timed out.");
       btn.focus();
       return;
     }
@@ -416,7 +436,7 @@
     if (remember) remember.hidden = true;
     tile = null;
     accounts.hidden = false;
-    $("title").textContent = "Pick an account";
+    $("title").textContent = t("login.js.title.pick", "Pick an account");
     $("step-links").hidden = true;
   }
 

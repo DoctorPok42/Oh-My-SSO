@@ -1,23 +1,22 @@
-{{define "subject"}}A sign-in method was removed from your account{{end}}
+{{define "subject"}}{{t "email.mfa_removed.subject" "A sign-in method was removed from your account"}}{{end}}
 
-{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+{{define "text"}}{{template "hello" .}}
 
-This second step for signing in was removed from your {{.Realm}} account
-and cannot be used any more: {{.MethodLabel}}{{if .MethodName}} "{{.MethodName}}"{{end}}.
+{{tp "email.mfa_removed.intro" "This second step for signing in was removed from your {realm} account and cannot be used any more: <strong>{method}</strong>." "realm" .Realm "method" .MethodLabel}}{{if .MethodName}} “{{.MethodName}}”{{end}}
 
 {{template "details.txt" .}}
-If this was you, there is nothing to do.
+{{t "email.nothing_to_do" "If this was you, there is nothing to do."}}
 
-If it was not you, change your password now and tell your administrator:
+{{t "email.not_you" "Not you?"}} {{t "email.change_and_tell" "Change your password now and tell your administrator."}}
 {{.ForgotPasswordURL}}
 {{end}}
 
-{{define "html"}}{{template "badge.warning" "Security"}}
-{{template "title" "A sign-in method was removed"}}
-<p>Hello{{if .Username}} {{.Username}}{{end}},</p>
-<p>This second step for signing in was removed from your {{.Realm}} account and cannot be used any more: <strong>{{.MethodLabel}}</strong>{{if .MethodName}} “{{.MethodName}}”{{end}}.</p>
+{{define "html"}}{{template "badge.warning" (t "email.badge.security" "Security")}}
+{{template "title" (t "email.mfa_removed.title" "A sign-in method was removed")}}
+{{template "hello" .}}
+<p>{{th "email.mfa_removed.intro" "This second step for signing in was removed from your {realm} account and cannot be used any more: <strong>{method}</strong>." "realm" .Realm "method" .MethodLabel}}{{if .MethodName}} “{{.MethodName}}”{{end}}</p>
 {{template "details" .}}
-<p>If this was you, there is nothing to do.</p>
-{{template "notyou" "Change your password now and tell your administrator."}}
-{{template "button" (button .ForgotPasswordURL "Change my password")}}
+<p>{{t "email.nothing_to_do" "If this was you, there is nothing to do."}}</p>
+{{template "notyou" (t "email.change_and_tell" "Change your password now and tell your administrator.")}}
+{{template "button" (button .ForgotPasswordURL (t "email.button.change_password" "Change my password"))}}
 {{end}}

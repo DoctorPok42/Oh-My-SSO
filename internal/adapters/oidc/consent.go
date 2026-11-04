@@ -17,16 +17,28 @@ import (
 	"sso.internal/sso/internal/clientip"
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
+	"sso.internal/sso/internal/i18n"
 )
 
 
-var standardConsentItems = map[string]core.ConsentItem{
-	scopeProfile: {Scope: scopeProfile, Title: "Your profile",
-		Description: "Your name, username and the other details of your profile (picture, language...)."},
-	scopeEmail: {Scope: scopeEmail, Title: "Your e-mail address"},
-	scopeOfflineAccess: {Scope: scopeOfflineAccess, Title: "Stay signed in",
-		Description: "The application can renew its access without asking you again, while you are signed in here."},
+// The lines of the standard scopes. The items keep the English text (they
+// are saved with the authorization request); the page shows them in the
+// reader's language (loginui.ConsentLines).
+var standardConsentTexts = map[string]loginui.ConsentText{
+	scopeProfile: {Title: i18n.M("consent.scope.profile.title", "Your profile"),
+		Text: i18n.M("consent.scope.profile.text", "Your name, username and the other details of your profile (picture, language...).")},
+	scopeEmail: {Title: i18n.M("consent.scope.email.title", "Your e-mail address")},
+	scopeOfflineAccess: {Title: i18n.M("consent.scope.offline_access.title", "Stay signed in"),
+		Text: i18n.M("consent.scope.offline_access.text", "The application can renew its access without asking you again, while you are signed in here.")},
 }
+
+var standardConsentItems = func() map[string]core.ConsentItem {
+	out := map[string]core.ConsentItem{}
+	for scope, t := range standardConsentTexts {
+		out[scope] = core.ConsentItem{Scope: scope, Title: t.Title.Default, Description: t.Text.Default}
+	}
+	return out
+}()
 
 // consentItems lists what the client is about to receive: the standard
 // scopes it was granted, then the effective ClientScopes of the assertion
@@ -110,6 +122,7 @@ func (a *Adapter) consentStep(w http.ResponseWriter, r *http.Request, ar *authRe
 
 func (a *Adapter) renderConsent(w http.ResponseWriter, r *http.Request, ar *authRequest, pc *core.ProtocolClient,
 	as *core.IdentityAssertion, items []core.ConsentItem, dec *core.ConsentDecision) {
+	r = r.WithContext(i18n.WithHints(r.Context(), ar.UILocales))
 	ctx := r.Context()
 	realm, _ := realmFrom(ctx)
 	base := "/r/" + realm.Name
@@ -128,14 +141,10 @@ func (a *Adapter) renderConsent(w http.ResponseWriter, r *http.Request, ar *auth
 		return
 	}
 
-	lines := make([]loginui.ConsentLine, 0, len(items))
-	for _, it := range items {
-		lines = append(lines, loginui.ConsentLine{
-			Title: it.Title, Description: it.Description,
-			New: dec.Previously && slices.Contains(dec.Missing, it.Scope),
-		})
-	}
-	a.pages.RenderConsent(w, loginui.Consent{
+	lines := loginui.ConsentLines(a.pages.Loc(r), items, standardConsentTexts, func(it core.ConsentItem) bool {
+		return dec.Previously && slices.Contains(dec.Missing, it.Scope)
+	})
+	a.pages.RenderConsent(w, r, loginui.Consent{
 		RealmDisplay:   firstNonEmpty(realm.DisplayName, realm.Name),
 		ClientName:     firstNonEmpty(pc.App.Name, pc.App.ClientID),
 		ClientHost:     hostOf(ar.RedirectURI),

@@ -5,6 +5,7 @@ import { useCallback, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { usePendingReport } from "@/components/console/navigation-progress";
 import { useStepUp } from "@/components/console/step-up";
+import { useT } from "@/i18n/client";
 import { needsSignIn, needsStepUp, type ApiResult } from "@/lib/api-error";
 
 // Calls a Server Action and handles what every change has in common:
@@ -17,6 +18,7 @@ import { needsSignIn, needsStepUp, type ApiResult } from "@/lib/api-error";
 // https://nextjs.org/docs/app/getting-started/updating-data
 
 export function useAction() {
+  const { t } = useT();
   const router = useRouter();
   const stepUp = useStepUp();
   const [pending, setPending] = useState(false);
@@ -38,7 +40,7 @@ export function useAction() {
           ok: false,
           status: 0,
           error: "network",
-          message: "The console did not answer, or your session ended. Reload the page.",
+          message: t("action.network", "The console did not answer, or your session ended. Reload the page."),
         };
       } finally {
         setPending(false);
@@ -59,7 +61,7 @@ export function useAction() {
       if (opts.refresh !== false) startRefresh(() => router.refresh());
       return r;
     },
-    [router, stepUp],
+    [router, stepUp, t],
   );
 
   return { run, pending, refreshing };

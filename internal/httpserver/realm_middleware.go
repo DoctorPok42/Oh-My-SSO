@@ -33,6 +33,7 @@ func (s *Server) realmMiddleware(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), realmContextKey{}, realm)
+		ctx = s.withLangPrefs(r.WithContext(ctx), realm)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

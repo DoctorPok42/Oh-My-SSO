@@ -15,6 +15,7 @@ import (
 	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/i18n"
 	"sso.internal/sso/internal/notify"
 	"sso.internal/sso/internal/ratelimit"
 )
@@ -23,6 +24,22 @@ import (
 // session, CSRF and "Confirm it's you" rules they all follow).
 
 const historyPageSize = 25
+
+// Titles of the pages (<title>), translated by accountLayout. Same keys as
+// the tabs and headings of the templates.
+var (
+	titleProfile   = i18n.M("account.tab.profile", "Profile")
+	titleSecurity  = i18n.M("account.tab.security", "Security")
+	titlePassword  = i18n.M("account.password.title", "Change your password")
+	titleTOTP      = i18n.M("account.security.add_totp", "Add an authenticator app")
+	titlePasskey   = i18n.M("account.security.add_passkey", "Add a passkey or security key")
+	titleRemove    = i18n.M("common.remove", "Remove")
+	titleNewCodes  = i18n.M("account.codes.new_title", "Get new backup codes")
+	titleSaveCodes = i18n.M("account.codes.save_title", "Save your backup codes")
+	titleSessions  = i18n.M("account.sessions.title", "Sessions")
+	titleApps      = i18n.M("account.tab.apps", "Connected apps")
+	titleHistory   = i18n.M("account.tab.history", "History")
+)
 
 func (s *Server) accountEvent(r *http.Request) service.AccountEvent {
 	return service.AccountEvent{IPAddress: clientIP(r), UserAgent: r.UserAgent()}
@@ -35,15 +52,16 @@ func (s *Server) profilePage(w http.ResponseWriter, r *http.Request, a *acct) ac
 	family, _ := a.user.Profile["family_name"].(string)
 	verified, _ := a.user.Profile["email_verified"].(bool)
 	return accountui.ProfilePage{
-		Layout:   s.accountLayout(w, r, a, "profile", "Profile"),
+		Layout:   s.accountLayout(w, r, a, "profile", titleProfile),
 		Username: a.user.Username, Email: a.user.Email, EmailVerified: verified,
 		GivenName: given, FamilyName: family,
+		Languages: s.languageOptions(r),
 	}
 }
 
 func (s *Server) handleAccountProfile(w http.ResponseWriter, r *http.Request) {
 	a := acctFrom(r)
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PageProfile, s.profilePage(w, r, a))
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PageProfile, s.profilePage(w, r, a))
 }
 
 func (s *Server) handleAccountProfileSave(w http.ResponseWriter, r *http.Request) {
@@ -54,12 +72,12 @@ func (s *Server) handleAccountProfileSave(w http.ResponseWriter, r *http.Request
 	case errors.Is(err, service.ErrInvalidName):
 		page := s.profilePage(w, r, a)
 		page.GivenName, page.FamilyName = in.GivenName, in.FamilyName
-		page.FormError = "Each name can be at most 100 characters long."
+		page.FormError = s.loc(r).T("account.profile.name.too_long", "Each name can be at most 100 characters long.")
 		if isHTMX(r) {
-			s.accountPages.RenderPartial(w, accountui.PageProfile, "profile-form", page)
+			s.accountPages.RenderPartial(w, r, accountui.PageProfile, "profile-form", page)
 			return
 		}
-		s.accountPages.RenderPage(w, http.StatusUnprocessableEntity, accountui.PageProfile, page)
+		s.accountPages.RenderPage(w, r, http.StatusUnprocessableEntity, accountui.PageProfile, page)
 		return
 	case err != nil:
 		s.accountFailure(w, r, err)
@@ -69,7 +87,7 @@ func (s *Server) handleAccountProfileSave(w http.ResponseWriter, r *http.Request
 		a.user = u
 		page := s.profilePage(w, r, a)
 		page.Saved = true
-		s.accountPages.RenderPartial(w, accountui.PageProfile, "profile-form", page)
+		s.accountPages.RenderPartial(w, r, accountui.PageProfile, "profile-form", page)
 		return
 	}
 	setFlash(w, a.realm.Name, "profile_saved", 0)
@@ -91,20 +109,20 @@ func (s *Server) handleAccountSignOut(w http.ResponseWriter, r *http.Request) {
 
 // --- security ------------------------------------------------------------------
 
-var factorLabels = map[domain.MfaMethodType]string{
-	domain.MfaMethodTOTP:     "Authenticator app",
-	domain.MfaMethodPasskey:  "Passkey",
-	domain.MfaMethodWebAuthn: "Security key",
+var factorLabels = map[domain.MfaMethodType]i18n.Text{
+	domain.MfaMethodTOTP:     i18n.M("account.factor.totp", "Authenticator app"),
+	domain.MfaMethodPasskey:  i18n.M("account.factor.passkey", "Passkey"),
+	domain.MfaMethodWebAuthn: i18n.M("account.factor.security_key", "Security key"),
 }
 
-func factorView(m *domain.MfaMethod) accountui.Factor {
+func factorView(loc *i18n.Localizer, m *domain.MfaMethod) accountui.Factor {
 	kind := string(m.Type)
 	if m.Type == domain.MfaMethodWebAuthn {
 		kind = "security_key"
 	}
-	label := factorLabels[m.Type]
-	if label == "" {
-		label = "Second step"
+	label := loc.T("account.factor.other", "Second step")
+	if l, ok := factorLabels[m.Type]; ok {
+		label = loc.Text(l)
 	}
 	f := accountui.Factor{ID: m.ID, Kind: kind, KindLabel: label, Name: m.Name, CreatedAt: m.CreatedAt}
 	if !m.LastUsedAt.IsZero() {
@@ -123,20 +141,20 @@ func (s *Server) handleAccountSecurity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := accountui.SecurityPage{
-		Layout:          s.accountLayout(w, r, a, "security", "Security"),
+		Layout:          s.accountLayout(w, r, a, "security", titleSecurity),
 		HasPassword:     a.user.PasswordHash != "",
 		PasskeysEnabled: s.mfa.PasskeysEnabled(),
 		BackupRemaining: factors.BackupCodes.Remaining,
 		BackupTotal:     factors.BackupCodes.Total,
 	}
 	for _, m := range factors.Methods {
-		page.Factors = append(page.Factors, factorView(m))
+		page.Factors = append(page.Factors, factorView(s.loc(r), m))
 	}
 	if page.TrustedDevices, err = s.trustedDeviceViews(r, a); err != nil {
 		s.accountFailure(w, r, err)
 		return
 	}
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PageSecurity, page)
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PageSecurity, page)
 }
 
 func (s *Server) trustedDeviceViews(r *http.Request, a *acct) ([]accountui.TrustedDevice, error) {
@@ -147,7 +165,7 @@ func (s *Server) trustedDeviceViews(r *http.Request, a *acct) ([]accountui.Trust
 	here := service.DeviceFingerprint(deviceIDFromRequest(r))
 	out := make([]accountui.TrustedDevice, 0, len(devices))
 	for _, d := range devices {
-		v := accountui.TrustedDevice{ID: d.ID, Device: deviceName(d.UserAgent), Current: here != "" && d.DeviceHash == here,
+		v := accountui.TrustedDevice{ID: d.ID, Device: deviceName(s.loc(r), d.UserAgent), Current: here != "" && d.DeviceHash == here,
 			CreatedAt: d.CreatedAt, ExpiresAt: d.ExpiresAt}
 		if !d.LastUsedAt.IsZero() {
 			t := d.LastUsedAt
@@ -158,11 +176,11 @@ func (s *Server) trustedDeviceViews(r *http.Request, a *acct) ([]accountui.Trust
 	return out, nil
 }
 
-func deviceName(ua string) string {
-	if d := notify.DescribeUserAgent(ua); d != "" {
+func deviceName(loc *i18n.Localizer, ua string) string {
+	if d := notify.DescribeUserAgentIn(loc, ua); d != "" {
 		return d
 	}
-	return "Unknown device"
+	return loc.T("device.unknown", "Unknown device")
 }
 
 // devicesAnswer: after a change to the trusted devices, the new list
@@ -173,8 +191,8 @@ func (s *Server) devicesAnswer(w http.ResponseWriter, r *http.Request, a *acct, 
 		s.accountRedirect(w, r, accountBase(a.realm.Name)+"/security")
 		return
 	}
-	page := accountui.SecurityPage{Layout: s.accountLayout(w, r, a, "security", "Security")}
-	setNotice(&page.Layout, flashValue(flash, n))
+	page := accountui.SecurityPage{Layout: s.accountLayout(w, r, a, "security", titleSecurity)}
+	s.setNotice(r, &page.Layout, flashValue(flash, n))
 	var err error
 	if page.TrustedDevices, err = s.trustedDeviceViews(r, a); err != nil {
 		s.accountFailure(w, r, err)
@@ -187,8 +205,8 @@ func (s *Server) devicesAnswer(w http.ResponseWriter, r *http.Request, a *acct, 
 // notice area (out of band).
 func (s *Server) renderWithNotice(w http.ResponseWriter, r *http.Request, page, block string, data any, l accountui.Layout) {
 	rec := &bufferedWriter{header: http.Header{}}
-	s.accountPages.RenderPartial(rec, page, block, data)
-	s.accountPages.RenderPartial(rec, page, "notice-oob", l)
+	s.accountPages.RenderPartial(rec, r, page, block, data)
+	s.accountPages.RenderPartial(rec, r, page, "notice-oob", l)
 	if rec.failed {
 		s.accountFailure(w, r, errors.New("render "+page+"/"+block))
 		return
@@ -225,7 +243,7 @@ func (s *Server) handleAccountRevokeDevices(w http.ResponseWriter, r *http.Reque
 
 func (s *Server) passwordPage(w http.ResponseWriter, r *http.Request, a *acct) accountui.PasswordPage {
 	return accountui.PasswordPage{
-		Layout:    s.accountLayout(w, r, a, "security", "Change your password"),
+		Layout:    s.accountLayout(w, r, a, "security", titlePassword),
 		Username:  a.user.Username,
 		MinLength: s.account.MinPasswordLength(r.Context(), a.realm.ID),
 		MaxLength: service.MaxPasswordLength,
@@ -241,7 +259,7 @@ func (s *Server) handleAccountPassword(w http.ResponseWriter, r *http.Request) {
 	if !s.accountStepUp(w, r, a, r.URL.Path, true) {
 		return
 	}
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PagePassword, s.passwordPage(w, r, a))
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PagePassword, s.passwordPage(w, r, a))
 }
 
 func (s *Server) handleAccountPasswordSave(w http.ResponseWriter, r *http.Request) {
@@ -250,10 +268,11 @@ func (s *Server) handleAccountPasswordSave(w http.ResponseWriter, r *http.Reques
 	if !s.accountStepUp(w, r, a, r.URL.Path, true) {
 		return
 	}
+	loc := s.loc(r)
 	fail := func(status int, msg string) {
 		page := s.passwordPage(w, r, a)
 		page.FormError = msg
-		s.accountPages.RenderPage(w, status, accountui.PagePassword, page)
+		s.accountPages.RenderPage(w, r, status, accountui.PagePassword, page)
 	}
 	ok, err := s.rateLimiter.Allow(ctx, ratelimit.Key(routeAccountPassword, a.realm.ID, "user", a.user.ID),
 		accountPasswordPerUser, loginRateLimitWindow)
@@ -262,16 +281,16 @@ func (s *Server) handleAccountPasswordSave(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if !ok {
-		fail(http.StatusTooManyRequests, "Too many attempts. Wait a few minutes, then try again.")
+		fail(http.StatusTooManyRequests, loc.T("account.error.rate_limited", "Too many attempts. Wait a few minutes, then try again."))
 		return
 	}
 	current, next, confirm := r.PostForm.Get("current"), r.PostForm.Get("new"), r.PostForm.Get("confirm")
 	if next != confirm {
-		fail(http.StatusUnprocessableEntity, "The two new passwords are not the same.")
+		fail(http.StatusUnprocessableEntity, loc.T("account.password.error.differ", "The two new passwords are not the same."))
 		return
 	}
 	if len(current) > maxPasswordLen || len(next) > maxPasswordLen {
-		fail(http.StatusUnprocessableEntity, "This password is too long.")
+		fail(http.StatusUnprocessableEntity, loc.T("account.password.error.too_long_input", "This password is too long."))
 		return
 	}
 	res, err := s.account.ChangePassword(ctx, service.ChangePasswordInput{
@@ -280,19 +299,19 @@ func (s *Server) handleAccountPasswordSave(w http.ResponseWriter, r *http.Reques
 	var policy *service.PasswordPolicyError
 	switch {
 	case errors.Is(err, service.ErrWrongPassword):
-		fail(http.StatusUnprocessableEntity, "Your current password is not right.")
+		fail(http.StatusUnprocessableEntity, loc.T("account.password.error.wrong_current", "Your current password is not right."))
 	case errors.Is(err, service.ErrPasswordUnchanged):
-		fail(http.StatusUnprocessableEntity, "The new password must be different from the current one.")
+		fail(http.StatusUnprocessableEntity, loc.T("account.password.error.unchanged", "The new password must be different from the current one."))
 	case errors.As(err, &policy):
 		switch {
 		case errors.Is(err, service.ErrPasswordTooShort):
-			fail(http.StatusUnprocessableEntity, "The new password must be at least "+strconv.Itoa(policy.MinLength)+" characters long.")
+			fail(http.StatusUnprocessableEntity, loc.T("account.password.error.too_short", "The new password must be at least {min} characters long.", "min", policy.MinLength))
 		case errors.Is(err, service.ErrPasswordTooLong):
-			fail(http.StatusUnprocessableEntity, "The new password must be at most "+strconv.Itoa(policy.MaxLength)+" characters long.")
+			fail(http.StatusUnprocessableEntity, loc.T("account.password.error.too_long", "The new password must be at most {max} characters long.", "max", policy.MaxLength))
 		case errors.Is(err, service.ErrPasswordMatchesIdentity):
-			fail(http.StatusUnprocessableEntity, "The new password must not be your username or e-mail address.")
+			fail(http.StatusUnprocessableEntity, loc.T("account.password.error.identity", "The new password must not be your username or e-mail address."))
 		default:
-			fail(http.StatusUnprocessableEntity, "This password cannot be used.")
+			fail(http.StatusUnprocessableEntity, loc.T("account.password.error.refused", "This password cannot be used."))
 		}
 	case errors.Is(err, service.ErrNoPassword):
 		s.accountRedirect(w, r, accountBase(a.realm.Name)+"/security")
@@ -311,8 +330,8 @@ func (s *Server) handleAccountTOTP(w http.ResponseWriter, r *http.Request) {
 	if !s.accountStepUp(w, r, a, r.URL.Path, false) {
 		return
 	}
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PageTOTP, accountui.TOTPPage{
-		Layout: s.accountLayout(w, r, a, "security", "Add an authenticator app"), Step: "name",
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PageTOTP, accountui.TOTPPage{
+		Layout: s.accountLayout(w, r, a, "security", titleTOTP), Step: "name",
 	})
 }
 
@@ -325,9 +344,9 @@ func (s *Server) handleAccountTOTPStart(w http.ResponseWriter, r *http.Request) 
 	enr, err := s.mfa.StartTOTPEnrollment(r.Context(), a.user, name)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidMFAPolicy) {
-			s.accountPages.RenderPage(w, http.StatusUnprocessableEntity, accountui.PageTOTP, accountui.TOTPPage{
-				Layout: s.accountLayout(w, r, a, "security", "Add an authenticator app"), Step: "name", Name: name,
-				FormError: "The name is at most 100 characters.",
+			s.accountPages.RenderPage(w, r, http.StatusUnprocessableEntity, accountui.PageTOTP, accountui.TOTPPage{
+				Layout: s.accountLayout(w, r, a, "security", titleTOTP), Step: "name", Name: name,
+				FormError: s.loc(r).T("account.totp.error.name_too_long", "The name is at most 100 characters."),
 			})
 			return
 		}
@@ -335,7 +354,7 @@ func (s *Server) handleAccountTOTPStart(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	page := accountui.TOTPPage{
-		Layout: s.accountLayout(w, r, a, "security", "Add an authenticator app"),
+		Layout: s.accountLayout(w, r, a, "security", titleTOTP),
 		Step:   "scan", Name: name, MethodID: enr.MethodID, Secret: groupKey(enr.Secret), ExpiresAt: enr.ExpiresAt,
 	}
 	// The QR code is a PNG made by the server (never user input): safe to
@@ -343,7 +362,7 @@ func (s *Server) handleAccountTOTPStart(w http.ResponseWriter, r *http.Request) 
 	if strings.HasPrefix(enr.QRCodePNG, "data:image/png;base64,") {
 		page.QR = template.URL(enr.QRCodePNG) // #nosec G203 -- server-generated data URI
 	}
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PageTOTP, page)
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PageTOTP, page)
 }
 
 // groupKey: "JBSWY3DPEHPK3PXP" -> "JBSW Y3DP EHPK 3PXP", easier to type.
@@ -370,22 +389,22 @@ func (s *Server) handleAccountTOTPConfirm(w http.ResponseWriter, r *http.Request
 	res, err := s.mfa.ConfirmTOTPEnrollment(r.Context(), a.user, a.sess, methodID, code)
 	retry := func(msg string) {
 		page := accountui.TOTPPage{
-			Layout: s.accountLayout(w, r, a, "security", "Add an authenticator app"),
+			Layout: s.accountLayout(w, r, a, "security", titleTOTP),
 			Step:   "scan", MethodID: methodID, FormError: msg,
 		}
 		if isHTMX(r) {
-			s.accountPages.RenderPartial(w, accountui.PageTOTP, "totp-code-area", page)
+			s.accountPages.RenderPartial(w, r, accountui.PageTOTP, "totp-code-area", page)
 			return
 		}
-		s.accountPages.RenderPage(w, http.StatusUnprocessableEntity, accountui.PageTOTP, page)
+		s.accountPages.RenderPage(w, r, http.StatusUnprocessableEntity, accountui.PageTOTP, page)
 	}
 	var codeErr *service.MFACodeError
 	switch {
 	case errors.As(err, &codeErr), errors.Is(err, service.ErrInvalidMFACode):
-		retry("This code is not right. Check the time of your phone, then enter the new code.")
+		retry(s.loc(r).T("account.totp.error.wrong_code", "This code is not right. Check the time of your phone, then enter the new code."))
 		return
 	case errors.Is(err, service.ErrMFARateLimited):
-		retry("Too many attempts. Wait a few minutes, then try again.")
+		retry(s.loc(r).T("account.error.rate_limited", "Too many attempts. Wait a few minutes, then try again."))
 		return
 	case errors.Is(err, service.ErrMFAEnrollmentExpired), errors.Is(err, service.ErrMFAMethodNotFound):
 		setFlash(w, a.realm.Name, "enroll_expired", 0)
@@ -402,17 +421,17 @@ func (s *Server) handleAccountTOTPConfirm(w http.ResponseWriter, r *http.Request
 	}
 	// The first second factor: its backup codes, shown once, right now.
 	page := accountui.BackupCodesPage{
-		Layout: s.accountLayout(w, r, a, "security", "Save your backup codes"),
+		Layout: s.accountLayout(w, r, a, "security", titleSaveCodes),
 		Step:   "show", Codes: res.BackupCodes, FirstFactor: true,
 	}
 	page.MFARequired = false
 	if isHTMX(r) {
 		w.Header().Set("HX-Retarget", "#main")
 		w.Header().Set("HX-Reswap", "innerHTML")
-		s.accountPages.RenderPartial(w, accountui.PageBackupCodes, "main-inner", page)
+		s.accountPages.RenderPartial(w, r, accountui.PageBackupCodes, "main-inner", page)
 		return
 	}
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PageBackupCodes, page)
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PageBackupCodes, page)
 }
 
 // --- passkey -------------------------------------------------------------------
@@ -426,8 +445,8 @@ func (s *Server) handleAccountPasskey(w http.ResponseWriter, r *http.Request) {
 	if !s.accountStepUp(w, r, a, r.URL.Path, false) {
 		return
 	}
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PagePasskey, accountui.PasskeyPage{
-		Layout: s.accountLayout(w, r, a, "security", "Add a passkey or security key"),
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PagePasskey, accountui.PasskeyPage{
+		Layout: s.accountLayout(w, r, a, "security", titlePasskey),
 		API:    "/r/" + a.realm.Name,
 	})
 }
@@ -463,8 +482,8 @@ func (s *Server) handleAccountRemoveFactor(w http.ResponseWriter, r *http.Reques
 		s.accountRedirect(w, r, accountBase(a.realm.Name)+"/security")
 		return
 	}
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PageRemoveFactor, accountui.RemoveFactorPage{
-		Layout: s.accountLayout(w, r, a, "security", "Remove"), Factor: factorView(m), Last: n == 1,
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PageRemoveFactor, accountui.RemoveFactorPage{
+		Layout: s.accountLayout(w, r, a, "security", titleRemove), Factor: factorView(s.loc(r), m), Last: n == 1,
 	})
 }
 
@@ -488,9 +507,10 @@ func (s *Server) handleAccountRemoveFactorConfirm(w http.ResponseWriter, r *http
 	err = s.mfa.DeleteFactor(r.Context(), a.user, id)
 	switch {
 	case errors.Is(err, service.ErrMFARequiredByPolicy):
-		s.accountPages.RenderPage(w, http.StatusConflict, accountui.PageRemoveFactor, accountui.RemoveFactorPage{
-			Layout: s.accountLayout(w, r, a, "security", "Remove"), Factor: factorView(m), Last: n == 1,
-			FormError: a.realm.DisplayName + " requires a second step: add another one before removing this one.",
+		s.accountPages.RenderPage(w, r, http.StatusConflict, accountui.PageRemoveFactor, accountui.RemoveFactorPage{
+			Layout: s.accountLayout(w, r, a, "security", titleRemove), Factor: factorView(s.loc(r), m), Last: n == 1,
+			FormError: s.loc(r).T("account.remove.error.required", "{org} requires a second step: add another one before removing this one.",
+				"org", realmDisplay(a.realm.DisplayName, a.realm.Name)),
 		})
 	case errors.Is(err, service.ErrMFAMethodNotFound):
 		setFlash(w, a.realm.Name, "not_found", 0)
@@ -510,8 +530,8 @@ func (s *Server) handleAccountBackupCodes(w http.ResponseWriter, r *http.Request
 	if !s.accountStepUp(w, r, a, r.URL.Path, false) {
 		return
 	}
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PageBackupCodes, accountui.BackupCodesPage{
-		Layout: s.accountLayout(w, r, a, "security", "Get new backup codes"), Step: "confirm",
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PageBackupCodes, accountui.BackupCodesPage{
+		Layout: s.accountLayout(w, r, a, "security", titleNewCodes), Step: "confirm",
 	})
 }
 
@@ -523,32 +543,32 @@ func (s *Server) handleAccountBackupCodesNew(w http.ResponseWriter, r *http.Requ
 	codes, err := s.mfa.RegenerateBackupCodes(r.Context(), a.user)
 	switch {
 	case errors.Is(err, service.ErrNoMFAFactor):
-		s.accountPages.RenderPage(w, http.StatusConflict, accountui.PageBackupCodes, accountui.BackupCodesPage{
-			Layout: s.accountLayout(w, r, a, "security", "Get new backup codes"), Step: "confirm",
-			FormError: "Add a second step first: backup codes come with it.",
+		s.accountPages.RenderPage(w, r, http.StatusConflict, accountui.PageBackupCodes, accountui.BackupCodesPage{
+			Layout: s.accountLayout(w, r, a, "security", titleNewCodes), Step: "confirm",
+			FormError: s.loc(r).T("account.codes.error.no_factor", "Add a second step first: backup codes come with it."),
 		})
 		return
 	case err != nil:
 		s.accountFailure(w, r, err)
 		return
 	}
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PageBackupCodes, accountui.BackupCodesPage{
-		Layout: s.accountLayout(w, r, a, "security", "Save your backup codes"), Step: "show", Codes: codes,
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PageBackupCodes, accountui.BackupCodesPage{
+		Layout: s.accountLayout(w, r, a, "security", titleSaveCodes), Step: "show", Codes: codes,
 	})
 }
 
 // --- sessions ------------------------------------------------------------------
 
 func (s *Server) sessionsPage(w http.ResponseWriter, r *http.Request, a *acct) (accountui.SessionsPage, error) {
-	page := accountui.SessionsPage{Layout: s.accountLayout(w, r, a, "sessions", "Sessions")}
+	page := accountui.SessionsPage{Layout: s.accountLayout(w, r, a, "sessions", titleSessions)}
 	list, err := s.account.Sessions(r.Context(), a.user, a.sess.ID)
 	if err != nil {
 		return page, err
 	}
 	for _, se := range list {
 		row := accountui.SessionRow{
-			ID: se.ID, Current: se.Current, Device: deviceName(se.UserAgent), Location: locationOf(se.Country),
-			IPAddress: se.IPAddress, Method: signInMethod(se), RememberMe: se.RememberMe, Apps: se.Apps,
+			ID: se.ID, Current: se.Current, Device: deviceName(s.loc(r), se.UserAgent), Location: locationOf(s.loc(r), se.Country),
+			IPAddress: se.IPAddress, Method: signInMethod(s.loc(r), se), RememberMe: se.RememberMe, Apps: se.Apps,
 			StartedAt: se.CreatedAt, LastActiveAt: se.LastActivityAt,
 		}
 		page.Sessions = append(page.Sessions, row)
@@ -556,38 +576,38 @@ func (s *Server) sessionsPage(w http.ResponseWriter, r *http.Request, a *acct) (
 	return page, nil
 }
 
-func locationOf(country string) string {
+func locationOf(loc *i18n.Localizer, country string) string {
 	if country == "" {
-		return "Unknown location"
+		return loc.T("account.location.unknown", "Unknown location")
 	}
 	return country
 }
 
 // signInMethod words how a session was opened (Session.AuthMethod is an
-// RFC 8176 value, the second factor is apart).
-func signInMethod(se service.AccountSession) string {
+// RFC 8176 value, the second factor is apart), after "Signed in with".
+func signInMethod(loc *i18n.Localizer, se service.AccountSession) string {
 	switch se.AuthMethod {
 	case domain.AuthMethodHardwareKey, domain.AuthMethodSoftwareKey:
-		return "a passkey"
+		return loc.T("account.method.passkey", "a passkey")
 	}
-	out := "your password"
 	if se.MFAVerified {
 		switch domain.MfaMethodType(se.MFAMethod) {
 		case domain.MfaMethodTOTP:
-			out += " and an authenticator app"
+			return loc.T("account.method.password_totp", "your password and an authenticator app")
 		case domain.MfaMethodPasskey:
-			out += " and a passkey"
+			return loc.T("account.method.password_passkey", "your password and a passkey")
 		case domain.MfaMethodWebAuthn:
-			out += " and a security key"
+			return loc.T("account.method.password_security_key", "your password and a security key")
 		case domain.MfaMethodBackupCodes:
-			out += " and a backup code"
+			return loc.T("account.method.password_backup_code", "your password and a backup code")
 		default:
-			out += " and a second step"
+			return loc.T("account.method.password_second_step", "your password and a second step")
 		}
-	} else if se.TrustedDevice {
-		out += " on a trusted device"
 	}
-	return out
+	if se.TrustedDevice {
+		return loc.T("account.method.password_trusted", "your password on a trusted device")
+	}
+	return loc.T("account.method.password", "your password")
 }
 
 func (s *Server) handleAccountSessions(w http.ResponseWriter, r *http.Request) {
@@ -597,7 +617,7 @@ func (s *Server) handleAccountSessions(w http.ResponseWriter, r *http.Request) {
 		s.accountFailure(w, r, err)
 		return
 	}
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PageSessions, page)
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PageSessions, page)
 }
 
 func (s *Server) sessionsAnswer(w http.ResponseWriter, r *http.Request, a *acct, flash string, n int) {
@@ -611,7 +631,7 @@ func (s *Server) sessionsAnswer(w http.ResponseWriter, r *http.Request, a *acct,
 		s.accountFailure(w, r, err)
 		return
 	}
-	setNotice(&page.Layout, flashValue(flash, n))
+	s.setNotice(r, &page.Layout, flashValue(flash, n))
 	s.renderWithNotice(w, r, accountui.PageSessions, "sessions-list", page, page.Layout)
 }
 
@@ -641,16 +661,16 @@ func (s *Server) handleAccountRevokeOtherSessions(w http.ResponseWriter, r *http
 // --- connected apps ----------------------------------------------------------
 
 // scopeWords: the standard scopes, in the words of the consent screen.
-var scopeWords = map[string]string{
-	"profile":        "Your name and profile details",
-	"email":          "Your e-mail address",
-	"offline_access": "Stay connected while you are signed in here",
-	"phone":          "Your phone number",
-	"address":        "Your postal address",
+var scopeWords = map[string]i18n.Text{
+	"profile":        i18n.M("account.scope.profile", "Your name and profile details"),
+	"email":          i18n.M("consent.scope.email.title", "Your e-mail address"),
+	"offline_access": i18n.M("account.scope.offline_access", "Stay connected while you are signed in here"),
+	"phone":          i18n.M("account.scope.phone", "Your phone number"),
+	"address":        i18n.M("account.scope.address", "Your postal address"),
 }
 
 func (s *Server) appsPage(w http.ResponseWriter, r *http.Request, a *acct) (accountui.AppsPage, error) {
-	page := accountui.AppsPage{Layout: s.accountLayout(w, r, a, "apps", "Connected apps")}
+	page := accountui.AppsPage{Layout: s.accountLayout(w, r, a, "apps", titleApps)}
 	apps, err := s.account.Apps(r.Context(), a.user)
 	if err != nil {
 		return page, err
@@ -659,7 +679,10 @@ func (s *Server) appsPage(w http.ResponseWriter, r *http.Request, a *acct) (acco
 		row := accountui.AppRow{ClientRef: app.ClientRef, Name: app.Name, Initial: string([]rune(initialsOf(app.Name))[0]),
 			Host: app.Host, Consent: app.Consent, GrantedAt: app.GrantedAt, SignedIn: app.SignedIn}
 		for _, sc := range app.Scopes {
-			text := scopeWords[sc.Name]
+			text := ""
+			if words, ok := scopeWords[sc.Name]; ok {
+				text = s.loc(r).Text(words)
+			}
 			if text == "" {
 				text = sc.Description
 			}
@@ -680,7 +703,7 @@ func (s *Server) handleAccountApps(w http.ResponseWriter, r *http.Request) {
 		s.accountFailure(w, r, err)
 		return
 	}
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PageApps, page)
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PageApps, page)
 }
 
 func (s *Server) handleAccountRevokeApp(w http.ResponseWriter, r *http.Request) {
@@ -704,19 +727,19 @@ func (s *Server) handleAccountRevokeApp(w http.ResponseWriter, r *http.Request) 
 		s.accountFailure(w, r, err)
 		return
 	}
-	setNotice(&page.Layout, flash)
+	s.setNotice(r, &page.Layout, flash)
 	s.renderWithNotice(w, r, accountui.PageApps, "apps-list", page, page.Layout)
 }
 
 // --- history -------------------------------------------------------------------
 
-var signInResults = map[domain.LoginAttemptFailureReason]string{
-	domain.LoginFailureInvalidCredentials: "Wrong password",
-	domain.LoginFailureAccountLocked:      "Blocked: account locked",
-	domain.LoginFailureMfaFailed:          "Wrong second step",
-	domain.LoginFailureTimeoutActive:      "Blocked: access suspended",
-	domain.LoginFailureAccessDenied:       "Refused by the application",
-	domain.LoginFailurePasskeyRejected:    "Passkey refused",
+var signInResults = map[domain.LoginAttemptFailureReason]i18n.Text{
+	domain.LoginFailureInvalidCredentials: i18n.M("account.signin.wrong_password", "Wrong password"),
+	domain.LoginFailureAccountLocked:      i18n.M("account.signin.locked", "Blocked: account locked"),
+	domain.LoginFailureMfaFailed:          i18n.M("account.signin.wrong_second_step", "Wrong second step"),
+	domain.LoginFailureTimeoutActive:      i18n.M("account.signin.suspended", "Blocked: access suspended"),
+	domain.LoginFailureAccessDenied:       i18n.M("account.signin.refused", "Refused by the application"),
+	domain.LoginFailurePasskeyRejected:    i18n.M("account.signin.passkey_refused", "Passkey refused"),
 }
 
 func (s *Server) handleAccountHistory(w http.ResponseWriter, r *http.Request) {
@@ -731,7 +754,7 @@ func (s *Server) handleAccountHistory(w http.ResponseWriter, r *http.Request) {
 		pageNo = 1
 	}
 	offset := (pageNo - 1) * historyPageSize
-	page := accountui.HistoryPage{Layout: s.accountLayout(w, r, a, "history", "History"), View: view, Page: pageNo}
+	page := accountui.HistoryPage{Layout: s.accountLayout(w, r, a, "history", titleHistory), View: view, Page: pageNo}
 	if view == "activity" {
 		entries, more, err := s.account.Activity(ctx, a.user, offset, historyPageSize)
 		if err != nil {
@@ -740,9 +763,9 @@ func (s *Server) handleAccountHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		page.More = more
 		for _, e := range entries {
-			row := accountui.ActivityRow{At: e.At, Text: activityText(e), ByAdmin: e.ByAdmin, Failed: e.Failed, IPAddress: e.IPAddress}
+			row := accountui.ActivityRow{At: e.At, Text: activityText(s.loc(r), e), ByAdmin: e.ByAdmin, Failed: e.Failed, IPAddress: e.IPAddress}
 			if e.UserAgent != "" {
-				row.Device = deviceName(e.UserAgent)
+				row.Device = deviceName(s.loc(r), e.UserAgent)
 			}
 			page.Activity = append(page.Activity, row)
 		}
@@ -754,101 +777,115 @@ func (s *Server) handleAccountHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		page.More = more
 		for _, e := range entries {
-			row := accountui.SignInRow{At: e.At, Success: e.Success, Result: "Signed in", Device: deviceName(e.UserAgent),
-				Location: locationOf(e.Country), IPAddress: e.IPAddress}
+			loc := s.loc(r)
+			row := accountui.SignInRow{At: e.At, Success: e.Success, Result: loc.T("login.account.signed_in", "Signed in"),
+				Device: deviceName(loc, e.UserAgent), Location: locationOf(loc, e.Country), IPAddress: e.IPAddress}
 			if !e.Success {
-				row.Result = signInResults[e.Reason]
-				if row.Result == "" {
-					row.Result = "Failed"
+				row.Result = loc.T("account.history.failed", "Failed")
+				if t, ok := signInResults[e.Reason]; ok {
+					row.Result = loc.Text(t)
 				}
 			}
 			page.SignIns = append(page.SignIns, row)
 		}
 	}
-	s.accountPages.RenderPage(w, http.StatusOK, accountui.PageHistory, page)
+	s.accountPages.RenderPage(w, r, http.StatusOK, accountui.PageHistory, page)
 }
 
 // activityText words an audit entry for the user (service.AccountActivityActions).
-func activityText(e service.ActivityEntry) string {
+func activityText(loc *i18n.Localizer, e service.ActivityEntry) string {
 	detail := func(k string) string {
 		v, _ := e.Details[k].(string)
 		return v
 	}
-	factor := func() string {
+	// what: the factor of the entry, for "Added {factor}" and "Removed {factor}".
+	added := func() string {
 		switch domain.MfaMethodType(detail("type")) {
 		case domain.MfaMethodTOTP:
-			return "an authenticator app"
+			return loc.T("account.activity.added_totp", "Added an authenticator app")
 		case domain.MfaMethodPasskey:
-			return "a passkey"
+			return loc.T("account.activity.added_passkey", "Added a passkey")
 		case domain.MfaMethodWebAuthn:
-			return "a security key"
+			return loc.T("account.activity.added_security_key", "Added a security key")
 		}
-		return "a second step"
+		return loc.T("account.activity.added_second_step", "Added a second step")
+	}
+	removed := func() string {
+		switch domain.MfaMethodType(detail("type")) {
+		case domain.MfaMethodTOTP:
+			return loc.T("account.activity.removed_totp", "Removed an authenticator app")
+		case domain.MfaMethodPasskey:
+			return loc.T("account.activity.removed_passkey", "Removed a passkey")
+		case domain.MfaMethodWebAuthn:
+			return loc.T("account.activity.removed_security_key", "Removed a security key")
+		}
+		return loc.T("account.activity.removed_second_step", "Removed a second step")
+	}
+	accessRemoved := func() string {
+		if c := detail("client"); c != "" {
+			return loc.T("account.activity.access_removed_for", "Access removed for {app}", "app", c)
+		}
+		return loc.T("account.activity.access_removed", "Access removed for an application")
 	}
 	switch e.Action {
 	case audit.UserProfileUpdated:
-		return "Name changed"
+		if onlyField(e.Details, "locale") {
+			return loc.T("account.activity.language_changed", "Language changed")
+		}
+		return loc.T("account.activity.name_changed", "Name changed")
 	case audit.UserPasswordChanged:
 		if e.Failed {
-			return "Password change refused (wrong current password)"
+			return loc.T("account.activity.password_refused", "Password change refused (wrong current password)")
 		}
-		return "Password changed"
+		return loc.T("account.activity.password_changed", "Password changed")
 	case audit.SessionRevoked:
-		return "A session was signed out"
+		return loc.T("account.activity.session_revoked", "A session was signed out")
 	case audit.SessionRevokedAll:
 		if e.ByAdmin {
-			return "Signed out everywhere"
+			return loc.T("account.activity.signed_out_everywhere", "Signed out everywhere")
 		}
-		return "All other sessions were signed out"
-	case audit.ConsentAppAccessRevoked:
-		if c := detail("client"); c != "" {
-			return "Access removed for " + c
-		}
-		return "Access removed for an application"
+		return loc.T("account.activity.other_sessions_revoked", "All other sessions were signed out")
+	case audit.ConsentAppAccessRevoked, audit.ConsentRevoked:
+		return accessRemoved()
 	case audit.TrustedDeviceRevoked:
-		return "A device will ask for the second step again"
+		return loc.T("account.activity.device_revoked", "A device will ask for the second step again")
 	case audit.TrustedDeviceRevokedAll:
-		return "Every device will ask for the second step again"
+		return loc.T("account.activity.devices_revoked", "Every device will ask for the second step again")
 	case audit.MFAMethodEnrolled:
-		return "Added " + factor()
+		return added()
 	case audit.MFAMethodRemoved:
-		return "Removed " + factor()
+		return removed()
 	case audit.MFABackupCodesRegenerated:
-		return "New backup codes"
+		return loc.T("account.activity.new_codes", "New backup codes")
 	case audit.TrustedDeviceAdded:
-		return "A device no longer asks for the second step"
+		return loc.T("account.activity.device_trusted", "A device no longer asks for the second step")
 	case audit.ConsentGranted:
 		if c := detail("client"); c != "" {
-			return "Approved " + c
+			return loc.T("account.activity.approved_app", "Approved {app}", "app", c)
 		}
-		return "Approved an application"
-	case audit.ConsentRevoked:
-		if c := detail("client"); c != "" {
-			return "Access removed for " + c
-		}
-		return "Access removed for an application"
+		return loc.T("account.activity.approved", "Approved an application")
 	case audit.KnownAccountForgotten:
-		return "Account forgotten on a device"
+		return loc.T("account.activity.forgotten", "Account forgotten on a device")
 	case audit.UserPasswordResetRequested:
-		return "Password reset link requested"
+		return loc.T("account.activity.reset_requested", "Password reset link requested")
 	case audit.UserPasswordReset:
-		return "Password reset with an e-mail link"
+		return loc.T("account.activity.reset", "Password reset with an e-mail link")
 	case audit.UserLocked:
-		return "Account locked after wrong passwords"
+		return loc.T("account.activity.locked", "Account locked after wrong passwords")
 	case audit.UserInvited:
-		return "Account created"
+		return loc.T("account.activity.invited", "Account created")
 	case audit.UserActivationLinkSent:
-		return "New activation link sent"
+		return loc.T("account.activity.activation_sent", "New activation link sent")
 	case audit.UserUpdated:
-		return "Account details changed"
+		return loc.T("account.activity.updated_by_admin", "Account details changed")
 	case audit.UserGroupsChanged, audit.UserRolesChanged:
-		return "Access rights changed"
+		return loc.T("account.activity.rights_changed", "Access rights changed")
 	case audit.MFAReset:
-		return "Second steps reset"
+		return loc.T("account.activity.mfa_reset", "Second steps reset")
 	case audit.UserUnlocked:
-		return "Account unlocked"
+		return loc.T("account.activity.unlocked", "Account unlocked")
 	}
-	return "Account updated"
+	return loc.T("account.activity.updated", "Account updated")
 }
 
 // bufferedWriter collects a rendered block (renderWithNotice writes two).
@@ -861,3 +898,15 @@ type bufferedWriter struct {
 func (b *bufferedWriter) Header() http.Header         { return b.header }
 func (b *bufferedWriter) Write(p []byte) (int, error) { return b.body.Write(p) }
 func (b *bufferedWriter) WriteHeader(code int)        { b.failed = b.failed || code >= 500 }
+
+// onlyField: the "fields" of an audit entry's details are exactly [name]
+// (a list of strings, or of any once read back from JSON).
+func onlyField(details map[string]interface{}, name string) bool {
+	switch f := details["fields"].(type) {
+	case []string:
+		return len(f) == 1 && f[0] == name
+	case []interface{}:
+		return len(f) == 1 && f[0] == name
+	}
+	return false
+}

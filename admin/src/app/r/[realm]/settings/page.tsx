@@ -12,8 +12,12 @@ import { can, canWrite } from "@/lib/permissions";
 import type { Dashboard, RealmDetail, Settings } from "@/lib/types";
 import { PAGES } from "@/lib/pages";
 import { SettingsForm } from "./settings-form";
+import { getI18n } from "@/i18n/server";
 
-export const metadata = { title: PAGES.settings.title };
+export async function generateMetadata() {
+  const { tm } = await getI18n();
+  return { title: tm(PAGES.settings.title) };
+}
 
 export default async function SettingsPage({ params }: { params: Promise<{ realm: string }> }) {
   const { realm } = await params;
@@ -24,6 +28,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ realm
   ]);
   if (!settings.ok) return <ErrorState error={settings} />;
   const base = `/r/${encodeURIComponent(realm)}`;
+  const { t, locale } = await getI18n();
 
   return (
     <>
@@ -32,15 +37,17 @@ export default async function SettingsPage({ params }: { params: Promise<{ realm
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {realmInfo.ok && (
           <Card>
-            <CardTitle>Realm</CardTitle>
+            <CardTitle>{t("settings.realm.title", "Realm")}</CardTitle>
             <div className="mt-4 flex items-start justify-between gap-4">
               <div>
                 <p className="text-[14px] font-medium">{realmInfo.data.display_name}</p>
                 <p className="font-mono text-[12px] text-text-muted">{realmInfo.data.name}</p>
-                <p className="mt-1 text-[12px] text-text-muted">Created {formatDate(realmInfo.data.created_at)}</p>
+                <p className="mt-1 text-[12px] text-text-muted">
+                  {t("common.created_on", "Created {date}", { date: formatDate(realmInfo.data.created_at, locale) })}
+                </p>
               </div>
               <div className="flex gap-1">
-                {realmInfo.data.system && <Badge tone="neutral">System realm</Badge>}
+                {realmInfo.data.system && <Badge tone="neutral">{t("settings.realm.system", "System realm")}</Badge>}
                 <StatusBadge status={realmInfo.data.status} />
               </div>
             </div>
@@ -48,7 +55,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ realm
               href={`${base}/realms`}
               className="mt-4 inline-block text-[13px] font-medium text-accent hover:underline"
             >
-              Manage realms
+              {t("realm_switcher.manage", "Manage realms")}
             </NavLink>
           </Card>
         )}
@@ -66,21 +73,30 @@ export default async function SettingsPage({ params }: { params: Promise<{ realm
 async function Infrastructure({ realm }: { realm: string }) {
   const dashboard = await load<Dashboard>(apiPath(["realms", realm, "dashboard"]));
   if (!dashboard.ok) return null;
+  const { t } = await getI18n();
   return (
     <Card>
-      <CardTitle>Infrastructure status</CardTitle>
+      <CardTitle>{t("settings.infrastructure", "Infrastructure status")}</CardTitle>
       <ul className="mt-4 divide-y divide-border">
         {dashboard.data.infrastructure.map((i) => (
           <li key={i.name} className="flex items-center justify-between gap-4 py-2.5">
             <div className="min-w-0">
               <p className="text-[14px]">{i.name}</p>
               <p className="truncate text-[12px] text-text-muted" title={i.detail}>
-                {i.status === "healthy" ? `${i.latency_ms} ms` : (i.detail ?? "Not configured")}
+                {i.status === "healthy"
+                  ? `${i.latency_ms} ms`
+                  : (i.detail ?? t("status.not_configured", "Not configured"))}
               </p>
             </div>
             <StatusBadge
               status={i.status}
-              label={i.status === "healthy" ? "Operational" : i.status === "down" ? "Down" : "Not configured"}
+              label={
+                i.status === "healthy"
+                  ? t("dashboard.operational", "Operational")
+                  : i.status === "down"
+                    ? t("status.down", "Down")
+                    : t("status.not_configured", "Not configured")
+              }
             />
           </li>
         ))}
@@ -89,10 +105,11 @@ async function Infrastructure({ realm }: { realm: string }) {
   );
 }
 
-function InfrastructureSkeleton() {
+async function InfrastructureSkeleton() {
+  const { t } = await getI18n();
   return (
     <Card>
-      <CardTitle>Infrastructure status</CardTitle>
+      <CardTitle>{t("settings.infrastructure", "Infrastructure status")}</CardTitle>
       <div className="mt-4 space-y-3">
         {Array.from({ length: 5 }, (_, i) => (
           <Skeleton key={i} className="h-8 w-full" />

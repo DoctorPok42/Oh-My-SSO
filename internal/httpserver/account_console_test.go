@@ -71,23 +71,24 @@ func TestTakeFlash(t *testing.T) {
 			r.AddCookie(&http.Cookie{Name: accountFlashCookie, Value: value})
 		}
 		s := &Server{}
-		return s.takeFlash(httptest.NewRecorder(), r, a)
+		notice, problem, _ := s.takeFlash(httptest.NewRecorder(), r, a)
+		return notice, problem
 	}
 	n, e := take("profile_saved", "")
-	require.Equal(t, flashText["profile_saved"], n)
+	require.Equal(t, flashText["profile_saved"].Default, n)
 	require.Empty(t, e)
 
 	n, _ = take("sessions_revoked.3", "")
 	require.Equal(t, "Your other sessions were signed out (3).", n)
 
 	_, e = take("not_found", "")
-	require.Equal(t, flashText["not_found"], e, "shown as an error")
+	require.Equal(t, flashText["not_found"].Default, e, "shown as an error")
 
 	n, e = take("<script>alert(1)</script>", "")
 	require.Empty(t, n+e, "only known keys: the cookie never carries text")
 
 	n, _ = take("", "?done=passkey")
-	require.Equal(t, flashText["passkey_added"], n)
+	require.Equal(t, flashText["passkey_added"].Default, n)
 }
 
 func TestGroupKey(t *testing.T) {
@@ -104,11 +105,11 @@ func TestInitialsOf(t *testing.T) {
 }
 
 func TestSignInMethod(t *testing.T) {
-	require.Equal(t, "a passkey", signInMethod(service.AccountSession{AuthMethod: domain.AuthMethodHardwareKey}))
-	require.Equal(t, "your password", signInMethod(service.AccountSession{AuthMethod: domain.AuthMethodPassword}))
-	require.Equal(t, "your password and an authenticator app", signInMethod(service.AccountSession{
+	require.Equal(t, "a passkey", signInMethod(nil, service.AccountSession{AuthMethod: domain.AuthMethodHardwareKey}))
+	require.Equal(t, "your password", signInMethod(nil, service.AccountSession{AuthMethod: domain.AuthMethodPassword}))
+	require.Equal(t, "your password and an authenticator app", signInMethod(nil, service.AccountSession{
 		AuthMethod: domain.AuthMethodPassword, MFAVerified: true, MFAMethod: string(domain.MfaMethodTOTP)}))
-	require.Equal(t, "your password on a trusted device", signInMethod(service.AccountSession{
+	require.Equal(t, "your password on a trusted device", signInMethod(nil, service.AccountSession{
 		AuthMethod: domain.AuthMethodPassword, TrustedDevice: true}))
 }
 
@@ -116,12 +117,12 @@ func TestSignInMethod(t *testing.T) {
 // to the generic one.
 func TestActivityText_EveryAction(t *testing.T) {
 	for _, action := range service.AccountActivityActions {
-		text := activityText(service.ActivityEntry{Action: action})
+		text := activityText(nil, service.ActivityEntry{Action: action})
 		require.NotEqual(t, "Account updated", text, action)
 		require.NotEmpty(t, text, action)
 	}
 	require.Equal(t, "Access removed for Payroll",
-		activityText(service.ActivityEntry{Action: "consent.revoked", Details: map[string]any{"client": "Payroll"}}))
+		activityText(nil, service.ActivityEntry{Action: "consent.revoked", Details: map[string]any{"client": "Payroll"}}))
 	require.Equal(t, "Added a passkey",
-		activityText(service.ActivityEntry{Action: "mfa.method_enrolled", Details: map[string]any{"type": "passkey"}}))
+		activityText(nil, service.ActivityEntry{Action: "mfa.method_enrolled", Details: map[string]any{"type": "passkey"}}))
 }

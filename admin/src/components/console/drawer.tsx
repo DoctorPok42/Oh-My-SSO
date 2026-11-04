@@ -9,6 +9,7 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogDescription, DialogTitle, SheetBody, SheetContent, SheetFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useT } from "@/i18n/client";
 
 // Drawers are opened through the URL: ?new=1 or ?edit=<id>. The server
 // renders the page with the item already loaded, Back closes the drawer, a
@@ -128,12 +129,15 @@ export function Drawer({
 
 /** What a drawer looks like while its item loads: title, a few fields, the buttons. */
 function DrawerSkeleton() {
+  const { t } = useT();
   return (
     <>
       <SheetBody aria-busy="true">
         <div>
-          <DialogTitle className="sr-only">Loading…</DialogTitle>
-          <DialogDescription className="sr-only">The details are loading.</DialogDescription>
+          <DialogTitle className="sr-only">{t("drawer.loading", "Loading…")}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {t("drawer.loading_details", "The details are loading.")}
+          </DialogDescription>
           <Skeleton className="h-6 w-56" />
           <Skeleton className="mt-2 h-4 w-72" />
         </div>
@@ -166,24 +170,30 @@ export function useEditLock({
   managedByConfig?: boolean;
   intent?: string;
 }) {
+  const { t } = useT();
   const stepUp = useStepUp();
   let banner: React.ReactNode = null;
   if (!canWrite) {
-    banner = <Banner tone="neutral">Read-only: your account may not change this.</Banner>;
+    banner = <Banner tone="neutral">{t("edit_lock.read_only", "Read-only: your account may not change this.")}</Banner>;
   } else if (managedByConfig) {
     banner = (
       <Banner tone="neutral">
-        Managed by a configuration file: change it there (configuration as code). Edits here are refused.
+        {t(
+          "edit_lock.managed",
+          "Managed by a configuration file: change it there (configuration as code). Edits here are refused.",
+        )}
       </Banner>
     );
   } else if (!stepUp.fresh) {
     banner = (
       <Banner tone="info">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span>View only. To make changes, confirm it&apos;s you with your second factor.</span>
+          <span>
+            {t("edit_lock.view_only", "View only. To make changes, confirm it's you with your second factor.")}
+          </span>
           <Button size="xs" variant="secondary" onClick={() => stepUp.request("edit", intent)}>
             <Lock className="size-3.5" />
-            Confirm it&apos;s you
+            {t("step_up.confirm", "Confirm it's you")}
           </Button>
         </div>
       </Banner>

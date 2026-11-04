@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"crypto/ecdsa"
 	"crypto/rsa"
@@ -274,15 +275,15 @@ type NormalizedSAMLClient struct {
 
 // NormalizeSAMLClient checks an input without touching the database.
 func NormalizeSAMLClient(in SAMLClientInput) (*NormalizedSAMLClient, error) {
-	bad := func(format string, a ...any) error {
-		return fmt.Errorf("%w: %s", ErrInvalidClientConfig, fmt.Sprintf(format, a...))
+	bad := func(t i18n.Text) error {
+		return newTextError(ErrInvalidClientConfig, t)
 	}
 	out := &NormalizedSAMLClient{
 		Name:     strings.TrimSpace(in.Name),
 		EntityID: strings.TrimSpace(in.EntityID),
 	}
 	if out.EntityID == "" || len(out.EntityID) > maxEntityIDLength || strings.ContainsAny(out.EntityID, " \t\r\n") {
-		return nil, bad("entity_id is required, without spaces, at most %d characters", maxEntityIDLength)
+		return nil, bad(i18n.M("admin.error.entity_id_bad", "entity_id is required, without spaces, at most {max} characters", "max", maxEntityIDLength))
 	}
 	if out.Name == "" {
 		out.Name = out.EntityID
@@ -290,19 +291,19 @@ func NormalizeSAMLClient(in SAMLClientInput) (*NormalizedSAMLClient, error) {
 
 	var err error
 	if out.ACSURL, err = validateSAMLEndpoint(in.ACSURL); err != nil {
-		return nil, bad("ACS URL %q: %v", in.ACSURL, err)
+		return nil, bad(i18n.M("admin.error.acs_bad", "ACS URL \"{url}\": {error}", "url", in.ACSURL, "error", err))
 	}
 	if in.SLOURL != "" {
 		if out.SLOURL, err = validateSAMLEndpoint(in.SLOURL); err != nil {
-			return nil, bad("SLO URL %q: %v", in.SLOURL, err)
+			return nil, bad(i18n.M("admin.error.slo_bad", "SLO URL \"{url}\": {error}", "url", in.SLOURL, "error", err))
 		}
 	}
 
 	if out.NameIDFormat, err = NormalizeNameIDFormat(in.NameIDFormat); err != nil {
-		return nil, bad("%v", err)
+		return nil, bad(i18n.M("admin.error.client_detail", "{detail}", "detail", err))
 	}
 	if in.Pairwise && out.NameIDFormat != domain.NameIDFormatPersistent && out.NameIDFormat != domain.NameIDFormatUnspecified {
-		return nil, bad("pairwise only makes sense with the persistent NameID format")
+		return nil, bad(i18n.M("admin.error.pairwise_nameid", "pairwise only makes sense with the persistent NameID format"))
 	}
 
 	seen := map[string]bool{}
@@ -322,7 +323,7 @@ func NormalizeSAMLClient(in SAMLClientInput) (*NormalizedSAMLClient, error) {
 	for from, to := range in.AttributeMappings {
 		from, to = strings.TrimSpace(from), strings.TrimSpace(to)
 		if from == "" || to == "" {
-			return nil, bad("attribute mapping %q -> %q: both names are required", from, to)
+			return nil, bad(i18n.M("admin.error.attr_mapping", "attribute mapping \"{from}\" -> \"{to}\": both names are required", "from", from, "to", to))
 		}
 		out.AttributeMappings[from] = to
 	}
@@ -383,20 +384,20 @@ func validateSAMLEndpoint(raw string) (string, error) {
 // base64 DER (the form found in SAML metadata), and returns it as PEM with
 // its SHA-256 fingerprint (lowercase hex).
 func NormalizeClientCertificate(c domain.ClientCertificate) (domain.ClientCertificate, string, error) {
-	bad := func(format string, a ...any) error {
-		return fmt.Errorf("%w: certificate: %s", ErrInvalidClientConfig, fmt.Sprintf(format, a...))
+	bad := func(t i18n.Text) error {
+		return newTextError(ErrInvalidClientConfig, t)
 	}
 	cert, err := ParseCertificate(c.PEM)
 	if err != nil {
-		return domain.ClientCertificate{}, "", bad("%v", err)
+		return domain.ClientCertificate{}, "", bad(i18n.M("admin.error.cert_detail", "certificate: {detail}", "detail", err))
 	}
 	switch cert.PublicKey.(type) {
 	case *rsa.PublicKey, *ecdsa.PublicKey:
 	default:
-		return domain.ClientCertificate{}, "", bad("only RSA and EC keys are supported")
+		return domain.ClientCertificate{}, "", bad(i18n.M("admin.error.cert_key_type", "certificate: only RSA and EC keys are supported"))
 	}
 	if !c.NotBefore.IsZero() && !c.NotAfter.IsZero() && !c.NotBefore.Before(c.NotAfter) {
-		return domain.ClientCertificate{}, "", bad("not_before must be before not_after")
+		return domain.ClientCertificate{}, "", bad(i18n.M("admin.error.cert_validity", "certificate: not_before must be before not_after"))
 	}
 	pemText := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}))
 	sum := sha256.Sum256(cert.Raw)

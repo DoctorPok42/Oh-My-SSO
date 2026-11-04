@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useT } from "@/i18n/client";
 import { formatRelative } from "@/lib/format";
 import { actionLabel, actorName, isNotification } from "@/lib/labels";
 import type { AuditEntry } from "@/lib/types";
@@ -21,6 +22,8 @@ import { recentAlerts } from "@/app/r/[realm]/header-actions";
 // (GET /audit-logs?level=suspicious,warning,error,critical). Loaded once the
 // page is shown, and again each time the menu opens: it never slows a page.
 export function Notifications({ realm, enabled }: { realm: string; enabled: boolean }) {
+  const tr = useT();
+  const { t } = tr;
   const [items, setItems] = useState<AuditEntry[] | null>(enabled ? [] : null);
   const auditHref = `/r/${encodeURIComponent(realm)}/audit`;
   const refresh = useCallback(() => {
@@ -35,7 +38,7 @@ export function Notifications({ realm, enabled }: { realm: string; enabled: bool
     <DropdownMenu onOpenChange={(open) => open && refresh()}>
       <DropdownMenuTrigger className="relative grid size-9 place-items-center rounded-md text-text-secondary outline-none hover:bg-surface-alt hover:text-text-primary focus-visible:ring-[3px] focus-visible:ring-accent-soft">
         <Bell className="size-[18px]" aria-hidden />
-        <span className="sr-only">Security notifications</span>
+        <span className="sr-only">{t("notifications.label", "Security notifications")}</span>
         {items && items.length > 0 && (
           <span
             className={cn(
@@ -46,17 +49,23 @@ export function Notifications({ realm, enabled }: { realm: string; enabled: bool
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel>Warnings and errors</DropdownMenuLabel>
-        {items === null && <p className="px-3 py-3 text-[13px] text-text-muted">You cannot read the audit log.</p>}
-        {items?.length === 0 && <p className="px-3 py-3 text-[13px] text-text-muted">Nothing to report.</p>}
+        <DropdownMenuLabel>{t("notifications.title", "Warnings and errors")}</DropdownMenuLabel>
+        {items === null && (
+          <p className="px-3 py-3 text-[13px] text-text-muted">
+            {t("notifications.no_access", "You cannot read the audit log.")}
+          </p>
+        )}
+        {items?.length === 0 && (
+          <p className="px-3 py-3 text-[13px] text-text-muted">{t("notifications.empty", "Nothing to report.")}</p>
+        )}
         {items?.map((i) => (
           <DropdownMenuItem key={i.id} asChild>
             <NavLink href={`${auditHref}?action=${encodeURIComponent(i.action)}`} className="items-start">
               {isNotification(i.action) && <Mail className="mt-0.5" />}
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{actionLabel(i.action)}</span>
+                <span className="block truncate font-medium">{actionLabel(i.action, undefined, tr)}</span>
                 <span className="block text-[12px] text-text-muted">
-                  {actorName(i)} · {formatRelative(i.timestamp)}
+                  {actorName(i, tr)} · {formatRelative(i.timestamp, undefined, tr)}
                 </span>
               </span>
               <span
@@ -74,7 +83,7 @@ export function Notifications({ realm, enabled }: { realm: string; enabled: bool
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <NavLink href={auditHref}>Open the audit log</NavLink>
+              <NavLink href={auditHref}>{t("notifications.open_audit", "Open the audit log")}</NavLink>
             </DropdownMenuItem>
           </>
         )}

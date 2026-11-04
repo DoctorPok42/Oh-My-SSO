@@ -63,6 +63,10 @@ func (InstanceSettings) Fields() []ent.Field {
 		// How long an invitation / activation link stays valid.
 		field.Int("invite_ttl_hours").Default(4),
 		field.Bool("suspicious_login_email_enabled").Default(false),
+		// Language of the sign-in pages and e-mails when the user has not
+		// chosen one (package i18n): "en", or a language with a translation
+		// file.
+		field.String("default_locale").Default("en"),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.String("updated_by").Optional(),
 	}

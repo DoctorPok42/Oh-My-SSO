@@ -7,6 +7,8 @@ import (
 	htmltemplate "html/template"
 	"strings"
 	texttemplate "text/template"
+
+	"sso.internal/sso/internal/i18n"
 )
 
 // The templates are compiled into the binary (go:embed): nothing to deploy
@@ -31,6 +33,11 @@ var templateFS embed.FS
 // Data is what the templates can show. The dispatcher fills the fields that
 // make sense for the e-mail; the others stay empty and are not shown.
 type Data struct {
+	// Lang: the language of the e-mail (package i18n), "" for English. The
+	// dispatcher picks the recipient's (their account's, else the realm's
+	// default) and writes the other fields in it.
+	Lang string
+
 	Product  string // "Oh-My-SSO"
 	Realm    string // realm display name
 	Username string
@@ -92,36 +99,65 @@ var funcs = map[string]any{
 	},
 }
 
-// Templates holds every e-mail, parsed once.
+// Templates holds every e-mail, parsed once per language (the templates
+// call {{t "key" "English text"}}, package i18n).
 type Templates struct {
-	text map[Template]*texttemplate.Template
-	html map[Template]*htmltemplate.Template
+	i18n *i18n.Bundle
+	text map[string]map[Template]*texttemplate.Template // language -> e-mail
+	html map[string]map[Template]*htmltemplate.Template
 }
 
-// LoadTemplates parses the embedded templates.
-func LoadTemplates() (*Templates, error) {
-	t := &Templates{
-		text: map[Template]*texttemplate.Template{},
-		html: map[Template]*htmltemplate.Template{},
+// LoadTemplates parses the embedded templates in every language of the
+// bundle (nil: the embedded languages).
+func LoadTemplates(bundle *i18n.Bundle) (*Templates, error) {
+	if bundle == nil {
+		bundle = i18n.MustDefault()
 	}
-	for _, name := range AllTemplates {
-		file := "templates/" + string(name) + ".tmpl"
-		tt, err := texttemplate.New(string(name)).Funcs(funcs).ParseFS(templateFS, "templates/layout.txt.tmpl", file)
-		if err != nil {
-			return nil, fmt.Errorf("notify: template %s (text): %w", name, err)
+	t := &Templates{
+		i18n: bundle,
+		text: map[string]map[Template]*texttemplate.Template{},
+		html: map[string]map[Template]*htmltemplate.Template{},
+	}
+	for _, l := range bundle.Languages() {
+		if err := t.load(l.Tag); err != nil {
+			return nil, err
 		}
-		ht, err := htmltemplate.New(string(name)).Funcs(funcs).ParseFS(templateFS, "templates/layout.html.tmpl", file)
-		if err != nil {
-			return nil, fmt.Errorf("notify: template %s (html): %w", name, err)
-		}
-		t.text[name], t.html[name] = tt, ht
 	}
 	return t, nil
 }
 
+func (t *Templates) load(lang string) error {
+	fm := map[string]any{}
+	for k, v := range funcs {
+		fm[k] = v
+	}
+	for k, v := range t.i18n.Get(lang).FuncMap() {
+		fm[k] = v
+	}
+	text, html := map[Template]*texttemplate.Template{}, map[Template]*htmltemplate.Template{}
+	for _, name := range AllTemplates {
+		file := "templates/" + string(name) + ".tmpl"
+		tt, err := texttemplate.New(string(name)).Funcs(fm).ParseFS(templateFS, "templates/layout.txt.tmpl", file)
+		if err != nil {
+			return fmt.Errorf("notify: template %s (text, %s): %w", name, lang, err)
+		}
+		ht, err := htmltemplate.New(string(name)).Funcs(fm).ParseFS(templateFS, "templates/layout.html.tmpl", file)
+		if err != nil {
+			return fmt.Errorf("notify: template %s (html, %s): %w", name, lang, err)
+		}
+		text[name], html[name] = tt, ht
+	}
+	t.text[lang], t.html[lang] = text, html
+	return nil
+}
+
 // Render builds the subject, text and HTML of an e-mail.
 func (t *Templates) Render(name Template, data Data) (Message, error) {
-	tt, ok := t.text[name]
+	lang := t.i18n.Match(data.Lang)
+	if lang == "" {
+		lang = i18n.English
+	}
+	tt, ok := t.text[lang][name]
 	if !ok {
 		return Message{}, fmt.Errorf("notify: unknown template %q", name)
 	}
@@ -136,7 +172,7 @@ func (t *Templates) Render(name Template, data Data) (Message, error) {
 	if err := tt.ExecuteTemplate(&text, "layout.txt", htmlData{Data: data, Subject: subj}); err != nil {
 		return Message{}, fmt.Errorf("notify: template %s text: %w", name, err)
 	}
-	if err := t.html[name].ExecuteTemplate(&html, "layout.html", htmlData{Data: data, Subject: subj}); err != nil {
+	if err := t.html[lang][name].ExecuteTemplate(&html, "layout.html", htmlData{Data: data, Subject: subj}); err != nil {
 		return Message{}, fmt.Errorf("notify: template %s html: %w", name, err)
 	}
 	return Message{Subject: subj, Text: text.String(), HTML: html.String()}, nil

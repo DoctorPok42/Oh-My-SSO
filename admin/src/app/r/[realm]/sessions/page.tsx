@@ -3,19 +3,11 @@ import { X } from "lucide-react";
 import { Suspense } from "react";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
-import { offsetParam, Pagination } from "@/components/console/pagination";
-import { TableSkeleton } from "@/components/console/skeletons";
+import { Pagination } from "@/components/console/pagination";
+import { offsetParam } from "@/lib/pagination";
+import { ColumnHeads, TableSkeleton } from "@/components/console/skeletons";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { apiPath, getMe, load } from "@/lib/api";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { AUTH_METHOD_LABELS, MFA_METHOD_LABELS } from "@/lib/labels";
@@ -23,8 +15,12 @@ import { COLUMNS, PAGES } from "@/lib/pages";
 import { canWrite } from "@/lib/permissions";
 import type { List, SessionRow } from "@/lib/types";
 import { RevokeSessionButton } from "./revoke-button";
+import { getI18n } from "@/i18n/server";
 
-export const metadata = { title: PAGES.sessions.title };
+export async function generateMetadata() {
+  const { tm } = await getI18n();
+  return { title: tm(PAGES.sessions.title) };
+}
 
 const LIMIT = 25;
 
@@ -70,6 +66,8 @@ async function SessionsTable({
   ]);
   if (!list.ok) return <ErrorState error={list} />;
   const revocable = me.ok && canWrite(me.data, "session");
+  const tr = await getI18n();
+  const { t, tm, locale } = tr;
   const items = list.data.items;
   const filtered = user || client;
 
@@ -77,12 +75,12 @@ async function SessionsTable({
     <>
       {filtered && (
         <div className="mb-4 flex items-center gap-2 text-[13px] text-text-secondary">
-          Filtered by {user ? "user" : "client"}
+          {user ? t("sessions.filtered_user", "Filtered by user") : t("sessions.filtered_client", "Filtered by client")}
           <Badge tone="accent" className="font-mono">
             {items[0] && user ? items[0].user.name : (user ?? client)}
           </Badge>
           <NavLink href={base} className="inline-flex items-center gap-1 text-accent hover:underline">
-            <X className="size-3.5" /> Clear
+            <X className="size-3.5" /> {t("common.clear", "Clear")}
           </NavLink>
         </div>
       )}
@@ -90,21 +88,11 @@ async function SessionsTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>IP address</TableHead>
-              <TableHead>Device</TableHead>
-              <TableHead>Applications</TableHead>
-              <TableHead>Auth method</TableHead>
-              <TableHead>MFA</TableHead>
-              <TableHead>Last active</TableHead>
-              <TableHead>Expires</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
+              <ColumnHeads columns={COLUMNS.sessions} />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.length === 0 && <TableEmpty colSpan={9}>No active session.</TableEmpty>}
+            {items.length === 0 && <TableEmpty colSpan={9}>{t("sessions.empty", "No active session.")}</TableEmpty>}
             {items.map((s) => (
               <TableRow key={s.id}>
                 <TableCell>
@@ -118,33 +106,46 @@ async function SessionsTable({
                 </TableCell>
                 <TableCell className="font-mono text-[12px] text-text-secondary">{s.ip_address || "—"}</TableCell>
                 <TableCell className="text-text-secondary" title={s.user_agent}>
-                  {s.device || "Unknown"}
+                  {s.device || t("sessions.unknown_device", "Unknown")}
                 </TableCell>
                 <TableCell className="text-text-secondary">
                   {s.clients.length === 0 ? "—" : s.clients.map((c) => c.name).join(", ")}
                 </TableCell>
                 <TableCell className="text-text-secondary">
-                  {AUTH_METHOD_LABELS[s.auth_method] ?? s.auth_method}
+                  {AUTH_METHOD_LABELS[s.auth_method] ? tm(AUTH_METHOD_LABELS[s.auth_method]!) : s.auth_method}
                 </TableCell>
                 <TableCell>
                   {s.mfa_verified ? (
-                    <Badge tone="success">{MFA_METHOD_LABELS[s.mfa_method]?.split(" (")[0] ?? "Verified"}</Badge>
+                    <Badge tone="success">
+                      {MFA_METHOD_LABELS[s.mfa_method]
+                        ? tm(MFA_METHOD_LABELS[s.mfa_method]!).split(" (")[0]
+                        : t("sessions.mfa_verified", "Verified")}
+                    </Badge>
                   ) : s.trusted_device ? (
-                    <Badge tone="info" title="Second factor skipped: Don't ask again on this device">
-                      Trusted device
+                    <Badge
+                      tone="info"
+                      title={t("sessions.trusted_hint", "Second factor skipped: Don't ask again on this device")}
+                    >
+                      {t("sessions.trusted", "Trusted device")}
                     </Badge>
                   ) : (
-                    <Badge tone="neutral">No</Badge>
+                    <Badge tone="neutral">{t("common.no", "No")}</Badge>
                   )}
                 </TableCell>
-                <TableCell className="whitespace-nowrap text-text-secondary" title={formatDateTime(s.last_activity_at)}>
-                  {formatRelative(s.last_activity_at)}
+                <TableCell
+                  className="whitespace-nowrap text-text-secondary"
+                  title={formatDateTime(s.last_activity_at, locale)}
+                >
+                  {formatRelative(s.last_activity_at, undefined, tr)}
                 </TableCell>
-                <TableCell className="whitespace-nowrap text-text-secondary" title={formatDateTime(s.expires_at)}>
-                  {formatRelative(s.expires_at)}
+                <TableCell
+                  className="whitespace-nowrap text-text-secondary"
+                  title={formatDateTime(s.expires_at, locale)}
+                >
+                  {formatRelative(s.expires_at, undefined, tr)}
                   {s.remember_me && (
-                    <Badge tone="info" className="ml-2" title="Keep me signed in was ticked">
-                      Kept signed in
+                    <Badge tone="info" className="ml-2" title={t("sessions.kept_hint", "Keep me signed in was ticked")}>
+                      {t("sessions.kept", "Kept signed in")}
                     </Badge>
                   )}
                 </TableCell>

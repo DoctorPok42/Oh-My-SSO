@@ -13,6 +13,7 @@ import (
 
 	"sso.internal/sso/internal/adapters/loginui"
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/i18n"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/oidcstore"
 )
@@ -37,6 +38,8 @@ type Config struct {
 	// (/r/{realm}/account/security) when a factor must be enrolled first.
 	AccountConsole bool
 	PasswordReset bool
+	// I18n: the languages of the pages (nil: the embedded ones).
+	I18n *i18n.Bundle
 	// Now is the clock (tests). nil: time.Now.
 	Now func() time.Time
 	// Logger: nil means slog.Default().
@@ -76,7 +79,7 @@ func New(cfg Config, idp core.IdentityCore, store oidcstore.Store) (*Adapter, er
 	if a.now == nil {
 		a.now = time.Now
 	}
-	if a.pages, err = loginui.New(a.logger); err != nil {
+	if a.pages, err = loginui.New(a.logger, cfg.I18n); err != nil {
 		return nil, err
 	}
 	a.handler = a.routes()
@@ -183,27 +186,30 @@ func securityHeaders(next http.Handler) http.Handler {
 
 type message = loginui.Message
 
+// The messages are translated when shown (package i18n). The ones shared
+// with the OIDC adapter use the same keys.
 var (
-	msgExpired = message{Title: "This sign-in link has expired",
-		Text: "Go back to the application and start the sign-in again."}
-	msgOtherBrowser = message{Title: "Sign-in started in another browser",
-		Text: "For your security, a sign-in must be finished in the browser that started it. Go back to the application and start again here."}
-	msgBadRequest = message{Title: "This sign-in request was refused",
-		Text: "The application sent a request that this server cannot accept. Its administrator can find the reason in the server logs."}
-	msgUnknownApp = message{Title: "Unknown application",
-		Text: "This application is not registered on this server, or it is disabled."}
-	msgLoggedOut     = message{Title: "You are signed out", Text: "You can close this window."}
-	msgLogoutRefused = message{Title: "This sign-out request was refused",
-		Text: "The application sent a sign-out request that this server cannot accept. Its administrator can find the reason in the server logs."}
-	msgLogoutExpired = message{Title: "This sign-out has expired",
-		Text: "You are signed out of this server. Some applications may still have you signed in: sign out of them directly."}
-	msgNoKey = message{Title: "Single sign-on is not ready",
-		Text: "This server has no SAML signing key yet. Its administrator must create one."}
+	msgExpired = message{Title: i18n.M("message.expired.title", "This sign-in link has expired"),
+		Text: i18n.M("message.expired.text", "Go back to the application and start the sign-in again.")}
+	msgOtherBrowser = message{Title: i18n.M("message.other_browser.title", "Sign-in started in another browser"),
+		Text: i18n.M("message.other_browser.text", "For your security, a sign-in must be finished in the browser that started it. Go back to the application and start again here.")}
+	msgBadRequest = message{Title: i18n.M("saml.message.bad_request.title", "This sign-in request was refused"),
+		Text: i18n.M("saml.message.bad_request.text", "The application sent a request that this server cannot accept. Its administrator can find the reason in the server logs.")}
+	msgUnknownApp = message{Title: i18n.M("saml.message.unknown_app.title", "Unknown application"),
+		Text: i18n.M("saml.message.unknown_app.text", "This application is not registered on this server, or it is disabled.")}
+	msgLoggedOut = message{Title: i18n.M("message.logged_out.title", "You are signed out"),
+		Text: i18n.M("message.logged_out.text", "You can close this window.")}
+	msgLogoutRefused = message{Title: i18n.M("saml.message.logout_refused.title", "This sign-out request was refused"),
+		Text: i18n.M("saml.message.logout_refused.text", "The application sent a sign-out request that this server cannot accept. Its administrator can find the reason in the server logs.")}
+	msgLogoutExpired = message{Title: i18n.M("message.logout_expired.title", "This sign-out has expired"),
+		Text: i18n.M("saml.message.logout_expired.text", "You are signed out of this server. Some applications may still have you signed in: sign out of them directly.")}
+	msgNoKey = message{Title: i18n.M("saml.message.no_key.title", "Single sign-on is not ready"),
+		Text: i18n.M("saml.message.no_key.text", "This server has no SAML signing key yet. Its administrator must create one.")}
 )
 
 func (a *Adapter) renderMessage(w http.ResponseWriter, r *http.Request, status int, m message) {
 	realm, _ := realmFrom(r.Context())
-	a.pages.RenderMessage(w, status, m, assets(realm))
+	a.pages.RenderMessage(w, r, status, m, assets(realm))
 }
 
 func (a *Adapter) handleLoggedOut(w http.ResponseWriter, r *http.Request) {

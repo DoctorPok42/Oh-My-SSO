@@ -135,9 +135,9 @@ func (a *Adapter) handleLogoutConfirmPage(w http.ResponseWriter, r *http.Request
 		return
 	}
 	base := "/r/" + realm.Name
-	a.pages.RenderLogoutConfirm(w, loginui.LogoutConfirm{
+	a.pages.RenderLogoutConfirm(w, r, loginui.LogoutConfirm{
 		RealmDisplay: firstNonEmpty(realm.DisplayName, realm.Name),
-		ClientName:   firstNonEmpty(clientName, "An application"),
+		ClientName:   firstNonEmpty(clientName, a.pages.Loc(r).T("logout.an_application", "An application")),
 		Account:      acc.Identifier,
 		Action:       base + "/oidc/logout/confirm",
 		RequestID:    p.ID,

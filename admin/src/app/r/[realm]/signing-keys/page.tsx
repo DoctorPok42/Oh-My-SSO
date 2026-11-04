@@ -4,16 +4,7 @@ import { StatusBadge } from "@/components/console/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CopyField } from "@/components/ui/copy-button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { apiPath, getMe, load } from "@/lib/api";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { KEY_PURPOSE_LABELS } from "@/lib/labels";
@@ -21,14 +12,22 @@ import { canWrite } from "@/lib/permissions";
 import { PAGES } from "@/lib/pages";
 import type { SigningKeys } from "@/lib/types";
 import { KeyActions } from "./key-actions";
+import { getI18n } from "@/i18n/server";
+import { ColumnHeads } from "@/components/console/skeletons";
+import { COLUMNS } from "@/lib/pages";
 
-export const metadata = { title: PAGES.signingKeys.title };
+export async function generateMetadata() {
+  const { tm } = await getI18n();
+  return { title: tm(PAGES.signingKeys.title) };
+}
 
 export default async function SigningKeysPage({ params }: { params: Promise<{ realm: string }> }) {
   const { realm } = await params;
   const [me, keys] = await Promise.all([getMe(), load<SigningKeys>(apiPath(["realms", realm, "signing-keys"]))]);
   if (!keys.ok) return <ErrorState error={keys} />;
   const writable = me.ok && canWrite(me.data, "signing_key");
+  const tr = await getI18n();
+  const { t, tm, locale } = tr;
   const sorted = [...keys.data.keys].sort(
     (a, b) => order(a.status) - order(b.status) || b.created_at.localeCompare(a.created_at),
   );
@@ -48,11 +47,15 @@ export default async function SigningKeysPage({ params }: { params: Promise<{ re
       />
       <div className="mb-4 grid gap-4 md:grid-cols-2">
         <Card className="p-4">
-          <p className="mb-2 text-[13px] font-semibold text-text-secondary">JWKS (public keys of OIDC tokens)</p>
+          <p className="mb-2 text-[13px] font-semibold text-text-secondary">
+            {t("keys.jwks", "JWKS (public keys of OIDC tokens)")}
+          </p>
           <CopyField value={keys.data.jwks_url} />
         </Card>
         <Card className="p-4">
-          <p className="mb-2 text-[13px] font-semibold text-text-secondary">SAML metadata (signing certificate)</p>
+          <p className="mb-2 text-[13px] font-semibold text-text-secondary">
+            {t("keys.saml_metadata", "SAML metadata (signing certificate)")}
+          </p>
           <CopyField value={keys.data.saml_metadata_url} />
         </Card>
       </div>
@@ -60,17 +63,13 @@ export default async function SigningKeysPage({ params }: { params: Promise<{ re
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Key ID</TableHead>
-              <TableHead>Algorithm</TableHead>
-              <TableHead>Used for</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Unpublished</TableHead>
-              <TableHead>Key manager</TableHead>
+              <ColumnHeads columns={COLUMNS.signingKeys} />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sorted.length === 0 && <TableEmpty colSpan={7}>No key: this realm cannot sign anything yet.</TableEmpty>}
+            {sorted.length === 0 && (
+              <TableEmpty colSpan={7}>{t("keys.empty", "No key: this realm cannot sign anything yet.")}</TableEmpty>
+            )}
             {sorted.map((k) => (
               <TableRow key={k.kid}>
                 <TableCell className="max-w-[260px] truncate font-mono text-[12px]" title={k.kid}>
@@ -79,20 +78,26 @@ export default async function SigningKeysPage({ params }: { params: Promise<{ re
                 <TableCell className="font-mono text-[12px]">{k.algorithm}</TableCell>
                 <TableCell>
                   <Badge tone={k.purpose === "envelope_encryption" ? "neutral" : "info"}>
-                    {KEY_PURPOSE_LABELS[k.purpose] ?? k.purpose}
+                    {KEY_PURPOSE_LABELS[k.purpose] ? tm(KEY_PURPOSE_LABELS[k.purpose]!) : k.purpose}
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <StatusBadge status={k.status} label={k.status === "rotating" ? "Rotating out" : undefined} />
+                  <StatusBadge
+                    status={k.status}
+                    label={k.status === "rotating" ? t("keys.rotating_out", "Rotating out") : undefined}
+                  />
                 </TableCell>
-                <TableCell className="whitespace-nowrap text-text-secondary" title={formatDateTime(k.created_at)}>
-                  {formatRelative(k.created_at)}
+                <TableCell
+                  className="whitespace-nowrap text-text-secondary"
+                  title={formatDateTime(k.created_at, locale)}
+                >
+                  {formatRelative(k.created_at, undefined, tr)}
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-text-secondary">
                   {k.retired_at
-                    ? `retired ${formatRelative(k.retired_at)}`
+                    ? t("keys.retired_ago", "retired {when}", { when: formatRelative(k.retired_at, undefined, tr) })
                     : k.retire_after
-                      ? formatRelative(k.retire_after)
+                      ? formatRelative(k.retire_after, undefined, tr)
                       : "—"}
                 </TableCell>
                 <TableCell className="font-mono text-[12px] text-text-muted">{k.kms_backend}</TableCell>

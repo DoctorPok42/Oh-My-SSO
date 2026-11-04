@@ -12,6 +12,7 @@ import (
 
 	"sso.internal/sso/internal/adapters/loginui"
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/i18n"
 	"sso.internal/sso/internal/core/domain"
 )
 
@@ -161,12 +162,12 @@ func (a *Adapter) postToACS(w http.ResponseWriter, r *http.Request, req *pending
 	if req.RelayState != "" {
 		fields = append(fields, loginui.Field{Name: "RelayState", Value: req.RelayState})
 	}
-	err := a.pages.RenderAutoPost(w, loginui.AutoPost{
+	err := a.pages.RenderAutoPost(w, r, loginui.AutoPost{
 		Action: req.ACSURL,
 		Fields: fields,
 		Assets: assets(realm),
-		Title:  "Signing you in…",
-		Text:   "You are being sent back to the application.",
+		Title:  i18n.M("saml.autopost.title", "Signing you in…"),
+		Text:   i18n.M("saml.autopost.text", "You are being sent back to the application."),
 	})
 	if err != nil {
 		a.logger.ErrorContext(r.Context(), "saml: render auto-post form", "error", err)

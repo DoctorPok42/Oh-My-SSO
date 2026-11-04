@@ -13,6 +13,7 @@ import (
 	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
+	"sso.internal/sso/internal/i18n"
 )
 
 // Dispatcher turns the core's notification events into e-mails. It
@@ -39,6 +40,7 @@ type Dispatcher struct {
 	settings repository.InstanceSettingsRepository
 	audit    repository.AuditLogRepository
 	logger   *slog.Logger
+	i18n     *i18n.Bundle
 
 	mu     sync.RWMutex // guards closed and sends on queue
 	closed bool
@@ -66,6 +68,8 @@ type DispatcherDeps struct {
 	Settings repository.InstanceSettingsRepository
 	Audit    repository.AuditLogRepository
 	Logger   *slog.Logger
+	// I18n: the languages of the e-mails (nil: the embedded ones).
+	I18n *i18n.Bundle
 }
 
 // NewDispatcher builds a dispatcher; call Start to run its workers.
@@ -89,10 +93,13 @@ func NewDispatcher(cfg DispatcherConfig, d DispatcherDeps) *Dispatcher {
 	if d.Logger == nil {
 		d.Logger = slog.Default()
 	}
+	if d.I18n == nil {
+		d.I18n = i18n.MustDefault()
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Dispatcher{
 		cfg: cfg, sender: d.Sender, users: d.Users, realms: d.Realms,
-		settings: d.Settings, audit: d.Audit, logger: d.Logger,
+		settings: d.Settings, audit: d.Audit, logger: d.Logger, i18n: d.I18n,
 		queue: make(chan domain.NotificationEvent, cfg.QueueSize),
 		ctx:   ctx, cancel: cancel,
 	}
@@ -172,7 +179,7 @@ func (d *Dispatcher) Process(ctx context.Context, e domain.NotificationEvent) er
 		return fmt.Errorf("notify: load realm: %w", err)
 	}
 
-	data := d.data(e, user, realm)
+	data := d.data(d.localizer(ctx, user, realm.ID), e, user, realm)
 	attempts, sendErr := d.send(ctx, user.Email, tmpl, data)
 	d.writeAudit(ctx, e, user.Email, tmpl, attempts, sendErr)
 	return sendErr
@@ -256,14 +263,32 @@ func (d *Dispatcher) writeAudit(ctx context.Context, e domain.NotificationEvent,
 }
 
 
-func (d *Dispatcher) data(e domain.NotificationEvent, user *domain.User, realm *domain.Realm) Data {
+// localizer: the language of an e-mail to user. The one they chose in the
+// account console (profile "locale"), else the realm's default language
+// (Settings), else English (package i18n). Unlike a page, an e-mail has no
+// browser to ask.
+func (d *Dispatcher) localizer(ctx context.Context, user *domain.User, realmID string) *i18n.Localizer {
+	if l, _ := user.Profile["locale"].(string); d.i18n.Supported(l) {
+		return d.i18n.Get(l)
+	}
+	if d.settings == nil {
+		return d.i18n.Get(i18n.English)
+	}
+	if st, err := d.settings.GetByRealmID(ctx, realmID); err == nil && d.i18n.Supported(st.DefaultLocale) {
+		return d.i18n.Get(st.DefaultLocale)
+	}
+	return d.i18n.Get(i18n.English)
+}
+
+func (d *Dispatcher) data(loc *i18n.Localizer, e domain.NotificationEvent, user *domain.User, realm *domain.Realm) Data {
 	out := Data{
+		Lang:              loc.Lang(),
 		Product:           d.cfg.Product,
 		Realm:             realm.DisplayName,
 		Username:          user.Username,
-		When:              formatTime(e.OccurredAt),
+		When:              formatTime(loc, e.OccurredAt),
 		IPAddress:         e.IPAddress,
-		Device:            describeUserAgent(e.UserAgent),
+		Device:            describeUserAgent(loc, e.UserAgent),
 		Location:          e.CountryName,
 		ForgotPasswordURL: d.link(realm, "/auth/forgot-password"),
 	}
@@ -279,27 +304,29 @@ func (d *Dispatcher) data(e domain.NotificationEvent, user *domain.User, realm *
 		// server, so it cannot end up in access logs. The page reads it
 		// with JavaScript.
 		out.ResetURL = d.link(realm, "/auth/reset-password") + "#token=" + url.QueryEscape(e.ResetToken)
-		out.ExpiresIn = humanDuration(e.ExpiresAt.Sub(e.OccurredAt))
+		out.ExpiresIn = humanDuration(loc, e.ExpiresAt.Sub(e.OccurredAt))
 	case domain.NotificationMfaMethodAdded, domain.NotificationMfaMethodRemoved:
-		out.MethodLabel = methodLabel(e.MfaMethodType)
+		out.MethodLabel = methodLabel(loc, e.MfaMethodType)
 		out.MethodName = e.MfaMethodName
 	case domain.NotificationAccountLocked:
-		out.LockedUntil = formatTime(e.ExpiresAt)
-		out.LockDuration = humanDuration(e.ExpiresAt.Sub(e.OccurredAt))
+		out.LockedUntil = formatTime(loc, e.ExpiresAt)
+		out.LockDuration = humanDuration(loc, e.ExpiresAt.Sub(e.OccurredAt))
 		out.FailedAttempts = e.FailedAttempts
 	case domain.NotificationSuspiciousLogin:
 		for _, r := range e.SuspiciousReasons {
-			out.Reasons = append(out.Reasons, reasonText(r, out.Location, e.MfaMethodType))
+			out.Reasons = append(out.Reasons, reasonText(loc, r, out.Location, e.MfaMethodType))
 		}
 	case domain.NotificationAppConnected:
 		out.AppName = e.ClientName
-		out.AppAccess = e.Access
+		for _, a := range e.Access {
+			out.AppAccess = append(out.AppAccess, knownText(loc, accessTexts, a))
+		}
 		out.AppAccessAdded = e.AccessAdded
 	case domain.NotificationAccountInvite:
 		out.ResetURL = d.link(realm, "/auth/reset-password") + "#token=" + url.QueryEscape(e.ResetToken)
-		out.ExpiresIn = humanDuration(e.ExpiresAt.Sub(e.OccurredAt))
+		out.ExpiresIn = humanDuration(loc, e.ExpiresAt.Sub(e.OccurredAt))
 	case domain.NotificationAdminRecovery:
-		out.RecoveryKind = e.RecoveryKind
+		out.RecoveryKind = knownText(loc, recoveryKinds, e.RecoveryKind)
 		out.RecoveryActor = e.RecoveryActor
 		out.RecoveryAccount = e.RecoveryAccount
 	}
@@ -310,68 +337,77 @@ func (d *Dispatcher) link(realm *domain.Realm, path string) string {
 	return d.cfg.PublicURL + "/r/" + url.PathEscape(realm.Name) + path
 }
 
-func formatTime(t time.Time) string {
+// formatTime: "Mon 2 Jan 2006, 15:04 UTC", in the e-mail's language.
+func formatTime(loc *i18n.Localizer, t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
-	return t.UTC().Format("Mon 2 Jan 2006, 15:04 UTC")
+	return loc.LongDateTime(t)
 }
 
 // humanDuration: "30 minutes", "1 hour", "2 hours 30 minutes".
-func humanDuration(d time.Duration) string {
-	m := int((d + 30*time.Second) / time.Minute) // rounded to the minute
-	if m < 1 {
-		m = 1
-	}
-	plural := func(n int, unit string) string {
-		if n == 1 {
-			return "1 " + unit
-		}
-		return fmt.Sprintf("%d %ss", n, unit)
-	}
-	h, m := m/60, m%60
-	switch {
-	case h == 0:
-		return plural(m, "minute")
-	case m == 0:
-		return plural(h, "hour")
-	default:
-		return plural(h, "hour") + " " + plural(m, "minute")
-	}
-}
+func humanDuration(loc *i18n.Localizer, d time.Duration) string { return loc.Duration(d) }
 
-func methodLabel(t domain.MfaMethodType) string {
+func methodLabel(loc *i18n.Localizer, t domain.MfaMethodType) string {
 	switch t {
 	case domain.MfaMethodTOTP:
-		return "authenticator app"
+		return loc.T("email.method.totp", "authenticator app")
 	case domain.MfaMethodPasskey:
-		return "passkey"
+		return loc.T("email.method.passkey", "passkey")
 	case domain.MfaMethodWebAuthn:
-		return "security key"
+		return loc.T("email.method.security_key", "security key")
 	case domain.MfaMethodBackupCodes:
-		return "backup codes"
+		return loc.T("email.method.backup_codes", "backup codes")
 	default:
 		return string(t)
 	}
 }
 
-func reasonText(reason, location string, method domain.MfaMethodType) string {
+func reasonText(loc *i18n.Localizer, reason, location string, method domain.MfaMethodType) string {
 	switch reason {
 	case domain.SuspiciousNewSignInMethod:
 		if method != "" {
-			return "it used a sign-in method you have not used recently (" + methodLabel(method) + ")"
+			return loc.T("email.reason.new_method_named", "it used a sign-in method you have not used recently ({method})", "method", methodLabel(loc, method))
 		}
-		return "it used a sign-in method you have not used recently"
+		return loc.T("email.reason.new_method", "it used a sign-in method you have not used recently")
 	case domain.SuspiciousNewCountry:
 		if location != "" {
-			return "it came from a country you have not signed in from before (" + location + ")"
+			return loc.T("email.reason.new_country_named", "it came from a country you have not signed in from before ({country})", "country", location)
 		}
-		return "it came from a country you have not signed in from before"
+		return loc.T("email.reason.new_country", "it came from a country you have not signed in from before")
 	case domain.SuspiciousUnusualHour:
-		return "it happened at an unusual time of day for you"
+		return loc.T("email.reason.unusual_hour", "it happened at an unusual time of day for you")
 	case domain.SuspiciousNewNetworkAndDevice:
-		return "it came from a new device on a network you have not used before"
+		return loc.T("email.reason.new_network_device", "it came from a new device on a network you have not used before")
 	default:
 		return reason
 	}
+}
+
+// Texts that reach the dispatcher already written, in English, by the
+// core: translated when they are one of these, kept as they are otherwise
+// (a scope description written by an administrator).
+var (
+	// accessTexts: the standard lines of the consent page (adapters oidc
+	// and saml).
+	accessTexts = []i18n.Text{
+		i18n.M("consent.scope.profile.title", "Your profile"),
+		i18n.M("consent.scope.email.title", "Your e-mail address"),
+		i18n.M("consent.scope.offline_access.title", "Stay signed in"),
+	}
+	// recoveryKinds: what `idp-admin recover` did (service.alertAdmins).
+	recoveryKinds = []i18n.Text{
+		i18n.M("email.recovery.kind.new_admin", "a new administrator account"),
+		i18n.M("email.recovery.kind.new_secret", "a new secret for the admin console"),
+		i18n.M("email.recovery.kind.timeouts_lifted", "every timeout of the master realm lifted"),
+	}
+)
+
+func knownText(loc *i18n.Localizer, known []i18n.Text, english string) string {
+	for _, t := range known {
+		if t.Default == english {
+			return loc.Text(t)
+		}
+	}
+	return english
 }

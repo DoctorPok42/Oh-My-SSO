@@ -57,6 +57,7 @@ type authRequest struct {
 	Prompt              []string  `json:"p,omitempty"`
 	MaxAge              *uint     `json:"ma,omitempty"`
 	LoginHint           string    `json:"lh,omitempty"`
+	UILocales           []string  `json:"uil,omitempty"` // ui_locales, best first
 	BrowserHash         string    `json:"bh"` // SHA-256 of the browser binding cookie
 	CreatedAt           time.Time `json:"cat"`
 

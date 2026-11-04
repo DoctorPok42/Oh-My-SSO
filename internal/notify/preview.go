@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"sso.internal/sso/internal/core/domain"
+	"sso.internal/sso/internal/i18n"
 )
 
 // PreviewData returns realistic sample data for an e-mail: what the
@@ -11,39 +12,45 @@ import (
 // --all` sends every template with it (to look at them, and at their score,
 // in Mailpit), and the tests render with it.
 func PreviewData(tmpl Template, product string, now time.Time) Data {
+	return PreviewDataIn(nil, tmpl, product, now)
+}
+
+// PreviewDataIn is PreviewData in a language (nil: English).
+func PreviewDataIn(loc *i18n.Localizer, tmpl Template, product string, now time.Time) Data {
 	const base = "https://sso.example.com/r/acme"
 	d := Data{
+		Lang:              loc.Lang(),
 		Product:           product,
 		Realm:             "Acme",
 		Username:          "alice",
-		When:              formatTime(now),
+		When:              formatTime(loc, now),
 		IPAddress:         "203.0.113.42",
-		Device:            "Firefox on Windows",
+		Device:            describeUserAgent(loc, "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"),
 		Location:          "France",
 		ForgotPasswordURL: base + "/auth/forgot-password",
 	}
 	resetURL := base + "/auth/reset-password#token=Xk3pQ9vRt2LmN8wYz4AbCdEfGh7JkLmNoPqRsTuVwXy"
 	switch tmpl {
 	case TemplatePasswordReset:
-		d.ResetURL, d.ExpiresIn = resetURL, humanDuration(30*time.Minute)
+		d.ResetURL, d.ExpiresIn = resetURL, humanDuration(loc, 30*time.Minute)
 	case TemplateAccountInvite:
-		d.ResetURL, d.ExpiresIn = resetURL, humanDuration(72*time.Hour)
+		d.ResetURL, d.ExpiresIn = resetURL, humanDuration(loc, 72*time.Hour)
 	case TemplateMfaMethodAdded, TemplateMfaMethodRemoved:
-		d.MethodLabel, d.MethodName = methodLabel(domain.MfaMethodPasskey), "MacBook Touch ID"
+		d.MethodLabel, d.MethodName = methodLabel(loc, domain.MfaMethodPasskey), "MacBook Touch ID"
 	case TemplateAccountLocked:
 		d.FailedAttempts = 5
-		d.LockDuration = humanDuration(15 * time.Minute)
-		d.LockedUntil = formatTime(now.Add(15 * time.Minute))
+		d.LockDuration = humanDuration(loc, 15 * time.Minute)
+		d.LockedUntil = formatTime(loc, now.Add(15 * time.Minute))
 	case TemplateSuspiciousLogin:
 		d.Reasons = []string{
-			reasonText(domain.SuspiciousNewCountry, d.Location, ""),
-			reasonText(domain.SuspiciousUnusualHour, d.Location, ""),
+			reasonText(loc, domain.SuspiciousNewCountry, d.Location, ""),
+			reasonText(loc, domain.SuspiciousUnusualHour, d.Location, ""),
 		}
 	case TemplateAppConnected:
 		d.AppName = "Grafana"
-		d.AppAccess = []string{"your e-mail address", "your groups"}
+		d.AppAccess = []string{knownText(loc, accessTexts, "Your e-mail address"), "Your groups"}
 	case TemplateAdminRecovery:
-		d.RecoveryKind = "a new administrator account"
+		d.RecoveryKind = knownText(loc, recoveryKinds, "a new administrator account")
 		d.RecoveryActor = "root@admin-host"
 		d.RecoveryAccount = "rescue-admin"
 	case TemplateTest:

@@ -167,6 +167,11 @@ func SuspiciousLoginEmailEnabled(v bool) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldSuspiciousLoginEmailEnabled, v))
 }
 
+// DefaultLocale applies equality check predicate on the "default_locale" field. It's identical to DefaultLocaleEQ.
+func DefaultLocale(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldDefaultLocale, v))
+}
+
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldUpdatedAt, v))
@@ -904,6 +909,71 @@ func SuspiciousLoginEmailEnabledEQ(v bool) predicate.InstanceSettings {
 // SuspiciousLoginEmailEnabledNEQ applies the NEQ predicate on the "suspicious_login_email_enabled" field.
 func SuspiciousLoginEmailEnabledNEQ(v bool) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldNEQ(FieldSuspiciousLoginEmailEnabled, v))
+}
+
+// DefaultLocaleEQ applies the EQ predicate on the "default_locale" field.
+func DefaultLocaleEQ(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldDefaultLocale, v))
+}
+
+// DefaultLocaleNEQ applies the NEQ predicate on the "default_locale" field.
+func DefaultLocaleNEQ(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldDefaultLocale, v))
+}
+
+// DefaultLocaleIn applies the In predicate on the "default_locale" field.
+func DefaultLocaleIn(vs ...string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldDefaultLocale, vs...))
+}
+
+// DefaultLocaleNotIn applies the NotIn predicate on the "default_locale" field.
+func DefaultLocaleNotIn(vs ...string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldDefaultLocale, vs...))
+}
+
+// DefaultLocaleGT applies the GT predicate on the "default_locale" field.
+func DefaultLocaleGT(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldDefaultLocale, v))
+}
+
+// DefaultLocaleGTE applies the GTE predicate on the "default_locale" field.
+func DefaultLocaleGTE(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldDefaultLocale, v))
+}
+
+// DefaultLocaleLT applies the LT predicate on the "default_locale" field.
+func DefaultLocaleLT(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldDefaultLocale, v))
+}
+
+// DefaultLocaleLTE applies the LTE predicate on the "default_locale" field.
+func DefaultLocaleLTE(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldDefaultLocale, v))
+}
+
+// DefaultLocaleContains applies the Contains predicate on the "default_locale" field.
+func DefaultLocaleContains(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldContains(FieldDefaultLocale, v))
+}
+
+// DefaultLocaleHasPrefix applies the HasPrefix predicate on the "default_locale" field.
+func DefaultLocaleHasPrefix(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldHasPrefix(FieldDefaultLocale, v))
+}
+
+// DefaultLocaleHasSuffix applies the HasSuffix predicate on the "default_locale" field.
+func DefaultLocaleHasSuffix(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldHasSuffix(FieldDefaultLocale, v))
+}
+
+// DefaultLocaleEqualFold applies the EqualFold predicate on the "default_locale" field.
+func DefaultLocaleEqualFold(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEqualFold(FieldDefaultLocale, v))
+}
+
+// DefaultLocaleContainsFold applies the ContainsFold predicate on the "default_locale" field.
+func DefaultLocaleContainsFold(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldContainsFold(FieldDefaultLocale, v))
 }
 
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"fmt"
@@ -177,7 +178,7 @@ func ParseMFAMethods(s string) ([]domain.MfaMethodType, error) {
 			m = domain.MfaMethodBackupCodes
 		}
 		if !domain.IsKnownPolicyMethod(m) {
-			return nil, fmt.Errorf("%w %q (expected: totp, passkey, webauthn, backup_codes)", ErrUnknownMFAMethod, m)
+			return nil, newTextError(ErrUnknownMFAMethod, i18n.M("admin.error.mfa_method_unknown", "\"{method}\" (expected: totp, passkey, webauthn, backup_codes)", "method", m))
 		}
 		if !slices.Contains(out, m) {
 			out = append(out, m)
@@ -189,7 +190,7 @@ func ParseMFAMethods(s string) ([]domain.MfaMethodType, error) {
 func validateMFAMethods(methods []domain.MfaMethodType) error {
 	for _, m := range methods {
 		if !domain.IsKnownPolicyMethod(m) {
-			return fmt.Errorf("%w %q", ErrUnknownMFAMethod, m)
+			return newTextError(ErrUnknownMFAMethod, i18n.M("admin.error.mfa_method_name", "\"{method}\"", "method", m))
 		}
 	}
 	return nil
@@ -335,13 +336,13 @@ func (s *MFAPolicyService) SetRealmPolicy(ctx context.Context, in SetRealmMFAPol
 	if in.StepUpMaxAge != nil {
 		d := *in.StepUpMaxAge
 		if d < minMFAStepUpMaxAge || d > maxMFAStepUpMaxAge {
-			return nil, fmt.Errorf("%w: step-up max age must be between %s and %s", ErrInvalidMFAPolicy, minMFAStepUpMaxAge, maxMFAStepUpMaxAge)
+			return nil, newTextError(ErrInvalidMFAPolicy, i18n.M("admin.error.stepup_range", "step-up max age must be between {min} and {max}", "min", minMFAStepUpMaxAge, "max", maxMFAStepUpMaxAge))
 		}
 		m := int(d / time.Minute)
 		maxAge = &m
 	}
 	if d := in.TrustedDeviceDays; d != nil && (*d < MinTrustedDeviceDays || *d > MaxTrustedDeviceDays) {
-		return nil, fmt.Errorf("%w: trusted device days must be between %d and %d", ErrInvalidMFAPolicy, MinTrustedDeviceDays, MaxTrustedDeviceDays)
+		return nil, newTextError(ErrInvalidMFAPolicy, i18n.M("admin.error.trusted_days_range", "trusted device days must be between {min} and {max}", "min", MinTrustedDeviceDays, "max", MaxTrustedDeviceDays))
 	}
 
 	settings, err := s.settings.GetByRealmID(ctx, in.RealmID)
@@ -357,8 +358,7 @@ func (s *MFAPolicyService) SetRealmPolicy(ctx context.Context, in SetRealmMFAPol
 	// A session ends after session_idle_minutes without activity: a longer
 	// step-up window would never be reached, the sign-in page comes first.
 	if maxAge != nil && settings.SessionIdleMinutes > 0 && *maxAge > settings.SessionIdleMinutes {
-		return nil, fmt.Errorf("%w: the step-up window (%d min) cannot be longer than the session idle timeout (%d min, Settings > Session policy): the session would end first and ask to sign in again",
-			ErrInvalidMFAPolicy, *maxAge, settings.SessionIdleMinutes)
+		return nil, newTextError(ErrInvalidMFAPolicy, i18n.M("admin.error.stepup_vs_idle", "the step-up window ({min} min) cannot be longer than the session idle timeout ({idle} min, Settings > Session policy): the session would end first and ask to sign in again", "min", *maxAge, "idle", settings.SessionIdleMinutes))
 	}
 
 	by := in.Actor.TriggeredBy
@@ -394,7 +394,7 @@ func (s *MFAPolicyService) SetClientPolicy(ctx context.Context, in SetClientMFAP
 	switch in.Policy {
 	case domain.ClientAppMFAInherit, domain.ClientAppMFARequired:
 	default:
-		return nil, fmt.Errorf("%w %q (expected: inherit, required)", ErrUnknownMFAPolicy, in.Policy)
+		return nil, newTextError(ErrUnknownMFAPolicy, i18n.M("admin.error.mfa_policy_unknown", "\"{policy}\" (expected: inherit, required)", "policy", in.Policy))
 	}
 	if err := validateMFAMethods(in.AllowedMethods); err != nil {
 		return nil, err
@@ -445,7 +445,7 @@ func (s *MFAPolicyService) SetRolePolicy(ctx context.Context, in SetRoleMFAPolic
 		return nil, err
 	}
 	if in.EnrollmentGraceDays < 0 || in.EnrollmentGraceDays > 365 {
-		return nil, fmt.Errorf("%w: grace days must be between 0 and 365", ErrInvalidMFAPolicy)
+		return nil, newTextError(ErrInvalidMFAPolicy, i18n.M("admin.error.grace_days", "grace days must be between 0 and 365"))
 	}
 	role, err := s.roles.GetByRealmAndName(ctx, in.RealmID, in.RoleName)
 	if err != nil {

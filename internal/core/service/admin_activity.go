@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"fmt"
@@ -100,7 +101,7 @@ func (s *AdminService) ListSessions(ctx context.Context, realm *domain.Realm, f 
 func (s *AdminService) RevokeSession(ctx context.Context, actor AdminActor, realm *domain.Realm, sessionID string) error {
 	se, err := s.d.Sessions.GetActive(ctx, sessionID)
 	if errors.Is(err, ErrSessionInvalid) || (err == nil && se.RealmID != realm.ID) {
-		return adminNotFound("session")
+		return adminNotFound(i18n.M("admin.error.not_found.session", "session not found"))
 	}
 	if err != nil {
 		return err
@@ -486,10 +487,10 @@ type RealmMFAInput struct {
 // SetRealmMFA changes the realm-wide policy.
 func (s *AdminService) SetRealmMFA(ctx context.Context, actor AdminActor, realm *domain.Realm, in RealmMFAInput) (*MFAPoliciesView, error) {
 	if isMaster(realm) && in.Required != nil && !*in.Required {
-		return nil, adminRefused("system_realm", "MFA stays required in the master realm")
+		return nil, adminRefused("system_realm", i18n.M("admin.error.mfa_master_required", "MFA stays required in the master realm"))
 	}
 	if isMaster(realm) && in.TrustedDevices != nil && *in.TrustedDevices {
-		return nil, adminRefused("system_realm", "the master realm always asks for the second factor: its accounts administer the whole instance")
+		return nil, adminRefused("system_realm", i18n.M("admin.error.master_second_factor", "the master realm always asks for the second factor: its accounts administer the whole instance"))
 	}
 	var maxAge *time.Duration
 	if in.StepUpMinutes != nil {

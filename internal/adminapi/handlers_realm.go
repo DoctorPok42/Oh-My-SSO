@@ -13,6 +13,7 @@ import (
 
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/i18n"
 )
 
 
@@ -28,6 +29,31 @@ type meResponse struct {
 	Permissions []string `json:"permissions"`
 	// StepUpFreshUntil: until when changes need no new second factor.
 	StepUpFreshUntil *time.Time `json:"step_up_fresh_until"`
+}
+
+// meLanguageResponse: the console's language, asked on every page (cheap: no
+// RBAC, no step-up check), so that a change shows on the next page. The ID
+// token's "locale" claim is only renewed with the token.
+type meLanguageResponse struct {
+	// Locale: the language the admin chose in their account console.
+	Locale string `json:"locale"`
+	// RealmLocale: the default language of the admin's realm (Settings).
+	RealmLocale string `json:"realm_locale"`
+	// Both are "" when unset, or not an available language.
+}
+
+func (s *Server) handleMeLanguage(w http.ResponseWriter, r *http.Request) {
+	a := adminFrom(r)
+	var out meLanguageResponse
+	if l, ok := a.user.Profile["locale"].(string); ok {
+		out.Locale = s.cfg.Languages.Match(l)
+	}
+	// The settings themselves, not SessionService's one-minute cache: a new
+	// default shows on the next page.
+	if st, err := s.d.Admin.GetSettings(r.Context(), &domain.Realm{ID: a.user.RealmID}); err == nil {
+		out.RealmLocale = s.cfg.Languages.Match(st.DefaultLocale)
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -284,34 +310,33 @@ type rotateKeyResponse struct {
 func rotationError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, service.ErrGraceTooShort):
-		writeError(w, http.StatusBadRequest, "grace_too_short", err.Error())
+		writeErrorT(w, r, http.StatusBadRequest, "grace_too_short", i18n.M("admin.error.grace_too_short", "the key rotation grace period is too short (minimum {min})", "min", service.MinKeyRotationGrace))
 	case errors.Is(err, service.ErrCompromisedReasonRequired):
-		writeError(w, http.StatusBadRequest, "reason_required", "a reason is required when the key is compromised")
+		writeErrorT(w, r, http.StatusBadRequest, "reason_required", i18n.M("admin.error.key_reason", "a reason is required when the key is compromised"))
 	case errors.Is(err, service.ErrUnsupportedRotationPurpose), errors.Is(err, service.ErrActivationNotSupported):
-		writeError(w, http.StatusBadRequest, "unsupported_purpose", err.Error())
+		writeErrorT(w, r, http.StatusBadRequest, "unsupported_purpose", i18n.M("admin.error.unsupported_purpose", "rotation is not supported for this key purpose"))
 	case errors.Is(err, service.ErrSAMLKeyMustBeRSA):
-		writeError(w, http.StatusBadRequest, "unsupported_key_type", "SAML keys must be RSA")
+		writeErrorT(w, r, http.StatusBadRequest, "unsupported_key_type", i18n.M("admin.error.saml_rsa", "SAML keys must be RSA"))
 	case errors.Is(err, service.ErrPendingKeyExists):
-		writeError(w, http.StatusConflict, "pending_key_exists", "a new SAML key is already waiting: activate it first")
+		writeErrorT(w, r, http.StatusConflict, "pending_key_exists", i18n.M("admin.error.pending_key", "a new SAML key is already waiting: activate it first"))
 	case errors.Is(err, service.ErrNoPendingKey):
-		writeError(w, http.StatusConflict, "no_pending_key", "there is no pending key to activate")
+		writeErrorT(w, r, http.StatusConflict, "no_pending_key", i18n.M("admin.error.no_pending_key", "there is no pending key to activate"))
 	default:
 		writeServiceError(w, r, err)
 	}
 }
 
 // refuseLocalDevKeys: see Config.KMSBackend.
-func (s *Server) refuseLocalDevKeys(w http.ResponseWriter) bool {
+func (s *Server) refuseLocalDevKeys(w http.ResponseWriter, r *http.Request) bool {
 	if s.cfg.KMSBackend != "local_dev" {
 		return false
 	}
-	writeError(w, http.StatusConflict, "local_dev_keys", "KEYMANAGER_BACKEND=local_dev keeps private keys in the memory of one "+
-		"process: a key created by the Admin API could never sign on the public server. Use Vault (`make dev`).")
+	writeErrorT(w, r, http.StatusConflict, "local_dev_keys", i18n.M("admin.error.local_dev_keys", "KEYMANAGER_BACKEND=local_dev keeps private keys in the memory of one process: a key created by the Admin API could never sign on the public server. Use Vault (`make dev`)."))
 	return true
 }
 
 func (s *Server) handleRotateKey(w http.ResponseWriter, r *http.Request) {
-	if s.refuseLocalDevKeys(w) {
+	if s.refuseLocalDevKeys(w, r) {
 		return
 	}
 	var in struct {
@@ -325,13 +350,13 @@ func (s *Server) handleRotateKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in.GraceHours < 0 {
-		writeError(w, http.StatusBadRequest, "invalid_request", "grace_hours cannot be negative")
+		writeErrorT(w, r, http.StatusBadRequest, "invalid_request", i18n.M("admin.error.grace_negative", "grace_hours cannot be negative"))
 		return
 	}
 	switch domain.SigningKeyType(in.KeyType) {
 	case "", domain.SigningKeyRSA, domain.SigningKeyEC:
 	default:
-		writeError(w, http.StatusBadRequest, "unsupported_key_type", "key_type must be RSA or EC")
+		writeErrorT(w, r, http.StatusBadRequest, "unsupported_key_type", i18n.M("admin.error.key_type", "key_type must be RSA or EC"))
 		return
 	}
 	purpose := domain.SigningKeyPurposeJWT
@@ -346,7 +371,7 @@ func (s *Server) handleRotateKey(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleActivateKey(w http.ResponseWriter, r *http.Request) {
-	if s.refuseLocalDevKeys(w) {
+	if s.refuseLocalDevKeys(w, r) {
 		return
 	}
 	var in struct {
@@ -458,13 +483,15 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, settingsResponse{SettingsView: v, EmailEnabled: s.d.TestEmail != nil})
+	writeJSON(w, http.StatusOK, settingsResponse{SettingsView: v, EmailEnabled: s.d.TestEmail != nil, Languages: s.d.Admin.Languages()})
 }
 
 type settingsResponse struct {
 	*service.SettingsView
 	// EmailEnabled: e-mails can leave the server (SMTP configured).
 	EmailEnabled bool `json:"email_enabled"`
+	// Languages: the choices of default_locale (English first).
+	Languages []i18n.Language `json:"languages"`
 }
 
 func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
@@ -486,6 +513,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		KeyRotationGraceHours       *int      `json:"key_rotation_grace_hours"`
 		NotificationEmailEnabled    *bool     `json:"notification_email_enabled"`
 		SuspiciousLoginEmailEnabled *bool     `json:"suspicious_login_email_enabled"`
+		DefaultLocale               *string   `json:"default_locale"`
 	}
 	if !decode(w, r, &in) {
 		return
@@ -495,7 +523,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, settingsResponse{SettingsView: v, EmailEnabled: s.d.TestEmail != nil})
+	writeJSON(w, http.StatusOK, settingsResponse{SettingsView: v, EmailEnabled: s.d.TestEmail != nil, Languages: s.d.Admin.Languages()})
 }
 
 func (s *Server) handleTestEmail(w http.ResponseWriter, r *http.Request) {
@@ -506,7 +534,7 @@ func (s *Server) handleTestEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.d.TestEmail == nil {
-		writeError(w, http.StatusConflict, "email_disabled", "e-mail is not configured on the server (SMTP_HOST)")
+		writeErrorT(w, r, http.StatusConflict, "email_disabled", i18n.M("admin.error.email_disabled", "e-mail is not configured on the server (SMTP_HOST)"))
 		return
 	}
 	addr, err := mail.ParseAddress(strings.TrimSpace(in.To))
@@ -515,7 +543,7 @@ func (s *Server) handleTestEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.d.TestEmail(r.Context(), addr.Address); err != nil {
-		writeError(w, http.StatusBadGateway, "email_failed", "the mail server refused or did not answer: "+err.Error())
+		writeErrorT(w, r, http.StatusBadGateway, "email_failed", i18n.M("admin.error.email_failed", "the mail server refused or did not answer: {error}", "error", err.Error()))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "sent", "to": addr.Address})

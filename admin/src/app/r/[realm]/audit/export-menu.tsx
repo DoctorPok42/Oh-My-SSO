@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
 // "Export": the entries matching the current filters (the From / To fields
@@ -22,22 +23,28 @@ export function ExportMenu({ base, filters }: { base: string; filters: Record<st
     if (filtered) for (const [k, v] of Object.entries(filters)) if (v) q.set(k, v);
     return `${base}/export?${q.toString()}`;
   };
+  const { t } = useT();
   const filtered = Object.values(filters).some(Boolean);
-  const period = filters.from || filters.to ? `${filters.from ?? "the start"} → ${filters.to ?? "today"}` : "any date";
+  const period =
+    filters.from || filters.to
+      ? `${filters.from ?? t("audit.export.start", "the start")} → ${filters.to ?? t("audit.export.today", "today")}`
+      : t("audit.export.any_date", "any date");
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
         <Download className="size-4" />
-        Export
+        {t("audit.export.label", "Export")}
         <ChevronDown className="size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>
-          {filtered ? `Entries matching the filters (${period})` : "Every entry of the realm"}
+          {filtered
+            ? t("audit.export.filtered", "Entries matching the filters ({period})", { period })
+            : t("audit.export.all", "Every entry of the realm")}
         </DropdownMenuLabel>
         <DropdownMenuItem asChild>
           <a href={href("csv", true)} download>
-            CSV (spreadsheet)
+            {t("audit.export.csv", "CSV (spreadsheet)")}
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
@@ -48,10 +55,10 @@ export function ExportMenu({ base, filters }: { base: string; filters: Record<st
         {filtered && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>Whole log, without filters</DropdownMenuLabel>
+            <DropdownMenuLabel>{t("audit.export.whole", "Whole log, without filters")}</DropdownMenuLabel>
             <DropdownMenuItem asChild>
               <a href={href("csv", false)} download>
-                CSV (spreadsheet)
+                {t("audit.export.csv", "CSV (spreadsheet)")}
               </a>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>

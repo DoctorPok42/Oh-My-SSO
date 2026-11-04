@@ -16,8 +16,11 @@ async function clickThenStepUp(page: Page, baseURL: string, name: string) {
 test("dashboard of the master realm", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/r\/master\/dashboard$/);
-  await expect(page.getByText("Active sessions")).toBeVisible();
-  await expect(page.getByText("PostgreSQL")).toBeVisible();
+  // In <main>: the whole page would also count the copy React streams in a
+  // hidden <div id="S:…"> just before it shows it (strict mode: 2 elements).
+  const main = page.getByRole("main");
+  await expect(main.getByText("Active sessions")).toBeVisible();
+  await expect(main.getByText("PostgreSQL")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Clients" })).toBeVisible();
 });
 

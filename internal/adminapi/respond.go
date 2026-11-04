@@ -1,6 +1,7 @@
 package adminapi
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"encoding/json"
 	"errors"
 	"io"
@@ -34,8 +35,10 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func writeError(w http.ResponseWriter, status int, code, message string) {
-	writeJSON(w, status, errorBody{Error: code, Message: message})
+// writeErrorT answers an error whose sentence is translated: the console's
+// language (see languages.go).
+func writeErrorT(w http.ResponseWriter, r *http.Request, status int, code string, t i18n.Text) {
+	writeJSON(w, status, errorBody{Error: code, Message: localizer(r.Context()).Text(t)})
 }
 
 // writeServiceError maps the admin service's errors to HTTP. Anything that
@@ -50,11 +53,15 @@ func writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
 		case service.AdminConflict, service.AdminRefused:
 			status = http.StatusConflict
 		}
-		writeJSON(w, status, errorBody{Error: ae.Code, Message: ae.Message, Field: ae.Field})
+		message := ae.Message
+		if ae.Text.Key != "" {
+			message = localizer(r.Context()).Text(ae.Text)
+		}
+		writeJSON(w, status, errorBody{Error: ae.Code, Message: message, Field: ae.Field})
 		return
 	}
 	slog.ErrorContext(r.Context(), "admin api: internal error", "method", r.Method, "path", r.URL.Path, "error", err)
-	writeError(w, http.StatusInternalServerError, "internal_error", "something went wrong on the server, see its logs")
+	writeErrorT(w, r, http.StatusInternalServerError, "internal_error", i18n.M("admin.error.internal", "something went wrong on the server, see its logs"))
 }
 
 // maxBodyBytes: admin forms are small; a SAML metadata file is the biggest.
@@ -66,7 +73,7 @@ func decode(w http.ResponseWriter, r *http.Request, dst any) bool {
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil && !errors.Is(err, io.EOF) {
-		writeError(w, http.StatusBadRequest, "invalid_json", "the request body is not valid JSON for this endpoint: "+err.Error())
+		writeErrorT(w, r, http.StatusBadRequest, "invalid_json", i18n.M("admin.error.invalid_json", "the request body is not valid JSON for this endpoint: {error}", "error", err.Error()))
 		return false
 	}
 	return true
@@ -80,7 +87,7 @@ func requireJSON(next http.Handler) http.Handler {
 		case http.MethodPost, http.MethodPut, http.MethodPatch:
 			mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 			if r.ContentLength != 0 && (err != nil || mt != "application/json") {
-				writeError(w, http.StatusUnsupportedMediaType, "json_required", "send Content-Type: application/json")
+				writeErrorT(w, r, http.StatusUnsupportedMediaType, "json_required", i18n.M("admin.error.json_required", "send Content-Type: application/json"))
 				return
 			}
 		}

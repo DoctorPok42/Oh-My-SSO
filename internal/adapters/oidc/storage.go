@@ -108,6 +108,7 @@ func (s *storage) CreateAuthRequest(ctx context.Context, req *oidc.AuthRequest, 
 		Prompt:              req.Prompt,
 		MaxAge:              req.MaxAge,
 		LoginHint:           req.LoginHint,
+		UILocales:           uiLocales(req.UILocales),
 		BrowserHash:         browserHash,
 		CreatedAt:           s.a.now(),
 	}
@@ -587,4 +588,14 @@ func toTokenError(err error) error {
 		return oidc.ErrInvalidGrant().WithParent(err)
 	}
 	return oidc.ErrServerError().WithParent(err)
+}
+
+// uiLocales: the ui_locales of the request as tags, best first. The sign-in
+// page uses the first one the server has (package i18n).
+func uiLocales(in oidc.Locales) []string {
+	out := make([]string, 0, len(in))
+	for _, t := range in {
+		out = append(out, t.String())
+	}
+	return out
 }

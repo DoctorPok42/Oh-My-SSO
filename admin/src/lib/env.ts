@@ -7,6 +7,8 @@ import { z } from "zod";
 // to the browser (no NEXT_PUBLIC_ prefix).
 //
 // Values come from `idp-admin bootstrap` (OIDC_*), see .env.example.
+// ADMIN_LOCALES_DIR (extra languages) is read by src/i18n/catalog.ts, when
+// the server starts.
 
 const url = z.url({ protocol: /^https?$/ }).transform((v) => v.replace(/\/+$/, ""));
 

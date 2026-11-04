@@ -14,6 +14,7 @@ import (
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/i18n"
 )
 
 // Config of the Admin API.
@@ -30,6 +31,9 @@ type Config struct {
 	// LogRequests: log every call with its duration (slow ones always are).
 	LogRequests bool
 	Now         func() time.Time
+	// Languages: the catalogue the error sentences are translated with
+	// (the IdP's, LOCALES_DIR included). nil: the embedded languages.
+	Languages *i18n.Bundle
 }
 
 // Authorizer is the RBAC check (service.RBACService).
@@ -99,6 +103,9 @@ func (s *Server) now() time.Time { return s.cfg.Now() }
 
 // New builds the router.
 func New(cfg Config, d Deps) *Server {
+	if cfg.Languages == nil {
+		cfg.Languages = i18n.MustDefault()
+	}
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
@@ -114,6 +121,7 @@ func New(cfg Config, d Deps) *Server {
 	r.Use(middleware.Recoverer)
 	r.Use(s.logSlow)
 	r.Use(securityHeaders)
+	r.Use(s.languages)
 	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -121,6 +129,7 @@ func New(cfg Config, d Deps) *Server {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(s.allowlist, requireJSON, s.authenticate)
 		r.Get("/me", s.handleMe)
+		r.Get("/me/language", s.handleMeLanguage)
 
 		r.With(s.require("realm", "read")).Get("/realms", s.handleListRealms)
 		r.With(s.require("realm", "write"), s.stepUp).Post("/realms", s.handleCreateRealm)

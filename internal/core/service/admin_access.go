@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"fmt"
@@ -133,10 +134,10 @@ func nonNil(ids []string) []string {
 
 func (s *AdminService) checkAccessInput(ctx context.Context, realm *domain.Realm, in AccessInput) (perms, scopes []string, err error) {
 	if in.Name != nil && !accessNamePattern.MatchString(strings.TrimSpace(*in.Name)) {
-		return nil, nil, adminInvalid("name", "name: 1-64 characters among letters, digits, space and . _ : -")
+		return nil, nil, adminInvalid("name", i18n.M("admin.error.name_bad", "name: 1-64 characters among letters, digits, space and . _ : -"))
 	}
 	if in.Description != nil && len(*in.Description) > 512 {
-		return nil, nil, adminInvalid("description", "description: at most 512 characters")
+		return nil, nil, adminInvalid("description", i18n.M("admin.error.description_long", "description: at most 512 characters"))
 	}
 	if in.PermissionIDs != nil {
 		if perms, err = s.checkPermissionIDs(ctx, realm.ID, *in.PermissionIDs); err != nil {
@@ -160,7 +161,7 @@ func strOr(p *string, def string) string {
 
 func (s *AdminService) CreateRole(ctx context.Context, actor AdminActor, realm *domain.Realm, in AccessInput) (AccessView, error) {
 	if in.Name == nil {
-		return AccessView{}, adminInvalid("name", "name is required")
+		return AccessView{}, adminInvalid("name", i18n.M("admin.error.name_required", "name is required"))
 	}
 	perms, scopes, err := s.checkAccessInput(ctx, realm, in)
 	if err != nil {
@@ -168,7 +169,7 @@ func (s *AdminService) CreateRole(ctx context.Context, actor AdminActor, realm *
 	}
 	name := strOr(in.Name, "")
 	if _, err := s.d.Roles.GetByRealmAndName(ctx, realm.ID, name); err == nil {
-		return AccessView{}, adminConflict("name_taken", "a role named %q already exists", name)
+		return AccessView{}, adminConflict("name_taken", i18n.M("admin.error.role_name_taken", "a role named \"{name}\" already exists", "name", name))
 	}
 	r, err := s.d.Roles.Create(ctx, repository.CreateRoleParams{RealmID: realm.ID, Name: name, Description: strOr(in.Description, "")})
 	if err != nil {
@@ -204,7 +205,7 @@ func (s *AdminService) UpdateRole(ctx context.Context, actor AdminActor, realm *
 	if in.Name != nil && strOr(in.Name, "") != r.Name {
 		name := strOr(in.Name, "")
 		if _, err := s.d.Roles.GetByRealmAndName(ctx, realm.ID, name); err == nil {
-			return AccessView{}, adminConflict("name_taken", "a role named %q already exists", name)
+			return AccessView{}, adminConflict("name_taken", i18n.M("admin.error.role_name_taken", "a role named \"{name}\" already exists", "name", name))
 		}
 		params.Name = &name
 		details["name"] = name
@@ -262,7 +263,7 @@ func (s *AdminService) DeleteRole(ctx context.Context, actor AdminActor, realm *
 
 func (s *AdminService) CreateGroup(ctx context.Context, actor AdminActor, realm *domain.Realm, in AccessInput) (AccessView, error) {
 	if in.Name == nil {
-		return AccessView{}, adminInvalid("name", "name is required")
+		return AccessView{}, adminInvalid("name", i18n.M("admin.error.name_required", "name is required"))
 	}
 	perms, scopes, err := s.checkAccessInput(ctx, realm, in)
 	if err != nil {
@@ -270,7 +271,7 @@ func (s *AdminService) CreateGroup(ctx context.Context, actor AdminActor, realm 
 	}
 	name := strOr(in.Name, "")
 	if _, err := s.d.Groups.GetByRealmAndName(ctx, realm.ID, name); err == nil {
-		return AccessView{}, adminConflict("name_taken", "a group named %q already exists", name)
+		return AccessView{}, adminConflict("name_taken", i18n.M("admin.error.group_name_taken", "a group named \"{name}\" already exists", "name", name))
 	}
 	g, err := s.d.Groups.Create(ctx, repository.CreateGroupParams{RealmID: realm.ID, Name: name, Description: strOr(in.Description, "")})
 	if err != nil {
@@ -305,7 +306,7 @@ func (s *AdminService) UpdateGroup(ctx context.Context, actor AdminActor, realm 
 	if in.Name != nil && strOr(in.Name, "") != g.Name {
 		name := strOr(in.Name, "")
 		if _, err := s.d.Groups.GetByRealmAndName(ctx, realm.ID, name); err == nil {
-			return AccessView{}, adminConflict("name_taken", "a group named %q already exists", name)
+			return AccessView{}, adminConflict("name_taken", i18n.M("admin.error.group_name_taken", "a group named \"{name}\" already exists", "name", name))
 		}
 		params.Name = &name
 		details["name"] = name
@@ -408,14 +409,14 @@ type CreatePermissionInput struct {
 func (s *AdminService) CreatePermission(ctx context.Context, actor AdminActor, realm *domain.Realm, in CreatePermissionInput) (PermissionView, error) {
 	res, act := strings.TrimSpace(in.Resource), strings.TrimSpace(in.Action)
 	if !permissionPartPattern.MatchString(res) || !permissionPartPattern.MatchString(act) {
-		return PermissionView{}, adminInvalid("resource", "resource and action: lowercase letters, digits and _ . - (e.g. invoice / approve)")
+		return PermissionView{}, adminInvalid("resource", i18n.M("admin.error.permission_format", "resource and action: lowercase letters, digits and _ . - (e.g. invoice / approve)"))
 	}
 	if isMaster(realm) {
-		return PermissionView{}, adminRefused("system_realm", "the permissions of the master realm are the admin catalogue: they cannot be added to")
+		return PermissionView{}, adminRefused("system_realm", i18n.M("admin.error.master_permissions", "the permissions of the master realm are the admin catalogue: they cannot be added to"))
 	}
 	name := res + ":" + act
 	if _, err := s.d.Permissions.GetByRealmAndName(ctx, realm.ID, name); err == nil {
-		return PermissionView{}, adminConflict("name_taken", "permission %q already exists", name)
+		return PermissionView{}, adminConflict("name_taken", i18n.M("admin.error.permission_taken", "permission \"{name}\" already exists", "name", name))
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return PermissionView{}, err
 	}
@@ -431,7 +432,7 @@ func (s *AdminService) CreatePermission(ctx context.Context, actor AdminActor, r
 func (s *AdminService) DeletePermission(ctx context.Context, actor AdminActor, realm *domain.Realm, id string) error {
 	p, err := s.d.Permissions.GetByID(ctx, id)
 	if errors.Is(err, repository.ErrNotFound) || (err == nil && p.RealmID != realm.ID) {
-		return adminNotFound("permission")
+		return adminNotFound(i18n.M("admin.error.not_found.permission", "permission not found"))
 	}
 	if err != nil {
 		return err

@@ -1,26 +1,21 @@
 import { cache, Suspense } from "react";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
-import { TableSkeleton } from "@/components/console/skeletons";
+import { ColumnHeads, TableSkeleton } from "@/components/console/skeletons";
 import { ProtocolBadge } from "@/components/console/status-badge";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { apiPath, getMe, load } from "@/lib/api";
 import { COLUMNS, PAGES } from "@/lib/pages";
 import { canWrite } from "@/lib/permissions";
 import type { ClientScope, List } from "@/lib/types";
 import { NewScopeButton, ScopeDrawer, ScopeRowActions } from "./scope-drawer";
+import { getI18n } from "@/i18n/server";
 
-export const metadata = { title: PAGES.clientScopes.title };
+export async function generateMetadata() {
+  const { tm } = await getI18n();
+  return { title: tm(PAGES.clientScopes.title) };
+}
 
 // The table and the drawer both need the list: React's cache() runs the call
 // once per request, whoever asks first. https://react.dev/reference/react/cache
@@ -57,23 +52,17 @@ async function ScopesTable({ realm, writable }: { realm: string; writable: boole
   const list = await loadScopes(realm);
   if (!list.ok) return <ErrorState error={list} />;
   const items = list.data.items;
+  const { t, tn } = await getI18n();
   return (
     <TableContainer>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Protocol</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Claims</TableHead>
-            <TableHead>Used by</TableHead>
-            <TableHead>
-              <span className="sr-only">Actions</span>
-            </TableHead>
+            <ColumnHeads columns={COLUMNS.clientScopes} />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.length === 0 && <TableEmpty colSpan={6}>No client scope yet.</TableEmpty>}
+          {items.length === 0 && <TableEmpty colSpan={6}>{t("scopes.empty", "No client scope yet.")}</TableEmpty>}
           {items.map((s) => (
             <TableRow key={s.id}>
               <TableCell>
@@ -84,11 +73,13 @@ async function ScopesTable({ realm, writable }: { realm: string; writable: boole
                 <ProtocolBadge protocol={s.protocol} />
               </TableCell>
               <TableCell>
-                <Badge tone={s.is_default ? "accent" : "neutral"}>{s.is_default ? "Default" : "Optional"}</Badge>
+                <Badge tone={s.is_default ? "accent" : "neutral"}>
+                  {s.is_default ? t("scopes.default", "Default") : t("clients.scope.optional", "Optional")}
+                </Badge>
               </TableCell>
               <TableCell className="text-text-secondary">{s.claim_mappers.length}</TableCell>
               <TableCell className="text-text-secondary">
-                {s.clients} client{s.clients === 1 ? "" : "s"}
+                {tn("scopes.clients", s.clients, "{count} client", "{count} clients")}
               </TableCell>
               <TableCell className="text-right">
                 <ScopeRowActions realm={realm} scope={s} writable={writable} />

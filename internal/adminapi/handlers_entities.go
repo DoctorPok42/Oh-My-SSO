@@ -1,6 +1,7 @@
 package adminapi
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"net/http"
 	"strings"
 	"time"
@@ -100,7 +101,7 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 	switch protocol {
 	case "", domain.ClientAppProtocolOIDC, domain.ClientAppProtocolSAML2:
 	default:
-		writeError(w, http.StatusBadRequest, "invalid_request", "protocol must be oidc or saml2")
+		writeErrorT(w, r, http.StatusBadRequest, "invalid_request", i18n.M("admin.error.protocol_oidc_saml2", "protocol must be oidc or saml2"))
 		return
 	}
 	all, err := s.d.Admin.ListClients(r.Context(), realmFrom(r), protocol)
@@ -151,8 +152,7 @@ func (s *Server) handleUpdateClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in.Protocol != "" || in.ClientID != nil || in.Public != nil || in.Pairwise != nil || in.Certificates != nil {
-		writeError(w, http.StatusBadRequest, "invalid_request",
-			"protocol, client_id, public, pairwise and certificates cannot change here (certificates: use /certificates)")
+		writeErrorT(w, r, http.StatusBadRequest, "invalid_request", i18n.M("admin.error.protocol_fixed", "protocol, client_id, public, pairwise and certificates cannot change here (certificates: use /certificates)"))
 		return
 	}
 	v, err := s.d.Admin.UpdateClient(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id"), in.input())
@@ -298,7 +298,7 @@ func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	switch status {
 	case "", domain.UserActive, domain.UserInactive, domain.UserSuspended:
 	default:
-		writeError(w, http.StatusBadRequest, "invalid_request", "status must be active, inactive or suspended")
+		writeErrorT(w, r, http.StatusBadRequest, "invalid_request", i18n.M("admin.error.user_status", "status must be active, inactive or suspended"))
 		return
 	}
 	v, total, err := s.d.Admin.ListUsers(r.Context(), realmFrom(r), repository.UserSearch{

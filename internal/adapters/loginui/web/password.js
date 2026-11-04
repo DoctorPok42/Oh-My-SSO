@@ -2,18 +2,23 @@
   "use strict";
   const $ = (id) => document.getElementById(id);
 
+  // Texts in the page's language: the omsso-i18n block holds the
+  // translations of the "password.js." keys (package i18n), none in English.
+  const dict = (() => { try { return JSON.parse($("omsso-i18n").textContent) || {}; } catch { return {}; } })();
+  const t = (key, def) => dict[key] || def;
+
   const messages = {
-    invalid_request: "Please fill in every field.",
-    rate_limited: "Too many requests. Wait a few minutes, then try again.",
-    invalid_or_expired_token: "This link is invalid, was already used, or has expired. Ask for a new one.",
-    password_too_short: "This password is too short.",
-    password_too_long: "This password is too long.",
-    password_matches_identity: "Your password must not be your username or e-mail.",
-    passwords_differ: "The two passwords are not the same.",
+    invalid_request: t("password.js.error.invalid_request", "Please fill in every field."),
+    rate_limited: t("password.js.error.rate_limited", "Too many requests. Wait a few minutes, then try again."),
+    invalid_or_expired_token: t("password.js.error.invalid_or_expired_token", "This link is invalid, was already used, or has expired. Ask for a new one."),
+    password_too_short: t("password.js.error.password_too_short", "This password is too short."),
+    password_too_long: t("password.js.error.password_too_long", "This password is too long."),
+    password_matches_identity: t("password.js.error.password_matches_identity", "Your password must not be your username or e-mail."),
+    passwords_differ: t("password.js.error.passwords_differ", "The two passwords are not the same."),
   };
 
   function showError(code) {
-    $("error").textContent = messages[code] || "Something went wrong. Please try again.";
+    $("error").textContent = messages[code] || t("password.js.error.generic", "Something went wrong. Please try again.");
     $("error").hidden = false;
   }
   const clearError = () => { $("error").hidden = true; };

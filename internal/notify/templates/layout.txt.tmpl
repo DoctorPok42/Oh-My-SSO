@@ -1,11 +1,12 @@
 {{define "layout.txt"}}{{template "text" .}}
 {{/* "-- " (with its space) starts a signature, RFC 3676 §4.3 */}}{{"-- "}}
-This is an automatic message from {{.Product}} about your account{{if .Username}} "{{.Username}}"{{end}}{{if .Realm}} ({{.Realm}}){{end}}.
-Replies are not read.
+{{if .Username}}{{tp "email.footer.user" "This is an automatic message from {product} about your account <strong>{user}</strong>. Replies are not read." "product" .Product "user" .Username}}{{else}}{{t "email.footer" "This is an automatic message from {product} about your account. Replies are not read." "product" .Product}}{{end}}{{if .Realm}} ({{.Realm}}){{end}}
 {{end}}
 
-{{define "details.txt"}}{{if .When}}  When:       {{.When}}
-{{end}}{{if .Device}}  Device:     {{.Device}}
-{{end}}{{if .IPAddress}}  IP address: {{.IPAddress}}
-{{end}}{{if .Location}}  Location:   {{.Location}} (approximate)
+{{define "details.txt"}}{{if .When}}  {{t "email.details.when" "When"}}: {{.When}}
+{{end}}{{if .Device}}  {{t "email.details.device" "Device"}}: {{.Device}}
+{{end}}{{if .IPAddress}}  {{t "email.details.ip" "IP address"}}: {{.IPAddress}}
+{{end}}{{if .Location}}  {{t "email.details.location" "Location"}}: {{.Location}} ({{t "email.details.approximate" "approximate"}})
 {{end}}{{end}}
+
+{{define "hello"}}{{if .Username}}{{t "email.hello_name" "Hello {name}," "name" .Username}}{{else}}{{t "email.hello" "Hello,"}}{{end}}{{end}}

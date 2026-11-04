@@ -9,26 +9,31 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { TogglePill } from "@/components/ui/toggle-pill";
+import { useT } from "@/i18n/client";
 import { formatDateTime } from "@/lib/format";
 import { NUMBERS, settingsDiff, type NumberKey } from "@/lib/settings-form";
 import type { Settings } from "@/lib/types";
 import { sendTestEmail, updateSettings } from "./actions";
 
 export function SettingsForm({ realm, settings, writable }: { realm: string; settings: Settings; writable: boolean }) {
+  const { t, locale: uiLocale } = useT();
   const initial = Object.fromEntries(NUMBERS.map((k) => [k, String(settings[k])])) as Record<NumberKey, string>;
   const [form, setForm] = useState(initial);
   const [allowlist, setAllowlist] = useState((settings.ip_allowlist ?? []).join("\n"));
   const [notif, setNotif] = useState(settings.notification_email_enabled);
   const [suspicious, setSuspicious] = useState(settings.suspicious_login_email_enabled);
   const [remember, setRemember] = useState(settings.remember_me_enabled);
+  const [locale, setLocale] = useState(settings.default_locale || "en");
   const [error, setError] = useState<{ field?: string; message: string } | null>(null);
   const [to, setTo] = useState("");
   const { locked, banner } = useEditLock({ canWrite: writable, managedByConfig: settings.managed_by === "config" });
   const { run, pending } = useAction();
   const testMail = useAction(); // its own spinner, apart from "Save changes"
-  const patch = settingsDiff(settings, form, allowlist, { notif, suspicious, remember });
+  const patch = settingsDiff(settings, form, allowlist, { notif, suspicious, remember }, locale);
   const dirty = Object.keys(patch).length > 0;
+  const languages = settings.languages?.length ? settings.languages : [{ tag: "en", name: "English" }];
 
   const num = (k: NumberKey, label: string, hint?: string) => (
     <Field label={label} htmlFor={`s-${k}`} hint={hint} error={error?.field === k ? error.message : undefined}>
@@ -49,36 +54,56 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
       {error && !error.field && <Banner tone="danger">{error.message}</Banner>}
       <fieldset disabled={locked} className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardTitle>Password policy</CardTitle>
-          <CardDescription>Passwords are hashed with Argon2id; these rules apply when one is chosen.</CardDescription>
+          <CardTitle>{t("settings.password.title", "Password policy")}</CardTitle>
+          <CardDescription>
+            {t(
+              "settings.password.description",
+              "Passwords are hashed with Argon2id; these rules apply when one is chosen.",
+            )}
+          </CardDescription>
           <div className="mt-4 space-y-4">
             {num(
               "min_password_length",
-              "Minimum length",
-              "8 at least. Length beats complexity rules (NIST SP 800-63B).",
+              t("settings.password.min_length", "Minimum length"),
+              t("settings.password.min_length_hint", "8 at least. Length beats complexity rules (NIST SP 800-63B)."),
             )}
             {num(
               "password_expiry_days",
-              "Expiry (days, 0 = never)",
-              "NIST advises against periodic changes: keep 0 unless a rule requires it.",
+              t("settings.password.expiry", "Expiry (days, 0 = never)"),
+              t(
+                "settings.password.expiry_hint",
+                "NIST advises against periodic changes: keep 0 unless a rule requires it.",
+              ),
             )}
-            {num("password_reset_ttl_minutes", "Reset link validity (minutes)", "5 to 1440.")}
+            {num(
+              "password_reset_ttl_minutes",
+              t("settings.password.reset_ttl", "Reset link validity (minutes)"),
+              t("settings.password.reset_ttl_hint", "5 to 1440."),
+            )}
             {num(
               "invite_ttl_hours",
-              "Invitation link validity (hours)",
-              "1 to 720. Applies to new invitations and resent activation links.",
+              t("settings.password.invite_ttl", "Invitation link validity (hours)"),
+              t(
+                "settings.password.invite_ttl_hint",
+                "1 to 720. Applies to new invitations and resent activation links.",
+              ),
             )}
           </div>
         </Card>
         <Card>
-          <CardTitle>Session policy</CardTitle>
-          <CardDescription>How long a sign-in lasts at the identity provider.</CardDescription>
+          <CardTitle>{t("settings.session.title", "Session policy")}</CardTitle>
+          <CardDescription>
+            {t("settings.session.description", "How long a sign-in lasts at the identity provider.")}
+          </CardDescription>
           <div className="mt-4 space-y-4">
-            {num("session_idle_minutes", "Idle timeout (minutes)")}
-            {num("session_max_hours", "Maximum session duration (hours)")}
+            {num("session_idle_minutes", t("settings.session.idle", "Idle timeout (minutes)"))}
+            {num("session_max_hours", t("settings.session.max", "Maximum session duration (hours)"))}
             <Toggle
-              label="Keep me signed in"
-              hint="Offer the option on the sign-in page: the session then survives a browser restart."
+              label={t("settings.session.remember", "Keep me signed in")}
+              hint={t(
+                "settings.session.remember_hint",
+                "Offer the option on the sign-in page: the session then survives a browser restart.",
+              )}
               checked={remember}
               onChange={setRemember}
               locked={locked}
@@ -87,29 +112,34 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
               <>
                 {num(
                   "remember_me_idle_days",
-                  "Kept signed in: idle timeout (days)",
-                  "The session ends after this many days without use.",
+                  t("settings.session.remember_idle", "Kept signed in: idle timeout (days)"),
+                  t("settings.session.remember_idle_hint", "The session ends after this many days without use."),
                 )}
                 {num(
                   "remember_me_max_days",
-                  "Kept signed in: maximum duration (days)",
-                  "30 at most is advised (NIST SP 800-63B, AAL1). 1 to 365.",
+                  t("settings.session.remember_max", "Kept signed in: maximum duration (days)"),
+                  t("settings.session.remember_max_hint", "30 at most is advised (NIST SP 800-63B, AAL1). 1 to 365."),
                 )}
               </>
             )}
           </div>
         </Card>
         <Card>
-          <CardTitle>Brute-force protection</CardTitle>
-          <CardDescription>Accounts are locked after repeated failed sign-ins.</CardDescription>
+          <CardTitle>{t("settings.lockout.title", "Brute-force protection")}</CardTitle>
+          <CardDescription>
+            {t("settings.lockout.description", "Accounts are locked after repeated failed sign-ins.")}
+          </CardDescription>
           <div className="mt-4 space-y-4">
-            {num("lockout_threshold", "Lockout threshold (failed attempts, 0 = off)")}
-            {num("lockout_duration_minutes", "Lockout duration (minutes)")}
+            {num("lockout_threshold", t("settings.lockout.threshold", "Lockout threshold (failed attempts, 0 = off)"))}
+            {num("lockout_duration_minutes", t("settings.lockout.duration", "Lockout duration (minutes)"))}
             <Field
-              label="IP allowlist"
+              label={t("settings.lockout.allowlist", "IP allowlist")}
               htmlFor="s-ips"
               optional
-              hint="One IP or CIDR per line. Stored for a later version: not enforced yet."
+              hint={t(
+                "settings.lockout.allowlist_hint",
+                "One IP or CIDR per line. Stored for a later version: not enforced yet.",
+              )}
               error={error?.field === "ip_allowlist" ? error.message : undefined}
             >
               <Textarea
@@ -124,33 +154,71 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
           </div>
         </Card>
         <Card>
-          <CardTitle>Notifications</CardTitle>
-          <CardDescription>Security e-mails sent to users of this realm.</CardDescription>
+          <CardTitle>{t("settings.notifications.title", "Notifications")}</CardTitle>
+          <CardDescription>
+            {t("settings.notifications.description", "Security e-mails sent to users of this realm.")}
+          </CardDescription>
           <div className="mt-4 space-y-3">
             {!settings.email_enabled && (
               <Banner tone="warning">
-                E-mail is not configured on the server (SMTP_HOST): nothing can be sent until it is.
+                {t(
+                  "settings.notifications.no_smtp",
+                  "E-mail is not configured on the server (SMTP_HOST): nothing can be sent until it is.",
+                )}
               </Banner>
             )}
             <Toggle
-              label="Security alerts"
-              hint="Password changed, new factor, new device..."
+              label={t("settings.notifications.alerts", "Security alerts")}
+              hint={t("settings.notifications.alerts_hint", "Password changed, new factor, new device...")}
               checked={notif}
               onChange={setNotif}
               locked={locked}
             />
             <Toggle
-              label="Suspicious sign-in alerts"
-              hint="Sign-in from an unusual place or device."
+              label={t("settings.notifications.suspicious", "Suspicious sign-in alerts")}
+              hint={t("settings.notifications.suspicious_hint", "Sign-in from an unusual place or device.")}
               checked={suspicious}
               onChange={setSuspicious}
               locked={locked}
             />
             {num(
               "key_rotation_grace_hours",
-              "Default key rotation grace (hours)",
-              "How long a rotated signing key stays published.",
+              t("settings.notifications.grace", "Default key rotation grace (hours)"),
+              t("settings.notifications.grace_hint", "How long a rotated signing key stays published."),
             )}
+          </div>
+        </Card>
+        <Card>
+          <CardTitle>{t("settings.language.title", "Language")}</CardTitle>
+          <CardDescription>
+            {t(
+              "settings.language.description",
+              "The language of the sign-in pages, the account console and the e-mails, for the users of this realm who did not choose one in their account console.",
+            )}
+          </CardDescription>
+          <div className="mt-4 space-y-4">
+            <Field
+              label={t("settings.language.default", "Default language")}
+              htmlFor="s-locale"
+              hint={t(
+                "settings.language.default_hint",
+                "English unless set. More languages: a translation file on the server (LOCALES_DIR).",
+              )}
+              error={error?.field === "default_locale" ? error.message : undefined}
+            >
+              <NativeSelect
+                id="s-locale"
+                value={locale}
+                onChange={(e) => setLocale(e.target.value)}
+                className="max-w-xs"
+              >
+                {languages.map((l) => (
+                  <option key={l.tag} value={l.tag} lang={l.tag}>
+                    {l.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
           </div>
         </Card>
       </fieldset>
@@ -160,33 +228,42 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
           disabled={locked || pending || !dirty}
           onClick={async () => {
             setError(null);
-            const r = await run(() => updateSettings(realm, patch), { quiet: true, success: "Settings saved" });
+            const r = await run(() => updateSettings(realm, patch), {
+              quiet: true,
+              success: t("settings.saved", "Settings saved"),
+            });
             if (!r.ok) setError({ field: r.field, message: r.message });
           }}
         >
-          {pending ? "Saving…" : "Save changes"}
+          {pending ? t("common.saving", "Saving…") : t("settings.save", "Save changes")}
         </Button>
-        {dirty && <span className="text-[12px] text-warning">Unsaved changes</span>}
+        {dirty && <span className="text-[12px] text-warning">{t("settings.unsaved", "Unsaved changes")}</span>}
         <span className="ml-auto text-[12px] text-text-muted">
-          Last change {formatDateTime(settings.updated_at)}
-          {settings.updated_by && ` by ${settings.updated_by}`}
+          {settings.updated_by
+            ? t("settings.last_change_by", "Last change {when} by {who}", {
+                when: formatDateTime(settings.updated_at, uiLocale),
+                who: settings.updated_by,
+              })
+            : t("settings.last_change", "Last change {when}", { when: formatDateTime(settings.updated_at, uiLocale) })}
         </span>
       </div>
 
       <Card>
-        <CardTitle>Send a test e-mail</CardTitle>
-        <CardDescription>Checks the server&apos;s SMTP settings end to end.</CardDescription>
+        <CardTitle>{t("settings.test.title", "Send a test e-mail")}</CardTitle>
+        <CardDescription>
+          {t("settings.test.description", "Checks the server's SMTP settings end to end.")}
+        </CardDescription>
         <form
           className="mt-4 flex flex-wrap items-end gap-2"
           onSubmit={async (e) => {
             e.preventDefault();
             await testMail.run(() => sendTestEmail(realm, to.trim()), {
-              success: `Test e-mail sent to ${to.trim()}`,
+              success: t("settings.test.sent", "Test e-mail sent to {to}", { to: to.trim() }),
               refresh: false,
             });
           }}
         >
-          <Field label="Recipient" htmlFor="s-to" className="w-72">
+          <Field label={t("settings.test.recipient", "Recipient")} htmlFor="s-to" className="w-72">
             <Input
               id="s-to"
               type="email"
@@ -203,7 +280,7 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
             disabled={!settings.email_enabled || locked || !to.trim()}
           >
             {!testMail.pending && <Send className="size-3.5" />}
-            Send test e-mail
+            {t("settings.test.send", "Send test e-mail")}
           </Button>
         </form>
       </Card>

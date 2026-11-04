@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
 // DS "Chip multi-sélection" (roles, groups, scopes...): selected = accent
@@ -11,7 +12,7 @@ function ChipSelect({
   onChange,
   disabled,
   label,
-  empty = "Nothing to choose from yet.",
+  empty,
 }: {
   options: { id: string; name: string; hint?: string }[];
   value: string[];
@@ -20,7 +21,9 @@ function ChipSelect({
   label: string;
   empty?: string;
 }) {
-  if (options.length === 0) return <p className="text-[13px] text-text-muted">{empty}</p>;
+  const { t } = useT();
+  if (options.length === 0)
+    return <p className="text-[13px] text-text-muted">{empty ?? t("chips.nothing", "Nothing to choose from yet.")}</p>;
   return (
     <div role="group" aria-label={label} className="flex flex-wrap gap-2">
       {options.map((o) => {
@@ -50,8 +53,10 @@ function ChipSelect({
 }
 
 /** Read-only chips (effective rights, methods...). */
-function Chips({ items, empty = "None" }: { items: { id: string; name: string; title?: string }[]; empty?: string }) {
-  if (items.length === 0) return <span className="text-[13px] text-text-muted">{empty}</span>;
+function Chips({ items, empty }: { items: { id: string; name: string; title?: string }[]; empty?: string }) {
+  const { t } = useT();
+  if (items.length === 0)
+    return <span className="text-[13px] text-text-muted">{empty ?? t("chips.none", "None")}</span>;
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((i) => (

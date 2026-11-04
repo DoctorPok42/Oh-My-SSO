@@ -25,7 +25,7 @@ func layout(active string) accountui.Layout {
 // Every page renders with typical data, with the security headers, and
 // escapes what users typed.
 func TestRenderEveryPage(t *testing.T) {
-	pages, err := accountui.New(nil)
+	pages, err := accountui.New(nil, nil)
 	require.NoError(t, err)
 	now := time.Date(2026, 10, 30, 9, 0, 0, 0, time.UTC)
 	factor := accountui.Factor{ID: "f1", Kind: "totp", KindLabel: "Authenticator app", Name: "Phone <i>", CreatedAt: now, LastUsed: &now}
@@ -48,7 +48,7 @@ func TestRenderEveryPage(t *testing.T) {
 	for page, data := range cases {
 		t.Run(page, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			pages.RenderPage(w, http.StatusOK, page, data)
+			pages.RenderPage(w, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK, page, data)
 			require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 			body := w.Body.String()
 			require.Contains(t, body, "<!doctype html>")
@@ -68,19 +68,19 @@ func TestRenderEveryPage(t *testing.T) {
 }
 
 func TestRenderPartial(t *testing.T) {
-	pages, err := accountui.New(nil)
+	pages, err := accountui.New(nil, nil)
 	require.NoError(t, err)
 	w := httptest.NewRecorder()
-	pages.RenderPartial(w, accountui.PageSessions, "sessions-list", accountui.SessionsPage{Layout: layout("sessions")})
+	pages.RenderPartial(w, httptest.NewRequest(http.MethodGet, "/", nil), accountui.PageSessions, "sessions-list", accountui.SessionsPage{Layout: layout("sessions")})
 	require.Equal(t, http.StatusOK, w.Code)
 	require.True(t, strings.HasPrefix(w.Body.String(), `<section class="card" id="sessions">`), w.Body.String())
 
 	w = httptest.NewRecorder()
-	pages.RenderPartial(w, accountui.PageSessions, "notice-oob", layout("sessions"))
+	pages.RenderPartial(w, httptest.NewRequest(http.MethodGet, "/", nil), accountui.PageSessions, "notice-oob", layout("sessions"))
 	require.Contains(t, w.Body.String(), `hx-swap-oob="true"`)
 
 	w = httptest.NewRecorder()
-	pages.RenderPartial(w, accountui.PageSessions, "no-such-block", nil)
+	pages.RenderPartial(w, httptest.NewRequest(http.MethodGet, "/", nil), accountui.PageSessions, "no-such-block", nil)
 	require.Equal(t, http.StatusInternalServerError, w.Code, "a template error never sends half a page")
 }
 

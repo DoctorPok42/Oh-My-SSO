@@ -17,6 +17,9 @@ x-server-env: &server-env
   SMTP_SECURITY: none
   SMTP_FROM: Oh-My-SSO <no-reply@sso.localhost>
   ADMIN_PANEL_URL: http://localhost:3000
+  # Extra languages (docs/I18N.md): uncomment, and the ./locales volume of
+  # idp and idp-admin below.
+  # LOCALES_DIR: /locales
 
 services:
   postgres:
@@ -87,6 +90,7 @@ services:
   idp:
     build: { context: ., target: idp }
     environment: *server-env
+    # volumes: ["./locales:/locales:ro"] # extra languages, see LOCALES_DIR
     ports: ["8080:8080"]
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -107,6 +111,7 @@ services:
       ADMIN_API_ADDR: :8090
       ADMIN_API_ALLOWED_CIDRS: 172.30.10.10/32 # the console, see networks.admin below
       IDP_INTERNAL_URL: http://idp:8080 # dashboard health check
+    # volumes: ["./locales:/locales:ro"] # extra languages, see LOCALES_DIR
     depends_on:
       migrate: { condition: service_completed_successfully }
       vault-init: { condition: service_completed_successfully }
@@ -125,6 +130,9 @@ services:
       ADMIN_API_URL: http://172.30.10.20:8090
       SESSION_SECRET: ${SESSION_SECRET:?openssl rand -base64 32}
       DEFAULT_REALM: master
+      # Extra languages of the console (docs/I18N.md), with the volume below.
+      # ADMIN_LOCALES_DIR: /admin-locales
+    # volumes: ["./admin-locales:/admin-locales:ro"]
     ports: ["127.0.0.1:3000:3000"]
     depends_on:
       idp: { condition: service_started }

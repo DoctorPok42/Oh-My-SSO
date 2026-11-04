@@ -5,6 +5,7 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { CopyField } from "@/components/ui/copy-button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { useT } from "@/i18n/client";
 
 // DS "Code affiché une seule fois": a secret (client secret, activation link)
 // the server does not keep in clear. Shown once; the dialog only closes with
@@ -22,6 +23,7 @@ export function SecretOnceDialog({
   items: { label: string; value: string }[];
   onDone: () => void;
 }) {
+  const { t } = useT();
   return (
     <Dialog open={open}>
       <DialogContent
@@ -35,7 +37,7 @@ export function SecretOnceDialog({
         <DialogTitle>{title}</DialogTitle>
         {description && <DialogDescription>{description}</DialogDescription>}
         <Banner tone="warning" className="mt-4">
-          Copy it now: it won&apos;t be shown again.
+          {t("secret_once.warning", "Copy it now: it won't be shown again.")}
         </Banner>
         <dl className="mt-4 space-y-3">
           {items.map((i) => (
@@ -48,7 +50,7 @@ export function SecretOnceDialog({
           ))}
         </dl>
         <div className="mt-6 flex justify-end">
-          <Button onClick={onDone}>I&apos;ve copied it</Button>
+          <Button onClick={onDone}>{t("secret_once.done", "I've copied it")}</Button>
         </div>
       </DialogContent>
     </Dialog>

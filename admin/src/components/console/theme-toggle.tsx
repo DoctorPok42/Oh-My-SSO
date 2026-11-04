@@ -2,12 +2,14 @@
 
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useState } from "react";
+import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { saveTheme, themeClass, type Theme } from "@/lib/theme";
 
 // Light / Dark / System. Applied at once on <html>, remembered for a year in
 // a cookie so the server renders the same theme next time.
 export function ThemeToggle({ initial }: { initial: Theme }) {
+  const { t } = useT();
   const [theme, setTheme] = useState<Theme>(initial);
   const choose = (t: Theme) => {
     setTheme(t);
@@ -18,12 +20,16 @@ export function ThemeToggle({ initial }: { initial: Theme }) {
     saveTheme(t);
   };
   const options = [
-    { value: "light" as const, label: "Light", Icon: Sun },
-    { value: "dark" as const, label: "Dark", Icon: Moon },
-    { value: "system" as const, label: "System", Icon: Monitor },
+    { value: "light" as const, label: t("theme.light", "Light"), Icon: Sun },
+    { value: "dark" as const, label: t("theme.dark", "Dark"), Icon: Moon },
+    { value: "system" as const, label: t("theme.system", "System"), Icon: Monitor },
   ];
   return (
-    <div role="radiogroup" aria-label="Theme" className="flex rounded-md border border-border p-0.5">
+    <div
+      role="radiogroup"
+      aria-label={t("theme.label", "Theme")}
+      className="flex rounded-md border border-border p-0.5"
+    >
       {options.map(({ value, label, Icon }) => (
         <button
           key={value}

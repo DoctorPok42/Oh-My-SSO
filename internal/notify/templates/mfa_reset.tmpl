@@ -1,22 +1,20 @@
-{{define "subject"}}Your two-step verification was reset{{end}}
+{{define "subject"}}{{t "email.mfa_reset.subject" "Your two-step verification was reset"}}{{end}}
 
-{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+{{define "text"}}{{template "hello" .}}
 
-An administrator removed every second step for signing in (authenticator
-apps, passkeys, security keys and backup codes) from your {{.Realm}}
-account and signed you out everywhere.
+{{t "email.mfa_reset.intro" "An administrator removed every second step for signing in (authenticator apps, passkeys, security keys and backup codes) from your {realm} account and signed you out everywhere." "realm" .Realm}}
 
 {{template "details.txt" .}}
-Next time you sign in, you may be asked to set up a second step again.
+{{t "email.mfa_reset.next" "Next time you sign in, you may be asked to set up a second step again."}}
 
-If you did not ask for this, contact your administrator.
+{{t "email.mfa_reset.not_asked" "If you did not ask for this, contact your administrator."}}
 {{end}}
 
-{{define "html"}}{{template "badge.warning" "Security"}}
-{{template "title" "Your two-step verification was reset"}}
-<p>Hello{{if .Username}} {{.Username}}{{end}},</p>
-<p>An administrator removed every second step for signing in (authenticator apps, passkeys, security keys and backup codes) from your {{.Realm}} account and signed you out everywhere.</p>
+{{define "html"}}{{template "badge.warning" (t "email.badge.security" "Security")}}
+{{template "title" (t "email.mfa_reset.subject" "Your two-step verification was reset")}}
+{{template "hello" .}}
+<p>{{t "email.mfa_reset.intro" "An administrator removed every second step for signing in (authenticator apps, passkeys, security keys and backup codes) from your {realm} account and signed you out everywhere." "realm" .Realm}}</p>
 {{template "details" .}}
-<p>Next time you sign in, you may be asked to set up a second step again.</p>
-{{template "muted" "If you did not ask for this, contact your administrator."}}
+<p>{{t "email.mfa_reset.next" "Next time you sign in, you may be asked to set up a second step again."}}</p>
+{{template "muted" (t "email.mfa_reset.not_asked" "If you did not ask for this, contact your administrator.")}}
 {{end}}

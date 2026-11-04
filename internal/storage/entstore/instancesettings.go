@@ -65,6 +65,7 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 		SetNillableSuspiciousLoginEmailEnabled(p.SuspiciousLoginEmailEnabled).
 		SetNillableMfaTrustedDeviceEnabled(p.MFATrustedDeviceEnabled).
 		SetNillableMfaTrustedDeviceDays(p.MFATrustedDeviceDays).
+		SetNillableDefaultLocale(p.DefaultLocale).
 		SetNillableUpdatedBy(p.UpdatedBy)
 	if p.IPAllowlist != nil {
 		builder = builder.SetIPAllowlist(p.IPAllowlist)
@@ -105,6 +106,7 @@ func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings 
 		SuspiciousLoginEmailEnabled: e.SuspiciousLoginEmailEnabled,
 		MFATrustedDeviceEnabled:     e.MfaTrustedDeviceEnabled,
 		MFATrustedDeviceDays:        e.MfaTrustedDeviceDays,
+		DefaultLocale:               e.DefaultLocale,
 		UpdatedAt:                   e.UpdatedAt,
 		UpdatedBy:                   e.UpdatedBy,
 	}

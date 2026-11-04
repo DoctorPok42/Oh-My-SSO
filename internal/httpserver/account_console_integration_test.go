@@ -353,7 +353,7 @@ func TestAccountConsole_DefinitionOfDone_Integration(t *testing.T) {
 	env.clock.Advance(6 * time.Minute)
 	resp, page = laptop.get("/account/security/totp")
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Contains(t, page, `id="title">Confirm it's you</h1>`)
+	require.Contains(t, page, `id="title">Confirm it&#39;s you</h1>`) // a translated text, escaped
 	require.Contains(t, page, `data-mode="stepup"`)
 	require.Contains(t, page, "Back to your account")
 	resp, _ = laptop.post("/account/security/backup-codes", url.Values{"csrf": {csrf}}, nil)

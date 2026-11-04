@@ -12,6 +12,7 @@ import (
 
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
+	"sso.internal/sso/internal/i18n"
 )
 
 
@@ -47,28 +48,49 @@ type AdminError struct {
 	Code    string
 	Message string
 	Field   string // optional: the input field at fault
+	// Text, when its key is set, is the translatable form of Message: the
+	// Admin API answers in the console's language (adminapi.writeServiceError).
+	Text i18n.Text
+}
+
+// adminText is an AdminError whose sentence is translatable. Message is the
+// English text, for the logs and for the clients that do not translate.
+func adminText(kind AdminErrorKind, code, field string, t i18n.Text) error {
+	var english *i18n.Localizer // nil: English
+	return &AdminError{Kind: kind, Code: code, Field: field, Message: english.Text(t), Text: t}
 }
 
 func (e *AdminError) Error() string { return "admin: " + e.Code + ": " + e.Message }
 
-func adminInvalid(field, format string, a ...any) error {
+func adminInvalid(field string, t i18n.Text) error {
+	return adminText(AdminInvalid, "invalid_request", field, t)
+}
+
+// The refusals of the terminal (idp-admin bootstrap) stay in English: the
+// console translates the refusals of the Admin API, not the CLI's output.
+func adminInvalidEN(field, format string, a ...any) error {
 	return &AdminError{Kind: AdminInvalid, Code: "invalid_request", Field: field, Message: fmt.Sprintf(format, a...)}
 }
 
-func adminNotFound(what string) error {
-	return &AdminError{Kind: AdminNotFound, Code: "not_found", Message: what + " not found"}
-}
-
-func adminConflict(code, format string, a ...any) error {
+func adminConflictEN(code, format string, a ...any) error {
 	return &AdminError{Kind: AdminConflict, Code: code, Message: fmt.Sprintf(format, a...)}
 }
 
-func adminRefused(code, format string, a ...any) error {
-	return &AdminError{Kind: AdminRefused, Code: code, Message: fmt.Sprintf(format, a...)}
+func adminNotFound(t i18n.Text) error {
+	return adminText(AdminNotFound, "not_found", "", t)
+}
+
+func adminConflict(code string, t i18n.Text) error {
+	return adminText(AdminConflict, code, "", t)
+}
+
+func adminRefused(code string, t i18n.Text) error {
+	return adminText(AdminRefused, code, "", t)
 }
 
 var errManagedByConfig = &AdminError{Kind: AdminRefused, Code: "managed_by_config",
-	Message: "this object is managed by the configuration file (or by the system): it is read-only here"}
+	Message: "this object is managed by the configuration file (or by the system): it is read-only here",
+	Text: i18n.M("admin.error.managed_by_config", "this object is managed by the configuration file (or by the system): it is read-only here")}
 
 // asAdminError turns the errors of the other services into AdminErrors
 // when they are the caller's fault.
@@ -76,15 +98,18 @@ func asAdminError(err error) error {
 	var ae *AdminError
 	var pe *PasswordPolicyError
 	var tr *TimeoutRefusal
+	var te *textError
 	switch {
 	case err == nil:
 		return nil
 	case errors.As(err, &ae):
 		return ae
 	case errors.Is(err, repository.ErrNotFound):
-		return adminNotFound("object")
+		return adminNotFound(i18n.M("admin.error.not_found.object", "object not found"))
 	case errors.Is(err, ErrManagedByConfig):
 		return errManagedByConfig
+	case errors.As(err, &te):
+		return &AdminError{Kind: AdminInvalid, Code: "invalid_request", Message: englishOf(te.Text), Text: te.Text}
 	case errors.Is(err, ErrInvalidClientConfig), errors.Is(err, ErrInvalidMFAPolicy),
 		errors.Is(err, ErrUnknownMFAPolicy), errors.Is(err, ErrUnknownMFAMethod):
 		msg := err.Error()
@@ -93,7 +118,7 @@ func asAdminError(err error) error {
 		}
 		return &AdminError{Kind: AdminInvalid, Code: "invalid_request", Message: msg}
 	case errors.As(err, &pe):
-		return &AdminError{Kind: AdminInvalid, Code: "password_policy", Message: pe.Error()}
+		return &AdminError{Kind: AdminInvalid, Code: "password_policy", Message: pe.Error(), Text: passwordText(pe)}
 	case errors.As(err, &tr):
 		return timeoutAdminError(tr)
 	}
@@ -126,6 +151,9 @@ type AdminDeps struct {
 	Timeouts      *TimeoutService
 	Notifier      Notifier // nil: no e-mail
 	TrustedDevices *TrustedDeviceService
+	// Languages: the languages the IdP can show (default_locale must be one
+	// of them). nil: the embedded ones.
+	Languages *i18n.Bundle
 
 	// PublicURL of cmd/idp: base of activation links.
 	PublicURL string
@@ -152,6 +180,9 @@ func NewAdminService(d AdminDeps) *AdminService {
 	}
 	if d.Notifier == nil {
 		d.Notifier = NopNotifier{}
+	}
+	if d.Languages == nil {
+		d.Languages = i18n.MustDefault()
 	}
 	d.PublicURL = strings.TrimRight(d.PublicURL, "/")
 	return &AdminService{d: d}
@@ -198,7 +229,7 @@ func (s *AdminService) auditAdminAbout(ctx context.Context, actor AdminActor, re
 func (s *AdminService) RealmByName(ctx context.Context, name string) (*domain.Realm, error) {
 	r, err := s.d.Realms.GetByName(ctx, name)
 	if errors.Is(err, repository.ErrNotFound) {
-		return nil, adminNotFound("realm")
+		return nil, adminNotFound(i18n.M("admin.error.not_found.realm", "realm not found"))
 	}
 	return r, err
 }
@@ -206,7 +237,7 @@ func (s *AdminService) RealmByName(ctx context.Context, name string) (*domain.Re
 func (s *AdminService) userInRealm(ctx context.Context, realmID, userID string) (*domain.User, error) {
 	u, err := s.d.Users.GetByID(ctx, userID)
 	if errors.Is(err, repository.ErrNotFound) || (err == nil && (u.RealmID != realmID || u.DeletedAt != nil)) {
-		return nil, adminNotFound("user")
+		return nil, adminNotFound(i18n.M("admin.error.not_found.user", "user not found"))
 	}
 	return u, err
 }
@@ -214,7 +245,7 @@ func (s *AdminService) userInRealm(ctx context.Context, realmID, userID string) 
 func (s *AdminService) clientInRealm(ctx context.Context, realmID, id string) (*domain.ClientApp, error) {
 	c, err := s.d.Clients.GetByID(ctx, id)
 	if errors.Is(err, repository.ErrNotFound) || (err == nil && (c.RealmID != realmID || c.IsDeleted())) {
-		return nil, adminNotFound("client")
+		return nil, adminNotFound(i18n.M("admin.error.not_found.client", "client not found"))
 	}
 	return c, err
 }
@@ -222,7 +253,7 @@ func (s *AdminService) clientInRealm(ctx context.Context, realmID, id string) (*
 func (s *AdminService) roleInRealm(ctx context.Context, realmID, id string) (*domain.Role, error) {
 	r, err := s.d.Roles.GetByID(ctx, id)
 	if errors.Is(err, repository.ErrNotFound) || (err == nil && r.RealmID != realmID) {
-		return nil, adminNotFound("role")
+		return nil, adminNotFound(i18n.M("admin.error.not_found.role", "role not found"))
 	}
 	return r, err
 }
@@ -230,7 +261,7 @@ func (s *AdminService) roleInRealm(ctx context.Context, realmID, id string) (*do
 func (s *AdminService) groupInRealm(ctx context.Context, realmID, id string) (*domain.Group, error) {
 	g, err := s.d.Groups.GetByID(ctx, id)
 	if errors.Is(err, repository.ErrNotFound) || (err == nil && g.RealmID != realmID) {
-		return nil, adminNotFound("group")
+		return nil, adminNotFound(i18n.M("admin.error.not_found.group", "group not found"))
 	}
 	return g, err
 }
@@ -238,7 +269,7 @@ func (s *AdminService) groupInRealm(ctx context.Context, realmID, id string) (*d
 func (s *AdminService) scopeInRealm(ctx context.Context, realmID, id string) (*domain.ClientScope, error) {
 	cs, err := s.d.Scopes.GetByID(ctx, id)
 	if errors.Is(err, repository.ErrNotFound) || (err == nil && cs.RealmID != realmID) {
-		return nil, adminNotFound("client scope")
+		return nil, adminNotFound(i18n.M("admin.error.not_found.client_scope", "client scope not found"))
 	}
 	return cs, err
 }
@@ -255,7 +286,7 @@ func (s *AdminService) checkIDs(ctx context.Context, field string, ids []string,
 		if err := get(ctx, id); err != nil {
 			var ae *AdminError
 			if errors.As(err, &ae) && ae.Kind == AdminNotFound {
-				return nil, adminInvalid(field, "unknown id %q in %s", id, field)
+				return nil, adminInvalid(field, i18n.M("admin.error.unknown_id", "unknown id \"{id}\" in {field}", "id", id, "field", field))
 			}
 			return nil, err
 		}
@@ -289,7 +320,7 @@ func (s *AdminService) checkPermissionIDs(ctx context.Context, realmID string, i
 	return s.checkIDs(ctx, "permission_ids", ids, func(ctx context.Context, id string) error {
 		p, err := s.d.Permissions.GetByID(ctx, id)
 		if errors.Is(err, repository.ErrNotFound) || (err == nil && p.RealmID != realmID) {
-			return adminNotFound("permission")
+			return adminNotFound(i18n.M("admin.error.not_found.permission", "permission not found"))
 		}
 		return err
 	})

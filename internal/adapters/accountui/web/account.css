@@ -123,3 +123,8 @@ ol.steps > li > * + * { margin-top: 12px; }
   .table.stack-mobile td { display: block; padding: 1px 0; }
   .menu > .menu-panel { min-width: min(280px, calc(100vw - 32px)); }
 }
+
+/* A native <select>, styled like the inputs (admin ui/native-select.tsx). */
+.select { position: relative; max-width: 320px; }
+.select select { appearance: none; padding-right: 36px; cursor: pointer; }
+.select .ico { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }

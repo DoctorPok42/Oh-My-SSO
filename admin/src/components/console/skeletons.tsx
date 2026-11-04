@@ -1,6 +1,10 @@
+"use client";
+
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { isMsg, type Msg } from "@/i18n";
+import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
 // Skeletons: grey shapes where the content will be, while it loads. They
@@ -17,17 +21,20 @@ export function TableSkeleton({
   rows = 6,
   className,
 }: {
-  columns: readonly string[];
+  columns: readonly (string | Msg)[];
   rows?: number;
   className?: string;
 }) {
+  const { t, tm } = useT();
   return (
-    <TableContainer aria-busy="true" aria-label="Loading" className={className}>
+    <TableContainer aria-busy="true" aria-label={t("common.loading", "Loading")} className={className}>
       <Table>
         <TableHeader>
           <TableRow>
             {columns.map((c, i) => (
-              <TableHead key={i}>{c || <span className="sr-only">Actions</span>}</TableHead>
+              <TableHead key={i}>
+                {isMsg(c) ? tm(c) : c || <span className="sr-only">{t("columns.actions", "Actions")}</span>}
+              </TableHead>
             ))}
           </TableRow>
         </TableHeader>
@@ -90,5 +97,19 @@ export function FormCardSkeleton({ fields = 3, className }: { fields?: number; c
         ))}
       </div>
     </Card>
+  );
+}
+
+/** The headers of a table, from COLUMNS (lib/pages.ts): "" is an actions column. */
+export function ColumnHeads({ columns }: { columns: readonly (string | Msg)[] }) {
+  const { t, tm } = useT();
+  return (
+    <>
+      {columns.map((c, i) => (
+        <TableHead key={i}>
+          {isMsg(c) ? tm(c) : c || <span className="sr-only">{t("columns.actions", "Actions")}</span>}
+        </TableHead>
+      ))}
+    </>
   );
 }

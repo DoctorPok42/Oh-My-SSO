@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"fmt"
@@ -109,25 +110,25 @@ func (s *AdminService) GetClientScope(ctx context.Context, realm *domain.Realm, 
 
 func checkMappers(in []ClaimMapper) ([]map[string]interface{}, error) {
 	if len(in) > 50 {
-		return nil, adminInvalid("claim_mappers", "at most 50 claim mappers")
+		return nil, adminInvalid("claim_mappers", i18n.M("admin.error.claim_mappers_max", "at most 50 claim mappers"))
 	}
 	out := make([]map[string]interface{}, 0, len(in))
 	for i, m := range in {
 		src, claim := strings.TrimSpace(m.Source), strings.TrimSpace(m.Claim)
 		if src == "" || claim == "" || len(src) > 128 || len(claim) > 128 || strings.ContainsAny(claim, " \"\\") {
-			return nil, adminInvalid("claim_mappers", "mapper %d: a source attribute and a claim name (no spaces) are required", i+1)
+			return nil, adminInvalid("claim_mappers", i18n.M("admin.error.mapper_required", "mapper {n}: a source attribute and a claim name (no spaces) are required", "n", i+1))
 		}
 		locs := []string{}
 		for _, l := range m.Locations {
 			if !slices.Contains(claimLocations, l) {
-				return nil, adminInvalid("claim_mappers", "mapper %d: location %q is unknown (expected: %s)", i+1, l, strings.Join(claimLocations, ", "))
+				return nil, adminInvalid("claim_mappers", i18n.M("admin.error.mapper_location", "mapper {n}: location \"{location}\" is unknown (expected: {expected})", "n", i+1, "location", l, "expected", strings.Join(claimLocations, ", ")))
 			}
 			if !slices.Contains(locs, l) {
 				locs = append(locs, l)
 			}
 		}
 		if len(locs) == 0 {
-			return nil, adminInvalid("claim_mappers", "mapper %d: pick at least one location", i+1)
+			return nil, adminInvalid("claim_mappers", i18n.M("admin.error.mapper_location_none", "mapper {n}: pick at least one location", "n", i+1))
 		}
 		out = append(out, map[string]interface{}{"source_attribute": src, "claim_name": claim, "token_location": locs})
 	}
@@ -143,13 +144,13 @@ func checkScopeProtocol(p *string) (*domain.ClientScopeProtocol, error) {
 	case domain.ClientScopeProtocolOIDC, domain.ClientScopeProtocolSAML2, domain.ClientScopeProtocolBoth:
 		return &v, nil
 	}
-	return nil, adminInvalid("protocol", "protocol must be oidc, saml2 or both")
+	return nil, adminInvalid("protocol", i18n.M("admin.error.protocol_all", "protocol must be oidc, saml2 or both"))
 }
 
 func (s *AdminService) CreateClientScope(ctx context.Context, actor AdminActor, realm *domain.Realm, in ClientScopeInput) (ClientScopeView, error) {
 	name := strOr(in.Name, "")
 	if !scopeNamePattern.MatchString(name) || slices.Contains(StandardOIDCScopes, name) {
-		return ClientScopeView{}, adminInvalid("name", "name: 1-64 characters among letters, digits and _ . : - (not a standard OIDC scope)")
+		return ClientScopeView{}, adminInvalid("name", i18n.M("admin.error.scope_name_bad", "name: 1-64 characters among letters, digits and _ . : - (not a standard OIDC scope)"))
 	}
 	protocol, err := checkScopeProtocol(in.Protocol)
 	if err != nil {
@@ -166,7 +167,7 @@ func (s *AdminService) CreateClientScope(ctx context.Context, actor AdminActor, 
 		}
 	}
 	if _, err := s.d.Scopes.GetByRealmAndName(ctx, realm.ID, name); err == nil {
-		return ClientScopeView{}, adminConflict("name_taken", "a client scope named %q already exists", name)
+		return ClientScopeView{}, adminConflict("name_taken", i18n.M("admin.error.scope_name_taken", "a client scope named \"{name}\" already exists", "name", name))
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return ClientScopeView{}, err
 	}
@@ -194,10 +195,10 @@ func (s *AdminService) UpdateClientScope(ctx context.Context, actor AdminActor, 
 	if in.Name != nil && strOr(in.Name, "") != cs.Name {
 		name := strOr(in.Name, "")
 		if !scopeNamePattern.MatchString(name) || slices.Contains(StandardOIDCScopes, name) {
-			return ClientScopeView{}, adminInvalid("name", "name: 1-64 characters among letters, digits and _ . : - (not a standard OIDC scope)")
+			return ClientScopeView{}, adminInvalid("name", i18n.M("admin.error.scope_name_bad", "name: 1-64 characters among letters, digits and _ . : - (not a standard OIDC scope)"))
 		}
 		if _, err := s.d.Scopes.GetByRealmAndName(ctx, realm.ID, name); err == nil {
-			return ClientScopeView{}, adminConflict("name_taken", "a client scope named %q already exists", name)
+			return ClientScopeView{}, adminConflict("name_taken", i18n.M("admin.error.scope_name_taken", "a client scope named \"{name}\" already exists", "name", name))
 		}
 		upd.Name = &name
 		changed = append(changed, "name")
@@ -241,7 +242,7 @@ func (s *AdminService) DeleteClientScope(ctx context.Context, actor AdminActor, 
 		return err
 	}
 	if n := usage[cs.ID]; n > 0 {
-		return adminConflict("in_use", "%d client(s) use this scope: remove it from them first", n)
+		return adminConflict("in_use", i18n.M("admin.error.scope_in_use", "{count} client(s) use this scope: remove it from them first", "count", n))
 	}
 	if err := s.d.Scopes.Delete(ctx, cs.ID); err != nil {
 		return fmt.Errorf("delete client scope: %w", err)

@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>Choose a new password · {{.RealmDisplay}}</title>
+<title>{{t "reset.page_title" "Choose a new password · {realm}" "realm" .RealmDisplay}}</title>
 <link rel="stylesheet" href="{{.Assets}}/omsso.css">
 <link rel="stylesheet" href="{{.Assets}}/login.css">
+{{template "i18n-js" "password.js."}}
 <script src="{{.Assets}}/password.js" defer></script>
 </head>
 <body>
@@ -16,29 +17,29 @@
   {{template "logo"}}
   <header>
     <p class="auth-eyebrow">{{.RealmDisplay}}</p>
-    <h1 class="auth-title">Choose a new password</h1>
-    <p class="auth-subtitle">At least {{.MinLength}} characters. A few unrelated words make a strong password that is easy to remember.</p>
+    <h1 class="auth-title">{{t "reset.title" "Choose a new password"}}</h1>
+    <p class="auth-subtitle">{{t "password.rule" "At least {min} characters. A few unrelated words make a strong password that is easy to remember." "min" .MinLength}}</p>
   </header>
 
   <div class="auth-body">
   <p class="banner banner-danger" id="error" role="alert" hidden></p>
-  <p class="banner banner-success" id="done" role="status" hidden>Your password was changed and you were signed out everywhere. Go back to your application and sign in with the new password. You can close this page.</p>
-  <noscript><p class="banner banner-danger">This page needs JavaScript.</p></noscript>
+  <p class="banner banner-success" id="done" role="status" hidden>{{t "reset.done" "Your password was changed and you were signed out everywhere. Go back to your application and sign in with the new password. You can close this page."}}</p>
+  <noscript><p class="banner banner-danger">{{t "common.noscript" "This page needs JavaScript."}}</p></noscript>
 
   <form class="stack" id="reset-form">
-    <p class="banner banner-warning" role="note">Changing your password signs you out of every device and application.</p>
+    <p class="banner banner-warning" role="note">{{t "reset.warning" "Changing your password signs you out of every device and application."}}</p>
     <div>
-      <label class="label" for="password">New password</label>
+      <label class="label" for="password">{{t "reset.field.new" "New password"}}</label>
       <input class="input" id="password" name="password" type="password" autocomplete="new-password" minlength="{{.MinLength}}" maxlength="{{.MaxLength}}" required autofocus>
     </div>
     <div>
-      <label class="label" for="confirm">Type it again</label>
+      <label class="label" for="confirm">{{t "reset.field.confirm" "Type it again"}}</label>
       <input class="input" id="confirm" name="confirm" type="password" autocomplete="new-password" required>
     </div>
-    <button type="submit" class="btn btn-md btn-block">Change my password</button>
+    <button type="submit" class="btn btn-md btn-block">{{t "reset.submit" "Change my password"}}</button>
   </form>
 
-  <p class="auth-links" id="new-link" hidden><a href="{{.Base}}/auth/forgot-password">Ask for a new link</a></p>
+  <p class="auth-links" id="new-link" hidden><a href="{{.Base}}/auth/forgot-password">{{t "reset.new_link" "Ask for a new link"}}</a></p>
   </div>
 </div>
 {{template "auth-footer"}}

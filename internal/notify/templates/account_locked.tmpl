@@ -1,28 +1,24 @@
-{{define "subject"}}Sign-in to your account is temporarily blocked{{end}}
+{{define "subject"}}{{t "email.locked.subject" "Sign-in to your account is temporarily blocked"}}{{end}}
 
-{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+{{define "text"}}{{template "hello" .}}
 
-After {{.FailedAttempts}} wrong passwords in a row, sign-in to your {{.Realm}}
-account is blocked for {{.LockDuration}}, until {{.LockedUntil}}.
+{{tp "email.locked.intro" "After <strong>{attempts} wrong passwords</strong> in a row, sign-in to your {realm} account is blocked for {duration}, until <strong>{until}</strong>." "attempts" .FailedAttempts "realm" .Realm "duration" .LockDuration "until" .LockedUntil}}
 
-Last attempt:
+{{t "email.locked.last_attempt" "Last attempt"}}:
 {{template "details.txt" .}}
-Was it you? Wait and try again, or reset your password, which also
-unblocks your account right away:
+{{tp "email.locked.was_you" "<strong>Was it you?</strong> Wait and try again, or reset your password, which also unblocks your account right away."}}
 {{.ForgotPasswordURL}}
 
-Not you? Someone is probably trying to guess your password. They cannot
-sign in without it. If your password is short, or used on other sites,
-choose a new long one with the link above.
+{{t "email.not_you" "Not you?"}} {{t "email.locked.not_you" "Someone is probably trying to guess your password. They cannot sign in without it. If your password is short, or used on other sites, choose a new long one with the button above."}}
 {{end}}
 
-{{define "html"}}{{template "badge.warning" "Security"}}
-{{template "title" "Sign-in is temporarily blocked"}}
-<p>Hello{{if .Username}} {{.Username}}{{end}},</p>
-<p>After <strong>{{.FailedAttempts}} wrong passwords</strong> in a row, sign-in to your {{.Realm}} account is blocked for {{.LockDuration}}, until <strong>{{.LockedUntil}}</strong>.</p>
-<p style="font-size:13px;line-height:20px;color:#565b70;">Last attempt</p>
+{{define "html"}}{{template "badge.warning" (t "email.badge.security" "Security")}}
+{{template "title" (t "email.locked.title" "Sign-in is temporarily blocked")}}
+{{template "hello" .}}
+<p>{{th "email.locked.intro" "After <strong>{attempts} wrong passwords</strong> in a row, sign-in to your {realm} account is blocked for {duration}, until <strong>{until}</strong>." "attempts" .FailedAttempts "realm" .Realm "duration" .LockDuration "until" .LockedUntil}}</p>
+<p style="font-size:13px;line-height:20px;color:#565b70;">{{t "email.locked.last_attempt" "Last attempt"}}</p>
 {{template "details" .}}
-<p><strong>Was it you?</strong> Wait and try again, or reset your password, which also unblocks your account right away.</p>
-{{template "button" (button .ForgotPasswordURL "Reset my password")}}
-{{template "notyou" "Someone is probably trying to guess your password. They cannot sign in without it. If your password is short, or used on other sites, choose a new long one with the button above."}}
+<p>{{th "email.locked.was_you" "<strong>Was it you?</strong> Wait and try again, or reset your password, which also unblocks your account right away."}}</p>
+{{template "button" (button .ForgotPasswordURL (t "email.button.reset_password" "Reset my password"))}}
+{{template "notyou" (t "email.locked.not_you" "Someone is probably trying to guess your password. They cannot sign in without it. If your password is short, or used on other sites, choose a new long one with the button above.")}}
 {{end}}

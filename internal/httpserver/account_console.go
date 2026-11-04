@@ -20,6 +20,7 @@ import (
 	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/i18n"
 )
 
 // Account console (Step 14c, spec-panel-user.md): the pages where a user
@@ -79,11 +80,11 @@ func acctFrom(r *http.Request) *acct {
 func accountBase(realmName string) string { return "/r/" + realmName + "/account" }
 
 func (s *Server) mountAccount(r chi.Router) {
-	pages, err := accountui.New(nil)
+	pages, err := accountui.New(nil, s.i18n)
 	if err != nil {
 		panic("httpserver: account pages: " + err.Error()) // embedded templates: a bug, not a runtime error
 	}
-	login, err := loginui.New(nil)
+	login, err := loginui.New(nil, s.i18n)
 	if err != nil {
 		panic("httpserver: login pages: " + err.Error())
 	}
@@ -91,17 +92,22 @@ func (s *Server) mountAccount(r chi.Router) {
 
 	cop := http.NewCrossOriginProtection()
 	cop.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.accountMessage(w, r, http.StatusForbidden, "Request refused",
-			"This request did not come from this site. Go back to your account and try again.", "refused")
+		s.accountMessage(w, r, http.StatusForbidden, msgRefusedTitle,
+			i18n.M("account.refused.other_site", "This request did not come from this site. Go back to your account and try again."), "refused")
 	}))
 
 	r.Route("/account", func(r chi.Router) {
 		r.Get("/assets/{file}", s.handleAccountAsset)
+		// Called by account.js of another organization's console, right
+		// after a change of language (account_language.go): no form, so no
+		// CSRF token, only the browser's same-origin check.
+		r.With(cop.Handler).Post("/language/sync", s.handleAccountLanguageSync)
 		r.Group(func(r chi.Router) {
 			r.Use(cop.Handler, s.accountSession)
 
 			r.Get("/", s.handleAccountProfile)
 			r.Post("/profile", s.handleAccountProfileSave)
+			r.Post("/language", s.handleAccountLanguage)
 			r.Post("/signout", s.handleAccountSignOut)
 
 			r.Get("/security", s.handleAccountSecurity)
@@ -186,11 +192,12 @@ func (s *Server) accountSession(next http.Handler) http.Handler {
 			r.Body = http.MaxBytesReader(w, r.Body, maxAccountFormSize)
 			if err := r.ParseForm(); err != nil ||
 				subtle.ConstantTimeCompare([]byte(r.PostForm.Get(csrfField)), []byte(a.csrf)) != 1 {
-				s.accountMessage(w, r, http.StatusForbidden, "Request refused",
-					"This form has expired. Go back to your account and try again.", "refused")
+				s.accountMessage(w, r, http.StatusForbidden, msgRefusedTitle,
+					i18n.M("account.refused.expired_form", "This form has expired. Go back to your account and try again."), "refused")
 				return
 			}
 		}
+		ctx = i18n.WithUser(ctx, userLocale(user)) // the pages in the user's language
 		ctx = context.WithValue(ctx, acctKey{}, a)
 		ctx = context.WithValue(ctx, sessionContextKey{}, sess)
 		ctx = audit.WithActor(ctx, audit.Actor{UserID: user.ID, RealmID: realm.ID})
@@ -210,9 +217,9 @@ func accountCSRF(rawSessionToken string) string {
 // signed in, the page reloads and the console shows.
 func (s *Server) accountSignIn(w http.ResponseWriter, r *http.Request, realm *domain.Realm) {
 	page := s.loginPage(realm, "login")
-	page.Subtitle = "to manage your account"
+	page.Subtitle = s.loc(r).T("account.signin.subtitle", "to manage your account")
 	page.RememberMe, page.RememberMeDays = s.rememberMeOffer(r.Context(), realm.ID)
-	s.loginPages.RenderLogin(w, http.StatusOK, page)
+	s.loginPages.RenderLogin(w, r, http.StatusOK, page)
 }
 
 func (s *Server) loginPage(realm *domain.Realm, mode string) loginui.Login {
@@ -260,17 +267,18 @@ func (s *Server) accountStepUp(w http.ResponseWriter, r *http.Request, a *acct, 
 			s.accountRedirect(w, r, gate)
 			return false
 		}
+		loc := s.loc(r)
 		mode := "stepup"
 		page := s.loginPage(a.realm, mode)
-		page.Notice = "For your security, confirm it's you to continue."
+		page.Notice = loc.T("account.stepup.notice", "For your security, confirm it's you to continue.")
 		if su.Reason == service.StepUpNeedRecentLogin {
 			page = s.loginPage(a.realm, "login")
 			page.LoginHint = a.user.Username
-			page.Notice = "For your security, enter your password again to continue."
+			page.Notice = loc.T("account.stepup.notice_password", "For your security, enter your password again to continue.")
 		}
-		page.Subtitle = "to change how you sign in"
-		page.CancelURL, page.CancelText = accountBase(a.realm.Name)+"/security", "Back to your account"
-		s.loginPages.RenderLogin(w, http.StatusOK, page)
+		page.Subtitle = loc.T("account.stepup.subtitle", "to change how you sign in")
+		page.CancelURL, page.CancelText = accountBase(a.realm.Name)+"/security", loc.T("account.stepup.back", "Back to your account")
+		s.loginPages.RenderLogin(w, r, http.StatusOK, page)
 		return false
 	default:
 		s.accountFailure(w, r, err)
@@ -296,7 +304,7 @@ func (s *Server) accountRedirect(w http.ResponseWriter, r *http.Request, to stri
 // accountMessage answers with a short page (a refused request, an error).
 // htmx does not swap error answers into the page: for htmx, the page
 // reloads instead (HX-Refresh) and shows flash as its notice.
-func (s *Server) accountMessage(w http.ResponseWriter, r *http.Request, status int, title, text, flash string) {
+func (s *Server) accountMessage(w http.ResponseWriter, r *http.Request, status int, title, text i18n.Text, flash string) {
 	realm := realmFromContext(r)
 	if isHTMX(r) && realm != nil {
 		setFlash(w, realm.Name, flash, 0)
@@ -309,21 +317,23 @@ func (s *Server) accountMessage(w http.ResponseWriter, r *http.Request, status i
 	if realm != nil {
 		assets = accountBase(realm.Name) + "/assets"
 	}
-	s.loginPages.RenderMessage(w, status, loginui.Message{Title: title, Text: text}, assets)
+	s.loginPages.RenderMessage(w, r, status, loginui.Message{Title: title, Text: text}, assets)
 }
+
+var msgRefusedTitle = i18n.M("account.refused.title", "Request refused")
 
 func (s *Server) accountFailure(w http.ResponseWriter, r *http.Request, err error) {
 	slog.Default().ErrorContext(r.Context(), "account console", "path", r.URL.Path, "error", err)
-	s.accountMessage(w, r, http.StatusInternalServerError, "Something went wrong",
-		"The page could not be shown. Try again in a moment.", "failed")
+	s.accountMessage(w, r, http.StatusInternalServerError, i18n.M("account.failure.title", "Something went wrong"),
+		i18n.M("account.failure.text", "The page could not be shown. Try again in a moment."), "failed")
 }
 
 // accountLayout fills what every page shows. It reads (and clears) the
 // one-time notice of the previous action.
-func (s *Server) accountLayout(w http.ResponseWriter, r *http.Request, a *acct, active, title string) accountui.Layout {
+func (s *Server) accountLayout(w http.ResponseWriter, r *http.Request, a *acct, active string, title i18n.Text) accountui.Layout {
 	base := accountBase(a.realm.Name)
 	l := accountui.Layout{
-		Title:  title,
+		Title:  s.loc(r).Text(title),
 		Org:    accountui.Org{Name: a.realm.Name, Display: realmDisplay(a.realm.DisplayName, a.realm.Name), URL: base, Current: true},
 		User:   accountui.Person{Name: personName(a.user), Email: a.user.Email, Initials: initialsOf(personName(a.user))},
 		Active: active,
@@ -333,7 +343,17 @@ func (s *Server) accountLayout(w http.ResponseWriter, r *http.Request, a *acct, 
 		Theme:  accountui.ThemeFrom(r),
 	}
 	l.Orgs = s.accountOrgs(r, a.realm)
-	l.Notice, l.Error = s.takeFlash(w, r, a)
+	var flash string
+	l.Notice, l.Error, flash = s.takeFlash(w, r, a)
+	if flash == "language_saved" {
+		// The same language for the accounts of the other organizations
+		// signed in on this browser (account.js, account_language.go).
+		for _, o := range l.Orgs {
+			if !o.Current {
+				l.LocaleSync = append(l.LocaleSync, o.URL+"/language/sync")
+			}
+		}
+	}
 	if st, err := s.mfa.Status(r.Context(), a.sess, nil); err == nil {
 		l.MFARequired = st.EnrollmentRequired
 	}
@@ -377,22 +397,24 @@ func initialsOf(name string) string {
 
 // The notice of the last action travels in a short-lived cookie as a key
 // (never as text: a forged cookie can only pick one of these sentences).
-var flashText = map[string]string{
-	"profile_saved":    "Your name was saved.",
-	"password_changed": "Your password was changed. Your other sessions were signed out.",
-	"totp_added":       "Authenticator app added.",
-	"passkey_added":    "Passkey or security key added.",
-	"factor_removed":   "Removed.",
-	"session_revoked":  "That session was signed out.",
-	"sessions_revoked": "Your other sessions were signed out.",
-	"device_revoked":   "That device will ask for the second step again.",
-	"devices_revoked":  "Every device will ask for the second step again.",
-	"app_revoked":      "Access removed.",
-	"confirm_first":    "For your security, confirm it's you, then try again.",
-	"not_found":        "That item no longer exists.",
-	"enroll_expired":   "This setup expired. Start again.",
-	"refused":          "This form had expired: nothing was changed. Try again.",
-	"failed":           "Something went wrong: nothing was changed. Try again in a moment.",
+var flashText = map[string]i18n.Text{
+	"profile_saved":    i18n.M("account.flash.profile_saved", "Your name was saved."),
+	"language_saved":   i18n.M("account.flash.language_saved", "Your language was saved."),
+	"password_changed": i18n.M("account.flash.password_changed", "Your password was changed. Your other sessions were signed out."),
+	"totp_added":       i18n.M("account.flash.totp_added", "Authenticator app added."),
+	"passkey_added":    i18n.M("account.flash.passkey_added", "Passkey or security key added."),
+	"factor_removed":   i18n.M("account.flash.factor_removed", "Removed."),
+	"session_revoked":  i18n.M("account.flash.session_revoked", "That session was signed out."),
+	"sessions_revoked": i18n.M("account.flash.sessions_revoked", "Your other sessions were signed out."),
+	"device_revoked":   i18n.M("account.flash.device_revoked", "That device will ask for the second step again."),
+	"devices_revoked":  i18n.M("account.flash.devices_revoked", "Every device will ask for the second step again."),
+	"app_revoked":      i18n.M("account.flash.app_revoked", "Access removed."),
+	"confirm_first":    i18n.M("account.flash.confirm_first", "For your security, confirm it's you, then try again."),
+	"not_found":        i18n.M("account.flash.not_found", "That item no longer exists."),
+	"enroll_expired":   i18n.M("account.flash.enroll_expired", "This setup expired. Start again."),
+	"refused":          i18n.M("account.flash.refused", "This form had expired: nothing was changed. Try again."),
+	"failed":           i18n.M("account.flash.failed", "Something went wrong: nothing was changed. Try again in a moment."),
+	"bad_language":     i18n.M("account.flash.bad_language", "This language is not available."),
 }
 
 // flashValue: a key, with a count for the sentences that show one.
@@ -411,9 +433,9 @@ func setFlash(w http.ResponseWriter, realmName, key string, n int) {
 }
 
 // takeFlash returns the notice (or error) of the previous action, and
-// clears it. A "done" query parameter (set by account.js after a passkey
-// is added) works the same way.
-func (s *Server) takeFlash(w http.ResponseWriter, r *http.Request, a *acct) (notice, problem string) {
+// clears it; name is its key ("" without one). A "done" query parameter
+// (set by account.js after a passkey is added) works the same way.
+func (s *Server) takeFlash(w http.ResponseWriter, r *http.Request, a *acct) (notice, problem, name string) {
 	key := ""
 	if c, err := r.Cookie(accountFlashCookie); err == nil {
 		key = c.Value
@@ -425,32 +447,35 @@ func (s *Server) takeFlash(w http.ResponseWriter, r *http.Request, a *acct) (not
 	if key == "" && r.URL.Query().Get("done") == "passkey" {
 		key = "passkey_added"
 	}
-	return flashParts(key)
+	notice, problem = flashParts(s.loc(r), key)
+	name, _, _ = strings.Cut(key, ".")
+	return notice, problem, name
 }
 
-// flashParts turns a notice key ("sessions_revoked.3") into its sentence:
-// a confirmation, or a problem.
-func flashParts(value string) (notice, problem string) {
+// flashParts turns a notice key ("sessions_revoked.3") into its sentence,
+// in the reader's language: a confirmation, or a problem.
+func flashParts(loc *i18n.Localizer, value string) (notice, problem string) {
 	key, count, _ := strings.Cut(value, ".")
-	text, ok := flashText[key]
+	msg, ok := flashText[key]
 	if !ok {
 		return "", ""
 	}
+	text := loc.Text(msg)
 	if key == "password_changed" || key == "sessions_revoked" {
 		if n, err := strconv.Atoi(count); err == nil && n > 0 {
 			text = strings.TrimSuffix(text, ".") + " (" + strconv.Itoa(n) + ")."
 		}
 	}
 	switch key {
-	case "confirm_first", "not_found", "enroll_expired", "refused", "failed":
+	case "confirm_first", "not_found", "enroll_expired", "refused", "failed", "bad_language":
 		return "", text
 	}
 	return text, ""
 }
 
 // setNotice shows a notice in an htmx answer (no cookie: same request).
-func setNotice(l *accountui.Layout, value string) {
-	l.Notice, l.Error = flashParts(value)
+func (s *Server) setNotice(r *http.Request, l *accountui.Layout, value string) {
+	l.Notice, l.Error = flashParts(s.loc(r), value)
 }
 
 // --- organizations of this browser ------------------------------------------

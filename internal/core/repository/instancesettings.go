@@ -38,5 +38,6 @@ type UpdateInstanceSettingsParams struct {
 	SuspiciousLoginEmailEnabled *bool
 	MFATrustedDeviceEnabled     *bool
 	MFATrustedDeviceDays        *int
+	DefaultLocale               *string
 	UpdatedBy                   *string
 }

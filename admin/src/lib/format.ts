@@ -1,42 +1,63 @@
+import { english, type Translator } from "@/i18n";
+
 // Display helpers. Server Components render them once, on the server; the
 // time zone is the server's unless TZ is set (UTC in the Docker image).
+// Dates follow the console's language (locale: "en", "fr"...; English dates
+// are written the British way, day first).
 
-const dateTime = new Intl.DateTimeFormat("en-GB", {
-  year: "numeric",
-  month: "short",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZoneName: "short",
-});
-const dateOnly = new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit" });
+const formatters = new Map<string, { dateTime: Intl.DateTimeFormat; dateOnly: Intl.DateTimeFormat }>();
 
-export function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) || d.getFullYear() < 1971 ? "—" : dateTime.format(d);
+function formattersFor(locale = "en") {
+  let f = formatters.get(locale);
+  if (!f) {
+    const tag = locale === "en" ? "en-GB" : locale;
+    f = {
+      dateTime: new Intl.DateTimeFormat(tag, {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short",
+      }),
+      dateOnly: new Intl.DateTimeFormat(tag, { year: "numeric", month: "short", day: "2-digit" }),
+    };
+    formatters.set(locale, f);
+  }
+  return f;
 }
 
-export function formatDate(iso: string | null | undefined): string {
+export function formatDateTime(iso: string | null | undefined, locale?: string): string {
   if (!iso) return "—";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) || d.getFullYear() < 1971 ? "—" : dateOnly.format(d);
+  return Number.isNaN(d.getTime()) || d.getFullYear() < 1971 ? "—" : formattersFor(locale).dateTime.format(d);
+}
+
+export function formatDate(iso: string | null | undefined, locale?: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) || d.getFullYear() < 1971 ? "—" : formattersFor(locale).dateOnly.format(d);
 }
 
 /** "3 min ago", "in 2 h", "just now". */
-export function formatRelative(iso: string | null | undefined, now: Date = new Date()): string {
-  if (!iso) return "never";
+export function formatRelative(
+  iso: string | null | undefined,
+  now: Date = new Date(),
+  tr: Translator = english,
+): string {
+  const { t } = tr;
+  if (!iso) return t("time.never", "never");
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime()) || d.getFullYear() < 1971) return "never";
+  if (Number.isNaN(d.getTime()) || d.getFullYear() < 1971) return t("time.never", "never");
   const s = Math.round((d.getTime() - now.getTime()) / 1000);
   const abs = Math.abs(s);
-  if (abs < 45) return "just now";
+  if (abs < 45) return t("time.just_now", "just now");
   let text: string;
-  if (abs < 3600) text = `${Math.max(1, Math.round(abs / 60))} min`;
-  else if (abs < 86400) text = `${Math.round(abs / 3600)} h`;
-  else if (abs < 86400 * 60) text = `${Math.round(abs / 86400)} d`;
-  else return formatDate(iso);
-  return s < 0 ? `${text} ago` : `in ${text}`;
+  if (abs < 3600) text = t("time.minutes", "{n} min", { n: Math.max(1, Math.round(abs / 60)) });
+  else if (abs < 86400) text = t("time.hours", "{n} h", { n: Math.round(abs / 3600) });
+  else if (abs < 86400 * 60) text = t("time.days", "{n} d", { n: Math.round(abs / 86400) });
+  else return formatDate(iso, tr.locale);
+  return s < 0 ? t("time.ago", "{time} ago", { time: text }) : t("time.in", "in {time}", { time: text });
 }
 
 /** A percentage in 0..100 (the API's unit): "98.5%", "100%". */
@@ -46,9 +67,9 @@ export function formatPercent(p: number): string {
 }
 
 /** "1–20 of 43". */
-export function pageLabel(offset: number, count: number, total: number): string {
-  if (total === 0) return "0 of 0";
-  return `${offset + 1}–${offset + count} of ${total}`;
+export function pageLabel(offset: number, count: number, total: number, tr: Translator = english): string {
+  if (total === 0) return tr.t("pagination.none", "0 of 0");
+  return tr.t("pagination.range", "{from}–{to} of {total}", { from: offset + 1, to: offset + count, total });
 }
 
 export function secondsTo(unit: "minutes" | "hours" | "days", seconds: number): string {

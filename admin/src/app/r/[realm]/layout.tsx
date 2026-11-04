@@ -6,7 +6,9 @@ import { NavTabs } from "@/components/console/nav-tabs";
 import { NavigationProgress, PendingContent } from "@/components/console/navigation-progress";
 import { StepUpProvider } from "@/components/console/step-up";
 import { ErrorState } from "@/components/console/error-state";
+import { getI18n } from "@/i18n/server";
 import { getMe, loadCached } from "@/lib/api";
+import { PAGES } from "@/lib/pages";
 import { can, stepUpFresh } from "@/lib/permissions";
 import { parseTheme, THEME_COOKIE } from "@/lib/theme";
 import type { List, Realm } from "@/lib/types";
@@ -16,16 +18,16 @@ import type { List, Realm } from "@/lib/types";
 // tabs come from here. Each tab is shown only with its "read" permission.
 
 const TABS = [
-  { slug: "dashboard", label: "Dashboard", resource: "realm" },
-  { slug: "clients", label: "Clients", resource: "client" },
-  { slug: "client-scopes", label: "Client Scopes", resource: "client_scope" },
-  { slug: "sessions", label: "Sessions", resource: "session" },
-  { slug: "audit", label: "Audit Log", resource: "audit_log" },
-  { slug: "users", label: "Users & Roles", resource: "user" },
-  { slug: "signing-keys", label: "Signing Keys", resource: "signing_key" },
-  { slug: "mfa", label: "MFA Policies", resource: "mfa_policy" },
-  { slug: "timeouts", label: "Timeouts", resource: "timeout" },
-  { slug: "settings", label: "Settings", resource: "settings" },
+  { slug: "dashboard", label: PAGES.dashboard.title, resource: "realm" },
+  { slug: "clients", label: PAGES.clients.title, resource: "client" },
+  { slug: "client-scopes", label: PAGES.clientScopes.title, resource: "client_scope" },
+  { slug: "sessions", label: PAGES.sessions.title, resource: "session" },
+  { slug: "audit", label: PAGES.audit.title, resource: "audit_log" },
+  { slug: "users", label: PAGES.users.title, resource: "user" },
+  { slug: "signing-keys", label: PAGES.signingKeys.title, resource: "signing_key" },
+  { slug: "mfa", label: PAGES.mfa.title, resource: "mfa_policy" },
+  { slug: "timeouts", label: PAGES.timeouts.title, resource: "timeout" },
+  { slug: "settings", label: PAGES.settings.title, resource: "settings" },
 ] as const;
 
 export default async function ConsoleLayout({
@@ -50,7 +52,8 @@ export default async function ConsoleLayout({
   if (realms.ok && !realmList.some((r) => r.name === realm)) notFound();
 
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
-  const tabs = TABS.filter((t) => can(me.data, t.resource));
+  const { tm } = await getI18n();
+  const tabs = TABS.filter((t) => can(me.data, t.resource)).map((t) => ({ slug: t.slug, label: tm(t.label) }));
 
   return (
     <StepUpProvider freshUntil={me.data.step_up_fresh_until} initialFresh={stepUpFresh(me.data)}>

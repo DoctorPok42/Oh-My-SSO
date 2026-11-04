@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"fmt"
@@ -89,18 +90,38 @@ type TimeoutRefusal struct {
 	Code    string // invalid_request, not_found, timeout_over, timeout_self, timeout_admin_console
 	Field   string // the input at fault, when there is one
 	Message string
+	Text    i18n.Text // the translatable Message (the Admin API answers in the console's language)
 }
 
 func (e *TimeoutRefusal) Error() string { return e.Message }
 
-func timeoutInvalid(field, format string, a ...any) error {
-	return &TimeoutRefusal{Code: "invalid_request", Field: field, Message: fmt.Sprintf(format, a...)}
+// set gives the refusal its sentence, in both forms.
+func (e *TimeoutRefusal) set(t i18n.Text) {
+	e.Text = t
+	e.Message = englishOf(t)
 }
 
-var errTimeoutNotFound = &TimeoutRefusal{Code: "not_found", Message: "timeout not found"}
+func timeoutInvalid(field string, t i18n.Text) error {
+	return &TimeoutRefusal{Code: "invalid_request", Field: field, Message: englishOf(t), Text: t}
+}
+
+var errTimeoutNotFound = &TimeoutRefusal{Code: "not_found", Message: "timeout not found",
+	Text: i18n.M("admin.error.timeout_not_found", "timeout not found")}
 
 var errTimeoutOver = &TimeoutRefusal{Code: "timeout_over",
-	Message: "this timeout is over (ended or lifted): it cannot be changed, create a new one instead"}
+	Message: "this timeout is over (ended or lifted): it cannot be changed, create a new one instead",
+	Text: i18n.M("admin.error.timeout_over", "this timeout is over (ended or lifted): it cannot be changed, create a new one instead")}
+
+// targetText: the sentence of a refusal about a target, by its kind.
+func targetText(t domain.TimeoutTargetType, user, group, client i18n.Text) i18n.Text {
+	switch t {
+	case domain.TimeoutTargetGroup:
+		return group
+	case domain.TimeoutTargetClientApp:
+		return client
+	}
+	return user
+}
 
 // TimeoutActor is who changes a timeout.
 type TimeoutActor struct {
@@ -250,7 +271,7 @@ func (s *TimeoutService) Create(ctx context.Context, in CreateTimeoutInput) (*Ti
 		return nil, errors.New("timeouts: create: no actor")
 	}
 	if !in.TargetType.Valid() {
-		return nil, timeoutInvalid("target_type", "the target must be a user, a group or a client")
+		return nil, timeoutInvalid("target_type", i18n.M("admin.error.timeout_target", "the target must be a user, a group or a client"))
 	}
 	reason, err := checkTimeoutReason(in.Reason)
 	if err != nil {
@@ -262,14 +283,14 @@ func (s *TimeoutService) Create(ctx context.Context, in CreateTimeoutInput) (*Ti
 	switch {
 	case starts.IsZero(), !starts.After(now):
 		if !starts.IsZero() && starts.Before(now.Add(-timeoutStartSkew)) {
-			return nil, timeoutInvalid("starts_at", "the start is in the past: leave it empty to start now")
+			return nil, timeoutInvalid("starts_at", i18n.M("admin.error.timeout_start_past", "the start is in the past: leave it empty to start now"))
 		}
 		starts = now
 	case starts.After(now.Add(TimeoutMaxLeadTime)):
-		return nil, timeoutInvalid("starts_at", "a timeout can be scheduled at most %d days ahead", int(TimeoutMaxLeadTime.Hours()/24))
+		return nil, timeoutInvalid("starts_at", i18n.M("admin.error.timeout_lead", "a timeout can be scheduled at most {days} days ahead", "days", int(TimeoutMaxLeadTime.Hours()/24)))
 	}
 	if !in.EndsAt.IsZero() && in.EndsAt.Before(starts.Add(TimeoutMinDuration)) {
-		return nil, timeoutInvalid("ends_at", "the end must come at least a minute after the start")
+		return nil, timeoutInvalid("ends_at", i18n.M("admin.error.timeout_end_minute", "the end must come at least a minute after the start"))
 	}
 
 	target, err := s.resolveTarget(ctx, in.Realm, in.TargetType, in.TargetID)
@@ -308,9 +329,9 @@ func checkTimeoutReason(v string) (string, error) {
 	reason := strings.TrimSpace(v)
 	switch {
 	case reason == "":
-		return "", timeoutInvalid("reason", "a reason is required: it is what the audit log keeps")
+		return "", timeoutInvalid("reason", i18n.M("admin.error.timeout_reason_required", "a reason is required: it is what the audit log keeps"))
 	case utf8.RuneCountInString(reason) > TimeoutReasonMaxLength:
-		return "", timeoutInvalid("reason", "the reason is limited to %d characters", TimeoutReasonMaxLength)
+		return "", timeoutInvalid("reason", i18n.M("admin.error.timeout_reason_max", "the reason is limited to {max} characters", "max", TimeoutReasonMaxLength))
 	}
 	return reason, nil
 }
@@ -318,9 +339,14 @@ func checkTimeoutReason(v string) (string, error) {
 // resolveTarget checks that the target exists in the realm.
 func (s *TimeoutService) resolveTarget(ctx context.Context, realm *domain.Realm, typ domain.TimeoutTargetType, id string) (TimeoutTarget, error) {
 	out := TimeoutTarget{Type: typ, ID: id}
-	notFound := &TimeoutRefusal{Code: "invalid_request", Field: "target_id", Message: "no such " + targetNoun(typ) + " in this realm"}
+	notFound := &TimeoutRefusal{Code: "invalid_request", Field: "target_id"}
+	notFound.set(targetText(typ, i18n.M("admin.error.no_such_user", "no such user in this realm"),
+		i18n.M("admin.error.no_such_group", "no such group in this realm"),
+		i18n.M("admin.error.no_such_client", "no such client in this realm")))
 	if id == "" {
-		return out, timeoutInvalid("target_id", "choose the %s to suspend", targetNoun(typ))
+		return out, timeoutInvalid("target_id", targetText(typ, i18n.M("admin.error.choose_user", "choose the user to suspend"),
+			i18n.M("admin.error.choose_group", "choose the group to suspend"),
+			i18n.M("admin.error.choose_client", "choose the client to suspend")))
 	}
 	switch typ {
 	case domain.TimeoutTargetUser:
@@ -354,16 +380,6 @@ func (s *TimeoutService) resolveTarget(ctx context.Context, realm *domain.Realm,
 	return out, nil
 }
 
-func targetNoun(t domain.TimeoutTargetType) string {
-	switch t {
-	case domain.TimeoutTargetGroup:
-		return "group"
-	case domain.TimeoutTargetClientApp:
-		return "client"
-	}
-	return "user"
-}
-
 // guard refuses what would lock administrators out of the admin console:
 // their own account, a group of theirs, the "admins" group and the console's
 // client. Recovery from the command line lifts anything anyway
@@ -377,12 +393,12 @@ func (s *TimeoutService) guard(ctx context.Context, realm *domain.Realm, target 
 	switch target.Type {
 	case domain.TimeoutTargetUser:
 		if actor.UserID != "" && target.ID == actor.UserID {
-			self.Message = "you cannot suspend your own account"
+			self.set(i18n.M("admin.error.timeout_self_user", "you cannot suspend your own account"))
 			return self
 		}
 	case domain.TimeoutTargetGroup:
 		if target.Name == AdminGroupName {
-			console.Message = "the \"" + AdminGroupName + "\" group keeps the admin console usable: it cannot be suspended"
+			console.set(i18n.M("admin.error.timeout_console_group", "the \"{group}\" group keeps the admin console usable: it cannot be suspended", "group", AdminGroupName))
 			return console
 		}
 		if actor.UserID != "" {
@@ -391,7 +407,7 @@ func (s *TimeoutService) guard(ctx context.Context, realm *domain.Realm, target 
 				return fmt.Errorf("timeouts: group members: %w", err)
 			}
 			if slices.Contains(members, actor.UserID) {
-				self.Message = "you are a member of this group: suspending it would sign you out of the admin console"
+				self.set(i18n.M("admin.error.timeout_self_group", "you are a member of this group: suspending it would sign you out of the admin console"))
 				return self
 			}
 		}
@@ -401,7 +417,7 @@ func (s *TimeoutService) guard(ctx context.Context, realm *domain.Realm, target 
 			return fmt.Errorf("timeouts: client: %w", err)
 		}
 		if c.ClientID == domain.InternalAdminClientID {
-			console.Message = "the admin console's client (" + domain.InternalAdminClientID + ") cannot be suspended"
+			console.set(i18n.M("admin.error.timeout_console_client", "the admin console's client ({client}) cannot be suspended", "client", domain.InternalAdminClientID))
 			return console
 		}
 	}
@@ -449,7 +465,7 @@ func (s *TimeoutService) Update(ctx context.Context, in UpdateTimeoutInput) (*Ti
 				floor = now
 			}
 			if end.Before(floor.Add(TimeoutMinDuration)) {
-				return nil, timeoutInvalid("ends_at", "the end must come at least a minute after the start and after now: to end it now, lift it")
+				return nil, timeoutInvalid("ends_at", i18n.M("admin.error.timeout_end_now", "the end must come at least a minute after the start and after now: to end it now, lift it"))
 			}
 		}
 		p.EndsAt, changed = &end, append(changed, "ends_at")

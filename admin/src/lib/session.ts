@@ -17,7 +17,9 @@ export type Session = {
   refreshToken?: string;
   /** Kept for logout: the IdP requires id_token_hint (logout CSRF protection). */
   idToken?: string;
-  user: { sub: string; name: string; email: string };
+  /** locale: the language the admin chose in their account console (the
+   * "locale" claim), "" if none: the console's language (src/i18n). */
+  user: { sub: string; name: string; email: string; locale?: string };
   /** Epoch seconds: sign-in time. The cookie never outlives SESSION_MAX_AGE. */
   createdAt: number;
 };
