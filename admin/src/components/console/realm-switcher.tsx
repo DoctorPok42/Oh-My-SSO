@@ -25,9 +25,12 @@ export function RealmSwitcher({ realms, current }: { realms: Realm[]; current: R
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex max-w-[150px] min-w-0 items-center sm:max-w-[220px] gap-1.5 rounded-md px-2 py-1.5 text-[14px] font-semibold text-text-primary outline-none hover:bg-surface-alt focus-visible:ring-[3px] focus-visible:ring-accent-soft">
+      <DropdownMenuTrigger className="group inline-flex max-w-[150px] min-w-0 items-center sm:max-w-[220px] gap-1.5 rounded-md px-2 py-1.5 text-[14px] font-semibold text-text-primary outline-none hover:bg-surface-alt focus-visible:ring-[3px] focus-visible:ring-accent-soft">
         <span className="truncate">{current?.display_name ?? t("realm_switcher.choose", "Choose a realm")}</span>
-        <ChevronDown className="size-4 shrink-0 text-text-muted" aria-hidden />
+        <ChevronDown
+          className="size-4 shrink-0 text-text-muted transition-transform group-data-[state=open]:rotate-180"
+          aria-hidden
+        />
         <span className="sr-only">{t("realm_switcher.switch", "Switch realm")}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-64">

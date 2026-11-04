@@ -59,7 +59,9 @@ func TestEveryTemplateRenders(t *testing.T) {
 func TestTemplatesUseEmailSafeHTML(t *testing.T) {
 	style := regexp.MustCompile(`style="([^"]*)"`)
 	forbidden := []struct{ re, why string }{
-		{`(^|;)\s*display\s*:`, "display is partly supported: use tables"},
+		// display:block is the one exception: the button's link, so that the
+		// whole button is clickable (an inline link is clickable on its text only).
+		{`(^|;)\s*display\s*:\s*(?:[^b;\s]|b[^l])`, "display is partly supported: use tables"},
 		{`(^|;)\s*background\s*:`, "use bgcolor (and background-color), not the background shorthand"},
 		{`(^|;)\s*font-weight\s*:`, "use <strong>"},
 		{`\bauto\b`, "margin:auto is not supported everywhere: align with tables"},
