@@ -1,7 +1,11 @@
+"use client";
+
 import { Logo } from "@/components/console/logo";
+import { useT } from "@/i18n/client";
 
 // The centred card of the pages seen before signing in (DS login view).
 export function AuthCard({ title, children }: { title: string; children: React.ReactNode }) {
+  const { t } = useT();
   return (
     <main className="grid min-h-dvh place-items-center bg-page px-4 py-10">
       <div className="w-full max-w-[400px]">
@@ -10,7 +14,9 @@ export function AuthCard({ title, children }: { title: string; children: React.R
           <h1 className="text-[20px] font-semibold">{title}</h1>
           <div className="mt-2 space-y-5 text-[14px] text-text-secondary">{children}</div>
         </div>
-        <p className="mt-5 text-center text-[12px] text-text-muted">Protected by OMSSO · SAML 2.0 / OIDC / MFA</p>
+        <p className="mt-5 text-center text-[12px] text-text-muted">
+          {t("auth_card.footer", "Protected by OMSSO · SAML 2.0 / OIDC / MFA")}
+        </p>
       </div>
     </main>
   );

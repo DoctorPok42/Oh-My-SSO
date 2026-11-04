@@ -25,7 +25,7 @@
     html/template removes HTML comments) keeps the column narrow there.
 */}}
 {{define "layout.html"}}<!doctype html>
-<html lang="en" dir="ltr">
+<html lang="{{lang}}" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -54,7 +54,7 @@
 {{template "html" .}}
 </td></tr>
 <tr><td align="left" style="padding:8px 4px 0 4px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;mso-line-height-rule:exactly;color:#565b70;">
-<p>This is an automatic message from {{.Product}} about your account{{if .Username}} <strong>{{.Username}}</strong>{{end}}. Replies are not read.</p>
+<p>{{if .Username}}{{th "email.footer.user" "This is an automatic message from {product} about your account <strong>{user}</strong>. Replies are not read." "product" .Product "user" .Username}}{{else}}{{t "email.footer" "This is an automatic message from {product} about your account. Replies are not read." "product" .Product}}{{end}}</p>
 </td></tr>
 </table>
 {{outlookColumnEnd}}
@@ -91,23 +91,26 @@
 </table>{{end}}
 
 {{/* A long link without spaces would widen the table on a phone: break-all lets it wrap. */}}
-{{define "link"}}<p style="font-size:13px;line-height:20px;color:#565b70;">Button not working? Copy this address into your browser:<br><a href="{{.}}" target="_blank" style="font-family:'IBM Plex Mono',SFMono-Regular,Consolas,Menlo,monospace;font-size:12px;color:#3557d6;word-break:break-all;">{{.}}</a></p>{{end}}
+{{define "link"}}<p style="font-size:13px;line-height:20px;color:#565b70;">{{t "email.link.copy" "Button not working? Copy this address into your browser:"}}<br><a href="{{.}}" target="_blank" style="font-family:'IBM Plex Mono',SFMono-Regular,Consolas,Menlo,monospace;font-size:12px;color:#3557d6;word-break:break-all;">{{.}}</a></p>{{end}}
 
 {{/* Where and when: a soft panel, labels in secondary text, values in primary text. */}}
 {{define "details"}}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">
 <tr><td bgcolor="#fafbfd" style="padding:10px 16px;border:1px solid #e2e5ee;border-radius:8px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;mso-line-height-rule:exactly;color:#565b70;">
-{{if .When}}<tr><td width="110" valign="top" style="padding:4px 0;">When</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.When}}</td></tr>{{end}}
-{{if .Device}}<tr><td width="110" valign="top" style="padding:4px 0;">Device</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.Device}}</td></tr>{{end}}
-{{if .IPAddress}}<tr><td width="110" valign="top" style="padding:4px 0;">IP address</td><td valign="top" style="padding:4px 0;font-family:'IBM Plex Mono',SFMono-Regular,Consolas,Menlo,monospace;font-size:13px;color:#13151f;">{{.IPAddress}}</td></tr>{{end}}
-{{if .Location}}<tr><td width="110" valign="top" style="padding:4px 0;">Location</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.Location}} <span style="color:#565b70;">(approximate)</span></td></tr>{{end}}
+{{if .When}}<tr><td width="110" valign="top" style="padding:4px 0;">{{t "email.details.when" "When"}}</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.When}}</td></tr>{{end}}
+{{if .Device}}<tr><td width="110" valign="top" style="padding:4px 0;">{{t "email.details.device" "Device"}}</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.Device}}</td></tr>{{end}}
+{{if .IPAddress}}<tr><td width="110" valign="top" style="padding:4px 0;">{{t "email.details.ip" "IP address"}}</td><td valign="top" style="padding:4px 0;font-family:'IBM Plex Mono',SFMono-Regular,Consolas,Menlo,monospace;font-size:13px;color:#13151f;">{{.IPAddress}}</td></tr>{{end}}
+{{if .Location}}<tr><td width="110" valign="top" style="padding:4px 0;">{{t "email.details.location" "Location"}}</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.Location}} <span style="color:#565b70;">({{t "email.details.approximate" "approximate"}})</span></td></tr>{{end}}
 </table>
 </td></tr>
 </table>{{end}}
 
 {{/* "Not you?" advice: a warning callout. The argument is the sentence after "Not you?". */}}
 {{define "notyou"}}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0 0;">
-<tr><td bgcolor="#fdf1df" style="padding:12px 16px;border-radius:8px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;mso-line-height-rule:exactly;color:#13151f;"><strong>Not you?</strong> {{.}}</td></tr>
+<tr><td bgcolor="#fdf1df" style="padding:12px 16px;border-radius:8px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;mso-line-height-rule:exactly;color:#13151f;"><strong>{{t "email.not_you" "Not you?"}}</strong> {{.}}</td></tr>
 </table>{{end}}
 
 {{define "muted"}}<p style="font-size:13px;line-height:20px;color:#565b70;">{{.}}</p>{{end}}
+
+{{/* The greeting, with the username when there is one. */}}
+{{define "hello"}}<p>{{if .Username}}{{t "email.hello_name" "Hello {name}," "name" .Username}}{{else}}{{t "email.hello" "Hello,"}}{{end}}</p>{{end}}

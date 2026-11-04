@@ -313,7 +313,7 @@ func isLoopbackHost(host string) bool {
 
 // Templates parses the embedded e-mail templates.
 func Templates() *notify.Templates {
-	t, err := notify.LoadTemplates()
+	t, err := notify.LoadTemplates(Languages())
 	if err != nil {
 		log.Fatalf("mail: %v", err) // embedded files: only a broken build gets here
 	}

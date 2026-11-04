@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"fmt"
@@ -213,29 +214,29 @@ type NormalizedOIDCClient struct {
 
 // NormalizeOIDCClient checks an input without touching the database.
 func NormalizeOIDCClient(in OIDCClientInput) (*NormalizedOIDCClient, error) {
-	bad := func(format string, a ...any) error {
-		return fmt.Errorf("%w: %s", ErrInvalidClientConfig, fmt.Sprintf(format, a...))
+	bad := func(t i18n.Text) error {
+		return newTextError(ErrInvalidClientConfig, t)
 	}
 	out := &NormalizedOIDCClient{Name: strings.TrimSpace(in.Name), ClientID: strings.TrimSpace(in.ClientID)}
 	if !clientIDPattern.MatchString(out.ClientID) {
-		return nil, bad("client_id must be 1-128 characters among A-Z a-z 0-9 . _ ~ -")
+		return nil, bad(i18n.M("admin.error.client_id_bad", "client_id must be 1-128 characters among A-Z a-z 0-9 . _ ~ -"))
 	}
 	if out.Name == "" {
 		out.Name = out.ClientID
 	}
 
 	if len(in.RedirectURIs) == 0 {
-		return nil, bad("at least one redirect URI is required")
+		return nil, bad(i18n.M("admin.error.redirect_required", "at least one redirect URI is required"))
 	}
 	for _, u := range in.RedirectURIs {
 		if err := validateRedirectURI(u, in.Public); err != nil {
-			return nil, bad("redirect URI %q: %v", u, err)
+			return nil, bad(i18n.M("admin.error.redirect_bad", "redirect URI \"{uri}\": {error}", "uri", u, "error", err))
 		}
 		out.RedirectURIs = appendUnique(out.RedirectURIs, u)
 	}
 	for _, u := range in.PostLogoutRedirectURIs {
 		if err := validateRedirectURI(u, in.Public); err != nil {
-			return nil, bad("post-logout redirect URI %q: %v", u, err)
+			return nil, bad(i18n.M("admin.error.post_logout_bad", "post-logout redirect URI \"{uri}\": {error}", "uri", u, "error", err))
 		}
 		out.PostLogoutRedirectURIs = appendUnique(out.PostLogoutRedirectURIs, u)
 	}
@@ -249,12 +250,12 @@ func NormalizeOIDCClient(in OIDCClientInput) (*NormalizedOIDCClient, error) {
 	}
 	for _, g := range grants {
 		if g != GrantAuthorizationCode && g != GrantRefreshToken {
-			return nil, bad("grant type %q is not supported (only authorization_code and refresh_token)", g)
+			return nil, bad(i18n.M("admin.error.grant_unsupported", "grant type \"{grant}\" is not supported (only authorization_code and refresh_token)", "grant", g))
 		}
 		out.GrantTypes = appendUnique(out.GrantTypes, g)
 	}
 	if !slices.Contains(out.GrantTypes, GrantAuthorizationCode) {
-		return nil, bad("the authorization_code grant is required")
+		return nil, bad(i18n.M("admin.error.code_grant_required", "the authorization_code grant is required"))
 	}
 
 	out.AllowedScopes = []string{"openid"}
@@ -264,7 +265,7 @@ func NormalizeOIDCClient(in OIDCClientInput) (*NormalizedOIDCClient, error) {
 			continue
 		}
 		if strings.ContainsAny(sc, " \"\\") {
-			return nil, bad("scope %q contains a forbidden character", sc)
+			return nil, bad(i18n.M("admin.error.scope_char", "scope \"{scope}\" contains a forbidden character", "scope", sc))
 		}
 		out.AllowedScopes = appendUnique(out.AllowedScopes, sc)
 		if !slices.Contains(StandardOIDCScopes, sc) {
@@ -272,19 +273,19 @@ func NormalizeOIDCClient(in OIDCClientInput) (*NormalizedOIDCClient, error) {
 		}
 	}
 	if slices.Contains(out.AllowedScopes, "offline_access") && !slices.Contains(out.GrantTypes, GrantRefreshToken) {
-		return nil, bad("offline_access needs the refresh_token grant")
+		return nil, bad(i18n.M("admin.error.offline_needs_refresh", "offline_access needs the refresh_token grant"))
 	}
 
 	switch {
 	case in.Public:
 		if in.DisablePKCE {
-			return nil, bad("PKCE cannot be disabled for a public client")
+			return nil, bad(i18n.M("admin.error.pkce_public", "PKCE cannot be disabled for a public client"))
 		}
 		if in.Secret != "" {
-			return nil, bad("a public client has no secret")
+			return nil, bad(i18n.M("admin.error.public_no_secret", "a public client has no secret"))
 		}
 		if in.TokenEndpointAuthMethod != "" && in.TokenEndpointAuthMethod != AuthMethodNone {
-			return nil, bad("a public client authenticates with %q only", AuthMethodNone)
+			return nil, bad(i18n.M("admin.error.public_auth_only", "a public client authenticates with \"{method}\" only", "method", AuthMethodNone))
 		}
 		out.AuthMethod = AuthMethodNone
 	default:
@@ -294,10 +295,10 @@ func NormalizeOIDCClient(in OIDCClientInput) (*NormalizedOIDCClient, error) {
 		case AuthMethodClientSecretPost:
 			out.AuthMethod = AuthMethodClientSecretPost
 		default:
-			return nil, bad("token endpoint auth method %q is not supported", in.TokenEndpointAuthMethod)
+			return nil, bad(i18n.M("admin.error.auth_method_unsupported", "token endpoint auth method \"{method}\" is not supported", "method", in.TokenEndpointAuthMethod))
 		}
 		if in.Secret != "" && len(in.Secret) < MinClientSecretLength {
-			return nil, bad("a supplied secret needs at least %d characters", MinClientSecretLength)
+			return nil, bad(i18n.M("admin.error.secret_min", "a supplied secret needs at least {min} characters", "min", MinClientSecretLength))
 		}
 	}
 	return out, nil

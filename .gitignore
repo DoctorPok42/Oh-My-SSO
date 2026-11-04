@@ -13,3 +13,6 @@ certs/
 .env
 .env.compose
 .env.production
+
+graphify-out
+.claude

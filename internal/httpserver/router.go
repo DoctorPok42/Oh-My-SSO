@@ -11,6 +11,7 @@ import (
 	"sso.internal/sso/internal/clientip"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/i18n"
 	"sso.internal/sso/internal/ratelimit"
 )
 
@@ -41,6 +42,9 @@ type Server struct {
 	forgotPassword bool
 
 	accounts *service.KnownAccountService
+
+	// i18n: the languages of the pages (i18n.go).
+	i18n *i18n.Bundle
 }
 
 // OIDCProvider is the OIDC adapter as the router sees it (implemented by
@@ -124,6 +128,9 @@ func New(
 	}
 	for _, opt := range opts {
 		opt(s)
+	}
+	if s.i18n == nil {
+		s.i18n = i18n.MustDefault()
 	}
 
 	s.router.Use(middleware.RequestID)

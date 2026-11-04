@@ -1,20 +1,20 @@
-{{define "subject"}}Test e-mail from {{.Product}}{{end}}
+{{define "subject"}}{{t "email.test.subject" "Test e-mail from {product}" "product" .Product}}{{end}}
 
-{{define "text"}}It works!
+{{define "text"}}{{t "email.test.title" "It works!"}}
 
-If you can read this, the SMTP settings of {{.Product}} are right.
+{{t "email.test.intro" "If you can read this, the SMTP settings of {product} are right." "product" .Product}}
 
 {{template "details.txt" .}}
-Did it land in the spam folder? Mail providers trust a sender whose domain:
-  - publishes an SPF record that allows your SMTP server,
-  - signs its e-mails with DKIM (usually a setting of your SMTP provider),
-  - has a DMARC policy.
+{{t "email.test.spam" "Did it land in the spam folder? Mail providers trust a sender whose domain:"}}
+  - {{tp "email.test.spf" "publishes an <strong>SPF</strong> record that allows your SMTP server,"}}
+  - {{tp "email.test.dkim" "signs its e-mails with <strong>DKIM</strong> (usually a setting of your SMTP provider),"}}
+  - {{tp "email.test.dmarc" "has a <strong>DMARC</strong> policy."}}
 {{end}}
 
-{{define "html"}}{{template "badge.success" "SMTP test"}}
-{{template "title" "It works!"}}
-<p>If you can read this, the SMTP settings of {{.Product}} are right.</p>
+{{define "html"}}{{template "badge.success" (t "email.badge.smtp_test" "SMTP test")}}
+{{template "title" (t "email.test.title" "It works!")}}
+<p>{{t "email.test.intro" "If you can read this, the SMTP settings of {product} are right." "product" .Product}}</p>
 {{template "details" .}}
-<p>Did it land in the spam folder? Mail providers trust a sender whose domain:</p>
-<ul><li>publishes an <strong>SPF</strong> record that allows your SMTP server,</li><li>signs its e-mails with <strong>DKIM</strong> (usually a setting of your SMTP provider),</li><li>has a <strong>DMARC</strong> policy.</li></ul>
+<p>{{t "email.test.spam" "Did it land in the spam folder? Mail providers trust a sender whose domain:"}}</p>
+<ul><li>{{th "email.test.spf" "publishes an <strong>SPF</strong> record that allows your SMTP server,"}}</li><li>{{th "email.test.dkim" "signs its e-mails with <strong>DKIM</strong> (usually a setting of your SMTP provider),"}}</li><li>{{th "email.test.dmarc" "has a <strong>DMARC</strong> policy."}}</li></ul>
 {{end}}

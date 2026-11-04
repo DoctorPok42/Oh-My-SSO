@@ -20,6 +20,14 @@ export type Me = {
   step_up_fresh_until: string | null;
 };
 
+/** GET /me/language: the console's language, asked on every page. */
+export type MeLanguage = {
+  /** The language the admin chose in their account console, "" if none. */
+  locale: string;
+  /** The default language of the admin's realm (Settings), "" if none. */
+  realm_locale: string;
+};
+
 export type RealmStatus = "active" | "inactive";
 
 export type Realm = {
@@ -336,6 +344,10 @@ export type Settings = {
   updated_at: string;
   updated_by: string;
   email_enabled: boolean;
+  /** The language of the sign-in pages and e-mails when a user did not choose one. */
+  default_locale: string;
+  /** The languages the IdP can show (its translation files), English first. */
+  languages: { tag: string; name: string }[];
 };
 
 export type TimeoutTargetType = "user" | "group" | "client";

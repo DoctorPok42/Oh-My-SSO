@@ -2,15 +2,17 @@
 
 import { NavLink } from "@/components/console/nav-link";
 import { usePathname } from "next/navigation";
+import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
 // DS "Onglets primaires": 16×4, 2px bottom border (accent when active);
 // active = text-primary 600, inactive = text-secondary 500.
 export function NavTabs({ realm, tabs }: { realm: string; tabs: { slug: string; label: string }[] }) {
+  const { t } = useT();
   const pathname = usePathname();
   const base = `/r/${encodeURIComponent(realm)}/`;
   return (
-    <nav aria-label="Sections" className="border-b border-border bg-surface">
+    <nav aria-label={t("tabs.label", "Sections")} className="border-b border-border bg-surface">
       <div className="mx-auto flex max-w-[1360px] gap-5 overflow-x-auto px-4 [scrollbar-width:none] sm:px-6">
         {tabs.map((t) => {
           const href = base + t.slug;

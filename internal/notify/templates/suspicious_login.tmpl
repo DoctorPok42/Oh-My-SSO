@@ -1,26 +1,24 @@
-{{define "subject"}}Unusual sign-in to your account{{end}}
+{{define "subject"}}{{t "email.suspicious.subject" "Unusual sign-in to your account"}}{{end}}
 
-{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+{{define "text"}}{{template "hello" .}}
 
-Someone signed in to your {{.Realm}} account, and it does not look like
-your usual sign-ins:
+{{t "email.suspicious.intro" "Someone signed in to your {realm} account, and it does not look like your usual sign-ins:" "realm" .Realm}}
 {{range .Reasons}}  - {{.}}
 {{end}}
 {{template "details.txt" .}}
-If this was you (a trip, a new phone...), there is nothing to do.
+{{t "email.suspicious.was_you" "If this was you (a trip, a new phone...), there is nothing to do."}}
 
-If it was not you, change your password now (this signs out every
-session) and check the sign-in methods of your account:
+{{t "email.not_you" "Not you?"}} {{t "email.suspicious.not_you" "Change your password now (it signs out every session) and check the sign-in methods of your account."}}
 {{.ForgotPasswordURL}}
 {{end}}
 
-{{define "html"}}{{template "badge.danger" "Security alert"}}
-{{template "title" "Unusual sign-in to your account"}}
-<p>Hello{{if .Username}} {{.Username}}{{end}},</p>
-<p>Someone signed in to your {{.Realm}} account, and it does not look like your usual sign-ins:</p>
+{{define "html"}}{{template "badge.danger" (t "email.badge.alert" "Security alert")}}
+{{template "title" (t "email.suspicious.subject" "Unusual sign-in to your account")}}
+{{template "hello" .}}
+<p>{{t "email.suspicious.intro" "Someone signed in to your {realm} account, and it does not look like your usual sign-ins:" "realm" .Realm}}</p>
 <ul>{{range .Reasons}}<li>{{.}}</li>{{end}}</ul>
 {{template "details" .}}
-<p>If this was you (a trip, a new phone...), there is nothing to do.</p>
-{{template "notyou" "Change your password now (it signs out every session) and check the sign-in methods of your account."}}
-{{template "button" (button .ForgotPasswordURL "Change my password")}}
+<p>{{t "email.suspicious.was_you" "If this was you (a trip, a new phone...), there is nothing to do."}}</p>
+{{template "notyou" (t "email.suspicious.not_you" "Change your password now (it signs out every session) and check the sign-in methods of your account.")}}
+{{template "button" (button .ForgotPasswordURL (t "email.button.change_password" "Change my password"))}}
 {{end}}

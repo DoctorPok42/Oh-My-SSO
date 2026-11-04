@@ -26,6 +26,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"sso.internal/sso/internal/i18n"
 )
 
 //go:embed web/*.html web/*.css web/*.js
@@ -59,42 +61,50 @@ var pageNames = []string{
 	PageBackupCodes, PageSessions, PageApps, PageHistory,
 }
 
-// Pages renders the templates.
+// Pages renders the templates, in the language of each request (package
+// i18n: the templates call {{t "key" "English text"}}).
 type Pages struct {
-	t      map[string]*template.Template
+	t      map[string]map[string]*template.Template // language -> page -> template
+	i18n   *i18n.Bundle
 	logger *slog.Logger
 }
 
-var funcs = template.FuncMap{
+// funcs: the template functions of one language.
+func funcs(loc *i18n.Localizer) template.FuncMap {
+	m := template.FuncMap(loc.FuncMap())
 	// iso: the machine-readable time of a <time datetime="...">.
-	"iso": func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
+	m["iso"] = func(t time.Time) string { return t.UTC().Format(time.RFC3339) }
 	// when: the same time for a person, in UTC; account.js shows it in the
 	// reader's time zone.
-	"when": func(t time.Time) string { return t.UTC().Format("Jan 2, 2006, 15:04 UTC") },
+	m["when"] = loc.DateTime
 	// day: a date without the time.
-	"day":  func(t time.Time) string { return t.UTC().Format("Jan 2, 2006") },
-	"add1": func(n int) int { return n + 1 },
-	"sub1": func(n int) int { return n - 1 },
-	"plural": func(n int, one, many string) string {
-		if n == 1 {
-			return one
-		}
-		return many
-	},
+	m["day"] = loc.Date
+	m["add1"] = func(n int) int { return n + 1 }
+	m["sub1"] = func(n int) int { return n - 1 }
+	return m
 }
 
-// New parses the embedded templates. logger may be nil (slog.Default()).
-func New(logger *slog.Logger) (*Pages, error) {
+// New parses the embedded templates, once per language of the bundle.
+// logger may be nil (slog.Default()), bundle too (the embedded languages).
+func New(logger *slog.Logger, bundle *i18n.Bundle) (*Pages, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	p := &Pages{t: map[string]*template.Template{}, logger: logger}
-	for _, name := range pageNames {
-		t, err := template.New(name).Funcs(funcs).ParseFS(webFS, "web/"+pageLayout, "web/"+pageSharedPartial, "web/"+name+".html")
-		if err != nil {
-			return nil, fmt.Errorf("accountui: %s: %w", name, err)
+	if bundle == nil {
+		bundle = i18n.MustDefault()
+	}
+	p := &Pages{t: map[string]map[string]*template.Template{}, i18n: bundle, logger: logger}
+	for _, l := range bundle.Languages() {
+		fm := funcs(bundle.Get(l.Tag))
+		set := map[string]*template.Template{}
+		for _, name := range pageNames {
+			t, err := template.New(name).Funcs(fm).ParseFS(webFS, "web/"+pageLayout, "web/"+pageSharedPartial, "web/"+name+".html")
+			if err != nil {
+				return nil, fmt.Errorf("accountui: %s: %w", name, err)
+			}
+			set[name] = t
 		}
-		p.t[name] = t
+		p.t[l.Tag] = set
 	}
 	return p, nil
 }
@@ -135,6 +145,20 @@ type Layout struct {
 	MFARequired bool
 	// Theme: the user's choice, "light", "dark" or "system" (ThemeFrom).
 	Theme string
+	// LocaleSync: right after a change of language, where account.js
+	// copies it (the language/sync address of the other organizations
+	// signed in on this browser).
+	LocaleSync []string
+}
+
+// LocaleSyncList: LocaleSync for a data-* attribute (space separated).
+func (l Layout) LocaleSyncList() string { return strings.Join(l.LocaleSync, " ") }
+
+// LanguageOption is one choice of the "Language" card.
+type LanguageOption struct {
+	Tag      string
+	Name     string
+	Selected bool
 }
 
 // ThemeCookie keeps the theme chosen in the console (account.js writes
@@ -169,6 +193,9 @@ type ProfilePage struct {
 	FamilyName    string
 	FormError     string
 	Saved         bool
+	// Languages: the choices of the "Language" card, the current one
+	// selected. One language only: no card.
+	Languages []LanguageOption
 }
 
 // Factor is a second step of sign-in (authenticator app, passkey...).
@@ -312,18 +339,23 @@ type HistoryPage struct {
 }
 
 // RenderPage writes a whole page.
-func (p *Pages) RenderPage(w http.ResponseWriter, status int, page string, data any) {
-	p.execute(w, status, page, "layout", data)
+func (p *Pages) RenderPage(w http.ResponseWriter, r *http.Request, status int, page string, data any) {
+	p.execute(w, r, status, page, "layout", data)
 }
 
 // RenderPartial writes one block of a page (a "define" of its template),
 // the answer to an htmx request.
-func (p *Pages) RenderPartial(w http.ResponseWriter, page, block string, data any) {
-	p.execute(w, http.StatusOK, page, block, data)
+func (p *Pages) RenderPartial(w http.ResponseWriter, r *http.Request, page, block string, data any) {
+	p.execute(w, r, http.StatusOK, page, block, data)
 }
 
-func (p *Pages) execute(w http.ResponseWriter, status int, page, block string, data any) {
-	t, ok := p.t[page]
+func (p *Pages) execute(w http.ResponseWriter, r *http.Request, status int, page, block string, data any) {
+	lang := p.i18n.Pick(i18n.PrefsFrom(r.Context()))
+	set, ok := p.t[lang]
+	if !ok {
+		lang, set = i18n.English, p.t[i18n.English]
+	}
+	t, ok := set[page]
 	if !ok {
 		p.logger.Error("accountui: unknown page", "page", page)
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -338,6 +370,7 @@ func (p *Pages) execute(w http.ResponseWriter, status int, page, block string, d
 	}
 	SecurityHeaders(w.Header())
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Language", lang)
 	w.WriteHeader(status)
 	_, _ = w.Write([]byte(b.String()))
 }

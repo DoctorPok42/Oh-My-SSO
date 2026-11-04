@@ -1,23 +1,22 @@
-{{define "subject"}}New backup codes were created{{end}}
+{{define "subject"}}{{t "email.codes.subject" "New backup codes were created"}}{{end}}
 
-{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+{{define "text"}}{{template "hello" .}}
 
-A new set of backup codes was created for your {{.Realm}} account.
-The previous codes no longer work.
+{{t "email.codes.intro" "A new set of backup codes was created for your {realm} account. The previous codes no longer work." "realm" .Realm}}
 
 {{template "details.txt" .}}
-If this was you, keep the new codes somewhere safe.
+{{t "email.codes.was_you" "If this was you, keep the new codes somewhere safe."}}
 
-If it was not you, change your password now and tell your administrator:
+{{t "email.not_you" "Not you?"}} {{t "email.change_and_tell" "Change your password now and tell your administrator."}}
 {{.ForgotPasswordURL}}
 {{end}}
 
-{{define "html"}}{{template "badge.info" "Security"}}
-{{template "title" "New backup codes were created"}}
-<p>Hello{{if .Username}} {{.Username}}{{end}},</p>
-<p>A new set of backup codes was created for your {{.Realm}} account. The previous codes no longer work.</p>
+{{define "html"}}{{template "badge.info" (t "email.badge.security" "Security")}}
+{{template "title" (t "email.codes.subject" "New backup codes were created")}}
+{{template "hello" .}}
+<p>{{t "email.codes.intro" "A new set of backup codes was created for your {realm} account. The previous codes no longer work." "realm" .Realm}}</p>
 {{template "details" .}}
-<p>If this was you, keep the new codes somewhere safe.</p>
-{{template "notyou" "Change your password now and tell your administrator."}}
-{{template "button" (button .ForgotPasswordURL "Change my password")}}
+<p>{{t "email.codes.was_you" "If this was you, keep the new codes somewhere safe."}}</p>
+{{template "notyou" (t "email.change_and_tell" "Change your password now and tell your administrator.")}}
+{{template "button" (button .ForgotPasswordURL (t "email.button.change_password" "Change my password"))}}
 {{end}}

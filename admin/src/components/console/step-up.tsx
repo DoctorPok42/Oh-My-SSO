@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useMemo, useState, useSyncExter
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useT } from "@/i18n/client";
 
 // Step-up: every change needs a second factor verified in the last minutes
 // (10 by default, "MFA step-up max age" of the master realm). The console
@@ -60,6 +61,7 @@ export function StepUpProvider({
   const until = useMemo(() => (freshUntil ? new Date(freshUntil) : null), [freshUntil]);
   const tick = useSyncExternalStore(subscribe, clientTick, serverTick);
   const [dialog, setDialog] = useState<{ reason: Reason; intent?: string } | null>(null);
+  const { t } = useT();
   const pathname = usePathname();
   const search = useSearchParams();
 
@@ -83,11 +85,18 @@ export function StepUpProvider({
   const href = `/auth/step-up?returnTo=${encodeURIComponent(returnTo)}`;
 
   const text: Record<Reason, string> = {
-    edit: "Changes in the admin console need a second factor verified in the last few minutes. You will sign in again with your password and your second factor, then come back here.",
-    expired:
+    edit: t(
+      "step_up.edit",
+      "Changes in the admin console need a second factor verified in the last few minutes. You will sign in again with your password and your second factor, then come back here.",
+    ),
+    expired: t(
+      "step_up.expired",
       "Your last confirmation is too old for this change. Sign in again with your password and your second factor, then do it again.",
-    enroll:
+    ),
+    enroll: t(
+      "step_up.enroll",
       "Your account has no second factor yet. Set one up on the sign-in page, then come back here to make changes.",
+    ),
   };
 
   return (
@@ -98,15 +107,15 @@ export function StepUpProvider({
           <div className="mb-4 grid size-10 place-items-center rounded-full bg-accent-soft text-accent">
             <ShieldCheck className="size-5" />
           </div>
-          <DialogTitle>Confirm it&apos;s you</DialogTitle>
+          <DialogTitle>{t("step_up.confirm", "Confirm it's you")}</DialogTitle>
           <DialogDescription className="text-[14px] leading-6">{dialog && text[dialog.reason]}</DialogDescription>
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setDialog(null)}>
-              Not now
+              {t("step_up.not_now", "Not now")}
             </Button>
             {/* A full navigation (not a client-side Link): it leaves for the IdP. */}
             <a href={href} className={cn(buttonVariants())}>
-              Continue
+              {t("common.continue", "Continue")}
             </a>
           </div>
         </DialogContent>

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -266,13 +267,13 @@ func (s *AdminService) clientScopes(ctx context.Context, realmID string, protoco
 	for _, ch := range in {
 		cs, err := s.scopeInRealm(ctx, realmID, strings.TrimSpace(ch.ID))
 		if err != nil {
-			return nil, nil, adminInvalid("client_scopes", "unknown client scope id %q", ch.ID)
+			return nil, nil, adminInvalid("client_scopes", i18n.M("admin.error.scope_id_unknown", "unknown client scope id \"{id}\"", "id", ch.ID))
 		}
 		ok := cs.Protocol == domain.ClientScopeProtocolBoth ||
 			(protocol == domain.ClientAppProtocolOIDC && cs.Protocol == domain.ClientScopeProtocolOIDC) ||
 			(protocol == domain.ClientAppProtocolSAML2 && cs.Protocol == domain.ClientScopeProtocolSAML2)
 		if !ok {
-			return nil, nil, adminInvalid("client_scopes", "client scope %q is for protocol %q", cs.Name, cs.Protocol)
+			return nil, nil, adminInvalid("client_scopes", i18n.M("admin.error.scope_protocol", "client scope \"{name}\" is for protocol \"{protocol}\"", "name", cs.Name, "protocol", cs.Protocol))
 		}
 		if slices.Contains(names, cs.Name) {
 			continue
@@ -315,7 +316,7 @@ func listOr(p *[]string, def []string) []string {
 
 func checkTTL(field string, v *int) error {
 	if v != nil && (*v < 0 || *v > 365*24*3600) {
-		return adminInvalid(field, "%s: seconds between 0 (default) and one year", field)
+		return adminInvalid(field, i18n.M("admin.error.seconds_range", "{field}: seconds between 0 (default) and one year", "field", field))
 	}
 	return nil
 }
@@ -338,7 +339,7 @@ func mfaInput(policy *string, methods *[]string) (domain.ClientAppMFAPolicy, []d
 // CreateClient creates an OIDC or a SAML client from the drawer.
 func (s *AdminService) CreateClient(ctx context.Context, actor AdminActor, realm *domain.Realm, in ClientInput) (*ClientCreated, error) {
 	if in.Protocol != domain.ClientAppProtocolOIDC && in.Protocol != domain.ClientAppProtocolSAML2 {
-		return nil, adminInvalid("protocol", "protocol must be oidc or saml2")
+		return nil, adminInvalid("protocol", i18n.M("admin.error.protocol_oidc_saml2", "protocol must be oidc or saml2"))
 	}
 	roles, err := s.checkRoleIDs(ctx, realm.ID, listOr(in.AllowedRoleIDs, nil))
 	if err != nil {
@@ -370,7 +371,7 @@ func (s *AdminService) CreateClient(ctx context.Context, actor AdminActor, realm
 		clientID := strOr(in.ClientID, "")
 		if clientID == "" {
 			if name == "" {
-				return nil, adminInvalid("name", "a name or a client_id is required")
+				return nil, adminInvalid("name", i18n.M("admin.error.name_or_client_id", "a name or a client_id is required"))
 			}
 			clientID = generatedClientID(name)
 		}
@@ -489,7 +490,7 @@ func (s *AdminService) UpdateClient(ctx context.Context, actor AdminActor, realm
 	if in.Name != nil {
 		n := strings.TrimSpace(*in.Name)
 		if n == "" {
-			return ClientView{}, adminInvalid("name", "name cannot be empty")
+			return ClientView{}, adminInvalid("name", i18n.M("admin.error.name_empty", "name cannot be empty"))
 		}
 		upd.Name = &n
 		changed = append(changed, "name")
@@ -539,7 +540,7 @@ func (s *AdminService) UpdateClient(ctx context.Context, actor AdminActor, realm
 	case domain.ClientAppProtocolSAML2:
 		certs, err := app.Certificates()
 		if err != nil {
-			return ClientView{}, adminInvalid("certificates", "stored certificates cannot be read: %v", err)
+			return ClientView{}, adminInvalid("certificates", i18n.M("admin.error.certs_unreadable", "stored certificates cannot be read: {error}", "error", err))
 		}
 		norm, err := NormalizeSAMLClient(SAMLClientInput{
 			Name: strOr(upd.Name, app.Name), EntityID: strOr(in.EntityID, app.EntityID), ACSURL: strOr(in.ACSURL, app.ACSURL),
@@ -552,7 +553,7 @@ func (s *AdminService) UpdateClient(ctx context.Context, actor AdminActor, realm
 		}
 		if norm.EntityID != app.EntityID {
 			if other, err := s.d.Clients.GetByRealmAndEntityID(ctx, realm.ID, norm.EntityID); err == nil && other.ID != app.ID {
-				return ClientView{}, adminConflict("entity_id_taken", "entity_id %q is already used in this realm", norm.EntityID)
+				return ClientView{}, adminConflict("entity_id_taken", i18n.M("admin.error.entity_id_taken", "entity_id \"{entity_id}\" is already used in this realm", "entity_id", norm.EntityID))
 			}
 		}
 		upd.EntityID, upd.ACSURL, upd.SLOURL, upd.NameIDFormat = &norm.EntityID, &norm.ACSURL, &norm.SLOURL, &norm.NameIDFormat
@@ -647,7 +648,7 @@ func (s *AdminService) RotateClientSecret(ctx context.Context, actor AdminActor,
 		return "", errManagedByConfig
 	}
 	if app.Protocol != domain.ClientAppProtocolOIDC {
-		return "", adminInvalid("protocol", "only OIDC clients have a secret")
+		return "", adminInvalid("protocol", i18n.M("admin.error.oidc_secret_only", "only OIDC clients have a secret"))
 	}
 	secret, err := s.d.OIDCClients.RotateSecret(ctx, realm.ID, app.ClientID)
 	if err != nil {
@@ -695,7 +696,7 @@ func (s *AdminService) samlClientForCerts(ctx context.Context, realm *domain.Rea
 		return nil, errManagedByConfig
 	}
 	if app.Protocol != domain.ClientAppProtocolSAML2 {
-		return nil, adminInvalid("protocol", "only SAML clients have certificates")
+		return nil, adminInvalid("protocol", i18n.M("admin.error.saml_certs_only", "only SAML clients have certificates"))
 	}
 	return app, nil
 }

@@ -1,16 +1,16 @@
 {{define "content"}}
-<p class="back"><a href="{{.Base}}/security">← Security</a></p>
-<div class="page-header"><h1 class="page-title">Remove {{if .Factor.Name}}{{.Factor.Name}}{{else}}this {{.Factor.KindLabel}}{{end}}?</h1></div>
+<p class="back"><a href="{{.Base}}/security">← {{t "account.tab.security" "Security"}}</a></p>
+<div class="page-header"><h1 class="page-title">{{if .Factor.Name}}{{t "account.remove.title_named" "Remove {name}?" "name" .Factor.Name}}{{else}}{{t "account.remove.title_kind" "Remove this {kind}?" "kind" .Factor.KindLabel}}{{end}}</h1></div>
 <section class="card stack">
-  <p>You will not be able to use this {{.Factor.KindLabel}} to sign in to {{.Org.Display}} any more.</p>
+  <p>{{t "account.remove.text" "You will not be able to use this {kind} to sign in to {org} any more." "kind" .Factor.KindLabel "org" .Org.Display}}</p>
   {{- if .Last}}
-  <p class="banner banner-warning" role="note">It is your last second step: your account will be protected by your password only, and your backup codes will stop working.</p>
+  <p class="banner banner-warning" role="note">{{t "account.remove.last" "It is your last second step: your account will be protected by your password only, and your backup codes will stop working."}}</p>
   {{- end}}
   {{- with .FormError}}<p class="banner banner-danger" role="alert">{{.}}</p>{{end}}
   <form class="actions" method="post" action="{{.Base}}/security/factors/{{.Factor.ID}}/remove">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <button type="submit" class="btn btn-destructive" id="remove-confirm">Remove</button>
-    <a class="btn btn-secondary" href="{{.Base}}/security">Cancel</a>
+    <button type="submit" class="btn btn-destructive" id="remove-confirm">{{t "common.remove" "Remove"}}</button>
+    <a class="btn btn-secondary" href="{{.Base}}/security">{{t "common.cancel" "Cancel"}}</a>
   </form>
 </section>
 {{end}}

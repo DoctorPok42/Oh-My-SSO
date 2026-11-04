@@ -1,16 +1,21 @@
 import Link from "next/link";
 import { AuthCard } from "@/components/console/auth-card";
 import { buttonVariants } from "@/components/ui/button";
+import { getI18n } from "@/i18n/server";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Not found" };
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t("not_found.title", "Not found") };
+}
 
-export default function NotFound() {
+export default async function NotFound() {
+  const { t } = await getI18n();
   return (
-    <AuthCard title="Not found">
-      <p>This page or realm does not exist, or it was renamed.</p>
+    <AuthCard title={t("not_found.title", "Not found")}>
+      <p>{t("not_found.text", "This page or realm does not exist, or it was renamed.")}</p>
       <Link href="/" className={cn(buttonVariants({ size: "md" }), "w-full")}>
-        Back to the console
+        {t("not_found.back", "Back to the console")}
       </Link>
     </AuthCard>
   );

@@ -12,6 +12,7 @@ import (
 	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
+	"sso.internal/sso/internal/i18n"
 )
 
 
@@ -72,20 +73,20 @@ type CreateRealmResult struct {
 func (s *AdminService) CreateRealm(ctx context.Context, actor AdminActor, in CreateRealmInput) (*CreateRealmResult, error) {
 	name := strings.TrimSpace(in.Name)
 	if !realmNamePattern.MatchString(name) {
-		return nil, adminInvalid("name", "realm name: 2-63 characters among a-z 0-9 and -, starting with a letter or digit")
+		return nil, adminInvalid("name", i18n.M("admin.error.realm_name_bad", "realm name: 2-63 characters among a-z 0-9 and -, starting with a letter or digit"))
 	}
 	display := strings.TrimSpace(in.DisplayName)
 	if len(display) > 128 {
-		return nil, adminInvalid("display_name", "display name: at most 128 characters")
+		return nil, adminInvalid("display_name", i18n.M("admin.error.display_name_long", "display name: at most 128 characters"))
 	}
 	if _, err := s.d.Realms.GetByName(ctx, name); err == nil {
-		return nil, adminConflict("name_taken", "a realm named %q already exists", name)
+		return nil, adminConflict("name_taken", i18n.M("admin.error.realm_name_taken", "a realm named \"{name}\" already exists", "name", name))
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return nil, err
 	}
 	realm, err := s.d.Realms.Create(ctx, repository.CreateRealmParams{Name: name, DisplayName: display})
 	if errors.Is(err, repository.ErrReservedRealmName) {
-		return nil, adminInvalid("name", "%q is reserved (it collides with a route of the server)", name)
+		return nil, adminInvalid("name", i18n.M("admin.error.realm_name_reserved", "\"{name}\" is reserved (it collides with a route of the server)", "name", name))
 	}
 	if err != nil {
 		return nil, fmt.Errorf("create realm: %w", err)
@@ -133,7 +134,7 @@ func (s *AdminService) UpdateRealm(ctx context.Context, actor AdminActor, name s
 	if in.DisplayName != nil {
 		d := strings.TrimSpace(*in.DisplayName)
 		if len(d) > 128 {
-			return RealmView{}, adminInvalid("display_name", "display name: at most 128 characters")
+			return RealmView{}, adminInvalid("display_name", i18n.M("admin.error.display_name_long", "display name: at most 128 characters"))
 		}
 		params.DisplayName = &d
 		details["display_name"] = d
@@ -142,10 +143,10 @@ func (s *AdminService) UpdateRealm(ctx context.Context, actor AdminActor, name s
 		switch *in.Status {
 		case domain.RealmActive, domain.RealmInactive:
 		default:
-			return RealmView{}, adminInvalid("status", "status must be active or inactive")
+			return RealmView{}, adminInvalid("status", i18n.M("admin.error.realm_status", "status must be active or inactive"))
 		}
 		if realm.IsSystemRealm {
-			return RealmView{}, adminRefused("system_realm", "the master realm cannot be disabled: the admin console signs in through it")
+			return RealmView{}, adminRefused("system_realm", i18n.M("admin.error.master_disable", "the master realm cannot be disabled: the admin console signs in through it"))
 		}
 		params.Status = in.Status
 		details["status"] = string(*in.Status)
@@ -189,6 +190,7 @@ type SettingsView struct {
 	KeyRotationGraceHours       int       `json:"key_rotation_grace_hours"`
 	NotificationEmailEnabled    bool      `json:"notification_email_enabled"`
 	SuspiciousLoginEmailEnabled bool      `json:"suspicious_login_email_enabled"`
+	DefaultLocale               string    `json:"default_locale"`
 	UpdatedAt                   time.Time `json:"updated_at"`
 	UpdatedBy                   string    `json:"updated_by"`
 }
@@ -223,7 +225,8 @@ func (s *AdminService) GetSettings(ctx context.Context, realm *domain.Realm) (*S
 		RememberMeMaxDays: st.RememberMeMaxDays, LockoutThreshold: st.LockoutThreshold, LockoutDurationMinutes: st.LockoutDurationMinutes,
 		IPAllowlist: allow, MFARequiredGlobally: st.MFARequiredGlobally, MFAStepUpMaxAgeMinutes: st.MFAStepUpMaxAgeMinutes,
 		KeyRotationGraceHours: st.KeyRotationGraceHours, NotificationEmailEnabled: st.NotificationEmailEnabled,
-		SuspiciousLoginEmailEnabled: st.SuspiciousLoginEmailEnabled, UpdatedAt: st.UpdatedAt, UpdatedBy: st.UpdatedBy,
+		SuspiciousLoginEmailEnabled: st.SuspiciousLoginEmailEnabled, DefaultLocale: localeOrEnglish(st.DefaultLocale),
+		UpdatedAt: st.UpdatedAt, UpdatedBy: st.UpdatedBy,
 	}, nil
 }
 
@@ -246,6 +249,7 @@ type SettingsPatch struct {
 	KeyRotationGraceHours       *int
 	NotificationEmailEnabled    *bool
 	SuspiciousLoginEmailEnabled *bool
+	DefaultLocale               *string
 }
 
 // UpdateSettings validates and applies a patch. Changes apply within a
@@ -253,7 +257,7 @@ type SettingsPatch struct {
 func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, realm *domain.Realm, p SettingsPatch) (*SettingsView, error) {
 	rangeCheck := func(field string, v *int, lo, hi int) error {
 		if v != nil && (*v < lo || *v > hi) {
-			return adminInvalid(field, "%s must be between %d and %d", field, lo, hi)
+			return adminInvalid(field, i18n.M("admin.error.range", "{field} must be between {lo} and {hi}", "field", field, "lo", lo, "hi", hi))
 		}
 		return nil
 	}
@@ -288,13 +292,20 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 				continue
 			}
 			if _, _, err := net.ParseCIDR(entry); err != nil && net.ParseIP(entry) == nil {
-				return nil, adminInvalid("ip_allowlist", "%q is neither an IP address nor a CIDR range", entry)
+				return nil, adminInvalid("ip_allowlist", i18n.M("admin.error.ip_entry", "\"{entry}\" is neither an IP address nor a CIDR range", "entry", entry))
 			}
 			allow = append(allow, entry)
 		}
 	}
+	if p.DefaultLocale != nil {
+		lang := s.d.Languages.Match(*p.DefaultLocale)
+		if lang == "" {
+			return nil, adminInvalid("default_locale", i18n.M("admin.error.locale_unknown", "\"{locale}\" is not an available language", "locale", *p.DefaultLocale))
+		}
+		p.DefaultLocale = &lang
+	}
 	if isMaster(realm) && p.MFARequiredGlobally != nil && !*p.MFARequiredGlobally {
-		return nil, adminRefused("system_realm", "MFA stays required in the master realm: its accounts administer the whole instance")
+		return nil, adminRefused("system_realm", i18n.M("admin.error.mfa_master_full", "MFA stays required in the master realm: its accounts administer the whole instance"))
 	}
 
 	st, err := s.d.Settings.GetByRealmID(ctx, realm.ID)
@@ -317,9 +328,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		return nil, err
 	}
 	if p.SessionIdleMinutes != nil && merged.MFAStepUpMaxAgeMinutes > merged.SessionIdleMinutes {
-		return nil, adminInvalid("session_idle_minutes",
-			"the idle timeout (%d minutes) cannot be shorter than the MFA step-up window (%d minutes): the session would end first and ask to sign in again",
-			merged.SessionIdleMinutes, merged.MFAStepUpMaxAgeMinutes)
+		return nil, adminInvalid("session_idle_minutes", i18n.M("admin.error.idle_vs_stepup", "the idle timeout ({idle} minutes) cannot be shorter than the MFA step-up window ({stepup} minutes): the session would end first and ask to sign in again", "idle", merged.SessionIdleMinutes, "stepup", merged.MFAStepUpMaxAgeMinutes))
 	}
 	by := actor.By()
 	upd := repository.UpdateInstanceSettingsParams{
@@ -330,7 +339,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		LockoutDurationMinutes: p.LockoutDurationMinutes, IPAllowlist: allow,
 		MFARequiredGlobally: p.MFARequiredGlobally, MFAStepUpMaxAgeMinutes: p.MFAStepUpMaxAgeMinutes,
 		KeyRotationGraceHours: p.KeyRotationGraceHours, NotificationEmailEnabled: p.NotificationEmailEnabled,
-		SuspiciousLoginEmailEnabled: p.SuspiciousLoginEmailEnabled, UpdatedBy: &by,
+		SuspiciousLoginEmailEnabled: p.SuspiciousLoginEmailEnabled, DefaultLocale: p.DefaultLocale, UpdatedBy: &by,
 	}
 	if _, err := s.d.Settings.Update(ctx, st.ID, upd); err != nil {
 		return nil, fmt.Errorf("update settings: %w", err)
@@ -370,6 +379,9 @@ func settingsChanges(p SettingsPatch) map[string]interface{} {
 	if p.IPAllowlist != nil {
 		out["ip_allowlist"] = *p.IPAllowlist
 	}
+	if p.DefaultLocale != nil {
+		out["default_locale"] = *p.DefaultLocale
+	}
 	return out
 }
 
@@ -392,17 +404,22 @@ func ValidateSessionDurations(st *domain.InstanceSettings) error {
 	const day = 24 * time.Hour
 	switch {
 	case d.RememberMeIdleTimeout > d.RememberMeMaxLifetime:
-		return adminInvalid("remember_me_idle_days",
-			"the idle timeout of a remembered session (%d days) cannot be longer than its maximum duration (%d days)",
-			d.RememberMeIdleTimeout/day, d.RememberMeMaxLifetime/day)
+		return adminInvalid("remember_me_idle_days", i18n.M("admin.error.remember_idle_gt_max", "the idle timeout of a remembered session ({idle} days) cannot be longer than its maximum duration ({max} days)", "idle", d.RememberMeIdleTimeout/day, "max", d.RememberMeMaxLifetime/day))
 	case d.RememberMeMaxLifetime < d.MaxLifetime:
-		return adminInvalid("remember_me_max_days",
-			"a remembered session (%d days) cannot be shorter than a normal session (%d hours)",
-			d.RememberMeMaxLifetime/day, d.MaxLifetime/time.Hour)
+		return adminInvalid("remember_me_max_days", i18n.M("admin.error.remember_max_lt_normal", "a remembered session ({days} days) cannot be shorter than a normal session ({hours} hours)", "days", d.RememberMeMaxLifetime/day, "hours", d.MaxLifetime/time.Hour))
 	case d.RememberMeIdleTimeout < d.IdleTimeout:
-		return adminInvalid("remember_me_idle_days",
-			"the idle timeout of a remembered session (%d days) cannot be shorter than the one of a normal session (%d minutes)",
-			d.RememberMeIdleTimeout/day, d.IdleTimeout/time.Minute)
+		return adminInvalid("remember_me_idle_days", i18n.M("admin.error.remember_idle_lt_normal", "the idle timeout of a remembered session ({days} days) cannot be shorter than the one of a normal session ({minutes} minutes)", "days", d.RememberMeIdleTimeout/day, "minutes", d.IdleTimeout/time.Minute))
 	}
 	return nil
 }
+
+// localeOrEnglish: a settings row older than default_locale reads "".
+func localeOrEnglish(tag string) string {
+	if tag == "" {
+		return i18n.English
+	}
+	return tag
+}
+
+// Languages lists the languages the IdP can show, English first.
+func (s *AdminService) Languages() []i18n.Language { return s.d.Languages.Languages() }

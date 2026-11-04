@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>Sign in · {{.RealmDisplay}}</title>
+<title>{{t "login.page_title" "Sign in · {realm}" "realm" .RealmDisplay}}</title>
 <link rel="stylesheet" href="{{.Assets}}/omsso.css">
 <link rel="stylesheet" href="{{.Assets}}/login.css">
+{{template "i18n-js" "login.js."}}
 <script src="{{.Assets}}/login.js" defer></script>
 </head>
 <body>
@@ -20,15 +21,15 @@
   {{template "logo"}}
   <header>
     <p class="auth-eyebrow">{{.RealmDisplay}}</p>
-    <h1 class="auth-title" id="title">{{if eq .Mode "login"}}Sign in{{else if eq .Mode "pick"}}Pick an account{{else if eq .Mode "stepup"}}Confirm it's you{{else}}One more step{{end}}</h1>
-    {{if .ClientName}}<p class="auth-subtitle">to continue to <strong>{{.ClientName}}</strong></p>
+    <h1 class="auth-title" id="title">{{if eq .Mode "login"}}{{t "login.title.sign_in" "Sign in"}}{{else if eq .Mode "pick"}}{{t "login.title.pick" "Pick an account"}}{{else if eq .Mode "stepup"}}{{t "login.title.stepup" "Confirm it's you"}}{{else}}{{t "login.title.enroll" "One more step"}}{{end}}</h1>
+    {{if .ClientName}}<p class="auth-subtitle">{{th "login.subtitle.continue_to" "to continue to <strong>{client}</strong>" "client" .ClientName}}</p>
     {{- else if .Subtitle}}<p class="auth-subtitle">{{.Subtitle}}</p>{{end}}
   </header>
 
   <div class="auth-body">
   {{with .Notice}}<p class="banner" role="note">{{.}}</p>{{end}}
   <p class="banner banner-danger" id="error" role="alert" hidden></p>
-  <noscript><p class="banner banner-danger">This page needs JavaScript to sign you in.</p></noscript>
+  <noscript><p class="banner banner-danger">{{t "login.noscript" "This page needs JavaScript to sign you in."}}</p></noscript>
 
   <section class="stack" id="accounts" {{if ne .Mode "pick"}}hidden{{end}}>
     <ul class="accounts">
@@ -37,81 +38,81 @@
         <button type="button" class="account-pick" data-identifier="{{.Identifier}}" data-account="{{.ID}}" data-methods="{{.Methods}}" data-signed-in="{{if .SignedIn}}on{{end}}">
           <span class="avatar" aria-hidden="true">{{.Initials}}</span>
           <span class="who"><strong>{{.Name}}</strong>{{if .Label}}<span>{{.Label}}</span>{{end}}</span>
-          {{if .SignedIn}}<span class="badge badge-success">Signed in</span>{{else}}<span class="badge">Signed out</span>{{end}}
+          {{if .SignedIn}}<span class="badge badge-success">{{t "login.account.signed_in" "Signed in"}}</span>{{else}}<span class="badge">{{t "login.account.signed_out" "Signed out"}}</span>{{end}}
         </button>
         {{- if .ID}}
-        <button type="button" class="btn btn-link btn-xs forget" data-account="{{.ID}}" data-signed-in="{{if .SignedIn}}on{{end}}">{{if .SignedIn}}Sign out and forget{{else}}Forget{{end}}</button>
+        <button type="button" class="btn btn-link btn-xs forget" data-account="{{.ID}}" data-signed-in="{{if .SignedIn}}on{{end}}">{{if .SignedIn}}{{t "login.account.sign_out_forget" "Sign out and forget"}}{{else}}{{t "login.account.forget" "Forget"}}{{end}}</button>
         {{- end}}
       </li>
       {{- end}}
     </ul>
-    <button type="button" class="btn btn-secondary btn-md btn-block" id="other-account">Use another account</button>
+    <button type="button" class="btn btn-secondary btn-md btn-block" id="other-account">{{t "login.account.other" "Use another account"}}</button>
   </section>
 
   <form class="stack" id="password-form" {{if ne .Mode "login"}}hidden{{end}}>
     <div>
-      <label class="label" for="identifier">Username or e-mail</label>
+      <label class="label" for="identifier">{{t "login.field.identifier" "Username or e-mail"}}</label>
       <input class="input" id="identifier" name="identifier" autocomplete="username webauthn" required value="{{.LoginHint}}" autofocus>
     </div>
     <div>
-      <label class="label" for="password">Password</label>
+      <label class="label" for="password">{{t "login.field.password" "Password"}}</label>
       <input class="input" id="password" name="password" type="password" autocomplete="current-password" required>
-      {{if .ForgotPasswordURL}}<p class="field-aside"><a href="{{.ForgotPasswordURL}}">Forgot password?</a></p>{{end}}
+      {{if .ForgotPasswordURL}}<p class="field-aside"><a href="{{.ForgotPasswordURL}}">{{t "login.forgot_password" "Forgot password?"}}</a></p>{{end}}
     </div>
     {{if .RememberMe}}
     <div class="check-field" id="remember">
       <input class="checkbox" id="remember-me" name="remember_me" type="checkbox" aria-describedby="remember-me-hint">
       <div>
-        <label for="remember-me">Keep me signed in</label>
-        <p class="check-hint" id="remember-me-hint">Stay signed in on this device for up to {{.RememberMeDays}} days. Leave this unchecked on a shared or public computer.</p>
+        <label for="remember-me">{{t "login.remember.label" "Keep me signed in"}}</label>
+        <p class="check-hint" id="remember-me-hint">{{tn "login.remember.hint" .RememberMeDays "Stay signed in on this device for up to {count} day. Leave this unchecked on a shared or public computer." "Stay signed in on this device for up to {count} days. Leave this unchecked on a shared or public computer."}}</p>
       </div>
     </div>
     {{end}}
-    <button type="submit" class="btn btn-md btn-block" id="password-submit">Sign in</button>
+    <button type="submit" class="btn btn-md btn-block" id="password-submit">{{t "login.submit" "Sign in"}}</button>
   </form>
 
   <section class="stack" id="passkey-step" hidden>
-    <p id="passkey-hint">Use your passkey or security key.</p>
+    <p id="passkey-hint">{{t "login.passkey.hint" "Use your passkey or security key."}}</p>
     <p class="prompt-status" id="passkey-status" role="status" hidden></p>
-    <button type="button" class="btn btn-md btn-block" id="passkey-btn">Continue</button>
+    <button type="button" class="btn btn-md btn-block" id="passkey-btn">{{t "login.continue" "Continue"}}</button>
   </section>
 
   <form class="stack" id="code-form" hidden>
-    <p id="code-hint">Enter the code from your authenticator app.</p>
+    <p id="code-hint">{{t "login.code.hint_totp" "Enter the code from your authenticator app."}}</p>
     <div>
-      <label class="label" for="code" id="code-label">Code</label>
+      <label class="label" for="code" id="code-label">{{t "login.code.label" "Code"}}</label>
       <input class="input" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" required>
     </div>
-    <button type="submit" class="btn btn-md btn-block">Verify</button>
+    <button type="submit" class="btn btn-md btn-block">{{t "login.code.verify" "Verify"}}</button>
   </form>
 
   <div class="check-field" id="trust" hidden>
     <input class="checkbox" id="trust-device" type="checkbox" aria-describedby="trust-device-hint">
     <div>
-      <label for="trust-device">Don't ask again on this device</label>
+      <label for="trust-device">{{t "login.trust.label" "Don't ask again on this device"}}</label>
       <p class="check-hint" id="trust-device-hint"></p>
     </div>
   </div>
 
   <section class="stack-sm" id="other-ways" hidden>
-    <p id="ways-hint">Choose how you want to sign in:</p>
+    <p id="ways-hint">{{t "login.ways.hint" "Choose how you want to sign in:"}}</p>
     <ul class="ways stack-sm" id="ways"></ul>
   </section>
 
   <p class="auth-links" id="step-links" {{if ne .Mode "login"}}hidden{{end}}>
-    <button type="button" class="btn btn-link" id="try-another" hidden>Try another way</button>
+    <button type="button" class="btn btn-link" id="try-another" hidden>{{t "login.try_another" "Try another way"}}</button>
     {{- if .Accounts}}
-    <button type="button" class="btn btn-link" id="back-to-accounts" hidden>Choose another account</button>
+    <button type="button" class="btn btn-link" id="back-to-accounts" hidden>{{t "login.back_to_accounts" "Choose another account"}}</button>
     {{- end}}
   </p>
 
   <section class="stack-sm" id="enroll" {{if ne .Mode "enroll"}}hidden{{end}}>
-    <p>This application requires a second factor (authenticator app or passkey), and your account does not have one that it accepts yet.</p>
-    {{if .EnrollURL}}<p><a href="{{.EnrollURL}}" target="_blank" rel="noopener">Add one in your account</a> (it opens in a new tab), then come back here and reload this page.</p>
-    {{else}}<p>Add one from your account, or ask your administrator, then sign in again.</p>{{end}}
+    <p>{{t "login.enroll.text" "This application requires a second factor (authenticator app or passkey), and your account does not have one that it accepts yet."}}</p>
+    {{if .EnrollURL}}<p><a href="{{.EnrollURL}}" target="_blank" rel="noopener">{{t "login.enroll.link" "Add one in your account"}}</a> {{t "login.enroll.after_link" "(it opens in a new tab), then come back here and reload this page."}}</p>
+    {{else}}<p>{{t "login.enroll.no_link" "Add one from your account, or ask your administrator, then sign in again."}}</p>{{end}}
   </section>
 
-  {{if .CancelURL}}<footer class="auth-links"><a href="{{.CancelURL}}">{{if .CancelText}}{{.CancelText}}{{else}}Cancel and go back to the application{{end}}</a></footer>{{end}}
+  {{if .CancelURL}}<footer class="auth-links"><a href="{{.CancelURL}}">{{if .CancelText}}{{.CancelText}}{{else}}{{t "login.cancel" "Cancel and go back to the application"}}{{end}}</a></footer>{{end}}
   </div>
 </div>
 {{template "auth-footer"}}

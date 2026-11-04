@@ -1,16 +1,18 @@
 import { CardSkeleton } from "@/components/console/skeletons";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getI18n } from "@/i18n/server";
 import { PAGES } from "@/lib/pages";
 
 // Shown at once while the dashboard loads (loading.tsx = a React Suspense
 // fallback for this page): same grid as the page, grey shapes for the numbers.
 // https://nextjs.org/docs/app/api-reference/file-conventions/loading
-export default function Loading() {
+export default async function Loading() {
+  const { tm } = await getI18n();
   return (
     <div aria-busy="true">
       <div className="mb-6">
-        <h1 className="text-[22px] font-semibold">{PAGES.dashboard.title}</h1>
+        <h1 className="text-[22px] font-semibold">{tm(PAGES.dashboard.title)}</h1>
         <Skeleton className="mt-2 h-4 w-72" />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

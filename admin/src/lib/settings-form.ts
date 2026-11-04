@@ -21,6 +21,7 @@ export type SettingsPatch = Partial<
     | "key_rotation_grace_hours"
     | "notification_email_enabled"
     | "suspicious_login_email_enabled"
+    | "default_locale"
   >
 >;
 
@@ -52,6 +53,7 @@ export function settingsDiff(
   form: Record<NumberKey, string>,
   allowlist: string,
   toggles: SettingsToggles,
+  locale?: string,
 ): SettingsPatch {
   const patch: SettingsPatch = {};
   for (const k of NUMBERS) {
@@ -64,5 +66,6 @@ export function settingsDiff(
   if (toggles.suspicious !== before.suspicious_login_email_enabled)
     patch.suspicious_login_email_enabled = toggles.suspicious;
   if (toggles.remember !== before.remember_me_enabled) patch.remember_me_enabled = toggles.remember;
+  if (locale && locale !== (before.default_locale || "en")) patch.default_locale = locale;
   return patch;
 }

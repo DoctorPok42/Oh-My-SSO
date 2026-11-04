@@ -1,6 +1,7 @@
 package adminapi
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"log/slog"
 	"net/http"
@@ -83,8 +84,7 @@ func (s *Server) recordRightsChange(next http.Handler) http.Handler {
 		}
 		if err := s.d.Rights.Changed(r.Context(), s.now()); err != nil {
 			slog.ErrorContext(r.Context(), "admin api: cannot record a change of the master realm", "error", err)
-			writeError(w, http.StatusServiceUnavailable, "unavailable",
-				"changes to the master realm are paused: Valkey is unreachable")
+			writeErrorT(w, r, http.StatusServiceUnavailable, "unavailable", i18n.M("admin.error.rights_paused", "changes to the master realm are paused: Valkey is unreachable"))
 			return
 		}
 		defer func() {

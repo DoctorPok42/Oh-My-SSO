@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n/client";
 import type { Permission } from "@/lib/types";
 import { createPermission, deletePermission } from "./actions";
 
@@ -22,16 +23,19 @@ export function NewPermissionButton({ realm }: { realm: string }) {
   const [error, setError] = useState<{ field?: string; message: string } | null>(null);
   const stepUp = useStepUp();
   const { run, pending } = useAction();
+  const { t } = useT();
   return (
     <>
       <Button onClick={() => stepUp.ensure(() => setOpen(true))}>
         <Plus />
-        New permission
+        {t("permissions.new", "New permission")}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-          <DialogTitle>New permission</DialogTitle>
-          <DialogDescription>Applications check it as resource:action, e.g. invoice:approve.</DialogDescription>
+          <DialogTitle>{t("permissions.new", "New permission")}</DialogTitle>
+          <DialogDescription>
+            {t("permissions.new_description", "Applications check it as resource:action, e.g. invoice:approve.")}
+          </DialogDescription>
           <form
             className="mt-5 space-y-4"
             onSubmit={async (e) => {
@@ -46,7 +50,7 @@ export function NewPermissionButton({ realm }: { realm: string }) {
                   }),
                 {
                   quiet: true,
-                  success: "Permission created",
+                  success: t("permissions.created", "Permission created"),
                 },
               );
               if (!r.ok) return setError({ field: r.field, message: r.message });
@@ -57,7 +61,11 @@ export function NewPermissionButton({ realm }: { realm: string }) {
             }}
           >
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Resource" htmlFor="p-res" error={error?.field === "resource" ? error.message : undefined}>
+              <Field
+                label={t("permissions.resource", "Resource")}
+                htmlFor="p-res"
+                error={error?.field === "resource" ? error.message : undefined}
+              >
                 <Input
                   id="p-res"
                   className="font-mono"
@@ -66,7 +74,11 @@ export function NewPermissionButton({ realm }: { realm: string }) {
                   placeholder="invoice"
                 />
               </Field>
-              <Field label="Action" htmlFor="p-act" error={error?.field === "action" ? error.message : undefined}>
+              <Field
+                label={t("permissions.action", "Action")}
+                htmlFor="p-act"
+                error={error?.field === "action" ? error.message : undefined}
+              >
                 <Input
                   id="p-act"
                   className="font-mono"
@@ -76,16 +88,16 @@ export function NewPermissionButton({ realm }: { realm: string }) {
                 />
               </Field>
             </div>
-            <Field label="Description" htmlFor="p-desc" optional>
+            <Field label={t("scopes.field.description", "Description")} htmlFor="p-desc" optional>
               <Input id="p-desc" value={description} onChange={(e) => setDescription(e.target.value)} />
             </Field>
             {error && !error.field && <p className="text-[12px] text-danger">{error.message}</p>}
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setOpen(false)}>
-                Cancel
+                {t("common.cancel", "Cancel")}
               </Button>
               <Button type="submit" loading={pending} disabled={pending || !resource.trim() || !action.trim()}>
-                Create
+                {t("common.create", "Create")}
               </Button>
             </div>
           </form>
@@ -96,13 +108,17 @@ export function NewPermissionButton({ realm }: { realm: string }) {
 }
 
 export function PermissionDelete({ realm, permission }: { realm: string; permission: Permission }) {
+  const { t } = useT();
   return (
     <ConfirmAction
-      trigger="Delete"
-      title={`Delete ${permission.name}?`}
-      description="Roles and groups that grant it lose it. Applications that check it will deny access."
-      confirmLabel="Delete permission"
-      success="Permission deleted"
+      trigger={t("common.delete", "Delete")}
+      title={t("clients.delete.title", "Delete {name}?", { name: permission.name })}
+      description={t(
+        "permissions.delete_text",
+        "Roles and groups that grant it lose it. Applications that check it will deny access.",
+      )}
+      confirmLabel={t("permissions.delete_confirm", "Delete permission")}
+      success={t("permissions.deleted", "Permission deleted")}
       action={() => deletePermission(realm, permission.id)}
     />
   );

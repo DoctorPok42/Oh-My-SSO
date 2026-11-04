@@ -3,6 +3,7 @@
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { X } from "lucide-react";
 import type * as React from "react";
+import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
 // Modal dialog (Radix Dialog: focus trap, Escape, aria-modal), in two shapes:
@@ -27,10 +28,11 @@ function Overlay({ className, ...props }: React.ComponentProps<typeof DialogPrim
 }
 
 function CloseButton() {
+  const { t } = useT();
   return (
     <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm p-1 text-text-muted transition-colors hover:bg-surface-alt hover:text-text-primary">
       <X className="size-4" />
-      <span className="sr-only">Close</span>
+      <span className="sr-only">{t("common.close", "Close")}</span>
     </DialogPrimitive.Close>
   );
 }

@@ -1,24 +1,22 @@
-{{define "subject"}}A sign-in method was added to your account{{end}}
+{{define "subject"}}{{t "email.mfa_added.subject" "A sign-in method was added to your account"}}{{end}}
 
-{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+{{define "text"}}{{template "hello" .}}
 
-A new second step for signing in was added to your {{.Realm}} account:
-{{.MethodLabel}}{{if .MethodName}} "{{.MethodName}}"{{end}}.
+{{tp "email.mfa_added.intro" "A new second step for signing in was added to your {realm} account: <strong>{method}</strong>." "realm" .Realm "method" .MethodLabel}}{{if .MethodName}} “{{.MethodName}}”{{end}}
 
 {{template "details.txt" .}}
-If this was you, there is nothing to do.
+{{t "email.nothing_to_do" "If this was you, there is nothing to do."}}
 
-If it was not you, someone may be trying to take over your account:
-change your password now and tell your administrator.
+{{t "email.not_you" "Not you?"}} {{t "email.mfa_added.not_you" "Someone may be trying to take over your account: change your password now and tell your administrator."}}
 {{.ForgotPasswordURL}}
 {{end}}
 
-{{define "html"}}{{template "badge.info" "Security"}}
-{{template "title" "A sign-in method was added"}}
-<p>Hello{{if .Username}} {{.Username}}{{end}},</p>
-<p>A new second step for signing in was added to your {{.Realm}} account: <strong>{{.MethodLabel}}</strong>{{if .MethodName}} “{{.MethodName}}”{{end}}.</p>
+{{define "html"}}{{template "badge.info" (t "email.badge.security" "Security")}}
+{{template "title" (t "email.mfa_added.title" "A sign-in method was added")}}
+{{template "hello" .}}
+<p>{{th "email.mfa_added.intro" "A new second step for signing in was added to your {realm} account: <strong>{method}</strong>." "realm" .Realm "method" .MethodLabel}}{{if .MethodName}} “{{.MethodName}}”{{end}}</p>
 {{template "details" .}}
-<p>If this was you, there is nothing to do.</p>
-{{template "notyou" "Someone may be trying to take over your account: change your password now and tell your administrator."}}
-{{template "button" (button .ForgotPasswordURL "Change my password")}}
+<p>{{t "email.nothing_to_do" "If this was you, there is nothing to do."}}</p>
+{{template "notyou" (t "email.mfa_added.not_you" "Someone may be trying to take over your account: change your password now and tell your administrator.")}}
+{{template "button" (button .ForgotPasswordURL (t "email.button.change_password" "Change my password"))}}
 {{end}}

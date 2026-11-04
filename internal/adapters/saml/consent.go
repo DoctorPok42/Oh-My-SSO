@@ -14,11 +14,19 @@ import (
 	"sso.internal/sso/internal/adapters/loginui"
 	"sso.internal/sso/internal/clientip"
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/i18n"
 	"sso.internal/sso/internal/core/domain"
 )
 
 
 const scopeNameIDEmail = "email"
+
+// The lines that are ours (not a scope description written by an
+// administrator), in the reader's language on the page.
+var standardConsentTexts = map[string]loginui.ConsentText{
+	scopeNameIDEmail: {Title: i18n.M("consent.scope.email.title", "Your e-mail address"),
+		Text: i18n.M("consent.scope.saml_email.text", "The application identifies you by it.")},
+}
 
 func consentItems(app *domain.ClientApp, as *core.IdentityAssertion) []core.ConsentItem {
 	var out []core.ConsentItem
@@ -28,8 +36,8 @@ func consentItems(app *domain.ClientApp, as *core.IdentityAssertion) []core.Cons
 		}
 	}
 	if nameIDFormatOf(app) == domain.NameIDFormatEmail {
-		add(core.ConsentItem{Scope: scopeNameIDEmail, Title: "Your e-mail address",
-			Description: "The application identifies you by it."})
+		t := standardConsentTexts[scopeNameIDEmail]
+		add(core.ConsentItem{Scope: scopeNameIDEmail, Title: t.Title.Default, Description: t.Text.Default})
 	}
 	for _, cs := range as.Scopes {
 		if cs.Protocol == domain.ClientScopeProtocolOIDC {
@@ -93,14 +101,10 @@ func (a *Adapter) renderConsent(w http.ResponseWriter, r *http.Request, p *pendi
 		return
 	}
 
-	lines := make([]loginui.ConsentLine, 0, len(items))
-	for _, it := range items {
-		lines = append(lines, loginui.ConsentLine{
-			Title: it.Title, Description: it.Description,
-			New: dec.Previously && slices.Contains(dec.Missing, it.Scope),
-		})
-	}
-	a.pages.RenderConsent(w, loginui.Consent{
+	lines := loginui.ConsentLines(a.pages.Loc(r), items, standardConsentTexts, func(it core.ConsentItem) bool {
+		return dec.Previously && slices.Contains(dec.Missing, it.Scope)
+	})
+	a.pages.RenderConsent(w, r, loginui.Consent{
 		RealmDisplay:   firstNonEmpty(realm.DisplayName, realm.Name),
 		ClientName:     firstNonEmpty(app.Name, app.EntityID),
 		ClientHost:     hostOf(p.ACSURL),

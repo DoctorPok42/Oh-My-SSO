@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"fmt"
@@ -106,7 +107,7 @@ func (s *MFAService) BeginPasskeyRegistration(ctx context.Context, user *domain.
 	}
 	name = strings.TrimSpace(name)
 	if len([]rune(name)) > 100 {
-		return nil, fmt.Errorf("%w: name too long (100 characters max)", ErrInvalidMFAPolicy)
+		return nil, newTextError(ErrInvalidMFAPolicy, i18n.M("admin.error.name_too_long", "name too long (100 characters max)"))
 	}
 	existing, err := s.webAuthnFactors(ctx, user.ID, nil)
 	if err != nil {

@@ -13388,6 +13388,7 @@ type InstanceSettingsMutation struct {
 	invite_ttl_hours               *int
 	addinvite_ttl_hours            *int
 	suspicious_login_email_enabled *bool
+	default_locale                 *string
 	updated_at                     *time.Time
 	updated_by                     *string
 	clearedFields                  map[string]struct{}
@@ -14547,6 +14548,42 @@ func (m *InstanceSettingsMutation) ResetSuspiciousLoginEmailEnabled() {
 	m.suspicious_login_email_enabled = nil
 }
 
+// SetDefaultLocale sets the "default_locale" field.
+func (m *InstanceSettingsMutation) SetDefaultLocale(s string) {
+	m.default_locale = &s
+}
+
+// DefaultLocale returns the value of the "default_locale" field in the mutation.
+func (m *InstanceSettingsMutation) DefaultLocale() (r string, exists bool) {
+	v := m.default_locale
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDefaultLocale returns the old "default_locale" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldDefaultLocale(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDefaultLocale is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDefaultLocale requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDefaultLocale: %w", err)
+	}
+	return oldValue.DefaultLocale, nil
+}
+
+// ResetDefaultLocale resets all changes to the "default_locale" field.
+func (m *InstanceSettingsMutation) ResetDefaultLocale() {
+	m.default_locale = nil
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (m *InstanceSettingsMutation) SetUpdatedAt(t time.Time) {
 	m.updated_at = &t
@@ -14693,7 +14730,7 @@ func (m *InstanceSettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstanceSettingsMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 24)
 	if m.realm != nil {
 		fields = append(fields, instancesettings.FieldRealmID)
 	}
@@ -14757,6 +14794,9 @@ func (m *InstanceSettingsMutation) Fields() []string {
 	if m.suspicious_login_email_enabled != nil {
 		fields = append(fields, instancesettings.FieldSuspiciousLoginEmailEnabled)
 	}
+	if m.default_locale != nil {
+		fields = append(fields, instancesettings.FieldDefaultLocale)
+	}
 	if m.updated_at != nil {
 		fields = append(fields, instancesettings.FieldUpdatedAt)
 	}
@@ -14813,6 +14853,8 @@ func (m *InstanceSettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.InviteTTLHours()
 	case instancesettings.FieldSuspiciousLoginEmailEnabled:
 		return m.SuspiciousLoginEmailEnabled()
+	case instancesettings.FieldDefaultLocale:
+		return m.DefaultLocale()
 	case instancesettings.FieldUpdatedAt:
 		return m.UpdatedAt()
 	case instancesettings.FieldUpdatedBy:
@@ -14868,6 +14910,8 @@ func (m *InstanceSettingsMutation) OldField(ctx context.Context, name string) (e
 		return m.OldInviteTTLHours(ctx)
 	case instancesettings.FieldSuspiciousLoginEmailEnabled:
 		return m.OldSuspiciousLoginEmailEnabled(ctx)
+	case instancesettings.FieldDefaultLocale:
+		return m.OldDefaultLocale(ctx)
 	case instancesettings.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
 	case instancesettings.FieldUpdatedBy:
@@ -15027,6 +15071,13 @@ func (m *InstanceSettingsMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSuspiciousLoginEmailEnabled(v)
+		return nil
+	case instancesettings.FieldDefaultLocale:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDefaultLocale(v)
 		return nil
 	case instancesettings.FieldUpdatedAt:
 		v, ok := value.(time.Time)
@@ -15327,6 +15378,9 @@ func (m *InstanceSettingsMutation) ResetField(name string) error {
 		return nil
 	case instancesettings.FieldSuspiciousLoginEmailEnabled:
 		m.ResetSuspiciousLoginEmailEnabled()
+		return nil
+	case instancesettings.FieldDefaultLocale:
+		m.ResetDefaultLocale()
 		return nil
 	case instancesettings.FieldUpdatedAt:
 		m.ResetUpdatedAt()

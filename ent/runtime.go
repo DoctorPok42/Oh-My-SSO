@@ -483,8 +483,12 @@ func init() {
 	instancesettingsDescSuspiciousLoginEmailEnabled := instancesettingsFields[21].Descriptor()
 	// instancesettings.DefaultSuspiciousLoginEmailEnabled holds the default value on creation for the suspicious_login_email_enabled field.
 	instancesettings.DefaultSuspiciousLoginEmailEnabled = instancesettingsDescSuspiciousLoginEmailEnabled.Default.(bool)
+	// instancesettingsDescDefaultLocale is the schema descriptor for default_locale field.
+	instancesettingsDescDefaultLocale := instancesettingsFields[22].Descriptor()
+	// instancesettings.DefaultDefaultLocale holds the default value on creation for the default_locale field.
+	instancesettings.DefaultDefaultLocale = instancesettingsDescDefaultLocale.Default.(string)
 	// instancesettingsDescUpdatedAt is the schema descriptor for updated_at field.
-	instancesettingsDescUpdatedAt := instancesettingsFields[22].Descriptor()
+	instancesettingsDescUpdatedAt := instancesettingsFields[23].Descriptor()
 	// instancesettings.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	instancesettings.DefaultUpdatedAt = instancesettingsDescUpdatedAt.Default.(func() time.Time)
 	// instancesettings.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

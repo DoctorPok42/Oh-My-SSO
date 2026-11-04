@@ -1,6 +1,7 @@
 package adminapi
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -24,12 +25,12 @@ import (
 //	status=failure       success or failure
 //	level=warning,error  any of these levels
 //	from, to             RFC 3339 or YYYY-MM-DD (to: that whole day)
-func auditSearch(r *http.Request) (repository.AuditSearch, string) {
+func auditSearch(r *http.Request) (repository.AuditSearch, i18n.Text) {
 	q := r.URL.Query()
 	from, ok1 := timeParam(r, "from")
 	to, ok2 := timeParam(r, "to")
 	if !ok1 || !ok2 {
-		return repository.AuditSearch{}, "from / to: RFC 3339 time or YYYY-MM-DD"
+		return repository.AuditSearch{}, i18n.M("admin.error.audit_time", "from / to: RFC 3339 time or YYYY-MM-DD")
 	}
 	if len(q.Get("to")) == len("2006-01-02") {
 		to = to.Add(24 * time.Hour) // a date means "this whole day"
@@ -47,7 +48,7 @@ func auditSearch(r *http.Request) (repository.AuditSearch, string) {
 	case "", domain.AuditLogSuccess, domain.AuditLogFailure:
 		f.Status = status
 	default:
-		return repository.AuditSearch{}, "status must be success or failure"
+		return repository.AuditSearch{}, i18n.M("admin.error.audit_status", "status must be success or failure")
 	}
 	for _, l := range strings.Split(q.Get("level"), ",") {
 		switch lv := domain.AuditLogLevel(strings.TrimSpace(l)); lv {
@@ -56,7 +57,7 @@ func auditSearch(r *http.Request) (repository.AuditSearch, string) {
 			domain.AuditLogError, domain.AuditLogCritical:
 			f.Levels = append(f.Levels, lv)
 		default:
-			return repository.AuditSearch{}, "level must be a comma-separated list of debug, info, suspicious, warning, error, critical"
+			return repository.AuditSearch{}, i18n.M("admin.error.audit_level", "level must be a comma-separated list of debug, info, suspicious, warning, error, critical")
 		}
 	}
 	for _, a := range strings.Split(q.Get("actor"), ",") {
@@ -66,16 +67,16 @@ func auditSearch(r *http.Request) (repository.AuditSearch, string) {
 		case t.Valid():
 			f.ActorTypes = append(f.ActorTypes, t)
 		default:
-			return repository.AuditSearch{}, "actor must be a comma-separated list of user, admin, cli, system, anonymous"
+			return repository.AuditSearch{}, i18n.M("admin.error.audit_actor", "actor must be a comma-separated list of user, admin, cli, system, anonymous")
 		}
 	}
-	return f, ""
+	return f, i18n.Text{}
 }
 
 func (s *Server) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 	f, bad := auditSearch(r)
-	if bad != "" {
-		writeError(w, http.StatusBadRequest, "invalid_request", bad)
+	if bad.Key != "" {
+		writeErrorT(w, r, http.StatusBadRequest, "invalid_request", bad)
 		return
 	}
 	p := page(r)
@@ -105,8 +106,8 @@ var auditCSVHeader = []string{
 // "# truncated" line, the JSON says "truncated": true.
 func (s *Server) handleAuditExport(w http.ResponseWriter, r *http.Request) {
 	f, bad := auditSearch(r)
-	if bad != "" {
-		writeError(w, http.StatusBadRequest, "invalid_request", bad)
+	if bad.Key != "" {
+		writeErrorT(w, r, http.StatusBadRequest, "invalid_request", bad)
 		return
 	}
 	format := r.URL.Query().Get("format")
@@ -114,7 +115,7 @@ func (s *Server) handleAuditExport(w http.ResponseWriter, r *http.Request) {
 		format = "csv"
 	}
 	if format != "csv" && format != "json" {
-		writeError(w, http.StatusBadRequest, "invalid_request", "format must be csv or json")
+		writeErrorT(w, r, http.StatusBadRequest, "invalid_request", i18n.M("admin.error.audit_format", "format must be csv or json"))
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))

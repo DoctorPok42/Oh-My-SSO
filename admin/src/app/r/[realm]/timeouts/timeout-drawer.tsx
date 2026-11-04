@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
+import { useT } from "@/i18n/client";
 import { formatDateTime } from "@/lib/format";
 import {
   createdMessage,
@@ -40,8 +41,6 @@ const PREFILL = ["target_type", "target_id", "target_name"];
 // error as a banner.
 const FIELDS = ["target_id", "target_type", "reason", "starts_at", "ends_at"];
 
-const fmt = (d: Date) => formatDateTime(d.toISOString());
-
 type Prefill = { type?: string; id?: string; name?: string };
 type FormError = { field?: string; message: string } | null;
 type EditEnd = "keep" | "none" | "date";
@@ -49,10 +48,11 @@ type EditEnd = "keep" | "none" | "date";
 export function NewTimeoutButton() {
   const { openNew } = useDrawerUrl();
   const stepUp = useStepUp();
+  const { t } = useT();
   return (
     <Button onClick={() => stepUp.ensure(openNew, "new=1")}>
       <Ban />
-      Suspend…
+      {t("suspend.label", "Suspend…")}
     </Button>
   );
 }
@@ -68,10 +68,11 @@ export function TimeoutRowActions({
 }) {
   const { openEdit } = useDrawerUrl();
   const current = isCurrent(timeout);
+  const { t } = useT();
   return (
     <div className="flex justify-end gap-2">
       <Button variant="secondary" size="xs" onClick={() => openEdit(timeout.id)}>
-        {writable && current ? "Edit" : "View"}
+        {writable && current ? t("common.edit", "Edit") : t("common.view", "View")}
       </Button>
       {writable && current && <LiftButton realm={realm} timeout={timeout} />}
     </div>
@@ -90,23 +91,35 @@ function LiftButton({
   onDone?: () => void;
 }) {
   const scheduled = timeout.status === "scheduled";
-  const noun = TARGET_LABELS[timeout.target_type].toLowerCase();
+  const { t } = useT();
+  const name = timeout.target.name;
   return (
     <ConfirmAction
       size={size}
       variant="secondary"
-      trigger={scheduled ? "Cancel timeout" : "Lift"}
-      title={scheduled ? "Cancel this scheduled timeout?" : `Lift the timeout of ${timeout.target.name}?`}
+      trigger={scheduled ? t("timeouts.cancel", "Cancel timeout") : t("timeouts.lift", "Lift")}
+      title={
+        scheduled
+          ? t("timeouts.cancel_title", "Cancel this scheduled timeout?")
+          : t("timeouts.lift_title", "Lift the timeout of {name}?", { name })
+      }
       description={
         scheduled
-          ? `It will never start: the ${noun} ${timeout.target.name} is not signed out.`
+          ? timeout.target_type === "user"
+            ? t("timeouts.cancel_text_user", "It will never start: the user {name} is not signed out.", { name })
+            : timeout.target_type === "group"
+              ? t("timeouts.cancel_text_group", "It will never start: the group {name} is not signed out.", { name })
+              : t("timeouts.cancel_text_client", "It will never start: the client {name} is not signed out.", { name })
           : timeout.target_type === "client"
-            ? "People can sign in to this application again at once."
-            : "Sign-ins work again at once. Sessions revoked when it started stay revoked: people sign in again."
+            ? t("timeouts.lift_text_client", "People can sign in to this application again at once.")
+            : t(
+                "timeouts.lift_text",
+                "Sign-ins work again at once. Sessions revoked when it started stay revoked: people sign in again.",
+              )
       }
-      confirmLabel={scheduled ? "Cancel timeout" : "Lift timeout"}
+      confirmLabel={scheduled ? t("timeouts.cancel", "Cancel timeout") : t("timeouts.lift_confirm", "Lift timeout")}
       confirmVariant="primary"
-      success={scheduled ? "Timeout cancelled" : "Timeout lifted"}
+      success={scheduled ? t("timeouts.cancelled", "Timeout cancelled") : t("timeouts.lifted", "Timeout lifted")}
       action={() => liftTimeout(realm, timeout.id)}
       onDone={onDone}
     />
@@ -134,6 +147,9 @@ export function TimeoutDrawer({
   const { closeDropping } = useDrawerUrl();
   const close = () => closeDropping(PREFILL);
   const { run, pending } = useAction();
+  const tr = useT();
+  const { t, tm, locale } = tr;
+  const fmt = (d: Date) => formatDateTime(d.toISOString(), locale);
 
   const [draft, setDraft] = useState<TimeoutDraft>(() => emptyTimeoutDraft(prefill));
   const [reason, setReason] = useState(timeout?.reason ?? "");
@@ -162,23 +178,23 @@ export function TimeoutDrawer({
 
   async function create() {
     setError(null);
-    const b = timeoutBody(draft);
+    const b = timeoutBody(draft, undefined, tr);
     if ("field" in b) return setError(b);
     const r = await run(() => createTimeout(realm, b.body), { quiet: true, intent });
     if (!r.ok) return setError({ field: r.field, message: r.message });
-    toast.success(createdMessage(r.data, formatDateTime));
+    toast.success(createdMessage(r.data, (iso) => formatDateTime(iso, locale), tr));
     close();
   }
 
   async function save() {
     if (!timeout) return;
     setError(null);
-    const p = timeoutPatch(timeout, reason, end, endAt);
+    const p = timeoutPatch(timeout, reason, end, endAt, tr);
     if (p === null) return close();
     if ("field" in p) return setError(p);
     const r = await run(() => updateTimeout(realm, timeout.id, p.body), {
       quiet: true,
-      success: "Timeout saved",
+      success: t("timeouts.saved", "Timeout saved"),
       intent,
     });
     if (!r.ok) setError({ field: r.field, message: r.message });
@@ -186,19 +202,23 @@ export function TimeoutDrawer({
   }
 
   const badge = timeout ? (STATUS_BADGE[timeout.status] ?? STATUS_BADGE.ended) : null;
-  let title = "Timeout";
-  if (mode === "create") title = "Suspend for a while";
-  else if (timeout) title = `Timeout of ${timeout.target.name}`;
+  let title = t("timeouts.timeout", "Timeout");
+  if (mode === "create") title = t("timeouts.new_title", "Suspend for a while");
+  else if (timeout) title = t("timeouts.title_of", "Timeout of {name}", { name: timeout.target.name });
 
   let footer: React.ReactNode;
   if (mode === "create") {
     footer = (
       <>
         <Button variant="destructive" onClick={create} loading={pending} disabled={locked || pending}>
-          {pending ? "Suspending…" : draft.startLater ? "Schedule" : "Suspend now"}
+          {pending
+            ? t("timeouts.suspending", "Suspending…")
+            : draft.startLater
+              ? t("timeouts.schedule", "Schedule")
+              : t("timeouts.suspend_now", "Suspend now")}
         </Button>
         <Button variant="secondary" onClick={close}>
-          Cancel
+          {t("common.cancel", "Cancel")}
         </Button>
       </>
     );
@@ -206,10 +226,10 @@ export function TimeoutDrawer({
     footer = (
       <>
         <Button onClick={save} loading={pending} disabled={locked || pending}>
-          {pending ? "Saving…" : "Save"}
+          {pending ? t("common.saving", "Saving…") : t("common.save", "Save")}
         </Button>
         <Button variant="secondary" onClick={close}>
-          Cancel
+          {t("common.cancel", "Cancel")}
         </Button>
         {!locked && (
           <span className="ml-auto">
@@ -221,7 +241,7 @@ export function TimeoutDrawer({
   } else {
     footer = (
       <Button variant="secondary" onClick={close}>
-        Close
+        {t("common.close", "Close")}
       </Button>
     );
   }
@@ -233,12 +253,15 @@ export function TimeoutDrawer({
       title={title}
       description={
         mode === "create" ? (
-          "No sign-in and no token for the target until the end. The reason stays in the audit log."
+          t(
+            "timeouts.new_description",
+            "No sign-in and no token for the target until the end. The reason stays in the audit log.",
+          )
         ) : timeout && badge ? (
           <span className="flex flex-wrap items-center gap-2">
-            <Badge tone={badge.tone}>{badge.label}</Badge>
-            <Badge tone="neutral">{TARGET_LABELS[timeout.target_type]}</Badge>
-            <span>Created by {timeout.created_by}</span>
+            <Badge tone={badge.tone}>{tm(badge.label)}</Badge>
+            <Badge tone="neutral">{tm(TARGET_LABELS[timeout.target_type])}</Badge>
+            <span>{t("timeouts.created_by", "Created by {who}", { who: timeout.created_by })}</span>
           </span>
         ) : undefined
       }
@@ -250,16 +273,16 @@ export function TimeoutDrawer({
       {mode === "create" && (
         <>
           <fieldset disabled={locked} className="space-y-5">
-            <Field label="Suspend" error={err("target_type")}>
+            <Field label={t("timeouts.field.suspend", "Suspend")} error={err("target_type")}>
               <Segmented
-                label="Target type"
+                label={t("timeouts.field.target_type", "Target type")}
                 value={draft.targetType}
                 disabled={locked}
                 onChange={(v) => setDraft((d) => ({ ...d, targetType: v, targetId: "", targetName: "" }))}
                 options={[
-                  { value: "user", label: "A user" },
-                  { value: "group", label: "A group" },
-                  { value: "client", label: "An application" },
+                  { value: "user", label: t("timeouts.field.a_user", "A user") },
+                  { value: "group", label: t("timeouts.field.a_group", "A group") },
+                  { value: "client", label: t("timeouts.field.an_application", "An application") },
                 ]}
               />
             </Field>
@@ -272,21 +295,21 @@ export function TimeoutDrawer({
               disabled={locked}
               error={err("target_id")}
             />
-            <Field label="Starts" error={err("starts_at")}>
+            <Field label={t("timeouts.field.starts", "Starts")} error={err("starts_at")}>
               <Segmented
-                label="Starts"
+                label={t("timeouts.field.starts", "Starts")}
                 value={draft.startLater ? "later" : "now"}
                 disabled={locked}
                 onChange={(v) => set("startLater", v === "later")}
                 options={[
-                  { value: "now", label: "Now" },
-                  { value: "later", label: "Later" },
+                  { value: "now", label: t("timeouts.field.now", "Now") },
+                  { value: "later", label: t("timeouts.field.later", "Later") },
                 ]}
               />
               {draft.startLater && (
                 <Input
                   type="datetime-local"
-                  aria-label="Start date and time"
+                  aria-label={t("timeouts.field.start_at", "Start date and time")}
                   className="mt-2 w-60"
                   min={now}
                   value={draft.startAt}
@@ -294,18 +317,18 @@ export function TimeoutDrawer({
                 />
               )}
             </Field>
-            <Field label="For" error={err("ends_at")}>
+            <Field label={t("timeouts.field.for", "For")} error={err("ends_at")}>
               <Segmented<EndChoice>
-                label="Duration"
+                label={t("timeouts.field.duration", "Duration")}
                 value={draft.end}
                 disabled={locked}
                 onChange={(v) => set("end", v)}
-                options={END_CHOICES}
+                options={END_CHOICES.map((c) => ({ value: c.value, label: tm(c.label) }))}
               />
               {draft.end === "date" && (
                 <Input
                   type="datetime-local"
-                  aria-label="End date and time"
+                  aria-label={t("timeouts.field.end_at", "End date and time")}
                   className="mt-2 w-60"
                   min={draft.startLater && draft.startAt ? draft.startAt : now}
                   value={draft.endAt}
@@ -314,9 +337,12 @@ export function TimeoutDrawer({
               )}
             </Field>
             <Field
-              label="Reason"
+              label={t("columns.reason", "Reason")}
               htmlFor="t-reason"
-              hint="For the administrators and the audit log. The user never sees it."
+              hint={t(
+                "timeouts.field.reason_hint",
+                "For the administrators and the audit log. The user never sees it.",
+              )}
               error={err("reason")}
             >
               <Textarea
@@ -325,14 +351,17 @@ export function TimeoutDrawer({
                 maxLength={500}
                 value={draft.reason}
                 onChange={(e) => set("reason", e.target.value)}
-                placeholder="Suspicious sign-ins under investigation (ticket SEC-142)"
+                placeholder={t(
+                  "timeouts.field.reason_placeholder",
+                  "Suspicious sign-ins under investigation (ticket SEC-142)",
+                )}
               />
             </Field>
           </fieldset>
           {draft.targetId && (
             <Banner tone="warning">
-              <p className="font-medium">{timeoutSummary(draft, fmt)}</p>
-              <p className="mt-1">{signOutNote(draft.targetType, draft.startLater)}</p>
+              <p className="font-medium">{timeoutSummary(draft, fmt, undefined, tr)}</p>
+              <p className="mt-1">{signOutNote(draft.targetType, draft.startLater, tr)}</p>
             </Banner>
           )}
         </>
@@ -341,51 +370,58 @@ export function TimeoutDrawer({
       {mode === "edit" && timeout && (
         <>
           <dl className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-2 text-[13px]">
-            <dt className="text-text-muted">Target</dt>
+            <dt className="text-text-muted">{t("columns.target", "Target")}</dt>
             <dd className="font-medium">{timeout.target.name}</dd>
-            <dt className="text-text-muted">Start</dt>
-            <dd>{formatDateTime(timeout.starts_at)}</dd>
-            <dt className="text-text-muted">End</dt>
-            <dd>{timeout.ends_at ? formatDateTime(timeout.ends_at) : "No end (until lifted)"}</dd>
+            <dt className="text-text-muted">{t("columns.start", "Start")}</dt>
+            <dd>{formatDateTime(timeout.starts_at, locale)}</dd>
+            <dt className="text-text-muted">{t("columns.end", "End")}</dt>
+            <dd>
+              {timeout.ends_at
+                ? formatDateTime(timeout.ends_at, locale)
+                : t("timeouts.no_end_until_lifted", "No end (until lifted)")}
+            </dd>
             {timeout.lifted_at && (
               <>
-                <dt className="text-text-muted">Lifted</dt>
+                <dt className="text-text-muted">{t("timeouts.status.lifted", "Lifted")}</dt>
                 <dd>
-                  {formatDateTime(timeout.lifted_at)} by {timeout.lifted_by}
+                  {t("timeouts.lifted_by", "{when} by {who}", {
+                    when: formatDateTime(timeout.lifted_at, locale),
+                    who: timeout.lifted_by ?? "",
+                  })}
                 </dd>
               </>
             )}
-            <dt className="text-text-muted">Signed out</dt>
+            <dt className="text-text-muted">{t("timeouts.signed_out", "Signed out")}</dt>
             <dd>
               {timeout.enforced_at
-                ? formatDateTime(timeout.enforced_at)
+                ? formatDateTime(timeout.enforced_at, locale)
                 : timeout.status === "scheduled"
-                  ? "When it starts"
+                  ? t("timeouts.when_it_starts", "When it starts")
                   : timeout.status === "active"
-                    ? "In progress"
+                    ? t("timeouts.in_progress", "In progress")
                     : "—"}
             </dd>
-            <dt className="text-text-muted">Created</dt>
-            <dd>{formatDateTime(timeout.created_at)}</dd>
+            <dt className="text-text-muted">{t("columns.created", "Created")}</dt>
+            <dd>{formatDateTime(timeout.created_at, locale)}</dd>
           </dl>
           {current ? (
             <fieldset disabled={locked} className="space-y-5 border-t border-border pt-5">
-              <Field label="End" error={err("ends_at")}>
+              <Field label={t("columns.end", "End")} error={err("ends_at")}>
                 <Segmented<EditEnd>
-                  label="End"
+                  label={t("columns.end", "End")}
                   value={end}
                   disabled={locked}
                   onChange={setEnd}
                   options={[
-                    { value: "keep", label: "Keep" },
-                    { value: "date", label: "Another date" },
-                    { value: "none", label: "No end" },
+                    { value: "keep", label: t("timeouts.end.keep", "Keep") },
+                    { value: "date", label: t("timeouts.end.another", "Another date") },
+                    { value: "none", label: t("timeouts.end.none", "No end") },
                   ]}
                 />
                 {end === "date" && (
                   <Input
                     type="datetime-local"
-                    aria-label="New end date and time"
+                    aria-label={t("timeouts.field.new_end_at", "New end date and time")}
                     className="mt-2 w-60"
                     min={now}
                     value={endAt}
@@ -393,7 +429,7 @@ export function TimeoutDrawer({
                   />
                 )}
               </Field>
-              <Field label="Reason" htmlFor="t-edit-reason" error={err("reason")}>
+              <Field label={t("columns.reason", "Reason")} htmlFor="t-edit-reason" error={err("reason")}>
                 <Textarea
                   id="t-edit-reason"
                   rows={3}
@@ -403,12 +439,15 @@ export function TimeoutDrawer({
                 />
               </Field>
               <p className="text-[12px] text-text-muted">
-                The start cannot change: to move a scheduled timeout, cancel it and create another one.
+                {t(
+                  "timeouts.start_fixed",
+                  "The start cannot change: to move a scheduled timeout, cancel it and create another one.",
+                )}
               </p>
             </fieldset>
           ) : (
             <section className="space-y-1 border-t border-border pt-5">
-              <h3 className="text-[13px] font-semibold text-text-secondary">Reason</h3>
+              <h3 className="text-[13px] font-semibold text-text-secondary">{t("columns.reason", "Reason")}</h3>
               <p className="text-[13px] whitespace-pre-wrap">{timeout.reason}</p>
             </section>
           )}
@@ -445,7 +484,25 @@ function TargetPicker({
   const [failed, setFailed] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seq = useRef(0);
-  const noun = type === "client" ? "application" : type;
+  const { t, tm } = useT();
+  const words =
+    type === "user"
+      ? {
+          search: t("timeouts.picker.search_user", "Search a user"),
+          matching: t("timeouts.picker.matching_user", "Matching users"),
+          none: t("timeouts.picker.none_user", "No user matches."),
+        }
+      : type === "group"
+        ? {
+            search: t("timeouts.picker.search_group", "Search a group"),
+            matching: t("timeouts.picker.matching_group", "Matching groups"),
+            none: t("timeouts.picker.none_group", "No group matches."),
+          }
+        : {
+            search: t("timeouts.picker.search_client", "Search an application"),
+            matching: t("timeouts.picker.matching_client", "Matching applications"),
+            none: t("timeouts.picker.none_client", "No application matches."),
+          };
 
   function search(value: string, delay: number) {
     if (timer.current) clearTimeout(timer.current);
@@ -462,10 +519,10 @@ function TargetPicker({
 
   if (selected) {
     return (
-      <Field label={TARGET_LABELS[type]} error={error}>
+      <Field label={tm(TARGET_LABELS[type])} error={error}>
         <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
           <span className="flex items-center gap-2 text-[14px]">
-            <Badge tone="neutral">{TARGET_LABELS[type]}</Badge>
+            <Badge tone="neutral">{tm(TARGET_LABELS[type])}</Badge>
             <span className="font-medium">{selected.name}</span>
           </span>
           {!disabled && (
@@ -479,7 +536,7 @@ function TargetPicker({
               }}
             >
               <X className="size-3.5" />
-              Change
+              {t("timeouts.picker.change", "Change")}
             </Button>
           )}
         </div>
@@ -489,10 +546,10 @@ function TargetPicker({
 
   return (
     <Field
-      label={TARGET_LABELS[type]}
+      label={tm(TARGET_LABELS[type])}
       htmlFor="t-target"
       error={error ?? failed ?? undefined}
-      hint={type === "user" ? "Username, name or e-mail." : undefined}
+      hint={type === "user" ? t("timeouts.picker.user_hint", "Username, name or e-mail.") : undefined}
     >
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-muted" />
@@ -501,7 +558,7 @@ function TargetPicker({
           className="pl-9"
           autoComplete="off"
           value={q}
-          placeholder={`Search a ${noun}`}
+          placeholder={words.search}
           onFocus={() => options === null && search(q, 0)}
           onChange={(e) => {
             setQ(e.target.value);
@@ -511,12 +568,12 @@ function TargetPicker({
       </div>
       {options !== null && (
         <ul
-          aria-label={`Matching ${noun}s`}
+          aria-label={words.matching}
           aria-busy={searching}
           className="mt-2 max-h-64 divide-y divide-border overflow-y-auto rounded-lg border border-border"
         >
           {options.length === 0 && !searching && (
-            <li className="px-3 py-2 text-[13px] text-text-muted">No {noun} matches.</li>
+            <li className="px-3 py-2 text-[13px] text-text-muted">{words.none}</li>
           )}
           {options.map((o) => (
             <li key={o.id}>

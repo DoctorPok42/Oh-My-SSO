@@ -1,4 +1,9 @@
 {{/* Blocks shared by the pages (the auth card of the design system,
      uikit's omsso.css). */}}
 {{define "logo"}}<span class="logo"><span class="logo-mark" aria-hidden="true">O</span><span class="logo-wordmark">OMSSO</span></span>{{end}}
-{{define "auth-footer"}}<p class="auth-footer">Protected by OMSSO</p>{{end}}
+{{define "auth-footer"}}<p class="auth-footer">{{t "common.protected_by" "Protected by OMSSO"}}</p>{{end}}
+{{/* The texts of the page's script in its language (package i18n), as
+     data: a JSON block is never run, the CSP has nothing to allow. The
+     argument is the prefix of their keys. Empty in English: the scripts
+     hold their English texts. */}}
+{{define "i18n-js"}}<script type="application/json" id="omsso-i18n">{{jsmsgs .}}</script>{{end}}

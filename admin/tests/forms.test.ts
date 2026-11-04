@@ -46,6 +46,11 @@ describe("settings form", () => {
     updated_at: "",
     updated_by: "",
     email_enabled: true,
+    default_locale: "en",
+    languages: [
+      { tag: "en", name: "English" },
+      { tag: "fr", name: "Français" },
+    ],
   } satisfies Settings;
   const form = {
     min_password_length: "12",
@@ -88,6 +93,12 @@ describe("settings form", () => {
         remember: false,
       }),
     ).toEqual({ remember_me_enabled: false, remember_me_idle_days: 14 });
+  });
+
+  it("sends the default language when it changed", () => {
+    const toggles = { notif: true, suspicious: false, remember: true };
+    expect(settingsDiff(before, form, "10.0.0.0/8", toggles, "en")).toEqual({});
+    expect(settingsDiff(before, form, "10.0.0.0/8", toggles, "fr")).toEqual({ default_locale: "fr" });
   });
 });
 

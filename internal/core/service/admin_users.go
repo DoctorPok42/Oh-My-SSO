@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"fmt"
@@ -22,7 +23,7 @@ var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._@+-]{0,127}$`)
 
 func checkUsername(u string) error {
 	if !usernamePattern.MatchString(u) {
-		return adminInvalid("username", "username: 1-128 characters among letters, digits and . _ @ + - (starting with a letter or digit)")
+		return adminText(AdminInvalid, "invalid_request", "username", i18n.M("admin.error.username_format", "username: 1-128 characters among letters, digits and . _ @ + - (starting with a letter or digit)"))
 	}
 	return nil
 }
@@ -30,7 +31,7 @@ func checkUsername(u string) error {
 func checkEmail(e string) (string, error) {
 	addr, err := mail.ParseAddress(strings.TrimSpace(e))
 	if err != nil || addr.Name != "" || len(addr.Address) > 320 {
-		return "", adminInvalid("email", "a plain e-mail address is required")
+		return "", adminText(AdminInvalid, "invalid_request", "email", i18n.M("admin.error.email_plain", "a plain e-mail address is required"))
 	}
 	return addr.Address, nil
 }
@@ -225,11 +226,11 @@ func (s *AdminService) RevokeTrustedDevice(ctx context.Context, actor AdminActor
 		return err
 	}
 	if s.d.TrustedDevices == nil {
-		return adminNotFound("trusted device")
+		return adminNotFound(i18n.M("admin.error.not_found.trusted_device", "trusted device not found"))
 	}
 	if err := s.d.TrustedDevices.RevokeOne(ctx, u.ID, deviceID); err != nil {
 		if errors.Is(err, ErrTrustedDeviceNotFound) {
-			return adminNotFound("trusted device")
+			return adminNotFound(i18n.M("admin.error.not_found.trusted_device", "trusted device not found"))
 		}
 		return err
 	}
@@ -394,7 +395,7 @@ func (s *AdminService) ResendActivation(ctx context.Context, actor AdminActor, r
 		return nil, err
 	}
 	if u.PasswordHash != "" {
-		return nil, adminRefused("already_activated", "this account already chose its password: activation links are only for new accounts")
+		return nil, adminText(AdminRefused, "already_activated", "", i18n.M("admin.error.already_activated", "this account already chose its password: activation links are only for new accounts"))
 	}
 	res, err := s.issueActivation(ctx, actor, realm, u, sendEmail)
 	if err != nil {
@@ -483,10 +484,10 @@ func (s *AdminService) UpdateUser(ctx context.Context, actor AdminActor, realm *
 		switch *in.Status {
 		case domain.UserActive, domain.UserInactive, domain.UserSuspended:
 		default:
-			return nil, adminInvalid("status", "status must be active, inactive or suspended")
+			return nil, adminText(AdminInvalid, "invalid_request", "status", i18n.M("admin.error.user_status", "status must be active, inactive or suspended"))
 		}
 		if *in.Status != domain.UserActive {
-			if err := s.guardAdminRemoval(ctx, actor, realm, u.ID, "suspend or deactivate"); err != nil {
+			if err := s.guardAdminRemoval(ctx, actor, realm, u.ID, i18n.M("admin.error.self_change.deactivate", "you cannot suspend or deactivate your own account")); err != nil {
 				return nil, err
 			}
 			deactivate = true
@@ -531,7 +532,7 @@ func (s *AdminService) DeleteUser(ctx context.Context, actor AdminActor, realm *
 	if err != nil {
 		return err
 	}
-	if err := s.guardAdminRemoval(ctx, actor, realm, u.ID, "delete"); err != nil {
+	if err := s.guardAdminRemoval(ctx, actor, realm, u.ID, i18n.M("admin.error.self_change.delete", "you cannot delete your own account")); err != nil {
 		return err
 	}
 	if err := s.d.Sessions.RevokeAllForUser(ctx, u.ID, domain.SessionRevokedAdminRevoked); err != nil {
@@ -564,7 +565,7 @@ func (s *AdminService) SetUserGroups(ctx context.Context, actor AdminActor, real
 				return nil, err
 			}
 			if slices.Contains(m[u.ID].GroupIDs, admins.ID) {
-				if err := s.guardAdminRemoval(ctx, actor, realm, u.ID, "remove from "+AdminGroupName); err != nil {
+				if err := s.guardAdminRemoval(ctx, actor, realm, u.ID, i18n.M("admin.error.self_change.group", "you cannot remove yourself from {group}", "group", AdminGroupName)); err != nil {
 					return nil, err
 				}
 			}
@@ -603,11 +604,11 @@ func (s *AdminService) ResetUserMFA(ctx context.Context, actor AdminActor, realm
 		return nil, err
 	}
 	if isMaster(realm) && u.ID == actor.UserID {
-		return nil, adminRefused("self_change", "you cannot reset your own factors here: use your account console")
+		return nil, adminText(AdminRefused, "self_change", "", i18n.M("admin.error.self_change.factors", "you cannot reset your own factors here: use your account console"))
 	}
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
-		return nil, adminInvalid("reason", "a reason is required (it goes to the audit log)")
+		return nil, adminText(AdminInvalid, "invalid_request", "reason", i18n.M("admin.error.reason_required", "a reason is required (it goes to the audit log)"))
 	}
 	res, err := s.d.MFA.ResetUser(ctx, u, actor.By(), reason)
 	if err != nil {
@@ -639,12 +640,12 @@ func isMaster(realm *domain.Realm) bool {
 
 // guardAdminRemoval refuses, in the master realm, to lock yourself out or
 // to leave the instance without any active administrator.
-func (s *AdminService) guardAdminRemoval(ctx context.Context, actor AdminActor, realm *domain.Realm, userID, what string) error {
+func (s *AdminService) guardAdminRemoval(ctx context.Context, actor AdminActor, realm *domain.Realm, userID string, what i18n.Text) error {
 	if !isMaster(realm) {
 		return nil
 	}
 	if userID == actor.UserID {
-		return adminRefused("self_change", "you cannot %s your own account", what)
+		return adminText(AdminRefused, "self_change", "", what)
 	}
 	admins, err := s.d.Groups.GetByRealmAndName(ctx, realm.ID, AdminGroupName)
 	if errors.Is(err, repository.ErrNotFound) {
@@ -658,7 +659,7 @@ func (s *AdminService) guardAdminRemoval(ctx context.Context, actor AdminActor, 
 		return err
 	}
 	if len(members) == 1 && members[0] == userID {
-		return adminRefused("last_admin", "this is the last active administrator: add another one to %q first", AdminGroupName)
+		return adminText(AdminRefused, "last_admin", "", i18n.M("admin.error.last_admin", "this is the last active administrator: add another one to {group} first", "group", AdminGroupName))
 	}
 	return nil
 }
@@ -668,14 +669,14 @@ func (s *AdminService) guardAdminRemoval(ctx context.Context, actor AdminActor, 
 func (s *AdminService) checkUnique(ctx context.Context, realmID, selfID, username, email string) error {
 	if username != "" {
 		if u, err := s.d.Users.GetByRealmAndUsername(ctx, realmID, username); err == nil && u.ID != selfID {
-			return adminConflict("username_taken", "username %q is already used in this realm", username)
+			return adminText(AdminConflict, "username_taken", "", i18n.M("admin.error.username_taken", "username \"{username}\" is already used in this realm", "username", username))
 		} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return err
 		}
 	}
 	if email != "" {
 		if u, err := s.d.Users.GetByRealmAndEmail(ctx, realmID, email); err == nil && u.ID != selfID {
-			return adminConflict("email_taken", "e-mail %q is already used in this realm", email)
+			return adminText(AdminConflict, "email_taken", "", i18n.M("admin.error.email_taken", "e-mail \"{email}\" is already used in this realm", "email", email))
 		} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return err
 		}
@@ -695,24 +696,24 @@ func cleanProfile(current, patch map[string]interface{}) (map[string]interface{}
 	}
 	for k, v := range patch {
 		if !profileKeyPattern.MatchString(k) {
-			return nil, adminInvalid("profile", "profile key %q: lowercase letters, digits and _ only", k)
+			return nil, adminText(AdminInvalid, "invalid_request", "profile", i18n.M("admin.error.profile_key", "profile key \"{key}\": lowercase letters, digits and _ only", "key", k))
 		}
 		switch val := v.(type) {
 		case nil:
 			delete(out, k)
 		case string:
 			if len(val) > 1024 {
-				return nil, adminInvalid("profile", "profile value of %q is too long", k)
+				return nil, adminText(AdminInvalid, "invalid_request", "profile", i18n.M("admin.error.profile_too_long", "profile value of \"{key}\" is too long", "key", k))
 			}
 			out[k] = strings.TrimSpace(val)
 		case bool, float64, int, int64:
 			out[k] = val
 		default:
-			return nil, adminInvalid("profile", "profile value of %q must be text, a number or a boolean", k)
+			return nil, adminText(AdminInvalid, "invalid_request", "profile", i18n.M("admin.error.profile_type", "profile value of \"{key}\" must be text, a number or a boolean", "key", k))
 		}
 	}
 	if len(out) > 64 {
-		return nil, adminInvalid("profile", "at most 64 profile keys")
+		return nil, adminText(AdminInvalid, "invalid_request", "profile", i18n.M("admin.error.profile_count", "at most 64 profile keys"))
 	}
 	return out, nil
 }

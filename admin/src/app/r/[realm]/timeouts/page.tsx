@@ -1,20 +1,12 @@
 import { Suspense } from "react";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
-import { offsetParam, Pagination } from "@/components/console/pagination";
+import { Pagination } from "@/components/console/pagination";
+import { offsetParam } from "@/lib/pagination";
 import { TableSkeleton } from "@/components/console/skeletons";
 import { Badge } from "@/components/ui/badge";
 import { SegmentedLinks } from "@/components/ui/segmented";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { apiPath, getMe, load } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { COLUMNS, PAGES } from "@/lib/pages";
@@ -22,8 +14,13 @@ import { canWrite } from "@/lib/permissions";
 import { STATUS_BADGE, TARGET_LABELS } from "@/lib/timeout-form";
 import type { List, Timeout } from "@/lib/types";
 import { NewTimeoutButton, TimeoutDrawer, TimeoutRowActions } from "./timeout-drawer";
+import { getI18n } from "@/i18n/server";
+import { ColumnHeads } from "@/components/console/skeletons";
 
-export const metadata = { title: PAGES.timeouts.title };
+export async function generateMetadata() {
+  const { tm } = await getI18n();
+  return { title: tm(PAGES.timeouts.title) };
+}
 
 const LIMIT = 25;
 type Status = "current" | "past" | "all";
@@ -55,18 +52,19 @@ export default async function TimeoutsPage({
   const base = `/r/${encodeURIComponent(realm)}/timeouts`;
   const me = await getMe();
   const writable = me.ok && canWrite(me.data, "timeout");
+  const { t } = await getI18n();
 
   const filters = [
-    { href: base, label: "Current", active: status === "current" },
-    { href: `${base}?status=past`, label: "Past", active: status === "past" },
-    { href: `${base}?status=all`, label: "All", active: status === "all" },
+    { href: base, label: t("timeouts.filter.current", "Current"), active: status === "current" },
+    { href: `${base}?status=past`, label: t("timeouts.filter.past", "Past"), active: status === "past" },
+    { href: `${base}?status=all`, label: t("common.all", "All"), active: status === "all" },
   ];
 
   return (
     <>
       <PageHeader {...PAGES.timeouts} actions={writable && <NewTimeoutButton />} />
       <div className="mb-4">
-        <SegmentedLinks label="Which timeouts" items={filters} />
+        <SegmentedLinks label={t("timeouts.filter.label", "Which timeouts")} items={filters} />
       </div>
       <Suspense key={`${status}|${offset}`} fallback={<TableSkeleton columns={COLUMNS.timeouts} rows={4} />}>
         <TimeoutsTable realm={realm} base={base} status={status} offset={offset} writable={writable} />
@@ -94,57 +92,54 @@ async function TimeoutsTable({
   const list = await load<List<Timeout>>(apiPath(["realms", realm, "timeouts"], { status, offset, limit: LIMIT }));
   if (!list.ok) return <ErrorState error={list} />;
   const { items, total } = list.data;
+  const { t, tm, locale } = await getI18n();
   const empty =
     status === "current"
-      ? "Nobody is suspended, and nothing is scheduled."
+      ? t("timeouts.empty.current", "Nobody is suspended, and nothing is scheduled.")
       : status === "past"
-        ? "No timeout has ended yet."
-        : "No timeout yet.";
+        ? t("timeouts.empty.past", "No timeout has ended yet.")
+        : t("timeouts.empty.all", "No timeout yet.");
   return (
     <TableContainer>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Target</TableHead>
-            <TableHead>Start</TableHead>
-            <TableHead>End</TableHead>
-            <TableHead>Reason</TableHead>
-            <TableHead>Created by</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>
-              <span className="sr-only">Actions</span>
-            </TableHead>
+            <ColumnHeads columns={COLUMNS.timeouts} />
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 && <TableEmpty colSpan={7}>{empty}</TableEmpty>}
-          {items.map((t) => {
-            const badge = STATUS_BADGE[t.status] ?? STATUS_BADGE.ended;
+          {items.map((to) => {
+            const badge = STATUS_BADGE[to.status] ?? STATUS_BADGE.ended;
             return (
-              <TableRow key={t.id}>
+              <TableRow key={to.id}>
                 <TableCell>
                   <span className="flex items-center gap-2">
-                    <Badge tone="neutral">{TARGET_LABELS[t.target_type] ?? t.target_type}</Badge>
-                    <span className="font-medium">{t.target.name}</span>
+                    <Badge tone="neutral">
+                      {TARGET_LABELS[to.target_type] ? tm(TARGET_LABELS[to.target_type]) : to.target_type}
+                    </Badge>
+                    <span className="font-medium">{to.target.name}</span>
                   </span>
                 </TableCell>
-                <TableCell className="whitespace-nowrap text-text-secondary">{formatDateTime(t.starts_at)}</TableCell>
                 <TableCell className="whitespace-nowrap text-text-secondary">
-                  {t.status === "lifted"
-                    ? `Lifted ${formatDateTime(t.lifted_at)}`
-                    : t.ends_at
-                      ? formatDateTime(t.ends_at)
-                      : "No end"}
+                  {formatDateTime(to.starts_at, locale)}
                 </TableCell>
-                <TableCell className="max-w-[320px] truncate text-text-secondary" title={t.reason}>
-                  {t.reason}
+                <TableCell className="whitespace-nowrap text-text-secondary">
+                  {to.status === "lifted"
+                    ? t("timeouts.lifted_at", "Lifted {when}", { when: formatDateTime(to.lifted_at, locale) })
+                    : to.ends_at
+                      ? formatDateTime(to.ends_at, locale)
+                      : t("timeouts.end.none", "No end")}
                 </TableCell>
-                <TableCell className="text-text-secondary">{t.created_by}</TableCell>
+                <TableCell className="max-w-[320px] truncate text-text-secondary" title={to.reason}>
+                  {to.reason}
+                </TableCell>
+                <TableCell className="text-text-secondary">{to.created_by}</TableCell>
                 <TableCell>
-                  <Badge tone={badge.tone}>{badge.label}</Badge>
+                  <Badge tone={badge.tone}>{tm(badge.label)}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <TimeoutRowActions realm={realm} timeout={t} writable={writable} />
+                  <TimeoutRowActions realm={realm} timeout={to} writable={writable} />
                 </TableCell>
               </TableRow>
             );

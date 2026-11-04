@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
+import { useT } from "@/i18n/client";
 import { activateKey, retireExpiredKeys, rotateKey } from "./actions";
 
 export function KeyActions({ realm, hasPendingSaml }: { realm: string; hasPendingSaml: boolean }) {
@@ -26,6 +27,7 @@ export function KeyActions({ realm, hasPendingSaml }: { realm: string; hasPendin
   const [error, setError] = useState<string | null>(null);
   const stepUp = useStepUp();
   const { run, pending } = useAction();
+  const { t, tn } = useT();
 
   async function rotate() {
     setError(null);
@@ -46,8 +48,14 @@ export function KeyActions({ realm, hasPendingSaml }: { realm: string; hasPendin
     setReason("");
     toast.success(
       purpose === "saml_signing"
-        ? "New SAML key published (pending). Activate it once service providers have the new metadata."
-        : `New key ${r.data.new_key.kid.slice(0, 8)}… is signing. The old one stays published for ${r.data.grace_hours} h.`,
+        ? t(
+            "keys.rotated_saml",
+            "New SAML key published (pending). Activate it once service providers have the new metadata.",
+          )
+        : t("keys.rotated", "New key {kid}… is signing. The old one stays published for {hours} h.", {
+            kid: r.data.new_key.kid.slice(0, 8),
+            hours: r.data.grace_hours,
+          }),
     );
     if (r.data.warning) toast.warning(r.data.warning);
   }
@@ -57,55 +65,65 @@ export function KeyActions({ realm, hasPendingSaml }: { realm: string; hasPendin
       <ConfirmAction
         variant="secondary"
         size="sm"
-        trigger="Retire expired keys"
-        title="Retire the keys whose grace period ended?"
-        description="They leave the JWKS and the SAML metadata. Rotation already does this automatically; use it to clean up at once."
-        confirmLabel="Retire"
+        trigger={t("keys.retire_expired", "Retire expired keys")}
+        title={t("keys.retire_title", "Retire the keys whose grace period ended?")}
+        description={t(
+          "keys.retire_text",
+          "They leave the JWKS and the SAML metadata. Rotation already does this automatically; use it to clean up at once.",
+        )}
+        confirmLabel={t("clients.certs.retire", "Retire")}
         confirmVariant="primary"
         action={() => retireExpiredKeys(realm)}
-        onDone={(d) => toast.success(d.keys.length ? `${d.keys.length} key(s) retired` : "Nothing to retire")}
+        onDone={(d) =>
+          toast.success(
+            d.keys.length
+              ? tn("keys.retired_count", d.keys.length, "{count} key retired", "{count} keys retired")
+              : t("keys.nothing_to_retire", "Nothing to retire"),
+          )
+        }
       />
       {hasPendingSaml && (
         <ConfirmAction
           variant="secondary"
           size="sm"
-          trigger="Activate pending SAML key"
-          title="Start signing with the new SAML key?"
-          description={
-            "Service providers that did not refresh the metadata will reject the responses. The previous key stays published for the realm's grace period."
-          }
-          confirmLabel="Activate"
+          trigger={t("keys.activate_pending", "Activate pending SAML key")}
+          title={t("keys.activate_title", "Start signing with the new SAML key?")}
+          description={t(
+            "keys.activate_text",
+            "Service providers that did not refresh the metadata will reject the responses. The previous key stays published for the realm's grace period.",
+          )}
+          confirmLabel={t("keys.activate", "Activate")}
           confirmVariant="primary"
-          success="The new SAML key is signing"
+          success={t("keys.activated", "The new SAML key is signing")}
           action={() => activateKey(realm, { purpose: "saml_signing", grace_hours: 0, reason: "" })}
         />
       )}
       <Button onClick={() => stepUp.ensure(() => setOpen(true))}>
         <RotateCw />
-        Rotate key
+        {t("keys.rotate", "Rotate key")}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
-          <DialogTitle>Rotate a signing key</DialogTitle>
+          <DialogTitle>{t("keys.rotate_title", "Rotate a signing key")}</DialogTitle>
           <DialogDescription>
-            A new key pair is created in the key manager; the private key never leaves it.
+            {t("keys.rotate_text", "A new key pair is created in the key manager; the private key never leaves it.")}
           </DialogDescription>
           <div className="mt-5 space-y-4">
-            <Field label="Key">
+            <Field label={t("keys.key", "Key")}>
               <Segmented
-                label="Purpose"
+                label={t("keys.purpose", "Purpose")}
                 value={purpose}
                 onChange={setPurpose}
                 options={[
-                  { value: "jwt_signing", label: "OIDC tokens (JWT)" },
-                  { value: "saml_signing", label: "SAML assertions" },
+                  { value: "jwt_signing", label: t("labels.key.jwt_signing", "OIDC tokens (JWT)") },
+                  { value: "saml_signing", label: t("keys.saml_assertions", "SAML assertions") },
                 ]}
               />
             </Field>
             {purpose === "jwt_signing" && (
-              <Field label="Algorithm">
+              <Field label={t("columns.algorithm", "Algorithm")}>
                 <Segmented
-                  label="Key type"
+                  label={t("keys.key_type", "Key type")}
                   value={keyType}
                   onChange={setKeyType}
                   options={[
@@ -117,16 +135,19 @@ export function KeyActions({ realm, hasPendingSaml }: { realm: string; hasPendin
             )}
             {!compromised && (
               <Field
-                label="Grace period (hours)"
+                label={t("keys.grace", "Grace period (hours)")}
                 htmlFor="k-grace"
                 optional
-                hint="How long the old public key stays published: longer than your longest token lifetime. Empty: the realm's default (Settings)."
+                hint={t(
+                  "keys.grace_hint",
+                  "How long the old public key stays published: longer than your longest token lifetime. Empty: the realm's default (Settings).",
+                )}
               >
                 <Input
                   id="k-grace"
                   type="number"
                   min={1}
-                  placeholder="default"
+                  placeholder={t("keys.grace_placeholder", "default")}
                   value={grace}
                   onChange={(e) => setGrace(e.target.value)}
                   className="w-32"
@@ -135,17 +156,20 @@ export function KeyActions({ realm, hasPendingSaml }: { realm: string; hasPendin
             )}
             <CheckboxField
               id="k-compromised"
-              label="The current key is compromised"
-              hint="It is removed at once, without grace period."
+              label={t("keys.compromised", "The current key is compromised")}
+              hint={t("keys.compromised_hint", "It is removed at once, without grace period.")}
               checked={compromised}
               onCheckedChange={(v) => setCompromised(v === true)}
             />
             {compromised && (
               <>
                 <Banner tone="danger">
-                  Every token it signed stops being accepted now: users of every application must sign in again.
+                  {t(
+                    "keys.compromised_warning",
+                    "Every token it signed stops being accepted now: users of every application must sign in again.",
+                  )}
                 </Banner>
-                <Field label="Reason (kept in the audit log)" htmlFor="k-reason">
+                <Field label={t("users.mfa_reset_reason", "Reason (kept in the audit log)")} htmlFor="k-reason">
                   <Textarea id="k-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
                 </Field>
               </>
@@ -154,7 +178,7 @@ export function KeyActions({ realm, hasPendingSaml }: { realm: string; hasPendin
           </div>
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setOpen(false)}>
-              Cancel
+              {t("common.cancel", "Cancel")}
             </Button>
             <Button
               variant={compromised ? "destructive" : "primary"}
@@ -162,7 +186,7 @@ export function KeyActions({ realm, hasPendingSaml }: { realm: string; hasPendin
               disabled={pending || (compromised && reason.trim().length < 3)}
               onClick={rotate}
             >
-              {pending ? "Rotating…" : "Rotate now"}
+              {pending ? t("keys.rotating", "Rotating…") : t("keys.rotate_now", "Rotate now")}
             </Button>
           </div>
         </DialogContent>

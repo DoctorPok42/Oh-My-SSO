@@ -1,12 +1,16 @@
 package notify
 
-import "strings"
+import (
+	"strings"
+
+	"sso.internal/sso/internal/i18n"
+)
 
 // describeUserAgent turns a User-Agent header into something a person
 // recognises ("Firefox on Windows"). It is a rough guess for an e-mail, not
 // a security decision: the header is chosen by the client and can lie.
 // Order matters: Edge and Opera also say "Chrome", Chrome also says "Safari".
-func describeUserAgent(ua string) string {
+func describeUserAgent(loc *i18n.Localizer, ua string) string {
 	if ua == "" {
 		return ""
 	}
@@ -46,7 +50,7 @@ func describeUserAgent(ua string) string {
 
 	switch {
 	case browser != "" && os != "":
-		return browser + " on " + os
+		return loc.T("device.browser_on_os", "{browser} on {os}", "browser", browser, "os", os)
 	case browser != "":
 		return browser
 	case os != "":
@@ -59,4 +63,8 @@ func describeUserAgent(ua string) string {
 	}
 }
 
-func DescribeUserAgent(ua string) string { return describeUserAgent(ua) }
+// DescribeUserAgent: describeUserAgent in English.
+func DescribeUserAgent(ua string) string { return describeUserAgent(nil, ua) }
+
+// DescribeUserAgentIn: describeUserAgent in a language ("Firefox sous Windows").
+func DescribeUserAgentIn(loc *i18n.Localizer, ua string) string { return describeUserAgent(loc, ua) }

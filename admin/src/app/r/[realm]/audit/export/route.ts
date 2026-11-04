@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { apiDownload, apiPath } from "@/lib/api";
+import { getI18n } from "@/i18n/server";
 
 // GET /r/{realm}/audit/export?format=csv|json&action=...&from=...: the audit
 // log entries matching the filters, as a file. The Admin API streams it
@@ -13,7 +14,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ real
   // recorded under this admin's name): same-origin navigations only.
   const site = req.headers.get("sec-fetch-site");
   if (site && site !== "same-origin" && site !== "none") {
-    return NextResponse.json({ error: "forbidden", message: "Start the export from the console." }, { status: 403 });
+    const { t } = await getI18n();
+    return NextResponse.json(
+      { error: "forbidden", message: t("audit.export.other_site", "Start the export from the console.") },
+      { status: 403 },
+    );
   }
   const { realm } = await params;
   const query: Record<string, string> = {};

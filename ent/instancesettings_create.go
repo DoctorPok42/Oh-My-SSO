@@ -300,6 +300,20 @@ func (_c *InstanceSettingsCreate) SetNillableSuspiciousLoginEmailEnabled(v *bool
 	return _c
 }
 
+// SetDefaultLocale sets the "default_locale" field.
+func (_c *InstanceSettingsCreate) SetDefaultLocale(v string) *InstanceSettingsCreate {
+	_c.mutation.SetDefaultLocale(v)
+	return _c
+}
+
+// SetNillableDefaultLocale sets the "default_locale" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableDefaultLocale(v *string) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetDefaultLocale(*v)
+	}
+	return _c
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_c *InstanceSettingsCreate) SetUpdatedAt(v time.Time) *InstanceSettingsCreate {
 	_c.mutation.SetUpdatedAt(v)
@@ -458,6 +472,10 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultSuspiciousLoginEmailEnabled
 		_c.mutation.SetSuspiciousLoginEmailEnabled(v)
 	}
+	if _, ok := _c.mutation.DefaultLocale(); !ok {
+		v := instancesettings.DefaultDefaultLocale
+		_c.mutation.SetDefaultLocale(v)
+	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := instancesettings.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
@@ -534,6 +552,9 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.SuspiciousLoginEmailEnabled(); !ok {
 		return &ValidationError{Name: "suspicious_login_email_enabled", err: errors.New(`ent: missing required field "InstanceSettings.suspicious_login_email_enabled"`)}
+	}
+	if _, ok := _c.mutation.DefaultLocale(); !ok {
+		return &ValidationError{Name: "default_locale", err: errors.New(`ent: missing required field "InstanceSettings.default_locale"`)}
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "InstanceSettings.updated_at"`)}
@@ -660,6 +681,10 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.SuspiciousLoginEmailEnabled(); ok {
 		_spec.SetField(instancesettings.FieldSuspiciousLoginEmailEnabled, field.TypeBool, value)
 		_node.SuspiciousLoginEmailEnabled = value
+	}
+	if value, ok := _c.mutation.DefaultLocale(); ok {
+		_spec.SetField(instancesettings.FieldDefaultLocale, field.TypeString, value)
+		_node.DefaultLocale = value
 	}
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

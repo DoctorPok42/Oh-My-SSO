@@ -483,6 +483,7 @@ var (
 		{Name: "password_reset_ttl_minutes", Type: field.TypeInt, Default: 30},
 		{Name: "invite_ttl_hours", Type: field.TypeInt, Default: 4},
 		{Name: "suspicious_login_email_enabled", Type: field.TypeBool, Default: false},
+		{Name: "default_locale", Type: field.TypeString, Default: "en"},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "updated_by", Type: field.TypeString, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString, Unique: true},
@@ -495,7 +496,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instance_settings_realms_instance_settings",
-				Columns:    []*schema.Column{InstanceSettingsColumns[23]},
+				Columns:    []*schema.Column{InstanceSettingsColumns[24]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},

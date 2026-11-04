@@ -160,6 +160,29 @@ func (s *AccountService) UpdateName(ctx context.Context, user *domain.User, in N
 	return &out, nil
 }
 
+// SetLocale sets profile.locale, the language the user chose (the pages,
+// the e-mails, and the OIDC "locale" claim). The caller checks that the
+// server has it (package i18n). It returns the user with the new profile;
+// the same language is not written again.
+func (s *AccountService) SetLocale(ctx context.Context, user *domain.User, locale string, ev AccountEvent) (*domain.User, error) {
+	if current, _ := user.Profile["locale"].(string); current == locale {
+		return user, nil
+	}
+	profile := maps.Clone(user.Profile)
+	if profile == nil {
+		profile = map[string]interface{}{}
+	}
+	profile["locale"] = locale
+	if err := s.d.Admin.SetUserProfile(ctx, user.ID, profile); err != nil {
+		return nil, fmt.Errorf("set locale: %w", err)
+	}
+	s.audit(ctx, user, audit.UserProfileUpdated, "User", user.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev,
+		map[string]interface{}{"fields": []string{"locale"}, "locale": locale})
+	out := *user
+	out.Profile = profile
+	return &out, nil
+}
+
 // cleanName trims a name and refuses what no name contains: control
 // characters, more than maxNameLength characters.
 func cleanName(v string) (string, error) {

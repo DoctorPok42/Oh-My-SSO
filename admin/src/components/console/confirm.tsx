@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useStepUp } from "@/components/console/step-up";
 import { useAction } from "@/components/console/use-action";
+import { useT } from "@/i18n/client";
 import type { ApiResult } from "@/lib/api-error";
 
 // A button that asks "Are you sure?" before a destructive change, offers the
@@ -42,6 +43,7 @@ export function ConfirmAction<T>({
   /** Red for destructive changes (default), blue otherwise. */
   confirmVariant?: "destructive" | "primary";
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const stepUp = useStepUp();
   const { run, pending } = useAction();
@@ -57,7 +59,7 @@ export function ConfirmAction<T>({
             <div>{description}</div>
           </AlertDialogDescription>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel", "Cancel")}</AlertDialogCancel>
             <Button
               variant={confirmVariant}
               loading={pending}
@@ -68,7 +70,7 @@ export function ConfirmAction<T>({
                 if (r.ok) onDone?.(r.data);
               }}
             >
-              {pending ? "Working…" : confirmLabel}
+              {pending ? t("common.working", "Working…") : confirmLabel}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

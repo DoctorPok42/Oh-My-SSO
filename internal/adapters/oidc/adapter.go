@@ -18,6 +18,7 @@ import (
 
 	"sso.internal/sso/internal/adapters/loginui"
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/i18n"
 	"sso.internal/sso/internal/oidcstore"
 )
 
@@ -42,6 +43,8 @@ type Config struct {
 	// (/r/{realm}/account/security) when a user must enroll a factor first.
 	AccountConsole bool
 	PasswordReset bool
+	// I18n: the languages of the pages (nil: the embedded ones).
+	I18n *i18n.Bundle
 	// Now is the clock (tests). nil: time.Now.
 	Now func() time.Time
 	// Logger: nil means slog.Default().
@@ -94,7 +97,7 @@ func New(cfg Config, idp core.IdentityCore, store oidcstore.Store) (*Adapter, er
 	if a.now == nil {
 		a.now = time.Now
 	}
-	if a.pages, err = loginui.New(a.logger); err != nil {
+	if a.pages, err = loginui.New(a.logger, cfg.I18n); err != nil {
 		return nil, err
 	}
 	a.storage = &storage{a: a}

@@ -405,6 +405,20 @@ func (_u *InstanceSettingsUpdate) SetNillableSuspiciousLoginEmailEnabled(v *bool
 	return _u
 }
 
+// SetDefaultLocale sets the "default_locale" field.
+func (_u *InstanceSettingsUpdate) SetDefaultLocale(v string) *InstanceSettingsUpdate {
+	_u.mutation.SetDefaultLocale(v)
+	return _u
+}
+
+// SetNillableDefaultLocale sets the "default_locale" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableDefaultLocale(v *string) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetDefaultLocale(*v)
+	}
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdate) SetUpdatedAt(v time.Time) *InstanceSettingsUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -598,6 +612,9 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.SuspiciousLoginEmailEnabled(); ok {
 		_spec.SetField(instancesettings.FieldSuspiciousLoginEmailEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.DefaultLocale(); ok {
+		_spec.SetField(instancesettings.FieldDefaultLocale, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)
@@ -1003,6 +1020,20 @@ func (_u *InstanceSettingsUpdateOne) SetNillableSuspiciousLoginEmailEnabled(v *b
 	return _u
 }
 
+// SetDefaultLocale sets the "default_locale" field.
+func (_u *InstanceSettingsUpdateOne) SetDefaultLocale(v string) *InstanceSettingsUpdateOne {
+	_u.mutation.SetDefaultLocale(v)
+	return _u
+}
+
+// SetNillableDefaultLocale sets the "default_locale" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableDefaultLocale(v *string) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetDefaultLocale(*v)
+	}
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdateOne) SetUpdatedAt(v time.Time) *InstanceSettingsUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -1226,6 +1257,9 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.SuspiciousLoginEmailEnabled(); ok {
 		_spec.SetField(instancesettings.FieldSuspiciousLoginEmailEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.DefaultLocale(); ok {
+		_spec.SetField(instancesettings.FieldDefaultLocale, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

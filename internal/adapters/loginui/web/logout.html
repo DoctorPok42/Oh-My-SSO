@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>Sign out · {{.RealmDisplay}}</title>
+<title>{{t "logout.page_title" "Sign out · {realm}" "realm" .RealmDisplay}}</title>
 <link rel="stylesheet" href="{{.Assets}}/omsso.css">
 <link rel="stylesheet" href="{{.Assets}}/login.css">
 </head>
@@ -15,21 +15,21 @@
   {{template "logo"}}
   <header>
     <p class="auth-eyebrow">{{.RealmDisplay}}</p>
-    <h1 class="auth-title">Sign out of {{.RealmDisplay}}?</h1>
-    <p class="auth-subtitle"><strong>{{.ClientName}}</strong> asked to sign out <strong>{{.Account}}</strong>.</p>
+    <h1 class="auth-title">{{t "logout.title" "Sign out of {realm}?" "realm" .RealmDisplay}}</h1>
+    <p class="auth-subtitle">{{th "logout.asked" "<strong>{client}</strong> asked to sign out <strong>{account}</strong>." "client" .ClientName "account" .Account}}</p>
   </header>
 
   <div class="auth-body">
-  <p>This browser is not using that session, so we ask you first.</p>
+  <p>{{t "logout.not_this_browser" "This browser is not using that session, so we ask you first."}}</p>
 
   <form class="stack-sm" method="post" action="{{.Action}}">
     <input type="hidden" name="id" value="{{.RequestID}}">
     <input type="hidden" name="logout_token" value="{{.Token}}">
-    <button type="submit" class="btn btn-md btn-block" name="decision" value="signout">Sign out</button>
-    <button type="submit" class="btn btn-secondary btn-md btn-block" name="decision" value="cancel">Cancel</button>
+    <button type="submit" class="btn btn-md btn-block" name="decision" value="signout">{{t "logout.sign_out" "Sign out"}}</button>
+    <button type="submit" class="btn btn-secondary btn-md btn-block" name="decision" value="cancel">{{t "common.cancel" "Cancel"}}</button>
   </form>
 
-  <p class="small">Cancel keeps that session open. You are already signed out of {{.ClientName}} either way.</p>
+  <p class="small">{{t "logout.cancel_keeps" "Cancel keeps that session open. You are already signed out of {client} either way." "client" .ClientName}}</p>
   </div>
 </div>
 {{template "auth-footer"}}

@@ -57,6 +57,8 @@ const (
 	FieldInviteTTLHours = "invite_ttl_hours"
 	// FieldSuspiciousLoginEmailEnabled holds the string denoting the suspicious_login_email_enabled field in the database.
 	FieldSuspiciousLoginEmailEnabled = "suspicious_login_email_enabled"
+	// FieldDefaultLocale holds the string denoting the default_locale field in the database.
+	FieldDefaultLocale = "default_locale"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
 	// FieldUpdatedBy holds the string denoting the updated_by field in the database.
@@ -98,6 +100,7 @@ var Columns = []string{
 	FieldPasswordResetTTLMinutes,
 	FieldInviteTTLHours,
 	FieldSuspiciousLoginEmailEnabled,
+	FieldDefaultLocale,
 	FieldUpdatedAt,
 	FieldUpdatedBy,
 }
@@ -153,6 +156,8 @@ var (
 	DefaultInviteTTLHours int
 	// DefaultSuspiciousLoginEmailEnabled holds the default value on creation for the "suspicious_login_email_enabled" field.
 	DefaultSuspiciousLoginEmailEnabled bool
+	// DefaultDefaultLocale holds the default value on creation for the "default_locale" field.
+	DefaultDefaultLocale string
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
@@ -269,6 +274,11 @@ func ByInviteTTLHours(opts ...sql.OrderTermOption) OrderOption {
 // BySuspiciousLoginEmailEnabled orders the results by the suspicious_login_email_enabled field.
 func BySuspiciousLoginEmailEnabled(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSuspiciousLoginEmailEnabled, opts...).ToFunc()
+}
+
+// ByDefaultLocale orders the results by the default_locale field.
+func ByDefaultLocale(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDefaultLocale, opts...).ToFunc()
 }
 
 // ByUpdatedAt orders the results by the updated_at field.

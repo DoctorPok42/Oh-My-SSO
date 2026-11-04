@@ -9,7 +9,7 @@ import (
 
 func renderAll(t *testing.T) map[Template]Message {
 	t.Helper()
-	templates, err := LoadTemplates()
+	templates, err := LoadTemplates(nil)
 	if err != nil {
 		t.Fatal(err)
 	}

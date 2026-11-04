@@ -1,23 +1,21 @@
-{{define "subject"}}Your {{.Realm}} account is ready{{end}}
+{{define "subject"}}{{t "email.invite.subject" "Your {realm} account is ready" "realm" .Realm}}{{end}}
 
-{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+{{define "text"}}{{template "hello" .}}
 
-An administrator created an account for you on {{.Realm}}.
-To start, choose your password with this link. It works once and expires in {{.ExpiresIn}}:
+{{tp "email.invite.intro" "An administrator created an account for you on <strong>{realm}</strong>. To start, choose your password. The link below works once and expires in <strong>{expires}</strong>." "realm" .Realm "expires" .ExpiresIn}}
 
 {{.ResetURL}}
 
-If the link has expired, ask your administrator for a new one.
-If you were not expecting this, you can ignore this e-mail: nobody can use
-the account until a password is chosen with this link.
+{{t "email.invite.expired" "If the link has expired, ask your administrator for a new one."}}
+{{t "email.invite.ignore" "If you were not expecting this, you can ignore this e-mail: nobody can use the account until a password is chosen with this link."}}
 {{end}}
 
-{{define "html"}}{{template "badge.info" "Account"}}
-{{template "title" "Your account is ready"}}
-<p>Hello{{if .Username}} {{.Username}}{{end}},</p>
-<p>An administrator created an account for you on <strong>{{.Realm}}</strong>. To start, choose your password. The link below works once and expires in <strong>{{.ExpiresIn}}</strong>.</p>
-{{template "button" (button .ResetURL "Choose my password")}}
+{{define "html"}}{{template "badge.info" (t "email.badge.account" "Account")}}
+{{template "title" (t "email.invite.title" "Your account is ready")}}
+{{template "hello" .}}
+<p>{{th "email.invite.intro" "An administrator created an account for you on <strong>{realm}</strong>. To start, choose your password. The link below works once and expires in <strong>{expires}</strong>." "realm" .Realm "expires" .ExpiresIn}}</p>
+{{template "button" (button .ResetURL (t "email.invite.button" "Choose my password"))}}
 {{template "link" .ResetURL}}
-<p>If the link has expired, ask your administrator for a new one.</p>
-{{template "muted" "If you were not expecting this, you can ignore this e-mail: nobody can use the account until a password is chosen with this link."}}
+<p>{{t "email.invite.expired" "If the link has expired, ask your administrator for a new one."}}</p>
+{{template "muted" (t "email.invite.ignore" "If you were not expecting this, you can ignore this e-mail: nobody can use the account until a password is chosen with this link.")}}
 {{end}}

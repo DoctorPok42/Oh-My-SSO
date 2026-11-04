@@ -1,20 +1,13 @@
 import { Suspense } from "react";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
-import { offsetParam, Pagination } from "@/components/console/pagination";
-import { TableSkeleton } from "@/components/console/skeletons";
+import { Pagination } from "@/components/console/pagination";
+import { offsetParam } from "@/lib/pagination";
+import { ColumnHeads, TableSkeleton } from "@/components/console/skeletons";
 import { ManagedBadge, ProtocolBadge, StatusBadge } from "@/components/console/status-badge";
 import { SegmentedLinks } from "@/components/ui/segmented";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
+import { getI18n } from "@/i18n/server";
 import { apiPath, getMe, load, loadCached } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { MFA_METHODS } from "@/lib/labels";
@@ -24,7 +17,10 @@ import { can, canWrite, type Resource } from "@/lib/permissions";
 import type { Access, Client, ClientScope, ClientSummary, List, Me } from "@/lib/types";
 import { ClientDrawer, ClientRowActions, NewClientButton } from "./client-drawer";
 
-export const metadata = { title: PAGES.clients.title };
+export async function generateMetadata() {
+  const { tm } = await getI18n();
+  return { title: tm(PAGES.clients.title) };
+}
 
 const LIMIT = 20;
 
@@ -51,6 +47,7 @@ export default async function ClientsPage({
   const base = `/r/${encodeURIComponent(realm)}/clients`;
   const me = await getMe();
   const writable = me.ok && canWrite(me.data, "client");
+  const { t } = await getI18n();
 
   return (
     <>
@@ -60,9 +57,9 @@ export default async function ClientsPage({
       </Suspense>
       <div className="mb-4">
         <SegmentedLinks
-          label="Protocol"
+          label={t("clients.filter.protocol", "Protocol")}
           items={[
-            { href: base, label: "All", active: !protocol },
+            { href: base, label: t("common.all", "All"), active: !protocol },
             { href: `${base}?protocol=oidc`, label: "OIDC", active: protocol === "oidc" },
             { href: `${base}?protocol=saml2`, label: "SAML 2.0", active: protocol === "saml2" },
           ]}
@@ -93,25 +90,21 @@ async function ClientsTable({
   );
   if (!list.ok) return <ErrorState error={list} />;
   const items = list.data.items;
+  const { t, locale } = await getI18n();
   return (
     <TableContainer>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Protocol</TableHead>
-            <TableHead>Client / Entity ID</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead>
-              <span className="sr-only">Actions</span>
-            </TableHead>
+            <ColumnHeads columns={COLUMNS.clients} />
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 && (
             <TableEmpty colSpan={6}>
-              {protocol ? "No client with this protocol." : "No client yet: create one to connect an application."}
+              {protocol
+                ? t("clients.empty_protocol", "No client with this protocol.")
+                : t("clients.empty", "No client yet: create one to connect an application.")}
             </TableEmpty>
           )}
           {items.map((c) => (
@@ -131,7 +124,9 @@ async function ClientsTable({
               <TableCell>
                 <StatusBadge status={c.status} />
               </TableCell>
-              <TableCell className="whitespace-nowrap text-text-secondary">{formatDate(c.created_at)}</TableCell>
+              <TableCell className="whitespace-nowrap text-text-secondary">
+                {formatDate(c.created_at, locale)}
+              </TableCell>
               <TableCell className="text-right">
                 <ClientRowActions realm={realm} client={c} writable={writable} />
               </TableCell>

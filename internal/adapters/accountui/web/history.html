@@ -1,34 +1,34 @@
 {{define "content"}}
 <div class="page-header">
   <div>
-    <h1 class="page-title">History</h1>
-    <p class="page-description">What happened on your account. Nothing to do here: if something looks wrong, change your password and sign out your other sessions.</p>
+    <h1 class="page-title">{{t "account.tab.history" "History"}}</h1>
+    <p class="page-description">{{t "account.history.description" "What happened on your account. Nothing to do here: if something looks wrong, change your password and sign out your other sessions."}}</p>
   </div>
 </div>
-<nav class="segmented" aria-label="History">
-  <a class="segmented-item" href="{{.Base}}/history"{{if eq .View "signins"}} aria-current="page"{{end}}>Sign-ins</a>
-  <a class="segmented-item" href="{{.Base}}/history?view=activity"{{if eq .View "activity"}} aria-current="page"{{end}}>Account activity</a>
+<nav class="segmented" aria-label="{{t "account.tab.history" "History"}}">
+  <a class="segmented-item" href="{{.Base}}/history"{{if eq .View "signins"}} aria-current="page"{{end}}>{{t "account.history.signins" "Sign-ins"}}</a>
+  <a class="segmented-item" href="{{.Base}}/history?view=activity"{{if eq .View "activity"}} aria-current="page"{{end}}>{{t "account.history.activity" "Account activity"}}</a>
 </nav>
 <div class="table-container">
   <div class="table-scroll">
   {{- if eq .View "activity"}}
   <table class="table stack-mobile">
-    <thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">From</th></tr></thead>
+    <thead><tr><th scope="col">{{t "account.history.when" "When"}}</th><th scope="col">{{t "account.history.what" "What"}}</th><th scope="col">{{t "account.history.from" "From"}}</th></tr></thead>
     <tbody>
       {{- range .Activity}}
       <tr>
         <td>{{template "time" .At}}</td>
-        <td>{{.Text}}{{if .Failed}} <span class="badge badge-danger">Failed</span>{{end}}{{if .ByAdmin}} <span class="badge">Administrator</span>{{end}}</td>
+        <td>{{.Text}}{{if .Failed}} <span class="badge badge-danger">{{t "account.history.failed" "Failed"}}</span>{{end}}{{if .ByAdmin}} <span class="badge">{{t "account.history.admin" "Administrator"}}</span>{{end}}</td>
         <td class="text-secondary">{{if not .ByAdmin}}{{.Device}}{{if and .Device .IPAddress}} · {{end}}{{.IPAddress}}{{end}}</td>
       </tr>
       {{- else}}
-      <tr><td class="table-empty" colspan="3">Nothing yet.</td></tr>
+      <tr><td class="table-empty" colspan="3">{{t "account.history.nothing" "Nothing yet."}}</td></tr>
       {{- end}}
     </tbody>
   </table>
   {{- else}}
   <table class="table stack-mobile">
-    <thead><tr><th scope="col">When</th><th scope="col">Result</th><th scope="col">Device</th><th scope="col">Location</th></tr></thead>
+    <thead><tr><th scope="col">{{t "account.history.when" "When"}}</th><th scope="col">{{t "account.history.result" "Result"}}</th><th scope="col">{{t "account.history.device" "Device"}}</th><th scope="col">{{t "account.history.location" "Location"}}</th></tr></thead>
     <tbody>
       {{- range .SignIns}}
       <tr>
@@ -38,7 +38,7 @@
         <td class="text-secondary">{{.Location}}{{with .IPAddress}} · {{.}}{{end}}</td>
       </tr>
       {{- else}}
-      <tr><td class="table-empty" colspan="4">No sign-in recorded yet.</td></tr>
+      <tr><td class="table-empty" colspan="4">{{t "account.history.no_signins" "No sign-in recorded yet."}}</td></tr>
       {{- end}}
     </tbody>
   </table>
@@ -46,10 +46,10 @@
   </div>
 </div>
 {{- if or .More (gt .Page 1)}}
-<nav class="pager" aria-label="Pages">
-  {{- if gt .Page 1}}<a class="btn btn-secondary btn-xs" href="{{.Base}}/history?view={{.View}}&amp;page={{sub1 .Page}}">← Newer</a>{{else}}<span></span>{{end}}
-  <span class="text-muted">Page {{.Page}}</span>
-  {{- if .More}}<a class="btn btn-secondary btn-xs" href="{{.Base}}/history?view={{.View}}&amp;page={{add1 .Page}}">Older →</a>{{else}}<span></span>{{end}}
+<nav class="pager" aria-label="{{t "account.history.pages" "Pages"}}">
+  {{- if gt .Page 1}}<a class="btn btn-secondary btn-xs" href="{{.Base}}/history?view={{.View}}&amp;page={{sub1 .Page}}">← {{t "account.history.newer" "Newer"}}</a>{{else}}<span></span>{{end}}
+  <span class="text-muted">{{t "account.history.page" "Page {page}" "page" .Page}}</span>
+  {{- if .More}}<a class="btn btn-secondary btn-xs" href="{{.Base}}/history?view={{.View}}&amp;page={{add1 .Page}}">{{t "account.history.older" "Older"}} →</a>{{else}}<span></span>{{end}}
 </nav>
 {{- end}}
 {{end}}

@@ -128,7 +128,7 @@ type CreateSessionInput struct {
 	MFAVerified   bool
 	MFAMethodType string
 	// MFAVerifiedAt defaults to "now" when MFAVerified is true.
-	MFAVerifiedAt time.Time
+	MFAVerifiedAt     time.Time
 	DeviceFingerprint string
 	// RememberMe asks for a remembered session ("Keep me signed in"). It is
 	// ignored when the realm does not allow it: check the RememberMe field
@@ -299,6 +299,29 @@ func (s *SessionService) GetActive(ctx context.Context, sessionID string) (*doma
 		return nil, ErrSessionInvalid
 	}
 	return sess, nil
+}
+
+// Peek returns the active session of a token without using it: no
+// activity recorded, nothing expired. For what only reads the session (the
+// language of a page), never to let a request in: that is Validate.
+func (s *SessionService) Peek(ctx context.Context, realmID, rawToken string) (*domain.Session, error) {
+	if rawToken == "" {
+		return nil, ErrSessionInvalid
+	}
+	sess, _, err := s.lookup(ctx, HashSessionToken(rawToken))
+	if err != nil {
+		return nil, err
+	}
+	if sess.Status != domain.SessionActive || sess.RealmID != realmID || s.policy(ctx, realmID).Expired(sess, s.now()) {
+		return nil, ErrSessionInvalid
+	}
+	return sess, nil
+}
+
+// RealmLocale is the realm's default language (Settings, default_locale),
+// from the settings cache: "en" when it has none.
+func (s *SessionService) RealmLocale(ctx context.Context, realmID string) string {
+	return s.policy(ctx, realmID).locale
 }
 
 // RememberMeOption tells the sign-in page whether to offer "Keep me signed
@@ -593,7 +616,6 @@ func (d SessionDurations) Expired(sess *domain.Session, now time.Time) bool {
 	return !now.Before(end) || !now.Before(sess.LastActivityAt.Add(idle))
 }
 
-
 type sessionPolicy struct {
 	SessionDurations
 	// rememberMe: new sessions may be remembered. Same as RememberMe, except
@@ -601,6 +623,8 @@ type sessionPolicy struct {
 	// end the remembered sessions (RememberMe stays on for them) nor start
 	// new ones.
 	rememberMe bool
+	// locale: the realm's default language (default_locale), "en" when unset.
+	locale string
 }
 
 func (s *SessionService) policy(ctx context.Context, realmID string) sessionPolicy {
@@ -625,14 +649,18 @@ func (s *SessionService) loadPolicy(ctx context.Context, realmID string) session
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			d := SessionDurationsOf(nil)
-			return sessionPolicy{SessionDurations: d, rememberMe: d.RememberMe}
+			return sessionPolicy{SessionDurations: d, rememberMe: d.RememberMe, locale: "en"}
 		}
 		s.logger.WarnContext(ctx, "session policy: cannot read instance settings, using defaults",
 			"realm_id", realmID, "error", err)
-		return sessionPolicy{SessionDurations: SessionDurationsOf(nil), rememberMe: false}
+		return sessionPolicy{SessionDurations: SessionDurationsOf(nil), rememberMe: false, locale: "en"}
+	}
+	locale := settings.DefaultLocale
+	if locale == "" {
+		locale = "en"
 	}
 	d := SessionDurationsOf(settings)
-	return sessionPolicy{SessionDurations: d, rememberMe: d.RememberMe}
+	return sessionPolicy{SessionDurations: d, rememberMe: d.RememberMe, locale: locale}
 }
 
 func (s *SessionService) lookup(ctx context.Context, tokenHash string) (*domain.Session, bool, error) {

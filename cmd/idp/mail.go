@@ -17,7 +17,7 @@ import (
 
 
 const mailUsage = `usage:
-  idp mail test --to <address> [--all]
+  idp mail test --to <address> [--all] [--lang <tag>]
 `
 
 
@@ -61,6 +61,7 @@ func mailTest(ctx context.Context, args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("mail test", flag.ContinueOnError)
 	to := fs.String("to", "", "recipient (required)")
 	all := fs.Bool("all", false, "send every e-mail template with sample data")
+	lang := fs.String("lang", "en", "language of the e-mails: en, or a language with a translation file (fr...)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -72,9 +73,10 @@ func mailTest(ctx context.Context, args []string, out io.Writer) error {
 		return errors.New("SMTP_HOST is not set")
 	}
 	now := time.Now().UTC()
+	loc := app.Languages().Get(*lang)
 	if *all {
 		for _, tmpl := range notify.AllTemplates {
-			if err := sender.Send(ctx, *to, tmpl, notify.PreviewData(tmpl, "Oh-My-SSO", now)); err != nil {
+			if err := sender.Send(ctx, *to, tmpl, notify.PreviewDataIn(loc, tmpl, "Oh-My-SSO", now)); err != nil {
 				return fmt.Errorf("send %s e-mail: %w", tmpl, err)
 			}
 			fmt.Fprintf(out, "%s e-mail sent to %s\n", tmpl, *to)
@@ -82,8 +84,9 @@ func mailTest(ctx context.Context, args []string, out io.Writer) error {
 		return nil
 	}
 	if err := sender.Send(ctx, *to, notify.TemplateTest, notify.Data{
+		Lang:    loc.Lang(),
 		Product: "Oh-My-SSO",
-		When:    now.Format("Mon 2 Jan 2006, 15:04 UTC"),
+		When:    loc.LongDateTime(now),
 	}); err != nil {
 		return err
 	}

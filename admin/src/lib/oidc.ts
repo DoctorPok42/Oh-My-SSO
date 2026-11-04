@@ -93,6 +93,7 @@ export async function finishLogin(callbackUrl: URL, login: LoginState): Promise<
       sub: claims.sub,
       name: str(claims.name) || str(claims.preferred_username) || str(claims.email) || claims.sub,
       email: str(claims.email),
+      locale: str(claims.locale),
     },
     createdAt: now,
   };
@@ -133,6 +134,8 @@ export function refreshSession(session: Session): Promise<Session> {
       accessTokenExpiresAt: nowS + (tokens.expiresIn() ?? 300),
       refreshToken: tokens.refresh_token ?? token,
       idToken: tokens.id_token ?? session.idToken,
+      // A new ID token brings the language the admin may have changed since.
+      user: tokens.id_token ? { ...session.user, locale: str(tokens.claims()?.locale) } : session.user,
     } satisfies Session;
   })();
   inflight.set(token, { at: now, result });

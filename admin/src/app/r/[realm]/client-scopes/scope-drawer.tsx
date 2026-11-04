@@ -13,6 +13,7 @@ import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import { TogglePill } from "@/components/ui/toggle-pill";
+import { useT } from "@/i18n/client";
 import { TOKEN_LOCATIONS } from "@/lib/labels";
 import type { ClaimMapper, ClientScope } from "@/lib/types";
 import { createScope, deleteScope, updateScope, type ScopeBody } from "./actions";
@@ -41,32 +42,39 @@ function toDraft(s: ClientScope | null): Draft {
 export function NewScopeButton() {
   const { openNew } = useDrawerUrl();
   const stepUp = useStepUp();
+  const { t } = useT();
   return (
     <Button onClick={() => stepUp.ensure(openNew, "new=1")}>
       <Plus />
-      New client scope
+      {t("scopes.new", "New client scope")}
     </Button>
   );
 }
 
 export function ScopeRowActions({ realm, scope, writable }: { realm: string; scope: ClientScope; writable: boolean }) {
   const { openEdit } = useDrawerUrl();
+  const { t, tn } = useT();
   return (
     <div className="flex justify-end gap-2">
       <Button variant="secondary" size="xs" onClick={() => openEdit(scope.id)}>
-        {writable ? "Edit" : "View"}
+        {writable ? t("common.edit", "Edit") : t("common.view", "View")}
       </Button>
       {writable && (
         <ConfirmAction
-          trigger="Delete"
-          title={`Delete the scope ${scope.name}?`}
+          trigger={t("common.delete", "Delete")}
+          title={t("scopes.delete.title", "Delete the scope {name}?", { name: scope.name })}
           description={
             scope.clients > 0
-              ? `${scope.clients} client(s) use it: remove it from them first.`
-              : "Its claims will no longer be issued. This cannot be undone."
+              ? tn(
+                  "scopes.delete.used",
+                  scope.clients,
+                  "{count} client uses it: remove it from it first.",
+                  "{count} clients use it: remove it from them first.",
+                )
+              : t("scopes.delete.text", "Its claims will no longer be issued. This cannot be undone.")
           }
-          confirmLabel="Delete scope"
-          success="Client scope deleted"
+          confirmLabel={t("scopes.delete.confirm", "Delete scope")}
+          success={t("scopes.delete.done", "Client scope deleted")}
           action={() => deleteScope(realm, scope.id)}
         />
       )}
@@ -87,6 +95,7 @@ export function ScopeDrawer({
 }) {
   const { close } = useDrawerUrl();
   const { run, pending } = useAction();
+  const { t, tm } = useT();
   const [draft, setDraft] = useState<Draft>(() => toDraft(scope));
   const [error, setError] = useState<{ field?: string; message: string } | null>(null);
   const key = mode === "create" ? "new" : (scope?.id ?? "");
@@ -118,8 +127,14 @@ export function ScopeDrawer({
     };
     const r =
       mode === "create"
-        ? await run(() => createScope(realm, body), { quiet: true, success: "Client scope created" })
-        : await run(() => updateScope(realm, scope!.id, body), { quiet: true, success: "Client scope saved" });
+        ? await run(() => createScope(realm, body), {
+            quiet: true,
+            success: t("scopes.created", "Client scope created"),
+          })
+        : await run(() => updateScope(realm, scope!.id, body), {
+            quiet: true,
+            success: t("scopes.saved", "Client scope saved"),
+          });
     if (!r.ok) setError({ field: r.field, message: r.message });
     else if (mode === "create") close();
   }
@@ -128,15 +143,19 @@ export function ScopeDrawer({
     <Drawer
       open={mode !== null}
       onClose={close}
-      title={mode === "create" ? "New client scope" : (scope?.name ?? "")}
-      description="A named set of claims. Clients that receive it get these user attributes."
+      title={mode === "create" ? t("scopes.new", "New client scope") : (scope?.name ?? "")}
+      description={t("scopes.description", "A named set of claims. Clients that receive it get these user attributes.")}
       footer={
         <>
           <Button onClick={save} loading={pending} disabled={locked || pending}>
-            {pending ? "Saving…" : mode === "create" ? "Create scope" : "Save"}
+            {pending
+              ? t("common.saving", "Saving…")
+              : mode === "create"
+                ? t("scopes.create", "Create scope")
+                : t("common.save", "Save")}
           </Button>
           <Button variant="secondary" onClick={close}>
-            Cancel
+            {t("common.cancel", "Cancel")}
           </Button>
         </>
       }
@@ -145,9 +164,9 @@ export function ScopeDrawer({
       {error && !error.field && <Banner tone="danger">{error.message}</Banner>}
       <fieldset disabled={locked} className="space-y-5">
         <Field
-          label="Name"
+          label={t("clients.field.name", "Name")}
           htmlFor="s-name"
-          hint="The scope value clients ask for, e.g. payroll_profile."
+          hint={t("scopes.field.name_hint", "The scope value clients ask for, e.g. payroll_profile.")}
           error={error?.field === "name" ? error.message : undefined}
         >
           <Input
@@ -158,7 +177,12 @@ export function ScopeDrawer({
             placeholder="my_custom_scope"
           />
         </Field>
-        <Field label="Description" htmlFor="s-desc" optional hint="Shown to users on the consent screen.">
+        <Field
+          label={t("scopes.field.description", "Description")}
+          htmlFor="s-desc"
+          optional
+          hint={t("scopes.field.description_hint", "Shown to users on the consent screen.")}
+        >
           <Textarea
             id="s-desc"
             rows={2}
@@ -166,33 +190,35 @@ export function ScopeDrawer({
             onChange={(e) => set("description", e.target.value)}
           />
         </Field>
-        <Field label="Protocol">
+        <Field label={t("clients.field.protocol", "Protocol")}>
           <Segmented
-            label="Protocol"
+            label={t("clients.field.protocol", "Protocol")}
             value={draft.protocol}
             onChange={(v) => set("protocol", v)}
             disabled={locked}
             options={[
               { value: "oidc", label: "OIDC" },
               { value: "saml2", label: "SAML 2.0" },
-              { value: "both", label: "Both" },
+              { value: "both", label: t("scopes.protocol.both", "Both") },
             ]}
           />
         </Field>
         <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
           <div>
-            <p className="text-[14px] font-medium">Include by default on new clients</p>
-            <p className="text-[12px] text-text-muted">Pre-selected as required when a client is created.</p>
+            <p className="text-[14px] font-medium">{t("scopes.default_title", "Include by default on new clients")}</p>
+            <p className="text-[12px] text-text-muted">
+              {t("scopes.default_hint", "Pre-selected as required when a client is created.")}
+            </p>
           </div>
           <TogglePill
             checked={draft.isDefault}
             onCheckedChange={locked ? undefined : (v) => set("isDefault", v)}
-            label="Default"
+            label={t("scopes.default", "Default")}
           />
         </div>
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-[13px] font-semibold text-text-secondary">Claim mappers</p>
+            <p className="text-[13px] font-semibold text-text-secondary">{t("scopes.mappers", "Claim mappers")}</p>
             {!locked && (
               <Button
                 size="xs"
@@ -205,37 +231,39 @@ export function ScopeDrawer({
                 }
               >
                 <Plus className="size-3.5" />
-                Add mapper
+                {t("scopes.add_mapper", "Add mapper")}
               </Button>
             )}
           </div>
           {error?.field === "claim_mappers" && <p className="mb-2 text-[12px] text-danger">{error.message}</p>}
           {draft.mappers.length === 0 && (
-            <p className="text-[13px] text-text-muted">No claim yet: user attribute → claim name.</p>
+            <p className="text-[13px] text-text-muted">
+              {t("scopes.no_mapper", "No claim yet: user attribute → claim name.")}
+            </p>
           )}
           <div className="space-y-3">
             {draft.mappers.map((m, i) => (
               <div key={i} className="space-y-3 rounded-lg border border-border p-3">
                 <div className="flex items-center gap-2">
                   <Input
-                    aria-label="User attribute"
+                    aria-label={t("scopes.user_attribute", "User attribute")}
                     className="h-9 font-mono text-[13px]"
                     value={m.source_attribute}
                     onChange={(e) => setMapper(i, { source_attribute: e.target.value })}
-                    placeholder="user attribute (department)"
+                    placeholder={t("scopes.user_attribute_placeholder", "user attribute (department)")}
                   />
                   <span className="text-text-muted">→</span>
                   <Input
-                    aria-label="Claim name"
+                    aria-label={t("scopes.claim_name", "Claim name")}
                     className="h-9 font-mono text-[13px]"
                     value={m.claim_name}
                     onChange={(e) => setMapper(i, { claim_name: e.target.value })}
-                    placeholder="claim name"
+                    placeholder={t("scopes.claim_name_placeholder", "claim name")}
                   />
                   {!locked && (
                     <button
                       type="button"
-                      aria-label="Remove this mapper"
+                      aria-label={t("scopes.remove_mapper", "Remove this mapper")}
                       onClick={() =>
                         set(
                           "mappers",
@@ -249,8 +277,8 @@ export function ScopeDrawer({
                   )}
                 </div>
                 <ChipSelect
-                  label="Token locations"
-                  options={TOKEN_LOCATIONS.map((l) => ({ id: l.value, name: l.label }))}
+                  label={t("scopes.token_locations", "Token locations")}
+                  options={TOKEN_LOCATIONS.map((l) => ({ id: l.value, name: tm(l.label) }))}
                   value={m.token_location}
                   onChange={(v) => setMapper(i, { token_location: v })}
                   disabled={locked}

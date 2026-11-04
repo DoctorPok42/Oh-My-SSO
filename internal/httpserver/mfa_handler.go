@@ -163,6 +163,7 @@ func (s *Server) writeVerifiedLogin(w http.ResponseWriter, r *http.Request, res 
 	s.endPreviousSession(r, res.Session)
 	setSessionCookie(w, realmName, res.RawToken, res.Session)
 	rememberRealm(w, r, realmName) // the account console's organization menu
+	s.rememberLocale(w, r, res.User)
 	out := mfaVerifyResponse{
 		Status:    string(res.Outcome),
 		UserID:    res.User.ID,

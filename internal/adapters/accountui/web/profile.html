@@ -1,24 +1,52 @@
 {{define "content"}}
 <div class="page-header">
   <div>
-    <h1 class="page-title">Profile</h1>
-    <p class="page-description">How you appear to the applications of {{.Org.Display}}.</p>
+    <h1 class="page-title">{{t "account.profile.title" "Profile"}}</h1>
+    <p class="page-description">{{t "account.profile.description" "How you appear to the applications of {org}." "org" .Org.Display}}</p>
   </div>
 </div>
 
 <section class="card" aria-labelledby="name-title">
-  <div class="card-header"><h2 class="card-title" id="name-title">Your name</h2></div>
+  <div class="card-header"><h2 class="card-title" id="name-title">{{t "account.profile.name.title" "Your name"}}</h2></div>
   {{template "profile-form" .}}
 </section>
 
+{{- if gt (len .Languages) 1}}
+<section class="card" aria-labelledby="language-title">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title" id="language-title">{{t "account.profile.language.title" "Language"}}</h2>
+      <p class="card-description">{{t "account.profile.language.description" "The language of this console, of the sign-in pages and of the e-mails you receive. It also applies to your accounts of the other organizations signed in on this browser."}}</p>
+    </div>
+  </div>
+  <form id="language-form" class="stack" method="post" action="{{.Base}}/language">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div>
+      <label class="label" for="locale">{{t "account.profile.language.label" "Display language"}}</label>
+      <div class="select">
+        <select class="input" id="locale" name="locale">
+          {{- range .Languages}}
+          <option value="{{.Tag}}" lang="{{.Tag}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>
+          {{- end}}
+        </select>
+        <span class="ico ico-chevron-down" aria-hidden="true"></span>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn">{{t "common.save" "Save"}}</button>
+    </div>
+  </form>
+</section>
+{{- end}}
+
 <section class="card" aria-labelledby="ids-title">
-  <div class="card-header"><h2 class="card-title" id="ids-title">Sign-in details</h2></div>
+  <div class="card-header"><h2 class="card-title" id="ids-title">{{t "account.profile.ids.title" "Sign-in details"}}</h2></div>
   <dl class="facts">
-    <div><dt>Username</dt><dd>{{.Username}}</dd></div>
-    <div><dt>E-mail address</dt><dd>{{.Email}}{{if .EmailVerified}} <span class="badge badge-success">Verified</span>{{end}}</dd></div>
+    <div><dt>{{t "account.profile.ids.username" "Username"}}</dt><dd>{{.Username}}</dd></div>
+    <div><dt>{{t "account.profile.ids.email" "E-mail address"}}</dt><dd>{{.Email}}{{if .EmailVerified}} <span class="badge badge-success">{{t "account.profile.ids.verified" "Verified"}}</span>{{end}}</dd></div>
   </dl>
-  <p class="card-note">To change your username or e-mail address, ask your administrator.
-    Your password and sign-in methods are on the <a href="{{.Base}}/security">Security</a> page.</p>
+  <p class="card-note">{{t "account.profile.ids.ask_admin" "To change your username or e-mail address, ask your administrator."}}
+    <a href="{{.Base}}/security">{{t "account.profile.ids.security_link" "Your password and sign-in methods are on the Security page."}}</a></p>
 </section>
 {{end}}
 
@@ -27,17 +55,17 @@
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <div class="row2">
     <div>
-      <label class="label" for="given_name">First name</label>
+      <label class="label" for="given_name">{{t "account.profile.name.given" "First name"}}</label>
       <input class="input" id="given_name" name="given_name" value="{{.GivenName}}" maxlength="100" autocomplete="given-name">
     </div>
     <div>
-      <label class="label" for="family_name">Last name</label>
+      <label class="label" for="family_name">{{t "account.profile.name.family" "Last name"}}</label>
       <input class="input" id="family_name" name="family_name" value="{{.FamilyName}}" maxlength="100" autocomplete="family-name">
     </div>
   </div>
   {{- with .FormError}}<p class="banner banner-danger" role="alert">{{.}}</p>{{end}}
   <div class="actions">
-    <button type="submit" class="btn">Save</button>
-    {{- if .Saved}}<span class="saved" role="status">Saved</span>{{end}}
+    <button type="submit" class="btn">{{t "common.save" "Save"}}</button>
+    {{- if .Saved}}<span class="saved" role="status">{{t "account.profile.saved" "Saved"}}</span>{{end}}
   </div>
 </form>{{end}}

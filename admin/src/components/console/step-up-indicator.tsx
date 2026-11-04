@@ -3,15 +3,23 @@
 import { Lock, LockOpen } from "lucide-react";
 import { useStepUp } from "@/components/console/step-up";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
 // Header padlock: open (green) while changes are unlocked, closed otherwise;
 // a click on the closed one offers the step-up.
 export function StepUpIndicator() {
   const s = useStepUp();
-  const until = s.freshUntil?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const { t, locale } = useT();
+  const until = s.freshUntil?.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   return (
-    <Tooltip content={s.fresh ? `Changes unlocked until ${until}` : "Read-only: confirm it's you to make changes"}>
+    <Tooltip
+      content={
+        s.fresh
+          ? t("user_menu.unlocked_until", "Changes unlocked until {until}", { until: until ?? "" })
+          : t("step_up.read_only", "Read-only: confirm it's you to make changes")
+      }
+    >
       <button
         type="button"
         onClick={() => !s.fresh && s.request("edit")}
@@ -21,7 +29,9 @@ export function StepUpIndicator() {
         )}
       >
         {s.fresh ? <LockOpen className="size-[18px]" /> : <Lock className="size-[18px]" />}
-        <span className="sr-only">{s.fresh ? "Changes unlocked" : "Confirm it's you"}</span>
+        <span className="sr-only">
+          {s.fresh ? t("step_up.unlocked", "Changes unlocked") : t("step_up.confirm", "Confirm it's you")}
+        </span>
       </button>
     </Tooltip>
   );

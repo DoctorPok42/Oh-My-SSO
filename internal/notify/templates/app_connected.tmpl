@@ -1,27 +1,24 @@
-{{define "subject"}}{{if .AppAccessAdded}}{{.AppName}} can now access more of your account{{else}}{{.AppName}} can now access your account{{end}}{{end}}
+{{define "subject"}}{{if .AppAccessAdded}}{{t "email.app.subject_more" "{app} can now access more of your account" "app" .AppName}}{{else}}{{t "email.app.subject" "{app} can now access your account" "app" .AppName}}{{end}}{{end}}
 
-{{define "text"}}Hello{{if .Username}} {{.Username}}{{end}},
+{{define "text"}}{{template "hello" .}}
 
-{{if .AppAccessAdded}}You allowed the application "{{.AppName}}" to receive more information from your {{.Realm}} account:{{else}}You allowed the application "{{.AppName}}" to use your {{.Realm}} account. It receives who you are{{if .AppAccess}}, and:{{else}}.{{end}}{{end}}
+{{if .AppAccessAdded}}{{tp "email.app.intro_more" "You allowed the application <strong>{app}</strong> to receive more information from your {realm} account:" "app" .AppName "realm" .Realm}}{{else if .AppAccess}}{{tp "email.app.intro_and" "You allowed the application <strong>{app}</strong> to use your {realm} account. It receives who you are, and:" "app" .AppName "realm" .Realm}}{{else}}{{tp "email.app.intro" "You allowed the application <strong>{app}</strong> to use your {realm} account. It receives who you are." "app" .AppName "realm" .Realm}}{{end}}
 {{range .AppAccess}}  - {{.}}
 {{end}}
 {{template "details.txt" .}}
-If this was you, there is nothing to do.
+{{t "email.nothing_to_do" "If this was you, there is nothing to do."}}
 
-If it was not you, someone else is using your account: change your
-password now (this signs out every session) and ask your administrator
-to remove this application's access.
+{{t "email.not_you" "Not you?"}} {{t "email.app.not_you" "Someone else is using your account: change your password now (it signs out every session) and ask your administrator to remove this application's access."}}
 {{.ForgotPasswordURL}}
 {{end}}
 
-{{define "html"}}{{template "badge.info" "Applications"}}
-{{if .AppAccessAdded}}{{template "title" (printf "%s can now access more of your account" .AppName)}}{{else}}{{template "title" (printf "%s can now access your account" .AppName)}}{{end}}
-<p>Hello{{if .Username}} {{.Username}}{{end}},</p>
-{{if .AppAccessAdded}}<p>You allowed the application <strong>{{.AppName}}</strong> to receive more information from your {{.Realm}} account:</p>
-{{else}}<p>You allowed the application <strong>{{.AppName}}</strong> to use your {{.Realm}} account. It receives who you are{{if .AppAccess}}, and:{{else}}.{{end}}</p>
-{{end}}{{if .AppAccess}}<ul>{{range .AppAccess}}<li>{{.}}</li>{{end}}</ul>{{end}}
+{{define "html"}}{{template "badge.info" (t "email.badge.apps" "Applications")}}
+{{if .AppAccessAdded}}{{template "title" (t "email.app.subject_more" "{app} can now access more of your account" "app" .AppName)}}{{else}}{{template "title" (t "email.app.subject" "{app} can now access your account" "app" .AppName)}}{{end}}
+{{template "hello" .}}
+<p>{{if .AppAccessAdded}}{{th "email.app.intro_more" "You allowed the application <strong>{app}</strong> to receive more information from your {realm} account:" "app" .AppName "realm" .Realm}}{{else if .AppAccess}}{{th "email.app.intro_and" "You allowed the application <strong>{app}</strong> to use your {realm} account. It receives who you are, and:" "app" .AppName "realm" .Realm}}{{else}}{{th "email.app.intro" "You allowed the application <strong>{app}</strong> to use your {realm} account. It receives who you are." "app" .AppName "realm" .Realm}}{{end}}</p>
+{{if .AppAccess}}<ul>{{range .AppAccess}}<li>{{.}}</li>{{end}}</ul>{{end}}
 {{template "details" .}}
-<p>If this was you, there is nothing to do.</p>
-{{template "notyou" "Someone else is using your account: change your password now (it signs out every session) and ask your administrator to remove this application's access."}}
-{{template "button" (button .ForgotPasswordURL "Change my password")}}
+<p>{{t "email.nothing_to_do" "If this was you, there is nothing to do."}}</p>
+{{template "notyou" (t "email.app.not_you" "Someone else is using your account: change your password now (it signs out every session) and ask your administrator to remove this application's access.")}}
+{{template "button" (button .ForgotPasswordURL (t "email.button.change_password" "Change my password"))}}
 {{end}}

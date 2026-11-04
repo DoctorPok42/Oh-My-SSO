@@ -38,6 +38,7 @@ func buildOIDC(publicURL string, idp core.IdentityCore, store oidcstore.Store, p
 		PasskeysEnabled:   passkeys,
 		AccountConsole:    true,
 		PasswordReset:     passwordReset,
+		I18n:              app.Languages(),
 	}, idp, store)
 	if err != nil {
 		log.Fatalf("oidc: %v", err)
@@ -56,6 +57,7 @@ func buildSAML(publicURL string, idp core.IdentityCore, store oidcstore.Store, p
 		PasskeysEnabled:   passkeys,
 		AccountConsole:    true,
 		PasswordReset:     passwordReset,
+		I18n:              app.Languages(),
 	}, idp, store)
 	if err != nil {
 		log.Fatalf("saml: %v", err)
@@ -137,6 +139,7 @@ func serve() {
 		httpserver.WithPasswordReset(c.PasswordReset),
 		httpserver.WithForgotPassword(c.EmailEnabled()),
 		httpserver.WithKnownAccounts(c.KnownAccounts),
+		httpserver.WithI18n(app.Languages()),
 	}
 	srv := httpserver.New(
 		c.Auth,

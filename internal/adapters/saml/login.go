@@ -202,7 +202,7 @@ func (a *Adapter) renderLogin(w http.ResponseWriter, r *http.Request, p *pending
 			page.Mode = "pick"
 		}
 	}
-	a.pages.RenderLogin(w, http.StatusOK, page)
+	a.pages.RenderLogin(w, r, http.StatusOK, page)
 }
 
 // signInChoices: with a session (ForceAuthn), its account pre-filled and

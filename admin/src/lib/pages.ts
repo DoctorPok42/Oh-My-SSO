@@ -1,42 +1,152 @@
+import { m, type Msg } from "@/i18n";
+
 // Title, subtitle and table columns of each console page, in one place: the
 // page shows them, and so does its skeleton (loading.tsx) while the data is
-// on its way, so the admin sees at once where they are.
+// on its way, so the admin sees at once where they are. Texts to translate
+// where they are shown (tm, src/i18n).
 
 export const PAGES = {
-  dashboard: { title: "Dashboard", description: "Identity provider overview" },
-  clients: { title: "Clients", description: "Applications federated via OpenID Connect or SAML 2.0" },
+  dashboard: {
+    title: m("pages.dashboard.title", "Dashboard"),
+    description: m("pages.dashboard.description", "Identity provider overview"),
+  },
+  clients: {
+    title: m("pages.clients.title", "Clients"),
+    description: m("pages.clients.description", "Applications federated via OpenID Connect or SAML 2.0"),
+  },
   clientScopes: {
-    title: "Client Scopes",
-    description: "Reusable claim sets granted to clients: which user attributes go into which token",
+    title: m("pages.client_scopes.title", "Client Scopes"),
+    description: m(
+      "pages.client_scopes.description",
+      "Reusable claim sets granted to clients: which user attributes go into which token",
+    ),
   },
-  sessions: { title: "Sessions", description: "Active sessions across all users and applications" },
-  audit: { title: "Audit Log", description: "Every sensitive action in this realm, in order" },
-  users: { title: "Users & Roles", description: "Identities and access levels of this realm" },
+  sessions: {
+    title: m("pages.sessions.title", "Sessions"),
+    description: m("pages.sessions.description", "Active sessions across all users and applications"),
+  },
+  audit: {
+    title: m("pages.audit.title", "Audit Log"),
+    description: m("pages.audit.description", "Every sensitive action in this realm, in order"),
+  },
+  users: {
+    title: m("pages.users.title", "Users & Roles"),
+    description: m("pages.users.description", "Identities and access levels of this realm"),
+  },
   signingKeys: {
-    title: "Signing Keys",
-    description: "Keys that sign this realm's tokens and SAML assertions. Private keys stay in the key manager.",
+    title: m("pages.signing_keys.title", "Signing Keys"),
+    description: m(
+      "pages.signing_keys.description",
+      "Keys that sign this realm's tokens and SAML assertions. Private keys stay in the key manager.",
+    ),
   },
-  mfa: { title: "MFA Policies", description: "Who must use a second factor, which one, and when to ask again" },
+  mfa: {
+    title: m("pages.mfa.title", "MFA Policies"),
+    description: m("pages.mfa.description", "Who must use a second factor, which one, and when to ask again"),
+  },
   timeouts: {
-    title: "Timeouts",
-    description: "Suspend a user, a group or an application for a while: no sign-in, no token, until it ends",
+    title: m("pages.timeouts.title", "Timeouts"),
+    description: m(
+      "pages.timeouts.description",
+      "Suspend a user, a group or an application for a while: no sign-in, no token, until it ends",
+    ),
   },
-  settings: { title: "Settings", description: "Security policy of this realm and infrastructure status" },
-  realms: { title: "Realms", description: "Separate identity spaces: users, applications, keys and policies" },
+  settings: {
+    title: m("pages.settings.title", "Settings"),
+    description: m("pages.settings.description", "Security policy of this realm and infrastructure status"),
+  },
+  realms: {
+    title: m("pages.realms.title", "Realms"),
+    description: m("pages.realms.description", "Separate identity spaces: users, applications, keys and policies"),
+  },
 } as const;
+
+const col = {
+  name: m("columns.name", "Name"),
+  protocol: m("columns.protocol", "Protocol"),
+  status: m("columns.status", "Status"),
+  created: m("columns.created", "Created"),
+  permissions: m("columns.permissions", "Permissions"),
+  clientScopes: m("columns.client_scopes", "Client scopes"),
+};
 
 /** Column headers ("" = an actions column without a visible header). */
 export const COLUMNS = {
-  clients: ["Name", "Protocol", "Client / Entity ID", "Status", "Created", ""],
-  clientScopes: ["Name", "Protocol", "Type", "Claims", "Used by", ""],
-  sessions: ["User", "IP address", "Device", "Applications", "Auth method", "MFA", "Last active", "Expires", ""],
-  audit: ["Timestamp", "Actor", "Action", "Target", "IP", "Status"],
-  users: ["Name", "Email", "Groups", "MFA", "Status", "Last login", ""],
-  access: ["Name", "Members", "Permissions", "Client scopes", "Status", ""],
-  permissions: ["Permission", "Description", "Type", ""],
-  signingKeys: ["Key ID", "Algorithm", "Used for", "Status", "Created", "Unpublished", "Key manager"],
-  timeouts: ["Target", "Start", "End", "Reason", "Created by", "Status", ""],
-  realms: ["Display name", "Name", "Status", "Created", ""],
-  mfaRoles: ["Role", "Policy", "MFA required", "Step-up for sensitive actions", "Grace period", "Allowed methods", ""],
-  mfaClients: ["Client", "Policy", "Accepted methods"],
-} as const;
+  clients: [col.name, col.protocol, m("columns.client_id", "Client / Entity ID"), col.status, col.created, ""],
+  clientScopes: [
+    col.name,
+    col.protocol,
+    m("columns.type", "Type"),
+    m("columns.claims", "Claims"),
+    m("columns.used_by", "Used by"),
+    "",
+  ],
+  sessions: [
+    m("columns.user", "User"),
+    m("columns.ip_address", "IP address"),
+    m("columns.device", "Device"),
+    m("columns.applications", "Applications"),
+    m("columns.auth_method", "Auth method"),
+    m("columns.mfa", "MFA"),
+    m("columns.last_active", "Last active"),
+    m("columns.expires", "Expires"),
+    "",
+  ],
+  audit: [
+    m("columns.timestamp", "Timestamp"),
+    m("columns.actor", "Actor"),
+    m("columns.action", "Action"),
+    m("columns.target", "Target"),
+    m("columns.ip", "IP"),
+    col.status,
+  ],
+  users: [
+    col.name,
+    m("columns.email", "Email"),
+    m("columns.groups", "Groups"),
+    m("columns.mfa", "MFA"),
+    col.status,
+    m("columns.last_login", "Last login"),
+    "",
+  ],
+  access: [col.name, m("columns.members", "Members"), col.permissions, col.clientScopes, col.status, ""],
+  permissions: [
+    m("columns.permission", "Permission"),
+    m("columns.description", "Description"),
+    m("columns.type", "Type"),
+    "",
+  ],
+  signingKeys: [
+    m("columns.key_id", "Key ID"),
+    m("columns.algorithm", "Algorithm"),
+    m("columns.used_for", "Used for"),
+    col.status,
+    col.created,
+    m("columns.unpublished", "Unpublished"),
+    m("columns.key_manager", "Key manager"),
+  ],
+  timeouts: [
+    m("columns.target", "Target"),
+    m("columns.start", "Start"),
+    m("columns.end", "End"),
+    m("columns.reason", "Reason"),
+    m("columns.created_by", "Created by"),
+    col.status,
+    "",
+  ],
+  realms: [m("columns.display_name", "Display name"), col.name, col.status, col.created, ""],
+  mfaRoles: [
+    m("columns.role", "Role"),
+    m("columns.policy", "Policy"),
+    m("columns.mfa_required", "MFA required"),
+    m("columns.step_up", "Step-up for sensitive actions"),
+    m("columns.grace_period", "Grace period"),
+    m("columns.allowed_methods", "Allowed methods"),
+    "",
+  ],
+  mfaClients: [
+    m("columns.client", "Client"),
+    m("columns.policy", "Policy"),
+    m("columns.accepted_methods", "Accepted methods"),
+  ],
+} satisfies Record<string, readonly (Msg | "")[]>;

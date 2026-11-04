@@ -2,9 +2,11 @@
 
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
+import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
-function CopyButton({ value, label = "Copy", className }: { value: string; label?: string; className?: string }) {
+function CopyButton({ value, label, className }: { value: string; label?: string; className?: string }) {
+  const { t } = useT();
   const [done, setDone] = useState(false);
   return (
     <button
@@ -24,7 +26,7 @@ function CopyButton({ value, label = "Copy", className }: { value: string; label
       )}
     >
       {done ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-      {done ? "Copied" : label}
+      {done ? t("copy.copied", "Copied") : (label ?? t("copy.copy", "Copy"))}
     </button>
   );
 }

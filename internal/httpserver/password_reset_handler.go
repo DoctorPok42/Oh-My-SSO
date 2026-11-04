@@ -45,14 +45,14 @@ type passwordPolicyErrorResponse struct {
 }
 
 func (s *Server) mountPasswordReset(r chi.Router) {
-	pages, err := loginui.New(nil)
+	pages, err := loginui.New(nil, s.i18n)
 	if err != nil {
 		panic("httpserver: login pages: " + err.Error()) // embedded templates: a bug, not a runtime error
 	}
 	// Full paths (not r.Route("/auth")): mountAuth already owns that sub-router.
 	r.Get("/auth/reset-password", func(w http.ResponseWriter, r *http.Request) {
 		realm := realmFromContext(r)
-		pages.RenderResetPassword(w, loginui.ResetPassword{
+		pages.RenderResetPassword(w, r, loginui.ResetPassword{
 			RealmDisplay: realmDisplay(realm.DisplayName, realm.Name),
 			Base:         "/r/" + realm.Name,
 			Assets:       "/r/" + realm.Name + "/auth/assets",
@@ -68,7 +68,7 @@ func (s *Server) mountPasswordReset(r chi.Router) {
 	if s.forgotPassword {
 		r.Get("/auth/forgot-password", func(w http.ResponseWriter, r *http.Request) {
 			realm := realmFromContext(r)
-			pages.RenderForgotPassword(w, loginui.ForgotPassword{
+			pages.RenderForgotPassword(w, r, loginui.ForgotPassword{
 				RealmDisplay: realmDisplay(realm.DisplayName, realm.Name),
 				Base:         "/r/" + realm.Name,
 				Assets:       "/r/" + realm.Name + "/auth/assets",

@@ -32,6 +32,7 @@ type InstanceSettings struct {
 	SuspiciousLoginEmailEnabled bool
 	MFATrustedDeviceEnabled     bool
 	MFATrustedDeviceDays        int
+	DefaultLocale               string
 	UpdatedAt                   time.Time
 	UpdatedBy                   string
 }

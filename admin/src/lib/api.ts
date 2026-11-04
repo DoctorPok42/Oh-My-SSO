@@ -6,6 +6,8 @@ import { getSession } from "@/lib/auth";
 import { cached, clearCache } from "@/lib/cache";
 import { env } from "@/lib/env";
 import { ApiError, type ApiResult } from "@/lib/api-error";
+import { ENGLISH, translator } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 import type { ApiErrorBody, Me } from "@/lib/types";
 
 // The only way to the Admin API: from this server (BFF), with the admin's
@@ -21,6 +23,12 @@ export type ApiInit = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   query?: Query;
+  /**
+   * Skip the console's language (English errors, no Accept-Language): for the
+   * call that finds that language (src/i18n/server.ts), which getI18n() would
+   * otherwise wait for.
+   */
+  noI18n?: boolean;
 };
 
 /** Builds "/realms/demo/clients?protocol=oidc", every dynamic part URL-encoded. */
@@ -52,11 +60,15 @@ function toQuery(query?: Query): string {
 
 export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
   const session = await getSession();
-  if (!session) throw new ApiError(401, { error: "unauthenticated", message: "Sign in again." });
+  const { t, locale } = init.noI18n ? translator(ENGLISH, {}) : await getI18n();
+  if (!session)
+    throw new ApiError(401, { error: "unauthenticated", message: t("api.sign_in_again", "Sign in again.") });
 
   const h = await headers();
   const reqHeaders: Record<string, string> = {
     Accept: "application/json",
+    // The language of the console: the Admin API writes its error sentences in it.
+    "Accept-Language": locale,
     Authorization: `Bearer ${session.accessToken}`,
     // Who the admin is, for the audit log only (the Admin API never trusts
     // these for a security decision): see internal/adminapi/auth.go.
@@ -85,7 +97,10 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
     console.error("admin api unreachable", url, err);
     throw new ApiError(502, {
       error: "api_unreachable",
-      message: "The Admin API (idp-admin) did not answer. Is it running, and is ADMIN_API_URL right?",
+      message: t(
+        "api.unreachable",
+        "The Admin API (idp-admin) did not answer. Is it running, and is ADMIN_API_URL right?",
+      ),
     });
   }
   const method = init.method ?? "GET";
@@ -106,7 +121,7 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
     throw new ApiError(res.status, {
       ...err,
       error: err.error ?? `http_${res.status}`,
-      message: err.message ?? `The Admin API answered HTTP ${res.status}.`,
+      message: err.message ?? t("api.http_status", "The Admin API answered HTTP {status}.", { status: res.status }),
     });
   }
   return data as T;
@@ -178,11 +193,12 @@ export async function act<T>(fn: () => Promise<T>): Promise<ApiResult<T>> {
   } catch (err) {
     if (err instanceof ApiError) return { ok: false, ...err.toJSON() };
     console.error("server action failed", err);
+    const { t } = await getI18n();
     return {
       ok: false,
       status: 500,
       error: "internal_error",
-      message: "Something went wrong in the console, see its logs.",
+      message: t("api.internal", "Something went wrong in the console, see its logs."),
     };
   }
 }

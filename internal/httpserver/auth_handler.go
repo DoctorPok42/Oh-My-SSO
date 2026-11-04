@@ -234,6 +234,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	s.endPreviousSession(r, sess)
 	setSessionCookie(w, realm.Name, rawToken, sess)
 	rememberRealm(w, r, realm.Name) // the account console's organization menu
+	s.rememberLocale(w, r, user)
 	resp.RememberMe = sess.RememberMe
 	writeJSON(w, http.StatusOK, resp)
 }
