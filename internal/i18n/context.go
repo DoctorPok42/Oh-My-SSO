@@ -2,7 +2,6 @@ package i18n
 
 import (
 	"context"
-	"net/http"
 	"strings"
 	"sync"
 )
@@ -105,26 +104,15 @@ func (b *Bundle) For(ctx context.Context) *Localizer {
 	return b.Get(b.Pick(PrefsFrom(ctx)))
 }
 
-// FromCookie reads the browser's language ("" if none).
-func FromCookie(r *http.Request) string {
-	c, err := r.Cookie(Cookie)
-	if err != nil {
-		return ""
-	}
-	v := Normalize(c.Value)
+// CleanTag normalizes a language tag read from outside (the cookie), "" if it
+// is not one. The HTTP side lives in httpserver: this package stays free of
+// net/http, so that internal/core can use it.
+func CleanTag(v string) string {
+	v = Normalize(v)
 	if !validTag(v) {
 		return ""
 	}
 	return v
-}
-
-// SetCookie remembers the language of this browser. Not HttpOnly: nothing
-// secret, and the admin console reads it the same way. secure: HTTPS.
-func SetCookie(w http.ResponseWriter, lang string, secure bool) {
-	http.SetCookie(w, &http.Cookie{
-		Name: Cookie, Value: lang, Path: "/", MaxAge: CookieMaxAge,
-		Secure: secure, SameSite: http.SameSiteLaxMode,
-	})
 }
 
 // SplitHints turns a ui_locales parameter ("fr-CA fr en") into tags.

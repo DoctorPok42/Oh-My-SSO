@@ -6,7 +6,6 @@ import (
 
 	"sso.internal/sso/internal/adapters/accountui"
 	"sso.internal/sso/internal/core/domain"
-	"sso.internal/sso/internal/i18n"
 )
 
 // The "Language" card of the Profile page. A user chooses the language of
@@ -46,7 +45,7 @@ func (s *Server) handleAccountLanguage(w http.ResponseWriter, r *http.Request) {
 		s.accountFailure(w, r, err)
 		return
 	}
-	i18n.SetCookie(w, lang, true)
+	setLanguageCookie(w, lang, true)
 	setFlash(w, a.realm.Name, "language_saved", 0)
 	s.accountRedirect(w, r, accountBase(a.realm.Name))
 }
@@ -60,7 +59,7 @@ func (s *Server) handleAccountLanguageSync(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 	realm := realmFromContext(r)
 	defer w.WriteHeader(http.StatusNoContent)
-	lang := s.i18n.Match(i18n.FromCookie(r))
+	lang := s.i18n.Match(languageCookie(r))
 	if lang == "" || s.mfa == nil {
 		return
 	}

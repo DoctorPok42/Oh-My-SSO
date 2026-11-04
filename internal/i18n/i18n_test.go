@@ -2,8 +2,6 @@ package i18n
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -130,15 +128,11 @@ func TestPick(t *testing.T) {
 	}
 }
 
-func TestCookie(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
-	r.AddCookie(&http.Cookie{Name: Cookie, Value: "FR"})
-	if got := FromCookie(r); got != "fr" {
+func TestCleanTag(t *testing.T) {
+	if got := CleanTag("FR"); got != "fr" {
 		t.Errorf("got %q", got)
 	}
-	r = httptest.NewRequest(http.MethodGet, "/", nil)
-	r.AddCookie(&http.Cookie{Name: Cookie, Value: "<script>"})
-	if got := FromCookie(r); got != "" {
+	if got := CleanTag("<script>"); got != "" {
 		t.Errorf("not a tag: %q", got)
 	}
 }

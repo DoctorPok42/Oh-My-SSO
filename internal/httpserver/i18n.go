@@ -28,7 +28,7 @@ func WithI18n(b *i18n.Bundle) Option {
 func (s *Server) withLangPrefs(r *http.Request, realm *domain.Realm) context.Context {
 	ctx := r.Context()
 	return i18n.WithPrefs(ctx, i18n.Prefs{
-		Browser: i18n.FromCookie(r),
+		Browser: languageCookie(r),
 		User:    i18n.Lazy(func() string { return s.sessionUserLocale(ctx, r, realm) }),
 		Realm:   i18n.Lazy(func() string { return s.sessions.RealmLocale(ctx, realm.ID) }),
 	})
@@ -66,7 +66,25 @@ func (s *Server) loc(r *http.Request) *i18n.Localizer { return s.i18n.For(r.Cont
 // account's (when it has one), so that the next sign-in page is in it too.
 func (s *Server) rememberLocale(w http.ResponseWriter, r *http.Request, u *domain.User) {
 	lang := s.i18n.Match(userLocale(u))
-	if lang != "" && lang != i18n.FromCookie(r) {
-		i18n.SetCookie(w, lang, true)
+	if lang != "" && lang != languageCookie(r) {
+		setLanguageCookie(w, lang, true)
 	}
+}
+
+// languageCookie reads the browser's language ("" if none).
+func languageCookie(r *http.Request) string {
+	c, err := r.Cookie(i18n.Cookie)
+	if err != nil {
+		return ""
+	}
+	return i18n.CleanTag(c.Value)
+}
+
+// setLanguageCookie remembers the language of this browser. Not HttpOnly:
+// nothing secret, and the admin console reads it the same way. secure: HTTPS.
+func setLanguageCookie(w http.ResponseWriter, lang string, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name: i18n.Cookie, Value: lang, Path: "/", MaxAge: i18n.CookieMaxAge,
+		Secure: secure, SameSite: http.SameSiteLaxMode,
+	})
 }
