@@ -120,7 +120,12 @@ export default async function AuditPage({
           </label>
           <label className="flex flex-col text-[12px] text-text-muted">
             {t("audit.done_by", "Done by")}
-            <NativeSelect name="actor" defaultValue={actor ?? ""} className="mt-1 h-9 w-36 text-[13px]">
+            <NativeSelect
+              name="actor"
+              defaultValue={actor ?? ""}
+              wrapperClassName="mt-1 w-36"
+              className="h-9 text-[13px]"
+            >
               <option value="">{t("audit.anyone", "Anyone")}</option>
               {ACTOR_TYPES.map((type) => (
                 <option key={type} value={type}>

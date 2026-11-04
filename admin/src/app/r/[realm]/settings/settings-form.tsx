@@ -210,7 +210,7 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
                 id="s-locale"
                 value={locale}
                 onChange={(e) => setLocale(e.target.value)}
-                className="max-w-xs"
+                wrapperClassName="max-w-xs"
               >
                 {languages.map((l) => (
                   <option key={l.tag} value={l.tag} lang={l.tag}>

@@ -31,10 +31,10 @@ export function ExportMenu({ base, filters }: { base: string; filters: Record<st
       : t("audit.export.any_date", "any date");
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+      <DropdownMenuTrigger className={cn("group", buttonVariants({ variant: "secondary", size: "sm" }))}>
         <Download className="size-4" />
         {t("audit.export.label", "Export")}
-        <ChevronDown className="size-3.5" />
+        <ChevronDown className="size-3.5 transition-transform group-data-[state=open]:rotate-180" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>

@@ -16,7 +16,8 @@
     button, a badge or a callout is therefore a table cell, not a styled tag.
   - Paragraphs keep the default margins of the client (1em above and below):
     no margin to override, nothing for a client to drop.
-  - No display, no shorthand background, no font-weight (use strong), no
+  - No display (the one exception: display:block on the button's link, so the
+    whole button is clickable), no shorthand background, no font-weight (use strong), no
     margin:auto, no CSS on body: they are partly or not supported.
   - Web fonts are not loaded: IBM Plex Sans is used where it is installed,
     the system font everywhere else.
@@ -81,13 +82,15 @@
 {{define "title"}}<h1 style="font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:22px;line-height:30px;mso-line-height-rule:exactly;color:#13151f;">{{.}}</h1>{{end}}
 
 {{/*
+  The whole button is the link: the <a> is a block carrying the padding (the only display allowed, see the test): an inline link is clickable on its text line only; Outlook for Windows ignores
+  padding on <a>, mso-padding-alt on the cell gives it the same room there.
   The margin gives the button room even when it ends the e-mail. The link
   repeats the background color of its cell: spam filters (SpamAssassin's
   HTML_FONT_LOW_CONTRAST) do not see a cell's bgcolor and would read white
   text on the white card.
 */}}
 {{define "button"}}<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;">
-<tr><td align="center" bgcolor="#3557d6" style="padding:12px 22px;border-radius:8px;"><a href="{{.URL}}" target="_blank" style="font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;color:#ffffff;background-color:#3557d6;text-decoration:none;"><strong>{{.Label}}</strong></a></td></tr>
+<tr><td align="center" bgcolor="#3557d6" style="mso-padding-alt:12px 22px;border-radius:8px;"><a href="{{.URL}}" target="_blank" style="display:block;padding:12px 22px;border-radius:8px;font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;mso-line-height-rule:exactly;color:#ffffff;background-color:#3557d6;text-decoration:none;"><strong>{{.Label}}</strong></a></td></tr>
 </table>{{end}}
 
 {{/* A long link without spaces would widen the table on a phone: break-all lets it wrap. */}}
