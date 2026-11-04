@@ -13,7 +13,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { TogglePill } from "@/components/ui/toggle-pill";
 import { useT } from "@/i18n/client";
 import { formatDateTime } from "@/lib/format";
-import { NUMBERS, settingsDiff, type NumberKey } from "@/lib/settings-form";
+import { MAIL_FIELDS, NUMBERS, settingsDiff, type MailForm, type NumberKey } from "@/lib/settings-form";
 import type { Settings } from "@/lib/types";
 import { sendTestEmail, updateSettings } from "./actions";
 
@@ -26,12 +26,13 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
   const [suspicious, setSuspicious] = useState(settings.suspicious_login_email_enabled);
   const [remember, setRemember] = useState(settings.remember_me_enabled);
   const [locale, setLocale] = useState(settings.default_locale || "en");
+  const [mail, setMail] = useState(Object.fromEntries(MAIL_FIELDS.map((k) => [k, settings[k] ?? ""])) as MailForm);
   const [error, setError] = useState<{ field?: string; message: string } | null>(null);
   const [to, setTo] = useState("");
   const { locked, banner } = useEditLock({ canWrite: writable, managedByConfig: settings.managed_by === "config" });
   const { run, pending } = useAction();
   const testMail = useAction(); // its own spinner, apart from "Save changes"
-  const patch = settingsDiff(settings, form, allowlist, { notif, suspicious, remember }, locale);
+  const patch = settingsDiff(settings, form, allowlist, { notif, suspicious, remember }, locale, mail);
   const dirty = Object.keys(patch).length > 0;
   const languages = settings.languages?.length ? settings.languages : [{ tag: "en", name: "English" }];
 
@@ -47,6 +48,25 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
       />
     </Field>
   );
+
+  const mailField = (
+    k: keyof MailForm,
+    label: string,
+    hint: string,
+    opts: { type?: string; placeholder?: string } = {},
+  ) => (
+    <Field label={label} htmlFor={`s-${k}`} optional hint={hint} error={error?.field === k ? error.message : undefined}>
+      <Input
+        id={`s-${k}`}
+        type={opts.type ?? "text"}
+        value={mail[k]}
+        placeholder={opts.placeholder}
+        onChange={(e) => setMail((m) => ({ ...m, [k]: e.target.value }))}
+        aria-invalid={error?.field === k || undefined}
+      />
+    </Field>
+  );
+  const logoOk = /^https:\/\/\S+$/.test(mail.mail_logo_url.trim());
 
   return (
     <div className="space-y-4">
@@ -189,6 +209,57 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
           </div>
         </Card>
         <Card>
+          <CardTitle>{t("settings.mail.title", "E-mail sender")}</CardTitle>
+          <CardDescription>
+            {t(
+              "settings.mail.description",
+              "How the e-mails of this realm appear in the inbox. Empty fields keep the server's default sender.",
+            )}
+          </CardDescription>
+          <div className="mt-4 space-y-4">
+            {mailField(
+              "mail_from_name",
+              t("settings.mail.from_name", "Sender name"),
+              t("settings.mail.from_name_hint", 'Shown as the sender, for example "Acme Support".'),
+              { placeholder: "Acme Support" },
+            )}
+            {mailField(
+              "mail_from_address",
+              t("settings.mail.from_address", "Sender address"),
+              t(
+                "settings.mail.from_address_hint",
+                "The mail server must allow it (SPF/DKIM of its domain), or e-mails are rejected or land in spam.",
+              ),
+              { type: "email", placeholder: "no-reply@acme.example" },
+            )}
+            {mailField(
+              "mail_reply_to",
+              t("settings.mail.reply_to", "Reply-to address"),
+              t("settings.mail.reply_to_hint", "Where replies go. Without it, replies go to the sender address."),
+              { type: "email", placeholder: "support@acme.example" },
+            )}
+            {mailField(
+              "mail_logo_url",
+              t("settings.mail.logo", "Header image"),
+              t(
+                "settings.mail.logo_hint",
+                "An https:// address of a square image (shown at 28 px), in place of the product initial.",
+              ),
+              { type: "url", placeholder: "https://acme.example/logo.png" },
+            )}
+            {logoOk && (
+              // eslint-disable-next-line @next/next/no-img-element -- an arbitrary external address typed by the admin
+              <img
+                src={mail.mail_logo_url.trim()}
+                alt=""
+                width={28}
+                height={28}
+                className="size-7 rounded-md border border-border"
+              />
+            )}
+          </div>
+        </Card>
+        <Card>
           <CardTitle>{t("settings.language.title", "Language")}</CardTitle>
           <CardDescription>
             {t(
@@ -251,7 +322,10 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
       <Card>
         <CardTitle>{t("settings.test.title", "Send a test e-mail")}</CardTitle>
         <CardDescription>
-          {t("settings.test.description", "Checks the server's SMTP settings end to end.")}
+          {t(
+            "settings.test.description",
+            "Checks the server's SMTP settings end to end, with the saved sender of this realm.",
+          )}
         </CardDescription>
         <form
           className="mt-4 flex flex-wrap items-end gap-2"

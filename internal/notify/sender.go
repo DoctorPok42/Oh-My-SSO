@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+
+	"sso.internal/sso/internal/core/domain"
 )
 
 // Template names an e-mail. The notification kinds of the core
@@ -34,6 +36,24 @@ var AllTemplates = []Template{
 	TemplateSuspiciousLogin, TemplateMfaMethodAdded, TemplateMfaMethodRemoved,
 	TemplateMfaReset, TemplateBackupCodesRegenerated, TemplateAccountLocked,
 	TemplateAppConnected, TemplateTest, TemplateAccountInvite, TemplateAdminRecovery,
+}
+
+// Sender is what a realm changes in the identity of its e-mails (Settings >
+// E-mail). An empty field keeps the server default (SMTP_FROM).
+type Sender struct {
+	Name    string // display name of the From header
+	Address string // From address (the SMTP server must accept it)
+	ReplyTo string // Reply-To header
+}
+
+// ApplyRealmSettings puts the sender identity and the image a realm chose
+// (Settings > E-mail) in the data of an e-mail. A nil st changes nothing.
+func (d *Data) ApplyRealmSettings(st *domain.InstanceSettings) {
+	if st == nil {
+		return
+	}
+	d.Sender = Sender{Name: st.MailFromName, Address: st.MailFromAddress, ReplyTo: st.MailReplyTo}
+	d.LogoURL = st.MailLogoURL
 }
 
 // EmailSender sends one e-mail made from a template and its data.

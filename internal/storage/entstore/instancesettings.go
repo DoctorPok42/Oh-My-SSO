@@ -66,6 +66,10 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 		SetNillableMfaTrustedDeviceEnabled(p.MFATrustedDeviceEnabled).
 		SetNillableMfaTrustedDeviceDays(p.MFATrustedDeviceDays).
 		SetNillableDefaultLocale(p.DefaultLocale).
+		SetNillableMailFromName(p.MailFromName).
+		SetNillableMailFromAddress(p.MailFromAddress).
+		SetNillableMailReplyTo(p.MailReplyTo).
+		SetNillableMailLogoURL(p.MailLogoURL).
 		SetNillableUpdatedBy(p.UpdatedBy)
 	if p.IPAllowlist != nil {
 		builder = builder.SetIPAllowlist(p.IPAllowlist)
@@ -107,6 +111,10 @@ func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings 
 		MFATrustedDeviceEnabled:     e.MfaTrustedDeviceEnabled,
 		MFATrustedDeviceDays:        e.MfaTrustedDeviceDays,
 		DefaultLocale:               e.DefaultLocale,
+		MailFromName:                e.MailFromName,
+		MailFromAddress:             e.MailFromAddress,
+		MailReplyTo:                 e.MailReplyTo,
+		MailLogoURL:                 e.MailLogoURL,
 		UpdatedAt:                   e.UpdatedAt,
 		UpdatedBy:                   e.UpdatedBy,
 	}

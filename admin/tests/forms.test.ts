@@ -47,6 +47,10 @@ describe("settings form", () => {
     updated_by: "",
     email_enabled: true,
     default_locale: "en",
+    mail_from_name: "",
+    mail_from_address: "",
+    mail_reply_to: "",
+    mail_logo_url: "",
     languages: [
       { tag: "en", name: "English" },
       { tag: "fr", name: "Français" },
@@ -99,6 +103,23 @@ describe("settings form", () => {
     const toggles = { notif: true, suspicious: false, remember: true };
     expect(settingsDiff(before, form, "10.0.0.0/8", toggles, "en")).toEqual({});
     expect(settingsDiff(before, form, "10.0.0.0/8", toggles, "fr")).toEqual({ default_locale: "fr" });
+  });
+
+  it("sends the e-mail sender fields that changed, empty ones included", () => {
+    const toggles = { notif: true, suspicious: false, remember: true };
+    const blank = { mail_from_name: "", mail_from_address: "", mail_reply_to: "", mail_logo_url: "" };
+    expect(settingsDiff(before, form, "10.0.0.0/8", toggles, "en", blank)).toEqual({});
+    expect(
+      settingsDiff(before, form, "10.0.0.0/8", toggles, "en", {
+        ...blank,
+        mail_from_name: " Acme ",
+        mail_reply_to: "help@acme.test",
+      }),
+    ).toEqual({ mail_from_name: "Acme", mail_reply_to: "help@acme.test" });
+    const saved = { ...before, mail_from_name: "Acme", mail_logo_url: "https://acme.test/logo.png" };
+    expect(settingsDiff(saved, form, "10.0.0.0/8", toggles, "en", { ...blank, mail_from_name: "Acme" })).toEqual({
+      mail_logo_url: "",
+    });
   });
 });
 

@@ -172,6 +172,26 @@ func DefaultLocale(v string) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldDefaultLocale, v))
 }
 
+// MailFromName applies equality check predicate on the "mail_from_name" field. It's identical to MailFromNameEQ.
+func MailFromName(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMailFromName, v))
+}
+
+// MailFromAddress applies equality check predicate on the "mail_from_address" field. It's identical to MailFromAddressEQ.
+func MailFromAddress(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMailFromAddress, v))
+}
+
+// MailReplyTo applies equality check predicate on the "mail_reply_to" field. It's identical to MailReplyToEQ.
+func MailReplyTo(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMailReplyTo, v))
+}
+
+// MailLogoURL applies equality check predicate on the "mail_logo_url" field. It's identical to MailLogoURLEQ.
+func MailLogoURL(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMailLogoURL, v))
+}
+
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldUpdatedAt, v))
@@ -974,6 +994,266 @@ func DefaultLocaleEqualFold(v string) predicate.InstanceSettings {
 // DefaultLocaleContainsFold applies the ContainsFold predicate on the "default_locale" field.
 func DefaultLocaleContainsFold(v string) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldContainsFold(FieldDefaultLocale, v))
+}
+
+// MailFromNameEQ applies the EQ predicate on the "mail_from_name" field.
+func MailFromNameEQ(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMailFromName, v))
+}
+
+// MailFromNameNEQ applies the NEQ predicate on the "mail_from_name" field.
+func MailFromNameNEQ(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldMailFromName, v))
+}
+
+// MailFromNameIn applies the In predicate on the "mail_from_name" field.
+func MailFromNameIn(vs ...string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldMailFromName, vs...))
+}
+
+// MailFromNameNotIn applies the NotIn predicate on the "mail_from_name" field.
+func MailFromNameNotIn(vs ...string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldMailFromName, vs...))
+}
+
+// MailFromNameGT applies the GT predicate on the "mail_from_name" field.
+func MailFromNameGT(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldMailFromName, v))
+}
+
+// MailFromNameGTE applies the GTE predicate on the "mail_from_name" field.
+func MailFromNameGTE(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldMailFromName, v))
+}
+
+// MailFromNameLT applies the LT predicate on the "mail_from_name" field.
+func MailFromNameLT(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldMailFromName, v))
+}
+
+// MailFromNameLTE applies the LTE predicate on the "mail_from_name" field.
+func MailFromNameLTE(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldMailFromName, v))
+}
+
+// MailFromNameContains applies the Contains predicate on the "mail_from_name" field.
+func MailFromNameContains(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldContains(FieldMailFromName, v))
+}
+
+// MailFromNameHasPrefix applies the HasPrefix predicate on the "mail_from_name" field.
+func MailFromNameHasPrefix(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldHasPrefix(FieldMailFromName, v))
+}
+
+// MailFromNameHasSuffix applies the HasSuffix predicate on the "mail_from_name" field.
+func MailFromNameHasSuffix(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldHasSuffix(FieldMailFromName, v))
+}
+
+// MailFromNameEqualFold applies the EqualFold predicate on the "mail_from_name" field.
+func MailFromNameEqualFold(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEqualFold(FieldMailFromName, v))
+}
+
+// MailFromNameContainsFold applies the ContainsFold predicate on the "mail_from_name" field.
+func MailFromNameContainsFold(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldContainsFold(FieldMailFromName, v))
+}
+
+// MailFromAddressEQ applies the EQ predicate on the "mail_from_address" field.
+func MailFromAddressEQ(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMailFromAddress, v))
+}
+
+// MailFromAddressNEQ applies the NEQ predicate on the "mail_from_address" field.
+func MailFromAddressNEQ(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldMailFromAddress, v))
+}
+
+// MailFromAddressIn applies the In predicate on the "mail_from_address" field.
+func MailFromAddressIn(vs ...string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldMailFromAddress, vs...))
+}
+
+// MailFromAddressNotIn applies the NotIn predicate on the "mail_from_address" field.
+func MailFromAddressNotIn(vs ...string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldMailFromAddress, vs...))
+}
+
+// MailFromAddressGT applies the GT predicate on the "mail_from_address" field.
+func MailFromAddressGT(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldMailFromAddress, v))
+}
+
+// MailFromAddressGTE applies the GTE predicate on the "mail_from_address" field.
+func MailFromAddressGTE(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldMailFromAddress, v))
+}
+
+// MailFromAddressLT applies the LT predicate on the "mail_from_address" field.
+func MailFromAddressLT(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldMailFromAddress, v))
+}
+
+// MailFromAddressLTE applies the LTE predicate on the "mail_from_address" field.
+func MailFromAddressLTE(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldMailFromAddress, v))
+}
+
+// MailFromAddressContains applies the Contains predicate on the "mail_from_address" field.
+func MailFromAddressContains(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldContains(FieldMailFromAddress, v))
+}
+
+// MailFromAddressHasPrefix applies the HasPrefix predicate on the "mail_from_address" field.
+func MailFromAddressHasPrefix(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldHasPrefix(FieldMailFromAddress, v))
+}
+
+// MailFromAddressHasSuffix applies the HasSuffix predicate on the "mail_from_address" field.
+func MailFromAddressHasSuffix(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldHasSuffix(FieldMailFromAddress, v))
+}
+
+// MailFromAddressEqualFold applies the EqualFold predicate on the "mail_from_address" field.
+func MailFromAddressEqualFold(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEqualFold(FieldMailFromAddress, v))
+}
+
+// MailFromAddressContainsFold applies the ContainsFold predicate on the "mail_from_address" field.
+func MailFromAddressContainsFold(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldContainsFold(FieldMailFromAddress, v))
+}
+
+// MailReplyToEQ applies the EQ predicate on the "mail_reply_to" field.
+func MailReplyToEQ(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMailReplyTo, v))
+}
+
+// MailReplyToNEQ applies the NEQ predicate on the "mail_reply_to" field.
+func MailReplyToNEQ(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldMailReplyTo, v))
+}
+
+// MailReplyToIn applies the In predicate on the "mail_reply_to" field.
+func MailReplyToIn(vs ...string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldMailReplyTo, vs...))
+}
+
+// MailReplyToNotIn applies the NotIn predicate on the "mail_reply_to" field.
+func MailReplyToNotIn(vs ...string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldMailReplyTo, vs...))
+}
+
+// MailReplyToGT applies the GT predicate on the "mail_reply_to" field.
+func MailReplyToGT(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldMailReplyTo, v))
+}
+
+// MailReplyToGTE applies the GTE predicate on the "mail_reply_to" field.
+func MailReplyToGTE(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldMailReplyTo, v))
+}
+
+// MailReplyToLT applies the LT predicate on the "mail_reply_to" field.
+func MailReplyToLT(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldMailReplyTo, v))
+}
+
+// MailReplyToLTE applies the LTE predicate on the "mail_reply_to" field.
+func MailReplyToLTE(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldMailReplyTo, v))
+}
+
+// MailReplyToContains applies the Contains predicate on the "mail_reply_to" field.
+func MailReplyToContains(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldContains(FieldMailReplyTo, v))
+}
+
+// MailReplyToHasPrefix applies the HasPrefix predicate on the "mail_reply_to" field.
+func MailReplyToHasPrefix(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldHasPrefix(FieldMailReplyTo, v))
+}
+
+// MailReplyToHasSuffix applies the HasSuffix predicate on the "mail_reply_to" field.
+func MailReplyToHasSuffix(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldHasSuffix(FieldMailReplyTo, v))
+}
+
+// MailReplyToEqualFold applies the EqualFold predicate on the "mail_reply_to" field.
+func MailReplyToEqualFold(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEqualFold(FieldMailReplyTo, v))
+}
+
+// MailReplyToContainsFold applies the ContainsFold predicate on the "mail_reply_to" field.
+func MailReplyToContainsFold(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldContainsFold(FieldMailReplyTo, v))
+}
+
+// MailLogoURLEQ applies the EQ predicate on the "mail_logo_url" field.
+func MailLogoURLEQ(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldMailLogoURL, v))
+}
+
+// MailLogoURLNEQ applies the NEQ predicate on the "mail_logo_url" field.
+func MailLogoURLNEQ(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldMailLogoURL, v))
+}
+
+// MailLogoURLIn applies the In predicate on the "mail_logo_url" field.
+func MailLogoURLIn(vs ...string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldMailLogoURL, vs...))
+}
+
+// MailLogoURLNotIn applies the NotIn predicate on the "mail_logo_url" field.
+func MailLogoURLNotIn(vs ...string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldMailLogoURL, vs...))
+}
+
+// MailLogoURLGT applies the GT predicate on the "mail_logo_url" field.
+func MailLogoURLGT(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldMailLogoURL, v))
+}
+
+// MailLogoURLGTE applies the GTE predicate on the "mail_logo_url" field.
+func MailLogoURLGTE(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldMailLogoURL, v))
+}
+
+// MailLogoURLLT applies the LT predicate on the "mail_logo_url" field.
+func MailLogoURLLT(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldMailLogoURL, v))
+}
+
+// MailLogoURLLTE applies the LTE predicate on the "mail_logo_url" field.
+func MailLogoURLLTE(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldMailLogoURL, v))
+}
+
+// MailLogoURLContains applies the Contains predicate on the "mail_logo_url" field.
+func MailLogoURLContains(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldContains(FieldMailLogoURL, v))
+}
+
+// MailLogoURLHasPrefix applies the HasPrefix predicate on the "mail_logo_url" field.
+func MailLogoURLHasPrefix(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldHasPrefix(FieldMailLogoURL, v))
+}
+
+// MailLogoURLHasSuffix applies the HasSuffix predicate on the "mail_logo_url" field.
+func MailLogoURLHasSuffix(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldHasSuffix(FieldMailLogoURL, v))
+}
+
+// MailLogoURLEqualFold applies the EqualFold predicate on the "mail_logo_url" field.
+func MailLogoURLEqualFold(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEqualFold(FieldMailLogoURL, v))
+}
+
+// MailLogoURLContainsFold applies the ContainsFold predicate on the "mail_logo_url" field.
+func MailLogoURLContainsFold(v string) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldContainsFold(FieldMailLogoURL, v))
 }
 
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.

@@ -102,3 +102,33 @@ func TestTemplatesAvoidPhishingPhrases(t *testing.T) {
 		}
 	}
 }
+
+// A realm's image replaces the product initial in the header, and only then.
+func TestRealmLogo(t *testing.T) {
+	templates, err := LoadTemplates(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 11, 2, 21, 21, 0, 0, time.UTC)
+	data := PreviewData(TemplateTest, "Oh-My-SSO", now)
+
+	plain, err := templates.Render(TemplateTest, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(plain.HTML, "<img") {
+		t.Error("no image was configured but the e-mail has one")
+	}
+
+	data.LogoURL = "https://cdn.example.com/logo.png"
+	withLogo, err := templates.Render(TemplateTest, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(withLogo.HTML, `<img src="https://cdn.example.com/logo.png"`) {
+		t.Error("the configured image is not in the e-mail")
+	}
+	if strings.Contains(withLogo.HTML, "<strong>O</strong>") {
+		t.Error("the product initial is still shown next to the image")
+	}
+}

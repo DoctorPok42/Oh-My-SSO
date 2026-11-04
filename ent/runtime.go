@@ -487,8 +487,24 @@ func init() {
 	instancesettingsDescDefaultLocale := instancesettingsFields[22].Descriptor()
 	// instancesettings.DefaultDefaultLocale holds the default value on creation for the default_locale field.
 	instancesettings.DefaultDefaultLocale = instancesettingsDescDefaultLocale.Default.(string)
+	// instancesettingsDescMailFromName is the schema descriptor for mail_from_name field.
+	instancesettingsDescMailFromName := instancesettingsFields[23].Descriptor()
+	// instancesettings.DefaultMailFromName holds the default value on creation for the mail_from_name field.
+	instancesettings.DefaultMailFromName = instancesettingsDescMailFromName.Default.(string)
+	// instancesettingsDescMailFromAddress is the schema descriptor for mail_from_address field.
+	instancesettingsDescMailFromAddress := instancesettingsFields[24].Descriptor()
+	// instancesettings.DefaultMailFromAddress holds the default value on creation for the mail_from_address field.
+	instancesettings.DefaultMailFromAddress = instancesettingsDescMailFromAddress.Default.(string)
+	// instancesettingsDescMailReplyTo is the schema descriptor for mail_reply_to field.
+	instancesettingsDescMailReplyTo := instancesettingsFields[25].Descriptor()
+	// instancesettings.DefaultMailReplyTo holds the default value on creation for the mail_reply_to field.
+	instancesettings.DefaultMailReplyTo = instancesettingsDescMailReplyTo.Default.(string)
+	// instancesettingsDescMailLogoURL is the schema descriptor for mail_logo_url field.
+	instancesettingsDescMailLogoURL := instancesettingsFields[26].Descriptor()
+	// instancesettings.DefaultMailLogoURL holds the default value on creation for the mail_logo_url field.
+	instancesettings.DefaultMailLogoURL = instancesettingsDescMailLogoURL.Default.(string)
 	// instancesettingsDescUpdatedAt is the schema descriptor for updated_at field.
-	instancesettingsDescUpdatedAt := instancesettingsFields[23].Descriptor()
+	instancesettingsDescUpdatedAt := instancesettingsFields[27].Descriptor()
 	// instancesettings.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	instancesettings.DefaultUpdatedAt = instancesettingsDescUpdatedAt.Default.(func() time.Time)
 	// instancesettings.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

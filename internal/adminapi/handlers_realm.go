@@ -514,6 +514,10 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		NotificationEmailEnabled    *bool     `json:"notification_email_enabled"`
 		SuspiciousLoginEmailEnabled *bool     `json:"suspicious_login_email_enabled"`
 		DefaultLocale               *string   `json:"default_locale"`
+		MailFromName                *string   `json:"mail_from_name"`
+		MailFromAddress             *string   `json:"mail_from_address"`
+		MailReplyTo                 *string   `json:"mail_reply_to"`
+		MailLogoURL                 *string   `json:"mail_logo_url"`
 	}
 	if !decode(w, r, &in) {
 		return
@@ -542,7 +546,7 @@ func (s *Server) handleTestEmail(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: "a plain e-mail address is required", Field: "to"})
 		return
 	}
-	if err := s.d.TestEmail(r.Context(), addr.Address); err != nil {
+	if err := s.d.TestEmail(r.Context(), realmFrom(r).ID, addr.Address); err != nil {
 		writeErrorT(w, r, http.StatusBadGateway, "email_failed", i18n.M("admin.error.email_failed", "the mail server refused or did not answer: {error}", "error", err.Error()))
 		return
 	}
