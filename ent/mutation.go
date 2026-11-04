@@ -13389,6 +13389,10 @@ type InstanceSettingsMutation struct {
 	addinvite_ttl_hours            *int
 	suspicious_login_email_enabled *bool
 	default_locale                 *string
+	mail_from_name                 *string
+	mail_from_address              *string
+	mail_reply_to                  *string
+	mail_logo_url                  *string
 	updated_at                     *time.Time
 	updated_by                     *string
 	clearedFields                  map[string]struct{}
@@ -14584,6 +14588,150 @@ func (m *InstanceSettingsMutation) ResetDefaultLocale() {
 	m.default_locale = nil
 }
 
+// SetMailFromName sets the "mail_from_name" field.
+func (m *InstanceSettingsMutation) SetMailFromName(s string) {
+	m.mail_from_name = &s
+}
+
+// MailFromName returns the value of the "mail_from_name" field in the mutation.
+func (m *InstanceSettingsMutation) MailFromName() (r string, exists bool) {
+	v := m.mail_from_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMailFromName returns the old "mail_from_name" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldMailFromName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMailFromName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMailFromName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMailFromName: %w", err)
+	}
+	return oldValue.MailFromName, nil
+}
+
+// ResetMailFromName resets all changes to the "mail_from_name" field.
+func (m *InstanceSettingsMutation) ResetMailFromName() {
+	m.mail_from_name = nil
+}
+
+// SetMailFromAddress sets the "mail_from_address" field.
+func (m *InstanceSettingsMutation) SetMailFromAddress(s string) {
+	m.mail_from_address = &s
+}
+
+// MailFromAddress returns the value of the "mail_from_address" field in the mutation.
+func (m *InstanceSettingsMutation) MailFromAddress() (r string, exists bool) {
+	v := m.mail_from_address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMailFromAddress returns the old "mail_from_address" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldMailFromAddress(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMailFromAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMailFromAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMailFromAddress: %w", err)
+	}
+	return oldValue.MailFromAddress, nil
+}
+
+// ResetMailFromAddress resets all changes to the "mail_from_address" field.
+func (m *InstanceSettingsMutation) ResetMailFromAddress() {
+	m.mail_from_address = nil
+}
+
+// SetMailReplyTo sets the "mail_reply_to" field.
+func (m *InstanceSettingsMutation) SetMailReplyTo(s string) {
+	m.mail_reply_to = &s
+}
+
+// MailReplyTo returns the value of the "mail_reply_to" field in the mutation.
+func (m *InstanceSettingsMutation) MailReplyTo() (r string, exists bool) {
+	v := m.mail_reply_to
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMailReplyTo returns the old "mail_reply_to" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldMailReplyTo(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMailReplyTo is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMailReplyTo requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMailReplyTo: %w", err)
+	}
+	return oldValue.MailReplyTo, nil
+}
+
+// ResetMailReplyTo resets all changes to the "mail_reply_to" field.
+func (m *InstanceSettingsMutation) ResetMailReplyTo() {
+	m.mail_reply_to = nil
+}
+
+// SetMailLogoURL sets the "mail_logo_url" field.
+func (m *InstanceSettingsMutation) SetMailLogoURL(s string) {
+	m.mail_logo_url = &s
+}
+
+// MailLogoURL returns the value of the "mail_logo_url" field in the mutation.
+func (m *InstanceSettingsMutation) MailLogoURL() (r string, exists bool) {
+	v := m.mail_logo_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMailLogoURL returns the old "mail_logo_url" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldMailLogoURL(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMailLogoURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMailLogoURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMailLogoURL: %w", err)
+	}
+	return oldValue.MailLogoURL, nil
+}
+
+// ResetMailLogoURL resets all changes to the "mail_logo_url" field.
+func (m *InstanceSettingsMutation) ResetMailLogoURL() {
+	m.mail_logo_url = nil
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (m *InstanceSettingsMutation) SetUpdatedAt(t time.Time) {
 	m.updated_at = &t
@@ -14730,7 +14878,7 @@ func (m *InstanceSettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstanceSettingsMutation) Fields() []string {
-	fields := make([]string, 0, 24)
+	fields := make([]string, 0, 28)
 	if m.realm != nil {
 		fields = append(fields, instancesettings.FieldRealmID)
 	}
@@ -14797,6 +14945,18 @@ func (m *InstanceSettingsMutation) Fields() []string {
 	if m.default_locale != nil {
 		fields = append(fields, instancesettings.FieldDefaultLocale)
 	}
+	if m.mail_from_name != nil {
+		fields = append(fields, instancesettings.FieldMailFromName)
+	}
+	if m.mail_from_address != nil {
+		fields = append(fields, instancesettings.FieldMailFromAddress)
+	}
+	if m.mail_reply_to != nil {
+		fields = append(fields, instancesettings.FieldMailReplyTo)
+	}
+	if m.mail_logo_url != nil {
+		fields = append(fields, instancesettings.FieldMailLogoURL)
+	}
 	if m.updated_at != nil {
 		fields = append(fields, instancesettings.FieldUpdatedAt)
 	}
@@ -14855,6 +15015,14 @@ func (m *InstanceSettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.SuspiciousLoginEmailEnabled()
 	case instancesettings.FieldDefaultLocale:
 		return m.DefaultLocale()
+	case instancesettings.FieldMailFromName:
+		return m.MailFromName()
+	case instancesettings.FieldMailFromAddress:
+		return m.MailFromAddress()
+	case instancesettings.FieldMailReplyTo:
+		return m.MailReplyTo()
+	case instancesettings.FieldMailLogoURL:
+		return m.MailLogoURL()
 	case instancesettings.FieldUpdatedAt:
 		return m.UpdatedAt()
 	case instancesettings.FieldUpdatedBy:
@@ -14912,6 +15080,14 @@ func (m *InstanceSettingsMutation) OldField(ctx context.Context, name string) (e
 		return m.OldSuspiciousLoginEmailEnabled(ctx)
 	case instancesettings.FieldDefaultLocale:
 		return m.OldDefaultLocale(ctx)
+	case instancesettings.FieldMailFromName:
+		return m.OldMailFromName(ctx)
+	case instancesettings.FieldMailFromAddress:
+		return m.OldMailFromAddress(ctx)
+	case instancesettings.FieldMailReplyTo:
+		return m.OldMailReplyTo(ctx)
+	case instancesettings.FieldMailLogoURL:
+		return m.OldMailLogoURL(ctx)
 	case instancesettings.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
 	case instancesettings.FieldUpdatedBy:
@@ -15078,6 +15254,34 @@ func (m *InstanceSettingsMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDefaultLocale(v)
+		return nil
+	case instancesettings.FieldMailFromName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMailFromName(v)
+		return nil
+	case instancesettings.FieldMailFromAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMailFromAddress(v)
+		return nil
+	case instancesettings.FieldMailReplyTo:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMailReplyTo(v)
+		return nil
+	case instancesettings.FieldMailLogoURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMailLogoURL(v)
 		return nil
 	case instancesettings.FieldUpdatedAt:
 		v, ok := value.(time.Time)
@@ -15381,6 +15585,18 @@ func (m *InstanceSettingsMutation) ResetField(name string) error {
 		return nil
 	case instancesettings.FieldDefaultLocale:
 		m.ResetDefaultLocale()
+		return nil
+	case instancesettings.FieldMailFromName:
+		m.ResetMailFromName()
+		return nil
+	case instancesettings.FieldMailFromAddress:
+		m.ResetMailFromAddress()
+		return nil
+	case instancesettings.FieldMailReplyTo:
+		m.ResetMailReplyTo()
+		return nil
+	case instancesettings.FieldMailLogoURL:
+		m.ResetMailLogoURL()
 		return nil
 	case instancesettings.FieldUpdatedAt:
 		m.ResetUpdatedAt()

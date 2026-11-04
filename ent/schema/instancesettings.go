@@ -67,6 +67,14 @@ func (InstanceSettings) Fields() []ent.Field {
 		// chosen one (package i18n): "en", or a language with a translation
 		// file.
 		field.String("default_locale").Default("en"),
+		// Sender of the realm's e-mails. Empty = the server's SMTP_FROM.
+		// mail_from_address must be an address the SMTP server may send
+		// from (SPF/DKIM); mail_logo_url is an https image shown in the
+		// header of every e-mail.
+		field.String("mail_from_name").Default(""),
+		field.String("mail_from_address").Default(""),
+		field.String("mail_reply_to").Default(""),
+		field.String("mail_logo_url").Default(""),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.String("updated_by").Optional(),
 	}

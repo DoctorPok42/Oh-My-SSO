@@ -74,12 +74,18 @@ func serve() {
 	c := app.BuildCore()
 	defer c.Close()
 
-	var testEmail func(ctx context.Context, to string) error
+	var testEmail func(ctx context.Context, realmID, to string) error
 	if sender := app.EmailSender(app.Templates()); sender != nil {
-		testEmail = func(ctx context.Context, to string) error {
-			return sender.Send(ctx, to, notify.TemplateTest, notify.Data{
+		testEmail = func(ctx context.Context, realmID, to string) error {
+			data := notify.Data{
 				Product: "Oh-My-SSO", When: time.Now().UTC().Format("Mon 2 Jan 2006, 15:04 UTC"),
-			})
+			}
+			// The test e-mail leaves with the realm's sender settings, so the
+			// admin sees what users will receive.
+			if st, err := c.Settings.GetByRealmID(ctx, realmID); err == nil {
+				data.ApplyRealmSettings(st)
+			}
+			return sender.Send(ctx, to, notify.TemplateTest, data)
 		}
 	}
 

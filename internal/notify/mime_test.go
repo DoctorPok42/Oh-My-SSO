@@ -16,7 +16,8 @@ func TestBuildMIME(t *testing.T) {
 	from := &mail.Address{Name: "Oh-My-SSO", Address: "no-reply@sso.example.com"}
 	to := &mail.Address{Address: "alice@example.com"}
 	in := Message{Subject: "Réinitialiser", Text: "hello\nworld " + strings.Repeat("x", 120), HTML: "<p>hello</p>"}
-	raw, err := buildMIME(from, to, in, time.Date(2026, 11, 2, 21, 21, 0, 0, time.UTC))
+	replyTo := &mail.Address{Name: "Support", Address: "help@sso.example.com"}
+	raw, err := buildMIME(from, to, replyTo, in, time.Date(2026, 11, 2, 21, 21, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,6 +33,9 @@ func TestBuildMIME(t *testing.T) {
 		if h.Get(k) == "" {
 			t.Errorf("header %s is missing", k)
 		}
+	}
+	if got := h.Get("Reply-To"); got != replyTo.String() {
+		t.Errorf("Reply-To = %q, want %q", got, replyTo.String())
 	}
 	if subj, _ := new(mime.WordDecoder).DecodeHeader(h.Get("Subject")); subj != in.Subject {
 		t.Errorf("subject = %q, want %q", subj, in.Subject)
@@ -64,6 +68,30 @@ func TestBuildMIME(t *testing.T) {
 		if string(body) != w.body {
 			t.Errorf("part %s = %q, want %q", w.ctype, body, w.body)
 		}
+	}
+}
+
+func TestIdentity(t *testing.T) {
+	s, err := NewSMTPEmailSender(SMTPConfig{Host: "mail.example.com", From: "SSO <no-reply@example.com>"}, &Templates{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	from, replyTo := s.identity(Sender{})
+	if from.String() != "\"SSO\" <no-reply@example.com>" || replyTo != nil {
+		t.Errorf("default identity = %v / %v", from, replyTo)
+	}
+	from, replyTo = s.identity(Sender{Name: "Acme Support", ReplyTo: "help@acme.test"})
+	if from.Name != "Acme Support" || from.Address != "no-reply@example.com" || replyTo.Address != "help@acme.test" {
+		t.Errorf("name override = %v / %v", from, replyTo)
+	}
+	from, _ = s.identity(Sender{Address: "hello@acme.test"})
+	if from.Name != "SSO" || from.Address != "hello@acme.test" {
+		t.Errorf("address override = %v", from)
+	}
+	// A value that is not an address falls back to the default.
+	from, replyTo = s.identity(Sender{Address: "not an address", ReplyTo: "nope"})
+	if from.Address != "no-reply@example.com" || replyTo != nil {
+		t.Errorf("invalid override = %v / %v", from, replyTo)
 	}
 }
 

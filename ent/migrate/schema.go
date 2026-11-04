@@ -484,6 +484,10 @@ var (
 		{Name: "invite_ttl_hours", Type: field.TypeInt, Default: 4},
 		{Name: "suspicious_login_email_enabled", Type: field.TypeBool, Default: false},
 		{Name: "default_locale", Type: field.TypeString, Default: "en"},
+		{Name: "mail_from_name", Type: field.TypeString, Default: ""},
+		{Name: "mail_from_address", Type: field.TypeString, Default: ""},
+		{Name: "mail_reply_to", Type: field.TypeString, Default: ""},
+		{Name: "mail_logo_url", Type: field.TypeString, Default: ""},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "updated_by", Type: field.TypeString, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString, Unique: true},
@@ -496,7 +500,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instance_settings_realms_instance_settings",
-				Columns:    []*schema.Column{InstanceSettingsColumns[24]},
+				Columns:    []*schema.Column{InstanceSettingsColumns[28]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},

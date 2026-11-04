@@ -346,6 +346,12 @@ export type Settings = {
   email_enabled: boolean;
   /** The language of the sign-in pages and e-mails when a user did not choose one. */
   default_locale: string;
+  /** Sender of the realm's e-mails; "" keeps the server's SMTP_FROM. */
+  mail_from_name: string;
+  mail_from_address: string;
+  mail_reply_to: string;
+  /** https image shown in the header of every e-mail; "" = the product initial. */
+  mail_logo_url: string;
   /** The languages the IdP can show (its translation files), English first. */
   languages: { tag: string; name: string }[];
 };

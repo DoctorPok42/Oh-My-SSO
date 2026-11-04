@@ -22,8 +22,17 @@ export type SettingsPatch = Partial<
     | "notification_email_enabled"
     | "suspicious_login_email_enabled"
     | "default_locale"
+    | "mail_from_name"
+    | "mail_from_address"
+    | "mail_reply_to"
+    | "mail_logo_url"
   >
 >;
+
+/** The e-mail sender fields of the form (all optional). */
+export const MAIL_FIELDS = ["mail_from_name", "mail_from_address", "mail_reply_to", "mail_logo_url"] as const;
+export type MailKey = (typeof MAIL_FIELDS)[number];
+export type MailForm = Record<MailKey, string>;
 
 export const NUMBERS = [
   "min_password_length",
@@ -54,6 +63,7 @@ export function settingsDiff(
   allowlist: string,
   toggles: SettingsToggles,
   locale?: string,
+  mail?: MailForm,
 ): SettingsPatch {
   const patch: SettingsPatch = {};
   for (const k of NUMBERS) {
@@ -67,5 +77,13 @@ export function settingsDiff(
     patch.suspicious_login_email_enabled = toggles.suspicious;
   if (toggles.remember !== before.remember_me_enabled) patch.remember_me_enabled = toggles.remember;
   if (locale && locale !== (before.default_locale || "en")) patch.default_locale = locale;
+  if (mail) {
+    // An empty field is a valid value (back to the server default), so it
+    // is sent when it differs from what is saved.
+    for (const k of MAIL_FIELDS) {
+      const v = mail[k].trim();
+      if (v !== (before[k] ?? "")) patch[k] = v;
+    }
+  }
   return patch;
 }

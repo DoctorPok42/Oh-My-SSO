@@ -419,6 +419,62 @@ func (_u *InstanceSettingsUpdate) SetNillableDefaultLocale(v *string) *InstanceS
 	return _u
 }
 
+// SetMailFromName sets the "mail_from_name" field.
+func (_u *InstanceSettingsUpdate) SetMailFromName(v string) *InstanceSettingsUpdate {
+	_u.mutation.SetMailFromName(v)
+	return _u
+}
+
+// SetNillableMailFromName sets the "mail_from_name" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableMailFromName(v *string) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetMailFromName(*v)
+	}
+	return _u
+}
+
+// SetMailFromAddress sets the "mail_from_address" field.
+func (_u *InstanceSettingsUpdate) SetMailFromAddress(v string) *InstanceSettingsUpdate {
+	_u.mutation.SetMailFromAddress(v)
+	return _u
+}
+
+// SetNillableMailFromAddress sets the "mail_from_address" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableMailFromAddress(v *string) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetMailFromAddress(*v)
+	}
+	return _u
+}
+
+// SetMailReplyTo sets the "mail_reply_to" field.
+func (_u *InstanceSettingsUpdate) SetMailReplyTo(v string) *InstanceSettingsUpdate {
+	_u.mutation.SetMailReplyTo(v)
+	return _u
+}
+
+// SetNillableMailReplyTo sets the "mail_reply_to" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableMailReplyTo(v *string) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetMailReplyTo(*v)
+	}
+	return _u
+}
+
+// SetMailLogoURL sets the "mail_logo_url" field.
+func (_u *InstanceSettingsUpdate) SetMailLogoURL(v string) *InstanceSettingsUpdate {
+	_u.mutation.SetMailLogoURL(v)
+	return _u
+}
+
+// SetNillableMailLogoURL sets the "mail_logo_url" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableMailLogoURL(v *string) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetMailLogoURL(*v)
+	}
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdate) SetUpdatedAt(v time.Time) *InstanceSettingsUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -615,6 +671,18 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.DefaultLocale(); ok {
 		_spec.SetField(instancesettings.FieldDefaultLocale, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MailFromName(); ok {
+		_spec.SetField(instancesettings.FieldMailFromName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MailFromAddress(); ok {
+		_spec.SetField(instancesettings.FieldMailFromAddress, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MailReplyTo(); ok {
+		_spec.SetField(instancesettings.FieldMailReplyTo, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MailLogoURL(); ok {
+		_spec.SetField(instancesettings.FieldMailLogoURL, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)
@@ -1034,6 +1102,62 @@ func (_u *InstanceSettingsUpdateOne) SetNillableDefaultLocale(v *string) *Instan
 	return _u
 }
 
+// SetMailFromName sets the "mail_from_name" field.
+func (_u *InstanceSettingsUpdateOne) SetMailFromName(v string) *InstanceSettingsUpdateOne {
+	_u.mutation.SetMailFromName(v)
+	return _u
+}
+
+// SetNillableMailFromName sets the "mail_from_name" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableMailFromName(v *string) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetMailFromName(*v)
+	}
+	return _u
+}
+
+// SetMailFromAddress sets the "mail_from_address" field.
+func (_u *InstanceSettingsUpdateOne) SetMailFromAddress(v string) *InstanceSettingsUpdateOne {
+	_u.mutation.SetMailFromAddress(v)
+	return _u
+}
+
+// SetNillableMailFromAddress sets the "mail_from_address" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableMailFromAddress(v *string) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetMailFromAddress(*v)
+	}
+	return _u
+}
+
+// SetMailReplyTo sets the "mail_reply_to" field.
+func (_u *InstanceSettingsUpdateOne) SetMailReplyTo(v string) *InstanceSettingsUpdateOne {
+	_u.mutation.SetMailReplyTo(v)
+	return _u
+}
+
+// SetNillableMailReplyTo sets the "mail_reply_to" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableMailReplyTo(v *string) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetMailReplyTo(*v)
+	}
+	return _u
+}
+
+// SetMailLogoURL sets the "mail_logo_url" field.
+func (_u *InstanceSettingsUpdateOne) SetMailLogoURL(v string) *InstanceSettingsUpdateOne {
+	_u.mutation.SetMailLogoURL(v)
+	return _u
+}
+
+// SetNillableMailLogoURL sets the "mail_logo_url" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableMailLogoURL(v *string) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetMailLogoURL(*v)
+	}
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdateOne) SetUpdatedAt(v time.Time) *InstanceSettingsUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -1260,6 +1384,18 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.DefaultLocale(); ok {
 		_spec.SetField(instancesettings.FieldDefaultLocale, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MailFromName(); ok {
+		_spec.SetField(instancesettings.FieldMailFromName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MailFromAddress(); ok {
+		_spec.SetField(instancesettings.FieldMailFromAddress, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MailReplyTo(); ok {
+		_spec.SetField(instancesettings.FieldMailReplyTo, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MailLogoURL(); ok {
+		_spec.SetField(instancesettings.FieldMailLogoURL, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

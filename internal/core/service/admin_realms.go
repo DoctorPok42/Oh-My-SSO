@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/mail"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
@@ -191,6 +194,10 @@ type SettingsView struct {
 	NotificationEmailEnabled    bool      `json:"notification_email_enabled"`
 	SuspiciousLoginEmailEnabled bool      `json:"suspicious_login_email_enabled"`
 	DefaultLocale               string    `json:"default_locale"`
+	MailFromName                string    `json:"mail_from_name"`
+	MailFromAddress             string    `json:"mail_from_address"`
+	MailReplyTo                 string    `json:"mail_reply_to"`
+	MailLogoURL                 string    `json:"mail_logo_url"`
 	UpdatedAt                   time.Time `json:"updated_at"`
 	UpdatedBy                   string    `json:"updated_by"`
 }
@@ -226,6 +233,7 @@ func (s *AdminService) GetSettings(ctx context.Context, realm *domain.Realm) (*S
 		IPAllowlist: allow, MFARequiredGlobally: st.MFARequiredGlobally, MFAStepUpMaxAgeMinutes: st.MFAStepUpMaxAgeMinutes,
 		KeyRotationGraceHours: st.KeyRotationGraceHours, NotificationEmailEnabled: st.NotificationEmailEnabled,
 		SuspiciousLoginEmailEnabled: st.SuspiciousLoginEmailEnabled, DefaultLocale: localeOrEnglish(st.DefaultLocale),
+		MailFromName: st.MailFromName, MailFromAddress: st.MailFromAddress, MailReplyTo: st.MailReplyTo, MailLogoURL: st.MailLogoURL,
 		UpdatedAt: st.UpdatedAt, UpdatedBy: st.UpdatedBy,
 	}, nil
 }
@@ -250,6 +258,10 @@ type SettingsPatch struct {
 	NotificationEmailEnabled    *bool
 	SuspiciousLoginEmailEnabled *bool
 	DefaultLocale               *string
+	MailFromName                *string
+	MailFromAddress             *string
+	MailReplyTo                 *string
+	MailLogoURL                 *string
 }
 
 // UpdateSettings validates and applies a patch. Changes apply within a
@@ -304,6 +316,9 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		}
 		p.DefaultLocale = &lang
 	}
+	if err := normalizeMailSender(&p); err != nil {
+		return nil, err
+	}
 	if isMaster(realm) && p.MFARequiredGlobally != nil && !*p.MFARequiredGlobally {
 		return nil, adminRefused("system_realm", i18n.M("admin.error.mfa_master_full", "MFA stays required in the master realm: its accounts administer the whole instance"))
 	}
@@ -340,6 +355,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		MFARequiredGlobally: p.MFARequiredGlobally, MFAStepUpMaxAgeMinutes: p.MFAStepUpMaxAgeMinutes,
 		KeyRotationGraceHours: p.KeyRotationGraceHours, NotificationEmailEnabled: p.NotificationEmailEnabled,
 		SuspiciousLoginEmailEnabled: p.SuspiciousLoginEmailEnabled, DefaultLocale: p.DefaultLocale, UpdatedBy: &by,
+		MailFromName: p.MailFromName, MailFromAddress: p.MailFromAddress, MailReplyTo: p.MailReplyTo, MailLogoURL: p.MailLogoURL,
 	}
 	if _, err := s.d.Settings.Update(ctx, st.ID, upd); err != nil {
 		return nil, fmt.Errorf("update settings: %w", err)
@@ -382,7 +398,67 @@ func settingsChanges(p SettingsPatch) map[string]interface{} {
 	if p.DefaultLocale != nil {
 		out["default_locale"] = *p.DefaultLocale
 	}
+	for k, v := range map[string]*string{"mail_from_name": p.MailFromName, "mail_from_address": p.MailFromAddress, "mail_reply_to": p.MailReplyTo, "mail_logo_url": p.MailLogoURL} {
+		if v != nil {
+			out[k] = *v
+		}
+	}
 	return out
+}
+
+// maxMailFromName / maxMailLogoURL bound what a realm can put in the headers
+// and the layout of its e-mails.
+const (
+	maxMailFromName = 100
+	maxMailLogoURL  = 2048
+)
+
+// normalizeMailSender trims and checks the sender settings of a patch. All
+// four are optional ("" = the server's SMTP_FROM / no image).
+//
+//	mail_from_name     display name; no control character (a line break in a
+//	                   header would let a value add headers)
+//	mail_from_address  a plain address (no "Name <...>": the name has its own field)
+//	mail_reply_to      same
+//	mail_logo_url      https only: mail clients block http images, and an
+//	                   http image leaks the opening of the e-mail
+func normalizeMailSender(p *SettingsPatch) error {
+	plainAddress := func(field string, v *string) error {
+		if v == nil {
+			return nil
+		}
+		*v = strings.TrimSpace(*v)
+		if *v == "" {
+			return nil
+		}
+		a, err := mail.ParseAddress(*v)
+		if err != nil || a.Name != "" || a.Address != *v || strings.ContainsAny(*v, "\r\n") {
+			return adminInvalid(field, i18n.M("admin.error.mail_address", "{field} must be a plain e-mail address such as noreply@example.com", "field", field))
+		}
+		return nil
+	}
+	if err := plainAddress("mail_from_address", p.MailFromAddress); err != nil {
+		return err
+	}
+	if err := plainAddress("mail_reply_to", p.MailReplyTo); err != nil {
+		return err
+	}
+	if v := p.MailFromName; v != nil {
+		*v = strings.TrimSpace(*v)
+		if len([]rune(*v)) > maxMailFromName || strings.IndexFunc(*v, unicode.IsControl) >= 0 {
+			return adminInvalid("mail_from_name", i18n.M("admin.error.mail_from_name", "the sender name must be at most {max} characters, without line breaks", "max", maxMailFromName))
+		}
+	}
+	if v := p.MailLogoURL; v != nil {
+		*v = strings.TrimSpace(*v)
+		if *v != "" {
+			u, err := url.Parse(*v)
+			if err != nil || u.Scheme != "https" || u.Host == "" || len(*v) > maxMailLogoURL {
+				return adminInvalid("mail_logo_url", i18n.M("admin.error.mail_logo_url", "the image must be an https:// address of at most {max} characters", "max", maxMailLogoURL))
+			}
+		}
+	}
+	return nil
 }
 
 func setIfNotNil[T any](dst *T, v *T) {

@@ -59,6 +59,14 @@ const (
 	FieldSuspiciousLoginEmailEnabled = "suspicious_login_email_enabled"
 	// FieldDefaultLocale holds the string denoting the default_locale field in the database.
 	FieldDefaultLocale = "default_locale"
+	// FieldMailFromName holds the string denoting the mail_from_name field in the database.
+	FieldMailFromName = "mail_from_name"
+	// FieldMailFromAddress holds the string denoting the mail_from_address field in the database.
+	FieldMailFromAddress = "mail_from_address"
+	// FieldMailReplyTo holds the string denoting the mail_reply_to field in the database.
+	FieldMailReplyTo = "mail_reply_to"
+	// FieldMailLogoURL holds the string denoting the mail_logo_url field in the database.
+	FieldMailLogoURL = "mail_logo_url"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
 	// FieldUpdatedBy holds the string denoting the updated_by field in the database.
@@ -101,6 +109,10 @@ var Columns = []string{
 	FieldInviteTTLHours,
 	FieldSuspiciousLoginEmailEnabled,
 	FieldDefaultLocale,
+	FieldMailFromName,
+	FieldMailFromAddress,
+	FieldMailReplyTo,
+	FieldMailLogoURL,
 	FieldUpdatedAt,
 	FieldUpdatedBy,
 }
@@ -158,6 +170,14 @@ var (
 	DefaultSuspiciousLoginEmailEnabled bool
 	// DefaultDefaultLocale holds the default value on creation for the "default_locale" field.
 	DefaultDefaultLocale string
+	// DefaultMailFromName holds the default value on creation for the "mail_from_name" field.
+	DefaultMailFromName string
+	// DefaultMailFromAddress holds the default value on creation for the "mail_from_address" field.
+	DefaultMailFromAddress string
+	// DefaultMailReplyTo holds the default value on creation for the "mail_reply_to" field.
+	DefaultMailReplyTo string
+	// DefaultMailLogoURL holds the default value on creation for the "mail_logo_url" field.
+	DefaultMailLogoURL string
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
@@ -279,6 +299,26 @@ func BySuspiciousLoginEmailEnabled(opts ...sql.OrderTermOption) OrderOption {
 // ByDefaultLocale orders the results by the default_locale field.
 func ByDefaultLocale(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDefaultLocale, opts...).ToFunc()
+}
+
+// ByMailFromName orders the results by the mail_from_name field.
+func ByMailFromName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMailFromName, opts...).ToFunc()
+}
+
+// ByMailFromAddress orders the results by the mail_from_address field.
+func ByMailFromAddress(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMailFromAddress, opts...).ToFunc()
+}
+
+// ByMailReplyTo orders the results by the mail_reply_to field.
+func ByMailReplyTo(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMailReplyTo, opts...).ToFunc()
+}
+
+// ByMailLogoURL orders the results by the mail_logo_url field.
+func ByMailLogoURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMailLogoURL, opts...).ToFunc()
 }
 
 // ByUpdatedAt orders the results by the updated_at field.

@@ -28,12 +28,17 @@ import (
 //
 // https://datatracker.ietf.org/doc/html/rfc5322
 // https://datatracker.ietf.org/doc/html/rfc2046#section-5.1.4
-func buildMIME(from, to *mail.Address, msg Message, now time.Time) ([]byte, error) {
+//
+// replyTo is optional (nil: no Reply-To header).
+func buildMIME(from, to, replyTo *mail.Address, msg Message, now time.Time) ([]byte, error) {
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 
 	h := func(k, v string) { fmt.Fprintf(&buf, "%s: %s\r\n", k, v) }
 	h("From", from.String()) // mail.Address.String() encodes non-ASCII names (RFC 2047)
+	if replyTo != nil {
+		h("Reply-To", replyTo.String())
+	}
 	h("To", to.String())
 	h("Subject", mime.QEncoding.Encode("utf-8", msg.Subject))
 	h("Date", now.Format(time.RFC1123Z))

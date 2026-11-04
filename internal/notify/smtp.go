@@ -134,14 +134,32 @@ func (s *SMTPEmailSender) Send(ctx context.Context, to string, tmpl Template, da
 	if err != nil {
 		return errors.Join(ErrPermanent, err)
 	}
-	raw, err := buildMIME(s.from, rcpt, msg, s.now())
+	from, replyTo := s.identity(data.Sender)
+	raw, err := buildMIME(from, rcpt, replyTo, msg, s.now())
 	if err != nil {
 		return errors.Join(ErrPermanent, err)
 	}
-	return s.deliver(ctx, rcpt.Address, raw)
+	return s.deliver(ctx, from.Address, rcpt.Address, raw)
 }
 
-func (s *SMTPEmailSender) deliver(ctx context.Context, rcpt string, raw []byte) error {
+// identity is the From and Reply-To of an e-mail: the server's SMTP_FROM,
+// changed by what the realm set. A value that is not an address is ignored
+// (the service validates them; this is only a safeguard for old rows).
+func (s *SMTPEmailSender) identity(o Sender) (from, replyTo *mail.Address) {
+	f := *s.from
+	if a, err := mail.ParseAddress(o.Address); err == nil && o.Address != "" {
+		f.Address = a.Address
+	}
+	if name := strings.TrimSpace(o.Name); name != "" && !strings.ContainsAny(name, "\r\n") {
+		f.Name = name
+	}
+	if a, err := mail.ParseAddress(o.ReplyTo); err == nil && o.ReplyTo != "" {
+		replyTo = a
+	}
+	return &f, replyTo
+}
+
+func (s *SMTPEmailSender) deliver(ctx context.Context, sender, rcpt string, raw []byte) error {
 	addr := net.JoinHostPort(s.cfg.Host, strconv.Itoa(s.cfg.Port))
 	deadline := time.Now().Add(s.cfg.Timeout)
 	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {
@@ -189,7 +207,7 @@ func (s *SMTPEmailSender) deliver(ctx context.Context, rcpt string, raw []byte) 
 			return classify(fmt.Errorf("notify: AUTH: %w", err))
 		}
 	}
-	if err := c.Mail(s.from.Address); err != nil {
+	if err := c.Mail(sender); err != nil {
 		return classify(fmt.Errorf("notify: MAIL FROM: %w", err))
 	}
 	if err := c.Rcpt(rcpt); err != nil {

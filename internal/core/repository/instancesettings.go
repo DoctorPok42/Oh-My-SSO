@@ -39,5 +39,9 @@ type UpdateInstanceSettingsParams struct {
 	MFATrustedDeviceEnabled     *bool
 	MFATrustedDeviceDays        *int
 	DefaultLocale               *string
+	MailFromName                *string
+	MailFromAddress             *string
+	MailReplyTo                 *string
+	MailLogoURL                 *string
 	UpdatedBy                   *string
 }

@@ -314,6 +314,62 @@ func (_c *InstanceSettingsCreate) SetNillableDefaultLocale(v *string) *InstanceS
 	return _c
 }
 
+// SetMailFromName sets the "mail_from_name" field.
+func (_c *InstanceSettingsCreate) SetMailFromName(v string) *InstanceSettingsCreate {
+	_c.mutation.SetMailFromName(v)
+	return _c
+}
+
+// SetNillableMailFromName sets the "mail_from_name" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableMailFromName(v *string) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetMailFromName(*v)
+	}
+	return _c
+}
+
+// SetMailFromAddress sets the "mail_from_address" field.
+func (_c *InstanceSettingsCreate) SetMailFromAddress(v string) *InstanceSettingsCreate {
+	_c.mutation.SetMailFromAddress(v)
+	return _c
+}
+
+// SetNillableMailFromAddress sets the "mail_from_address" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableMailFromAddress(v *string) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetMailFromAddress(*v)
+	}
+	return _c
+}
+
+// SetMailReplyTo sets the "mail_reply_to" field.
+func (_c *InstanceSettingsCreate) SetMailReplyTo(v string) *InstanceSettingsCreate {
+	_c.mutation.SetMailReplyTo(v)
+	return _c
+}
+
+// SetNillableMailReplyTo sets the "mail_reply_to" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableMailReplyTo(v *string) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetMailReplyTo(*v)
+	}
+	return _c
+}
+
+// SetMailLogoURL sets the "mail_logo_url" field.
+func (_c *InstanceSettingsCreate) SetMailLogoURL(v string) *InstanceSettingsCreate {
+	_c.mutation.SetMailLogoURL(v)
+	return _c
+}
+
+// SetNillableMailLogoURL sets the "mail_logo_url" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableMailLogoURL(v *string) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetMailLogoURL(*v)
+	}
+	return _c
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_c *InstanceSettingsCreate) SetUpdatedAt(v time.Time) *InstanceSettingsCreate {
 	_c.mutation.SetUpdatedAt(v)
@@ -476,6 +532,22 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultDefaultLocale
 		_c.mutation.SetDefaultLocale(v)
 	}
+	if _, ok := _c.mutation.MailFromName(); !ok {
+		v := instancesettings.DefaultMailFromName
+		_c.mutation.SetMailFromName(v)
+	}
+	if _, ok := _c.mutation.MailFromAddress(); !ok {
+		v := instancesettings.DefaultMailFromAddress
+		_c.mutation.SetMailFromAddress(v)
+	}
+	if _, ok := _c.mutation.MailReplyTo(); !ok {
+		v := instancesettings.DefaultMailReplyTo
+		_c.mutation.SetMailReplyTo(v)
+	}
+	if _, ok := _c.mutation.MailLogoURL(); !ok {
+		v := instancesettings.DefaultMailLogoURL
+		_c.mutation.SetMailLogoURL(v)
+	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := instancesettings.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
@@ -555,6 +627,18 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.DefaultLocale(); !ok {
 		return &ValidationError{Name: "default_locale", err: errors.New(`ent: missing required field "InstanceSettings.default_locale"`)}
+	}
+	if _, ok := _c.mutation.MailFromName(); !ok {
+		return &ValidationError{Name: "mail_from_name", err: errors.New(`ent: missing required field "InstanceSettings.mail_from_name"`)}
+	}
+	if _, ok := _c.mutation.MailFromAddress(); !ok {
+		return &ValidationError{Name: "mail_from_address", err: errors.New(`ent: missing required field "InstanceSettings.mail_from_address"`)}
+	}
+	if _, ok := _c.mutation.MailReplyTo(); !ok {
+		return &ValidationError{Name: "mail_reply_to", err: errors.New(`ent: missing required field "InstanceSettings.mail_reply_to"`)}
+	}
+	if _, ok := _c.mutation.MailLogoURL(); !ok {
+		return &ValidationError{Name: "mail_logo_url", err: errors.New(`ent: missing required field "InstanceSettings.mail_logo_url"`)}
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "InstanceSettings.updated_at"`)}
@@ -685,6 +769,22 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.DefaultLocale(); ok {
 		_spec.SetField(instancesettings.FieldDefaultLocale, field.TypeString, value)
 		_node.DefaultLocale = value
+	}
+	if value, ok := _c.mutation.MailFromName(); ok {
+		_spec.SetField(instancesettings.FieldMailFromName, field.TypeString, value)
+		_node.MailFromName = value
+	}
+	if value, ok := _c.mutation.MailFromAddress(); ok {
+		_spec.SetField(instancesettings.FieldMailFromAddress, field.TypeString, value)
+		_node.MailFromAddress = value
+	}
+	if value, ok := _c.mutation.MailReplyTo(); ok {
+		_spec.SetField(instancesettings.FieldMailReplyTo, field.TypeString, value)
+		_node.MailReplyTo = value
+	}
+	if value, ok := _c.mutation.MailLogoURL(); ok {
+		_spec.SetField(instancesettings.FieldMailLogoURL, field.TypeString, value)
+		_node.MailLogoURL = value
 	}
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

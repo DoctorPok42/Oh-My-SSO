@@ -66,7 +66,7 @@ type Deps struct {
 	KeyRotation *service.KeyRotationService
 	Health      []HealthCheck
 	// TestEmail sends the "test" e-mail; nil when e-mail is off.
-	TestEmail func(ctx context.Context, to string) error
+	TestEmail func(ctx context.Context, realmID, to string) error
 	// Rights: when the master realm last changed, shared by every idp-admin
 	// process (rights.go). nil: kept in this process only.
 	Rights RightsEpoch

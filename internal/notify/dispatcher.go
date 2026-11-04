@@ -180,6 +180,14 @@ func (d *Dispatcher) Process(ctx context.Context, e domain.NotificationEvent) er
 	}
 
 	data := d.data(d.localizer(ctx, user, realm.ID), e, user, realm)
+	if d.settings != nil {
+		// The realm's sender (name, address, reply-to) and image. Without
+		// a row, or when it cannot be read, the server default applies:
+		// a settings failure must not stop a password reset.
+		if st, err := d.settings.GetByRealmID(ctx, realm.ID); err == nil {
+			data.ApplyRealmSettings(st)
+		}
+	}
 	attempts, sendErr := d.send(ctx, user.Email, tmpl, data)
 	d.writeAudit(ctx, e, user.Email, tmpl, attempts, sendErr)
 	return sendErr

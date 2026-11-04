@@ -38,6 +38,11 @@ type Data struct {
 	// default) and writes the other fields in it.
 	Lang string
 
+	// Sender: the realm's sender settings. LogoURL: its https image, shown
+	// in the header of the e-mail in place of the product initial.
+	Sender  Sender
+	LogoURL string
+
 	Product  string // "Oh-My-SSO"
 	Realm    string // realm display name
 	Username string

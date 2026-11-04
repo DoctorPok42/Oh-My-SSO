@@ -64,6 +64,14 @@ type InstanceSettings struct {
 	SuspiciousLoginEmailEnabled bool `json:"suspicious_login_email_enabled,omitempty"`
 	// DefaultLocale holds the value of the "default_locale" field.
 	DefaultLocale string `json:"default_locale,omitempty"`
+	// MailFromName holds the value of the "mail_from_name" field.
+	MailFromName string `json:"mail_from_name,omitempty"`
+	// MailFromAddress holds the value of the "mail_from_address" field.
+	MailFromAddress string `json:"mail_from_address,omitempty"`
+	// MailReplyTo holds the value of the "mail_reply_to" field.
+	MailReplyTo string `json:"mail_reply_to,omitempty"`
+	// MailLogoURL holds the value of the "mail_logo_url" field.
+	MailLogoURL string `json:"mail_logo_url,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// UpdatedBy holds the value of the "updated_by" field.
@@ -105,7 +113,7 @@ func (*InstanceSettings) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldMfaTrustedDeviceDays, instancesettings.FieldPasswordResetTTLMinutes, instancesettings.FieldInviteTTLHours:
 			values[i] = new(sql.NullInt64)
-		case instancesettings.FieldID, instancesettings.FieldRealmID, instancesettings.FieldManagedBy, instancesettings.FieldDefaultLocale, instancesettings.FieldUpdatedBy:
+		case instancesettings.FieldID, instancesettings.FieldRealmID, instancesettings.FieldManagedBy, instancesettings.FieldDefaultLocale, instancesettings.FieldMailFromName, instancesettings.FieldMailFromAddress, instancesettings.FieldMailReplyTo, instancesettings.FieldMailLogoURL, instancesettings.FieldUpdatedBy:
 			values[i] = new(sql.NullString)
 		case instancesettings.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -264,6 +272,30 @@ func (_m *InstanceSettings) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DefaultLocale = value.String
 			}
+		case instancesettings.FieldMailFromName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mail_from_name", values[i])
+			} else if value.Valid {
+				_m.MailFromName = value.String
+			}
+		case instancesettings.FieldMailFromAddress:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mail_from_address", values[i])
+			} else if value.Valid {
+				_m.MailFromAddress = value.String
+			}
+		case instancesettings.FieldMailReplyTo:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mail_reply_to", values[i])
+			} else if value.Valid {
+				_m.MailReplyTo = value.String
+			}
+		case instancesettings.FieldMailLogoURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mail_logo_url", values[i])
+			} else if value.Valid {
+				_m.MailLogoURL = value.String
+			}
 		case instancesettings.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
@@ -382,6 +414,18 @@ func (_m *InstanceSettings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("default_locale=")
 	builder.WriteString(_m.DefaultLocale)
+	builder.WriteString(", ")
+	builder.WriteString("mail_from_name=")
+	builder.WriteString(_m.MailFromName)
+	builder.WriteString(", ")
+	builder.WriteString("mail_from_address=")
+	builder.WriteString(_m.MailFromAddress)
+	builder.WriteString(", ")
+	builder.WriteString("mail_reply_to=")
+	builder.WriteString(_m.MailReplyTo)
+	builder.WriteString(", ")
+	builder.WriteString("mail_logo_url=")
+	builder.WriteString(_m.MailLogoURL)
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
