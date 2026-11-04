@@ -26,9 +26,7 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
   const [suspicious, setSuspicious] = useState(settings.suspicious_login_email_enabled);
   const [remember, setRemember] = useState(settings.remember_me_enabled);
   const [locale, setLocale] = useState(settings.default_locale || "en");
-  const [mail, setMail] = useState(
-    Object.fromEntries(MAIL_FIELDS.map((k) => [k, settings[k] ?? ""])) as MailForm,
-  );
+  const [mail, setMail] = useState(Object.fromEntries(MAIL_FIELDS.map((k) => [k, settings[k] ?? ""])) as MailForm);
   const [error, setError] = useState<{ field?: string; message: string } | null>(null);
   const [to, setTo] = useState("");
   const { locked, banner } = useEditLock({ canWrite: writable, managedByConfig: settings.managed_by === "config" });
@@ -51,7 +49,12 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
     </Field>
   );
 
-  const mailField = (k: keyof MailForm, label: string, hint: string, opts: { type?: string; placeholder?: string } = {}) => (
+  const mailField = (
+    k: keyof MailForm,
+    label: string,
+    hint: string,
+    opts: { type?: string; placeholder?: string } = {},
+  ) => (
     <Field label={label} htmlFor={`s-${k}`} optional hint={hint} error={error?.field === k ? error.message : undefined}>
       <Input
         id={`s-${k}`}
@@ -217,7 +220,7 @@ export function SettingsForm({ realm, settings, writable }: { realm: string; set
             {mailField(
               "mail_from_name",
               t("settings.mail.from_name", "Sender name"),
-              t("settings.mail.from_name_hint", "Shown as the sender, for example \"Acme Support\"."),
+              t("settings.mail.from_name_hint", 'Shown as the sender, for example "Acme Support".'),
               { placeholder: "Acme Support" },
             )}
             {mailField(
