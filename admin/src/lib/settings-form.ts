@@ -49,6 +49,41 @@ export const NUMBERS = [
 ] as const;
 export type NumberKey = (typeof NUMBERS)[number];
 
+/** The sub-pages of the settings (?tab=; no tab: the first one). One form across them. */
+export const SETTINGS_SECTIONS = ["general", "security", "sessions", "email"] as const;
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
+export function settingsSection(tab?: string): SettingsSection {
+  return SETTINGS_SECTIONS.find((s) => s === tab) ?? "general";
+}
+
+const SECTION_FIELDS: Record<SettingsSection, readonly string[]> = {
+  general: ["default_locale"],
+  security: [
+    "min_password_length",
+    "password_expiry_days",
+    "password_reset_ttl_minutes",
+    "invite_ttl_hours",
+    "lockout_threshold",
+    "lockout_duration_minutes",
+    "ip_allowlist",
+    "key_rotation_grace_hours",
+  ],
+  sessions: [
+    "session_idle_minutes",
+    "session_max_hours",
+    "remember_me_enabled",
+    "remember_me_idle_days",
+    "remember_me_max_days",
+  ],
+  email: ["notification_email_enabled", "suspicious_login_email_enabled", ...MAIL_FIELDS],
+};
+
+/** The section that shows a field: an error on another one must not go unseen. */
+export function fieldSection(field: string): SettingsSection | undefined {
+  return SETTINGS_SECTIONS.find((s) => SECTION_FIELDS[s].includes(field));
+}
+
 /** The on/off settings of the form. */
 export type SettingsToggles = {
   notif: boolean;

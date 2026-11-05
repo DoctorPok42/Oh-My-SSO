@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, Settings2 } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useNavigate } from "@/components/console/navigation-progress";
 import {
   DropdownMenu,
@@ -15,13 +15,17 @@ import { useT } from "@/i18n/client";
 import type { Realm } from "@/lib/types";
 
 // The realm being administered, in the header ("Nova Industries ▾"). Picking
-// another one keeps the current tab: /r/demo/users -> /r/nova/users.
+// another one keeps the current page: /r/demo/users?tab=roles -> /r/nova/users?tab=roles.
 export function RealmSwitcher({ realms, current }: { realms: Realm[]; current: Realm | undefined }) {
   const { t } = useT();
   const router = useNavigate(); // the progress bar shows while the other realm loads
   const pathname = usePathname();
+  const tab = useSearchParams().get("tab");
   const tabPath = pathname.split("/").slice(3).join("/") || "dashboard";
-  const target = (name: string) => `/r/${encodeURIComponent(name)}/${tabPath === "realms" ? "dashboard" : tabPath}`;
+  const target = (name: string) => {
+    const path = `/r/${encodeURIComponent(name)}/${tabPath === "realms" ? "dashboard" : tabPath}`;
+    return tab ? `${path}?tab=${encodeURIComponent(tab)}` : path;
+  };
 
   return (
     <DropdownMenu>

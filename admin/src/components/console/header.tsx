@@ -9,11 +9,13 @@ import { UserMenu } from "@/components/console/user-menu";
 import { Badge } from "@/components/ui/badge";
 import { getI18n } from "@/i18n/server";
 import { env } from "@/lib/env";
+import { can } from "@/lib/permissions";
 import type { Theme } from "@/lib/theme";
 import type { Me, Realm } from "@/lib/types";
 
 // DS header, 60 px: logo · realm switcher · realm badge · search · theme ·
-// padlock (step-up) · bell · avatar.
+// padlock (step-up) · bell · avatar. It scrolls with the page; the menus below
+// it stick and take over the realm badge (nav-tabs.tsx).
 export async function Header({
   me,
   realms,
@@ -35,7 +37,7 @@ export async function Header({
   // The admin's own account (master realm): profile, security, language.
   const accountUrl = `${env().OIDC_ISSUER}/account`;
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-surface">
+    <header className="border-b border-border bg-surface">
       <div className="mx-auto flex h-[60px] max-w-[1360px] items-center gap-2 px-4 sm:gap-3 sm:px-6">
         <NavLink
           href={`/r/${encodeURIComponent(realm)}/dashboard`}
@@ -45,12 +47,17 @@ export async function Header({
           <Logo wordmarkClassName="hidden sm:inline" />
         </NavLink>
         <span className="hidden h-6 w-px bg-border sm:block" aria-hidden />
-        <RealmSwitcher realms={realms} current={current} />
+        {realms.length > 0 ? (
+          <RealmSwitcher realms={realms} current={current} />
+        ) : (
+          // No list of realms without realm:read: nothing to switch to.
+          <span className="min-w-0 truncate px-2 text-[14px] font-semibold">{realm}</span>
+        )}
         <Badge tone={current?.system ? "neutral" : "accent"} className="hidden font-mono sm:inline-flex">
           {t("header.realm", "Realm: {realm}", { realm })}
         </Badge>
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-          <SearchBox realm={realm} />
+          {can(me, "user") && <SearchBox realm={realm} />}
           <div className="hidden md:block">
             <ThemeToggle initial={theme} />
           </div>

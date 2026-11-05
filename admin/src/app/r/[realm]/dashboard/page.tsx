@@ -1,15 +1,18 @@
 import { Mail } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
 import { StatusBadge } from "@/components/console/status-badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopyField } from "@/components/ui/copy-button";
 import { getI18n } from "@/i18n/server";
-import { apiPath, load } from "@/lib/api";
+import { apiPath, getMe, load } from "@/lib/api";
 import { formatPercent, formatRelative } from "@/lib/format";
 import { actionLabel, actorName, isNotification } from "@/lib/labels";
+import { firstReadablePage, pageHref } from "@/lib/nav";
 import { PAGES } from "@/lib/pages";
+import { can } from "@/lib/permissions";
 import type { Dashboard } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +23,13 @@ export async function generateMetadata() {
 
 export default async function DashboardPage({ params }: Readonly<{ params: Promise<{ realm: string }> }>) {
   const { realm } = await params;
+  // Every sign-in lands here: an admin without realm:read goes on to a page
+  // they may read, without a refused call to the API.
+  const me = await getMe();
+  if (me.ok && !can(me.data, "realm")) {
+    const readable = firstReadablePage(me.data);
+    if (readable) redirect(pageHref(realm, readable));
+  }
   const tr = await getI18n();
   const { t, tm } = tr;
   const res = await load<Dashboard>(apiPath(["realms", realm, "dashboard"]));

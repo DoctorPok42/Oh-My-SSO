@@ -21,7 +21,70 @@ test("dashboard of the master realm", async ({ page }) => {
   const main = page.getByRole("main");
   await expect(main.getByText("Active sessions")).toBeVisible();
   await expect(main.getByText("PostgreSQL")).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Clients" })).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Applications" }),
+  ).toBeVisible();
+});
+
+test("the second menu groups the pages of a section", async ({ page }) => {
+  await page.goto("/r/master/dashboard");
+  const sections = page.getByRole("navigation", { name: "Sections", exact: true });
+  const subSections = page.getByRole("navigation", { name: "Sub-sections", exact: true });
+  await expect(subSections).toHaveCount(0); // the dashboard is a page on its own
+
+  await sections.getByRole("link", { name: "Applications" }).click();
+  await expect(page).toHaveURL(/\/r\/master\/clients$/);
+  await expect(subSections.getByRole("link")).toHaveText(["Clients", "Client Scopes"]);
+  await subSections.getByRole("link", { name: "Client Scopes" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Client Scopes" })).toBeVisible();
+  await expect(sections.getByRole("link", { name: "Applications" })).toHaveAttribute("aria-current", "true");
+
+  await sections.getByRole("link", { name: "Users & Roles" }).click();
+  await subSections.getByRole("link", { name: "Roles" }).click();
+  await expect(page).toHaveURL(/\/r\/master\/users\?tab=roles$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Roles" })).toBeVisible();
+  await expect(subSections.getByRole("link", { name: "Roles" })).toHaveAttribute("aria-current", "page");
+});
+
+test("both menus stay in view while the page scrolls", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 500 });
+  await page.goto("/r/master/settings?tab=email");
+  const sections = page.getByRole("navigation", { name: "Sections", exact: true });
+  const subSections = page.getByRole("navigation", { name: "Sub-sections", exact: true });
+  const realm = sections.getByText("Realm: master");
+  await expect(realm).toHaveCount(0); // the header still shows it
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(realm).toBeVisible();
+  await expect(sections).toBeInViewport();
+  await expect(subSections).toBeInViewport();
+  const [a, b] = [await sections.boundingBox(), await subSections.boundingBox()];
+  expect(a!.y).toBeLessThanOrEqual(1); // stuck to the top: the header has scrolled away
+  expect(b!.y).toBeGreaterThanOrEqual(a!.y + a!.height - 1); // the second right under the first
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(realm).toHaveCount(0);
+});
+
+test("what was typed in the settings stays across their sub-pages", async ({ page }) => {
+  await page.goto("/r/master/settings?tab=sessions");
+  const subSections = page.getByRole("navigation", { name: "Sub-sections", exact: true });
+  const idle = page.getByLabel("Idle timeout (minutes)");
+  const before = await idle.inputValue();
+  await idle.fill(String(Number(before) + 1));
+
+  await subSections.getByRole("link", { name: "Email" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Email" })).toBeVisible();
+  await expect(page.getByText("Unsaved changes")).toBeVisible();
+  // The save bar floats: in reach at the bottom of the window, wherever the page is scrolled.
+  const save = page.getByRole("button", { name: "Save changes" });
+  await expect(save).toBeInViewport();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(save).toBeInViewport();
+
+  await subSections.getByRole("link", { name: "Sessions" }).click();
+  await expect(idle).toHaveValue(String(Number(before) + 1));
+  // Back to the saved value: the bar slides away, and is gone once its exit animation ended.
+  await idle.fill(before);
+  await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
 });
 
 test("the session cookie is out of reach of JavaScript", async ({ page, context }) => {

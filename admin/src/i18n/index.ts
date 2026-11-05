@@ -6,7 +6,7 @@
 //   t("users.title", "Users & Roles")
 //   t("users.deleted", "{name} was deleted.", { name })
 //   tn("sessions.count", n, "{count} session", "{count} sessions")
-//   m("pages.users.title", "Users & Roles")   a text for later (constants)
+//   m("pages.users.title", "Users")   a text for later (constants)
 //
 // So English needs no file, and a text missing from a translation shows in
 // English. Every other language is one flat JSON file, key -> text, like the

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { realmMfaDraft, realmMfaPatch } from "@/lib/mfa-form";
-import { settingsDiff } from "@/lib/settings-form";
+import { fieldSection, MAIL_FIELDS, NUMBERS, settingsDiff, settingsSection } from "@/lib/settings-form";
 import type { MfaPolicies, Settings } from "@/lib/types";
 import { profilePatch, sameSet } from "@/lib/user-form";
 
@@ -120,6 +120,24 @@ describe("settings form", () => {
     expect(settingsDiff(saved, form, "10.0.0.0/8", toggles, "en", { ...blank, mail_from_name: "Acme" })).toEqual({
       mail_logo_url: "",
     });
+  });
+});
+
+describe("settings sub-pages", () => {
+  it("reads ?tab=, the first sub-page otherwise", () => {
+    expect(settingsSection("email")).toBe("email");
+    expect(settingsSection(undefined)).toBe("general");
+    expect(settingsSection("nope")).toBe("general");
+    expect(settingsSection("constructor")).toBe("general");
+  });
+
+  it("knows the sub-page of every field of the form", () => {
+    for (const k of [...NUMBERS, ...MAIL_FIELDS]) expect(fieldSection(k), k).toBeDefined();
+    expect(fieldSection("default_locale")).toBe("general");
+    expect(fieldSection("key_rotation_grace_hours")).toBe("security");
+    expect(fieldSection("remember_me_max_days")).toBe("sessions");
+    expect(fieldSection("mail_reply_to")).toBe("email");
+    expect(fieldSection("unknown")).toBeUndefined();
   });
 });
 
