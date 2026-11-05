@@ -30,8 +30,20 @@ export const PAGES = {
     description: m("pages.audit.description", "Every sensitive action in this realm, in order"),
   },
   users: {
-    title: m("pages.users.title", "Users & Roles"),
-    description: m("pages.users.description", "Identities and access levels of this realm"),
+    title: m("pages.users.title", "Users"),
+    description: m("pages.users.description", "People who can sign in to this realm"),
+  },
+  roles: {
+    title: m("pages.roles.title", "Roles"),
+    description: m("pages.roles.description", "Sets of permissions given to users"),
+  },
+  groups: {
+    title: m("pages.groups.title", "Groups"),
+    description: m("pages.groups.description", "Users who share the same access and client scopes"),
+  },
+  permissions: {
+    title: m("pages.permissions.title", "Permissions"),
+    description: m("pages.permissions.description", "What applications check, as resource:action"),
   },
   signingKeys: {
     title: m("pages.signing_keys.title", "Signing Keys"),
@@ -51,9 +63,30 @@ export const PAGES = {
       "Suspend a user, a group or an application for a while: no sign-in, no token, until it ends",
     ),
   },
-  settings: {
-    title: m("pages.settings.title", "Settings"),
-    description: m("pages.settings.description", "Security policy of this realm and infrastructure status"),
+  settingsGeneral: {
+    title: m("pages.settings_general.title", "General"),
+    description: m(
+      "pages.settings_general.description",
+      "This realm, its default language and the infrastructure status",
+    ),
+  },
+  settingsSecurity: {
+    title: m("pages.settings_security.title", "Security"),
+    description: m(
+      "pages.settings_security.description",
+      "Password rules, brute-force protection and signing key rotation",
+    ),
+  },
+  settingsSessions: {
+    title: m("pages.settings_sessions.title", "Sessions"),
+    description: m("pages.settings_sessions.description", "How long a sign-in lasts at the identity provider"),
+  },
+  settingsEmail: {
+    title: m("pages.settings_email.title", "Email"),
+    description: m(
+      "pages.settings_email.description",
+      "Security e-mails sent to users and how they appear in the inbox",
+    ),
   },
   realms: {
     title: m("pages.realms.title", "Realms"),

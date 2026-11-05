@@ -36,11 +36,11 @@ describe("i18n", () => {
   });
 
   it("translates a text declared earlier (m)", () => {
-    const msg = m("pages.users.title", "Users & Roles");
+    const msg = m("pages.users.title", "Users");
     expect(isMsg(msg)).toBe(true);
     expect(isMsg("Users")).toBe(false);
-    expect(english.tm(msg)).toBe("Users & Roles");
-    expect(translator("fr", messagesOf("fr")).tm(msg)).not.toBe("Users & Roles");
+    expect(english.tm(msg)).toBe("Users");
+    expect(translator("fr", messagesOf("fr")).tm(msg)).not.toBe("Users");
   });
 
   it("has a name for each language, in that language", () => {

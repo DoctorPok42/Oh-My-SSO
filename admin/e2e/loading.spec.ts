@@ -110,13 +110,13 @@ test("every console page has a skeleton shaped like it", async ({ page }) => {
   // Clicked earlier, the current page stays (dimmed, with the progress bar)
   // until the server answers: tested by the filter test above.
   await page.waitForLoadState("networkidle");
-  for (const [tab, heading] of [
-    ["Dashboard", "Dashboard"],
-    ["Clients", "Clients"],
-    ["Audit Log", "Audit Log"],
-    ["Settings", "Settings"],
+  for (const [tab, path, heading] of [
+    ["Dashboard", "/dashboard", "Dashboard"],
+    ["Applications", "/clients", "Clients"],
+    ["Audit Log", "/audit", "Audit Log"],
+    ["Settings", "/settings", "General"],
   ] as const) {
-    await slowDown(page, (url) => url.pathname.endsWith(`/${tab === "Audit Log" ? "audit" : tab.toLowerCase()}`));
+    await slowDown(page, (url) => url.pathname.endsWith(path));
     await page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: tab, exact: true }).click();
     // The title at once, and grey shapes where the content will be.
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible({ timeout: 1_000 });

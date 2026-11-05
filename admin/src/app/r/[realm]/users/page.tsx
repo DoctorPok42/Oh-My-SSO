@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { cache, Suspense } from "react";
 import { NavLink } from "@/components/console/nav-link";
 import { ErrorState } from "@/components/console/error-state";
@@ -11,11 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { SegmentedLinks } from "@/components/ui/segmented";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { apiPath, getMe, load, loadCached } from "@/lib/api";
 import type { ApiResult } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
+import { firstReadablePage, pageHref } from "@/lib/nav";
 import { COLUMNS, PAGES } from "@/lib/pages";
 import { can, canWrite, type Resource } from "@/lib/permissions";
 import type { Access, ClientScope, List, Me, Permission, Settings, UserDetail, UserSummary } from "@/lib/types";
@@ -26,20 +27,22 @@ import { InviteUserButton, UserDrawer, UserRowActions } from "./user-drawer";
 import { m } from "@/i18n";
 import { getI18n } from "@/i18n/server";
 
-export async function generateMetadata() {
-  const { tm } = await getI18n();
-  return { title: tm(PAGES.users.title) };
-}
-
 const LIMIT = 25;
 type Tab = "users" | "roles" | "groups" | "permissions";
 type Search = { tab?: string; q?: string; status?: string; offset?: string; new?: string; edit?: string };
+
+const parseTab = (tab?: string): Tab => (tab === "roles" || tab === "groups" || tab === "permissions" ? tab : "users");
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<Search> }) {
+  const { tm } = await getI18n();
+  return { title: tm(PAGES[parseTab((await searchParams).tab)].title) };
+}
 
 // The roles (or groups) list feeds the table and the drawer: React's cache()
 // makes it one call per request. https://react.dev/reference/react/cache
 const loadAccess = cache((path: string) => load<List<Access>>(path));
 
-// The title, the sub-tabs and the search show at once. Each table loads on
+// The title and the search show at once. Each table loads on
 // its own (React Suspense) under a `key` made of what it shows: a new search,
 // page or sub-tab = a new key = only the table shows a skeleton. The drawer
 // loads apart, everything it needs in parallel, and opens at the click.
@@ -52,10 +55,15 @@ export default async function UsersPage({
 }) {
   const { realm } = await params;
   const sp = await searchParams;
-  const tab: Tab = sp.tab === "roles" || sp.tab === "groups" || sp.tab === "permissions" ? sp.tab : "users";
+  const tab = parseTab(sp.tab);
   const base = `/r/${encodeURIComponent(realm)}/users`;
   const me = await getMe();
-  const readAccess = me.ok && can(me.data, "access");
+  // /users opens on the users, which an admin with access:read alone may not
+  // see: on to the sub-page they may read, without a refused call to the API.
+  if (me.ok && !can(me.data, tab === "users" ? "user" : "access")) {
+    const readable = firstReadablePage(me.data, "users");
+    if (readable) redirect(pageHref(realm, readable));
+  }
   const { t } = await getI18n();
 
   let content: React.ReactNode;
@@ -127,20 +135,6 @@ export default async function UsersPage({
     );
   }
 
-  const tabs = [
-    { href: base, label: t("users.tab.users", "Users"), active: tab === "users" },
-    ...(readAccess
-      ? [
-          { href: `${base}?tab=roles`, label: t("users.tab.roles", "Roles"), active: tab === "roles" },
-          { href: `${base}?tab=groups`, label: t("users.tab.groups", "Groups"), active: tab === "groups" },
-          {
-            href: `${base}?tab=permissions`,
-            label: t("users.tab.permissions", "Permissions"),
-            active: tab === "permissions",
-          },
-        ]
-      : []),
-  ];
   let action: React.ReactNode = null;
   if (tab === "users" && me.ok && canWrite(me.data, "user")) action = <InviteUserButton />;
   if ((tab === "roles" || tab === "groups") && me.ok && canWrite(me.data, "access"))
@@ -149,11 +143,7 @@ export default async function UsersPage({
 
   return (
     <>
-      <PageHeader {...PAGES.users} />
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <SegmentedLinks label={t("users.tabs_label", "Users and access")} items={tabs} />
-        {action}
-      </div>
+      <PageHeader {...PAGES[tab]} actions={action} />
       {content}
     </>
   );
