@@ -1,6 +1,7 @@
 package httpserver_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -53,6 +54,19 @@ func TestOIDC_Integration_SignInMemory(t *testing.T) {
 		password(t, b, account)
 		_, methods := tileOf(t)
 		require.Equal(t, "password,passkey", methods)
+	})
+	t.Run("the password on the tile, then the passkey as second factor: the passkey first again", func(t *testing.T) {
+		password(t, b, account)
+		status, opts := b.postJSON(e.realmURL+"/auth/mfa/webauthn/options", map[string]any{})
+		require.Equal(t, http.StatusOK, status, "%v", opts)
+		cred, err := phone.Get(rawJSON(t, opts))
+		require.NoError(t, err)
+		status, out := b.postJSON(e.realmURL+"/auth/mfa/webauthn/verify", json.RawMessage(cred))
+		require.Equal(t, http.StatusOK, status, "%v", out)
+		b.postJSON(e.realmURL+"/auth/logout", nil)
+		_, methods := tileOf(t)
+		require.Equal(t, "passkey,password", methods)
+		password(t, b, account) // back to the password, for the next case
 	})
 	t.Run("a sign-in with the passkey: the passkey first again", func(t *testing.T) {
 		status, out := e.passkeySignIn(t, b, phone, account)

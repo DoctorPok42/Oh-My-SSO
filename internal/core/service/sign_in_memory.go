@@ -12,7 +12,8 @@ import (
 
 //
 //   - The tile starts with the method the user last chose there: the
-//     password, or the passkey (the default).
+//     password, or the passkey (the default). Answering the second step
+//     with a passkey counts as choosing it.
 //     factor the user last chose there: a passkey or security key (the
 //     default), or the authenticator app.
 //
@@ -87,12 +88,26 @@ func (s *KnownAccountService) PasskeySignIn(ctx context.Context, realmID, device
 // SecondFactorUsed (SignInMemory) remembers the second factor that answered
 // a challenge offering both kinds (a passkey or security key, and an
 // authenticator app). A backup code is never remembered.
+//
+// A passkey that answers also brings the tile back to the passkey: it could
+// have signed in alone, so the password typed before it was not worth
+// keeping, and without this the user would type it at every sign-in. Not a
+// security key: it may have no PIN, then the password is really needed.
 func (s *KnownAccountService) SecondFactorUsed(ctx context.Context, realmID, deviceHash, userID string, used domain.MfaMethodType, offered []domain.MfaMethodType) {
-	kind := secondFactorKind(used)
-	if kind == "" || deviceHash == "" || len(secondFactorKinds(offered)) < 2 {
+	if deviceHash == "" {
 		return
 	}
-	s.setLast(ctx, realmID, deviceHash, userID, repository.LastMethodsParams{LastSecondFactor: &kind})
+	var p repository.LastMethodsParams
+	if kind := secondFactorKind(used); kind != "" && len(secondFactorKinds(offered)) >= 2 {
+		p.LastSecondFactor = &kind
+	}
+	if used == domain.MfaMethodPasskey {
+		m := string(core.SignInPasskey)
+		p.LastMethod = &m
+	}
+	if p.LastMethod != nil || p.LastSecondFactor != nil {
+		s.setLast(ctx, realmID, deviceHash, userID, p)
+	}
 }
 
 // PreferredSecondFactor (SignInMemory). A failure reads as "no preference".
