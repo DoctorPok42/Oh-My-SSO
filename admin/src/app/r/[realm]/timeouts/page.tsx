@@ -3,11 +3,10 @@ import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
 import { Pagination } from "@/components/console/pagination";
 import { offsetParam } from "@/lib/pagination";
-import { TableSkeleton } from "@/components/console/skeletons";
 import { Badge } from "@/components/ui/badge";
 import { SegmentedLinks } from "@/components/ui/segmented";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
-import { apiPath, getMe, load } from "@/lib/api";
+import { apiPath, getMe, load, loadCached } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { COLUMNS, PAGES } from "@/lib/pages";
 import { canWrite } from "@/lib/permissions";
@@ -66,9 +65,7 @@ export default async function TimeoutsPage({
       <div className="mb-4">
         <SegmentedLinks label={t("timeouts.filter.label", "Which timeouts")} items={filters} />
       </div>
-      <Suspense key={`${status}|${offset}`} fallback={<TableSkeleton columns={COLUMNS.timeouts} rows={4} />}>
-        <TimeoutsTable realm={realm} base={base} status={status} offset={offset} writable={writable} />
-      </Suspense>
+      <TimeoutsTable realm={realm} base={base} status={status} offset={offset} writable={writable} />
       <Suspense fallback={null}>
         <TimeoutDrawerSlot realm={realm} sp={sp} writable={writable} />
       </Suspense>
@@ -89,7 +86,9 @@ async function TimeoutsTable({
   offset: number;
   writable: boolean;
 }) {
-  const list = await load<List<Timeout>>(apiPath(["realms", realm, "timeouts"], { status, offset, limit: LIMIT }));
+  const list = await loadCached<List<Timeout>>(
+    apiPath(["realms", realm, "timeouts"], { status, offset, limit: LIMIT }),
+  );
   if (!list.ok) return <ErrorState error={list} />;
   const { items, total } = list.data;
   const { t, tm, locale } = await getI18n();

@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 import { getSession } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { cached } from "@/lib/cache";
+import type { Session } from "@/lib/session";
 import type { MeLanguage } from "@/lib/types";
 import { ENGLISH, translator, type Messages, type Translator } from "@/i18n";
 import { matchLocale, messagesOf } from "@/i18n/catalog";
@@ -20,14 +22,16 @@ export const LOCALE_COOKIE = "omsso_locale";
  *   the realm's default     Settings of the admin's realm (GET /me/language)
  *   English
  *
- * GET /me/language is asked on every request, never cached: a language
- * changed in the account console or in Settings shows on the next page (the
- * claim only changes with a new ID token). Once per request.
+ * Every call to the Admin API waits for the language (its error sentences
+ * are in it), so GET /me/language goes through the 30-second read cache
+ * (lib/cache.ts). A language changed in Settings shows on the next page (a
+ * change empties the cache), one changed in the account console within 30
+ * seconds (the claim alone would wait for a new ID token).
  */
 export const getI18n = cache(async (): Promise<Translator & { messages: Messages }> => {
   const session = await getSession();
   const cookie = (await cookies()).get(LOCALE_COOKIE)?.value;
-  const lang = session ? await meLanguage() : null;
+  const lang = session ? await meLanguage(session) : null;
   const locale =
     matchLocale(lang?.locale) ??
     matchLocale(session?.user.locale) ??
@@ -39,10 +43,13 @@ export const getI18n = cache(async (): Promise<Translator & { messages: Messages
 });
 
 /** null when the Admin API cannot tell (the next steps decide). */
-async function meLanguage(): Promise<MeLanguage | null> {
-  try {
-    return await api<MeLanguage>("/me/language", { noI18n: true });
-  } catch {
-    return null;
-  }
+async function meLanguage(session: Session): Promise<MeLanguage | null> {
+  const res = await cached(`${session.user.sub}:${session.createdAt}:/me/language`, async () => {
+    try {
+      return { ok: true as const, data: await api<MeLanguage>("/me/language", { noI18n: true }) };
+    } catch {
+      return { ok: false as const };
+    }
+  });
+  return res.ok ? res.data : null;
 }

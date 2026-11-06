@@ -1,14 +1,13 @@
 import { NavLink } from "@/components/console/nav-link";
 import { X } from "lucide-react";
-import { Suspense } from "react";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
 import { Pagination } from "@/components/console/pagination";
 import { offsetParam } from "@/lib/pagination";
-import { ColumnHeads, TableSkeleton } from "@/components/console/skeletons";
+import { ColumnHeads } from "@/components/console/skeletons";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
-import { apiPath, getMe, load } from "@/lib/api";
+import { apiPath, getMe, loadCached } from "@/lib/api";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { AUTH_METHOD_LABELS, MFA_METHOD_LABELS } from "@/lib/labels";
 import { COLUMNS, PAGES } from "@/lib/pages";
@@ -37,13 +36,7 @@ export default async function SessionsPage({
   return (
     <>
       <PageHeader {...PAGES.sessions} />
-      {/* A new filter or page: a new key, so the table alone shows a skeleton. */}
-      <Suspense
-        key={`${sp.user}|${sp.client}|${offset}`}
-        fallback={<TableSkeleton columns={COLUMNS.sessions} rows={8} />}
-      >
-        <SessionsTable realm={realm} user={sp.user} client={sp.client} offset={offset} />
-      </Suspense>
+      <SessionsTable realm={realm} user={sp.user} client={sp.client} offset={offset} />
     </>
   );
 }
@@ -62,7 +55,7 @@ async function SessionsTable({
   const base = `/r/${encodeURIComponent(realm)}/sessions`;
   const [me, list] = await Promise.all([
     getMe(),
-    load<List<SessionRow>>(apiPath(["realms", realm, "sessions"], { user, client, offset, limit: LIMIT })),
+    loadCached<List<SessionRow>>(apiPath(["realms", realm, "sessions"], { user, client, offset, limit: LIMIT })),
   ]);
   if (!list.ok) return <ErrorState error={list} />;
   const revocable = me.ok && canWrite(me.data, "session");

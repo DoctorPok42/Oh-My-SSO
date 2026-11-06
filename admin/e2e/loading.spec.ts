@@ -38,8 +38,7 @@ test.beforeAll(async ({ browser, baseURL }) => {
 });
 
 async function hold(route: Route) {
-  // Prefetches (Next.js loads the next pages' skeletons in the background,
-  // long before a click in real use) go through; only navigations wait.
+  // Prefetches go through; only navigations wait.
   if (Object.keys(route.request().headers()).some((h) => h.includes("prefetch"))) {
     await route.continue().catch(() => undefined);
     return;
@@ -104,11 +103,42 @@ test("a search goes through the console (no full reload) and only the table wait
   expect(await page.evaluate(() => (window as unknown as { __kept?: boolean }).__kept)).toBe(true);
 });
 
-test("every console page has a skeleton shaped like it", async ({ page }) => {
+test("a page that answers quickly replaces the current one, without a skeleton", async ({ page }) => {
   await page.goto("/r/master/sessions");
-  // In real use the tabs' skeletons were prefetched long before a click.
-  // Clicked earlier, the current page stays (dimmed, with the progress bar)
-  // until the server answers: tested by the filter test above.
+  await page.waitForLoadState("networkidle");
+  // Once a skeleton has been shown React holds back the real page for 300 ms
+  // (navigation-progress.tsx): none may show up here, even for one frame.
+  await page.evaluate(() => {
+    const w = window as unknown as { __skeletons: number };
+    w.__skeletons = 0;
+    new MutationObserver(() => {
+      if (document.querySelector('main [aria-busy="true"]:not([data-pending-content])')) w.__skeletons++;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  const sections = page.getByRole("navigation", { name: "Sections" });
+  await sections.getByRole("link", { name: "Applications", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Clients" })).toBeVisible();
+  await sections.getByRole("link", { name: "Audit Log", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Audit Log" })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __skeletons: number }).__skeletons)).toBe(0);
+});
+
+test("the menus follow the click while the next page loads", async ({ page }) => {
+  await page.goto("/r/master/sessions");
+  await page.waitForLoadState("networkidle");
+  await slowDown(page, (url) => url.pathname.endsWith("/clients"));
+  const sections = page.getByRole("navigation", { name: "Sections" });
+  await sections.getByRole("link", { name: "Applications", exact: true }).click();
+  await expect(sections.getByRole("link", { name: "Applications", exact: true })).toHaveAttribute(
+    "aria-current",
+    "true",
+    { timeout: 1_000 }, // long before HOLD_MS
+  );
+  await expect(page).toHaveURL(/\/clients$/, { timeout: 10_000 });
+});
+
+test("a page that takes long shows a skeleton shaped like it", async ({ page }) => {
+  await page.goto("/r/master/sessions");
   await page.waitForLoadState("networkidle");
   for (const [tab, path, heading] of [
     ["Dashboard", "/dashboard", "Dashboard"],

@@ -149,6 +149,15 @@ func (b *tab) get(path string) (*http.Response, string) {
 	return b.send(req)
 }
 
+// prefetch: the page, as account.js fetches a tab ahead of a click.
+func (b *tab) prefetch(path string) (*http.Response, string) {
+	b.t.Helper()
+	req, err := http.NewRequest(http.MethodGet, b.url(path), nil)
+	require.NoError(b.t, err)
+	req.Header.Set("X-Account-Prefetch", "1")
+	return b.send(req)
+}
+
 func (b *tab) post(path string, form url.Values, header http.Header) (*http.Response, string) {
 	b.t.Helper()
 	req, err := http.NewRequest(http.MethodPost, b.url(path), strings.NewReader(form.Encode()))
@@ -282,8 +291,10 @@ func TestAccountConsole_DefinitionOfDone_Integration(t *testing.T) {
 	resp, _ = laptop.post("/account/profile", url.Values{"given_name": {" Alice "}, "family_name": {"Martin"}, "csrf": {csrf}}, nil)
 	require.Equal(t, http.StatusSeeOther, resp.StatusCode)
 	require.Equal(t, "/r/acme/account", resp.Header.Get("Location"))
+	_, page = laptop.prefetch("/account/security")
+	require.NotContains(t, page, "Your name was saved.", "a tab fetched ahead of a click may never be shown")
 	_, page = laptop.get("/account")
-	require.Contains(t, page, "Your name was saved.")
+	require.Contains(t, page, "Your name was saved.", "the notice waited for the page really shown")
 	require.Contains(t, page, `value="Alice"`)
 	_, page = laptop.get("/account")
 	require.NotContains(t, page, "Your name was saved.", "a notice shows once")

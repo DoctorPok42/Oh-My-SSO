@@ -1,11 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { activeNav, firstReadablePage, NAV, pageHref, readableNav } from "@/lib/nav";
+import { activeNav, firstReadablePage, hrefView, NAV, pageHref, readableNav } from "@/lib/nav";
 
 const ids = (permissions: string[]) => readableNav({ permissions }).map((s) => s.id);
 const pagesOf = (permissions: string[], id: string) =>
   readableNav({ permissions })
     .find((s) => s.id === id)
     ?.pages.map((p) => p.tab ?? p.slug);
+
+describe("hrefView", () => {
+  it("reads the page and the sub-page of a console URL", () => {
+    expect(hrefView("/r/demo/users?tab=roles&offset=20")).toEqual({
+      path: "/r/demo/users",
+      slug: "users",
+      tab: "roles",
+    });
+    expect(hrefView("/r/demo/clients")).toEqual({ path: "/r/demo/clients", slug: "clients", tab: null });
+  });
+  it("has no page outside a realm", () => {
+    expect(hrefView("/").slug).toBe("");
+    expect(hrefView("/r/demo").slug).toBe("");
+  });
+});
 
 describe("console menus", () => {
   it("follows the design's order", () => {

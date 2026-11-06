@@ -1,5 +1,7 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { beginPending, isContentPending, isPending } from "@/components/console/navigation-progress";
+import { beginPending, isContentPending, isPending, pendingTarget } from "@/components/console/navigation-progress";
 import { searchHref } from "@/components/console/search-form";
 
 describe("progress bar counter", () => {
@@ -23,6 +25,43 @@ describe("progress bar counter", () => {
     expect(isContentPending()).toBe(true);
     b();
     expect([isPending(), isContentPending()]).toEqual([false, false]);
+  });
+});
+
+describe("where the page is going", () => {
+  it("is the latest running navigation, and nothing once they end", () => {
+    expect(pendingTarget()).toBeNull();
+    const first = beginPending(true, "/r/demo/users");
+    const drawer = beginPending(); // a wait that goes nowhere
+    const second = beginPending(true, "/r/demo/audit");
+    expect(pendingTarget()).toBe("/r/demo/audit");
+    second();
+    second();
+    expect(pendingTarget()).toBe("/r/demo/users");
+    first();
+    drawer();
+    expect(pendingTarget()).toBeNull();
+  });
+});
+
+// A Suspense fallback makes React hold back the real content for 300 ms
+// (navigation-progress.tsx): a skeleton around a page's content sets a floor
+// of 330 ms under every navigation, however fast the server. Slow pages get
+// theirs from PendingContent. fallback={null} stays allowed for the drawers:
+// a drawer has its own skeleton, and nothing else waits for it.
+describe("console pages", () => {
+  const dir = join(__dirname, "..", "src", "app", "r");
+  const files = readdirSync(dir, { recursive: true, encoding: "utf8" }).map((f) => f.replaceAll("\\", "/"));
+
+  it("have no loading.tsx", () => {
+    expect(files.filter((f) => /(^|\/)loading\.tsx$/.test(f))).toEqual([]);
+  });
+
+  it("have no Suspense skeleton", () => {
+    const withFallback = files.filter(
+      (f) => f.endsWith(".tsx") && /fallback=\{(?!null\})/.test(readFileSync(join(dir, f), "utf8")),
+    );
+    expect(withFallback).toEqual([]);
   });
 });
 

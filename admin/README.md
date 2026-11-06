@@ -47,7 +47,7 @@ src/
   proxy.ts              every request: CSP nonce, session check, token refresh
   app/
     auth/               login, callback, step-up, logout (route handlers), "session ended"
-    r/[realm]/          the console, one folder per tab (page.tsx, loading.tsx, Server Actions in actions.ts)
+    r/[realm]/          the console, one folder per tab (page.tsx, Server Actions in actions.ts)
   components/ui/        design-system components (shadcn/ui style, OMSSO tokens)
   components/console/   header, tabs, drawers, step-up, confirmations, progress bar, skeletons
   lib/                  env, session cookie, OIDC, Admin API client, types, form helpers, page titles
@@ -57,7 +57,8 @@ e2e/                    Playwright + run.sh (the stack for the tests)
 
 ## Loading states
 
-Every click shows something at once, whatever the network:
+A page the server answers quickly simply replaces the current one: nothing flashes in between. Every
+click still shows something at once, whatever the network:
 
 - **progress bar** at the top: [nextjs-toploader](https://github.com/TheSGJ/nextjs-toploader),
   mounted once in `app/layout.tsx`. It starts on every link click and ends when Next.js shows the
@@ -65,15 +66,21 @@ Every click shows something at once, whatever the network:
   (`components/console/navigation-progress.tsx`);
 - **dimmed content** while a page, a filter or a search loads (links use `NavLink`, forms
   `SearchForm`);
-- **skeleton** of each page (`loading.tsx`: real title and column headers, grey rows); a new filter
-  or page of results reloads only the table (`<Suspense key=…>` around it);
+- **menus** follow the click before the page arrives (`nav-tabs.tsx`);
+- **skeleton** of the next page (`components/console/page-skeletons.tsx`: real title and column
+  headers, grey rows), only when it takes more than 300 ms. A filter or a search stays on the page,
+  dimmed;
 - **drawers** (640 px, 760 px for clients) open and close at the click, with a skeleton until the
   item arrives (`components/console/drawer.tsx`);
 - **spinner** in the button of a running action (`<Button loading>`).
 
-`npm run dev` is slower than the real thing: it compiles each page the first time it is opened, and
-**prefetching only runs in production** (with `npm run build && npm start`, the tabs' skeletons are
-loaded in the background and a click shows the next page at once).
+No `loading.tsx` and no `<Suspense fallback={<Skeleton />}>` around a page's content: once React has
+shown a Suspense fallback it holds back what replaces it for 300 ms, so a skeleton turns a 30 ms page
+into a 330 ms one (see `navigation-progress.tsx`). A test keeps them out (`tests/navigation.test.ts`).
+
+`npm run dev` is slower than the real thing: it compiles each page the first time it is opened (about
+a second per page, once per start of the server). To judge the console's speed, use
+`npm run build && npm start`.
 
 ## Security notes
 
@@ -83,8 +90,17 @@ loaded in the background and a click shows the next page at once).
   "Confirm it's you" (new sign-in with `prompt=login`) before editing; the Admin API checks again.
 - Refresh tokens rotate and a reused one revokes the whole family: the console refreshes once per
   token (in-process). Run **one** console instance, or sticky sessions.
-- Read cache (`src/lib/cache.ts`): `GET /me`, the realm list and the reference lists of the drawers
-  (roles, groups, client scopes, permissions) are kept 30 s per session, in-process. Any successful
-  change through the Admin API empties it; a page's main table is never cached. The Admin API still
-  checks every permission itself: a stale menu can show a button, never grant the action.
+- Caches, both per session and emptied by a change made in the console:
+  - the browser keeps a page it has shown for 30 s (`experimental.staleTimes`, `next.config.ts`:
+    needed for the first page loaded, the router keeps the others by itself); `router.refresh()`
+    empties it;
+  - the server (`src/lib/cache.ts`, in-process) keeps the Admin API's reads: 5 s for the dashboard,
+    sessions and audit log, 10 s for users, 30 s for `GET /me`, the language and the realm list, 60 s
+    for the rest. A change in a realm drops that realm, for every admin; a change in the master realm,
+    or to a realm itself, drops everything. The item of a drawer is never cached.
+
+  A change made elsewhere (sign-ins, account console, CLI, configuration file) shows when the entry
+  expires. A session revoked at the IdP is noticed at the first read that is not cached. The Admin
+  API still checks every permission and every change itself.
+
 - CSP with a per-request nonce, `frame-ancestors 'none'`, no third-party resource (fonts bundled).

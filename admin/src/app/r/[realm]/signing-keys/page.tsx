@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CopyField } from "@/components/ui/copy-button";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
-import { apiPath, getMe, load } from "@/lib/api";
+import { apiPath, getMe, loadCached } from "@/lib/api";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { KEY_PURPOSE_LABELS } from "@/lib/labels";
 import { canWrite } from "@/lib/permissions";
@@ -23,7 +23,7 @@ export async function generateMetadata() {
 
 export default async function SigningKeysPage({ params }: { params: Promise<{ realm: string }> }) {
   const { realm } = await params;
-  const [me, keys] = await Promise.all([getMe(), load<SigningKeys>(apiPath(["realms", realm, "signing-keys"]))]);
+  const [me, keys] = await Promise.all([getMe(), loadCached<SigningKeys>(apiPath(["realms", realm, "signing-keys"]))]);
   if (!keys.ok) return <ErrorState error={keys} />;
   const writable = me.ok && canWrite(me.data, "signing_key");
   const tr = await getI18n();

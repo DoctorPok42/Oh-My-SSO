@@ -1,17 +1,16 @@
-import { Suspense } from "react";
 import { NavLink } from "@/components/console/nav-link";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
 import { Pagination } from "@/components/console/pagination";
 import { offsetParam } from "@/lib/pagination";
 import { SearchForm } from "@/components/console/search-form";
-import { ColumnHeads, TableSkeleton } from "@/components/console/skeletons";
+import { ColumnHeads } from "@/components/console/skeletons";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SegmentedLinks } from "@/components/ui/segmented";
 import { Table, TableBody, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
-import { apiPath, load, loadCached } from "@/lib/api";
+import { apiPath, loadCached } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { ACTOR_TYPE_LABELS, actionLabel, categoryLabel } from "@/lib/labels";
 import { COLUMNS, PAGES } from "@/lib/pages";
@@ -43,8 +42,6 @@ const ACTOR_TYPES = ["user", "admin", "cli", "system", "anonymous"];
 
 // Every sensitive action of the realm, newest first. Filters are URL
 // parameters (a GET form): a filtered view can be bookmarked or shared.
-// The title and the filters show at once; the table loads on its own
-// (keyed Suspense: a new filter or page shows a table skeleton only).
 export default async function AuditPage({
   params,
   searchParams,
@@ -159,12 +156,7 @@ export default async function AuditPage({
           </NavLink>
         </SearchForm>
       </div>
-      <Suspense
-        key={JSON.stringify({ ...filters, offset })}
-        fallback={<TableSkeleton columns={COLUMNS.audit} rows={10} />}
-      >
-        <AuditTable realm={realm} base={base} filters={filters} offset={offset} actions={actions} />
-      </Suspense>
+      <AuditTable realm={realm} base={base} filters={filters} offset={offset} actions={actions} />
     </>
   );
 }
@@ -182,7 +174,7 @@ async function AuditTable({
   offset: number;
   actions: AuditAction[];
 }) {
-  const list = await load<List<AuditEntry>>(
+  const list = await loadCached<List<AuditEntry>>(
     apiPath(["realms", realm, "audit-logs"], { ...filters, offset, limit: LIMIT }),
   );
   if (!list.ok) return <ErrorState error={list} />;

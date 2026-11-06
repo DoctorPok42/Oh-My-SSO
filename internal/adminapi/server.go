@@ -86,9 +86,10 @@ type Server struct {
 		at     time.Time
 	}
 	healthCache struct { // see cachedHealth
-		mu    sync.Mutex
-		lines []healthLine
-		at    time.Time
+		mu      sync.Mutex
+		lines   []healthLine
+		at      time.Time
+		running chan struct{} // closed when the checks end; nil when none run
 	}
 }
 
@@ -97,6 +98,9 @@ const (
 	// healthCacheTTL: the dashboard's infrastructure checks (a real signature
 	// by the KMS, a call to idp, an SMTP connection...) run at most this often.
 	healthCacheTTL = 15 * time.Second
+	// healthWait: how long a page waits for those checks when it has older
+	// results to show instead.
+	healthWait = 200 * time.Millisecond
 )
 
 func (s *Server) now() time.Time { return s.cfg.Now() }

@@ -1,6 +1,8 @@
 package uikit_test
 
 import (
+	"compress/gzip"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -31,6 +33,45 @@ func TestAssets(t *testing.T) {
 	for _, name := range []string{"IBM-Plex-OFL.txt", "uikit.go", "../uikit.go", "login.css", "x.woff2", ""} {
 		require.False(t, uikit.HasAsset(name), name)
 	}
+}
+
+// A browser with this version gets a 304; one that accepts gzip gets the
+// file compressed; the same address must then vary on Accept-Encoding.
+func TestStaticFilesCaching(t *testing.T) {
+	get := func(h http.Header) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(http.MethodGet, "/x/omsso.css", nil)
+		for k, v := range h {
+			r.Header[k] = v
+		}
+		w := httptest.NewRecorder()
+		uikit.Asset(w, r, "omsso.css")
+		return w
+	}
+
+	plain := get(nil)
+	require.Equal(t, http.StatusOK, plain.Code)
+	require.Empty(t, plain.Header().Get("Content-Encoding"))
+	require.Equal(t, uikit.StaticCache, plain.Header().Get("Cache-Control"))
+	require.Equal(t, "Accept-Encoding", plain.Header().Get("Vary"))
+	etag := plain.Header().Get("ETag")
+	require.Regexp(t, `^"[0-9a-f]{16}"$`, etag)
+
+	packed := get(http.Header{"Accept-Encoding": {"gzip, br"}})
+	require.Equal(t, "gzip", packed.Header().Get("Content-Encoding"))
+	require.Less(t, packed.Body.Len(), plain.Body.Len())
+	z, err := gzip.NewReader(packed.Body)
+	require.NoError(t, err)
+	body, err := io.ReadAll(z)
+	require.NoError(t, err)
+	require.Equal(t, plain.Body.Bytes(), body)
+
+	same := get(http.Header{"If-None-Match": {etag}})
+	require.Equal(t, http.StatusNotModified, same.Code)
+	require.Empty(t, same.Body.Bytes())
+
+	other := get(http.Header{"If-None-Match": {`"0000000000000000"`}})
+	require.Equal(t, http.StatusOK, other.Code)
+	require.NotEmpty(t, other.Body.Bytes())
 }
 
 // Every font the stylesheet names is one of the embedded files.

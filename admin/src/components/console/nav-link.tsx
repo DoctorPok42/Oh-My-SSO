@@ -9,21 +9,20 @@ import { usePendingReport } from "@/components/console/navigation-progress";
 //
 // useLinkStatus() is `pending` from the click until the new page is shown;
 // it only works in a component placed INSIDE the <Link>, hence the small
-// <Report /> child. A link whose page was prefetched (production) navigates
-// at once and never reports.
+// <Report /> child.
 // https://nextjs.org/docs/app/api-reference/functions/use-link-status
 
 export function NavLink({ children, ...props }: React.ComponentProps<typeof Link>) {
   return (
     <Link {...props}>
       {children}
-      <Report />
+      <Report href={typeof props.href === "string" ? props.href : undefined} />
     </Link>
   );
 }
 
-function Report() {
+function Report({ href }: { href?: string }) {
   const { pending } = useLinkStatus();
-  usePendingReport(pending, true); // a link replaces the page's content: dim it meanwhile
+  usePendingReport(pending, true, href); // a link replaces the page's content: dim it meanwhile
   return null;
 }

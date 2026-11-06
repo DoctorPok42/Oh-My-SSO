@@ -183,6 +183,13 @@ func TestAdminRepository_Integration(t *testing.T) {
 	})
 
 	t.Run("MFA coverage counts real factors only", func(t *testing.T) {
+		// Activated accounts have a password; an invitation not yet accepted
+		// has none and is left out of the total.
+		for _, u := range []*domain.User{alice, bob} {
+			require.NoError(t, f.client.User.UpdateOneID(u.ID).SetPasswordHash("hash-"+u.ID).Exec(ctx))
+		}
+		f.user() // invited, not activated
+
 		methods := entstore.NewMfaMethodRepository(f.client)
 		_, err := methods.Create(ctx, repository.CreateMfaMethodParams{UserID: alice.ID, Type: domain.MfaMethodPasskey,
 			Status: domain.MfaMethodActive, CredentialID: "cred-" + alice.ID})

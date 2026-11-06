@@ -193,18 +193,46 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		Realm: s.realmDetail(mustRealmView(realm))})
 }
 
-// cachedHealth: the last results if younger than healthCacheTTL. The checks
-// do not stop when the request that started them is cancelled: their result
-// is shared with the next callers.
+// cachedHealth: the last results if younger than healthCacheTTL, otherwise
+// the checks run, once however many callers ask. A caller waits healthWait
+// for them and then takes the previous results: every admin lands on the
+// dashboard after signing in, a slow KMS or SMTP server must not hold it for
+// the 3 seconds a check may last. Only the very first call, with nothing to
+// show yet, waits for the end. The checks do not stop when the request that
+// started them is cancelled: their result is shared with the next callers.
 func (s *Server) cachedHealth(ctx context.Context) []healthLine {
-	s.healthCache.mu.Lock()
-	defer s.healthCache.mu.Unlock()
-	if s.healthCache.lines != nil && s.now().Sub(s.healthCache.at) < healthCacheTTL {
-		return s.healthCache.lines
+	c := &s.healthCache
+	c.mu.Lock()
+	if c.lines != nil && s.now().Sub(c.at) < healthCacheTTL {
+		defer c.mu.Unlock()
+		return c.lines
 	}
-	s.healthCache.lines = s.health(context.WithoutCancel(ctx))
-	s.healthCache.at = s.now()
-	return s.healthCache.lines
+	if c.running == nil {
+		done := make(chan struct{})
+		c.running = done
+		go func() {
+			lines := s.health(context.WithoutCancel(ctx))
+			c.mu.Lock()
+			c.lines, c.at, c.running = lines, s.now(), nil
+			c.mu.Unlock()
+			close(done)
+		}()
+	}
+	done, previous := c.running, c.lines
+	c.mu.Unlock()
+
+	if previous != nil {
+		select {
+		case <-done:
+		case <-time.After(healthWait):
+			return previous
+		}
+	} else {
+		<-done
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.lines
 }
 
 func mustRealmView(r *domain.Realm) service.RealmView {

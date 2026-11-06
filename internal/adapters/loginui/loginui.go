@@ -394,8 +394,5 @@ func Asset(w http.ResponseWriter, r *http.Request, name string) {
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Set("Content-Type", ctype)
-	w.Header().Set("Cache-Control", "public, max-age=300")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	_, _ = w.Write(data)
+	uikit.Serve(w, r, "loginui/"+path.Base(name), data, ctype, uikit.StaticCache)
 }

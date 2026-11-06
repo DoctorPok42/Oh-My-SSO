@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Chips } from "@/components/ui/chip-select";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { TogglePill } from "@/components/ui/toggle-pill";
-import { apiPath, getMe, load } from "@/lib/api";
+import { apiPath, getMe, loadCached } from "@/lib/api";
 import { MFA_METHOD_LABELS } from "@/lib/labels";
 import { canWrite } from "@/lib/permissions";
 import { PAGES } from "@/lib/pages";
@@ -30,7 +30,7 @@ const methodChips = (ms: string[], { tm }: Translator) =>
 
 export default async function MfaPage({ params }: { params: Promise<{ realm: string }> }) {
   const { realm } = await params;
-  const [me, res] = await Promise.all([getMe(), load<MfaPolicies>(apiPath(["realms", realm, "mfa-policies"]))]);
+  const [me, res] = await Promise.all([getMe(), loadCached<MfaPolicies>(apiPath(["realms", realm, "mfa-policies"]))]);
   if (!res.ok) return <ErrorState error={res} />;
   const p = res.data;
   const writable = me.ok && canWrite(me.data, "mfa_policy");
