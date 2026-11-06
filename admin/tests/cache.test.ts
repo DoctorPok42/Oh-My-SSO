@@ -75,6 +75,7 @@ describe("read cache", () => {
     expect(ttlOf("a:1:/realms/demo/dashboard")).toBe(LIVE_TTL_MS);
     expect(ttlOf("a:1:/realms/demo/sessions?offset=25")).toBe(LIVE_TTL_MS);
     expect(ttlOf("a:1:/realms/demo/audit-logs?limit=25")).toBe(LIVE_TTL_MS);
+    expect(ttlOf("a:1:/infrastructure")).toBe(LIVE_TTL_MS);
     expect(ttlOf("a:1:/realms/demo/users?q=bob")).toBe(USERS_TTL_MS);
     expect(ttlOf("a:1:/realms/demo/clients")).toBe(CONFIG_TTL_MS);
     expect(ttlOf("a:1:/realms/demo")).toBe(CONFIG_TTL_MS);

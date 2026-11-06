@@ -2,11 +2,16 @@ package adminapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // The dashboard's infrastructure checks are expensive (a signature by the
@@ -38,6 +43,21 @@ func TestCachedHealthRunsChecksOncePerTTL(t *testing.T) {
 	if got := calls.Load(); got != 2 {
 		t.Fatalf("checks ran %d times after the TTL, want 2", got)
 	}
+}
+
+func TestInfrastructureAnswersTheStatusLines(t *testing.T) {
+	s := New(Config{}, Deps{Health: []HealthCheck{
+		{Name: "db", Check: func(context.Context) error { return nil }},
+		{Name: "smtp", Check: func(context.Context) error { return ErrDisabled }},
+	}})
+	w := httptest.NewRecorder()
+	s.handleInfrastructure(w, httptest.NewRequest(http.MethodGet, "/api/v1/infrastructure", nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	var got list[healthLine]
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	require.Equal(t, 2, got.Total)
+	require.Equal(t, "healthy", got.Items[0].Status)
+	require.Equal(t, "disabled", got.Items[1].Status)
 }
 
 // A slow check (the KMS, an SMTP server that hangs) must not hold the

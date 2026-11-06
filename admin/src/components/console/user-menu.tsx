@@ -1,6 +1,6 @@
 "use client";
 
-import { Languages, LogOut, ShieldCheck, ShieldAlert } from "lucide-react";
+import { LogOut, ShieldCheck, ShieldAlert, User } from "lucide-react";
 import { useRef } from "react";
 import { useStepUp } from "@/components/console/step-up";
 import {
@@ -14,7 +14,7 @@ import { useT } from "@/i18n/client";
 import { initials } from "@/lib/format";
 
 // Avatar menu: who is signed in, whether changes are unlocked (step-up),
-// their own account (the account console of the master realm, where the
+// their own profile (the account console of the master realm, where the
 // language of this console is chosen too), sign out. Sign-out is a POST form
 // (see app/auth/logout/route.ts).
 export function UserMenu({
@@ -61,11 +61,14 @@ export function UserMenu({
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <a href={accountUrl} target="_blank" rel="noopener">
-              <Languages />
-              {t("user_menu.account", "My account and language")}
+              <User />
+              {t("user_menu.account", "My profile")}
             </a>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => form.current?.requestSubmit()}>
+          <DropdownMenuItem
+            onSelect={() => form.current?.requestSubmit()}
+            className="text-danger data-[highlighted]:bg-danger-soft data-[highlighted]:text-danger [&_svg]:text-danger"
+          >
             <LogOut />
             {t("user_menu.sign_out", "Sign out")}
           </DropdownMenuItem>

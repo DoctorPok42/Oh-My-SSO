@@ -135,6 +135,7 @@ func New(cfg Config, d Deps) *Server {
 		r.Get("/me", s.handleMe)
 		r.Get("/me/language", s.handleMeLanguage)
 
+		r.With(s.require("realm", "read")).Get("/infrastructure", s.handleInfrastructure)
 		r.With(s.require("realm", "read")).Get("/realms", s.handleListRealms)
 		r.With(s.require("realm", "write"), s.stepUp).Post("/realms", s.handleCreateRealm)
 

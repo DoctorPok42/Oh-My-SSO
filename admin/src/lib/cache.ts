@@ -20,7 +20,8 @@ import "server-only";
 //  - how long depends on who else writes the data (ttlOf). A change made
 //    outside this console (a sign-in on idp, the account console, the CLI,
 //    a configuration file) shows when the entry expires:
-//       5 s   dashboard, sessions, audit log: every sign-in changes them
+//       5 s   dashboard, sessions, audit log: every sign-in changes them;
+//             the infrastructure's status
 //      10 s   users: their last sign-in, their status
 //      30 s   the admin: GET /me, the language, the realm list
 //      60 s   the rest: the realm's configuration
@@ -81,6 +82,7 @@ function pathOf(key: string): string {
 /** How long an entry lives: see the rules at the top of this file. */
 export function ttlOf(key: string): number {
   const path = pathOf(key);
+  if (path === "/infrastructure") return LIVE_TTL_MS;
   if (/^\/realms\/[^/]+\/(dashboard|sessions|audit-logs)(\?|$)/.test(path)) return LIVE_TTL_MS;
   if (/^\/realms\/[^/]+\/users(\?|$)/.test(path)) return USERS_TTL_MS;
   return /^\/realms\/[^/?]+/.test(path) ? CONFIG_TTL_MS : CACHE_TTL_MS;

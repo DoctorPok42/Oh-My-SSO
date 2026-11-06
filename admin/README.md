@@ -91,9 +91,8 @@ a second per page, once per start of the server). To judge the console's speed, 
 - Refresh tokens rotate and a reused one revokes the whole family: the console refreshes once per
   token (in-process). Run **one** console instance, or sticky sessions.
 - Caches, both per session and emptied by a change made in the console:
-  - the browser keeps a page it has shown for 30 s (`experimental.staleTimes`, `next.config.ts`:
-    needed for the first page loaded, the router keeps the others by itself); `router.refresh()`
-    empties it;
+  - the browser keeps a page it has shown for 30 s (`experimental.staleTimes`, `next.config.ts`);
+    `router.refresh()` empties it;
   - the server (`src/lib/cache.ts`, in-process) keeps the Admin API's reads: 5 s for the dashboard,
     sessions and audit log, 10 s for users, 30 s for `GET /me`, the language and the realm list, 60 s
     for the rest. A change in a realm drops that realm, for every admin; a change in the master realm,

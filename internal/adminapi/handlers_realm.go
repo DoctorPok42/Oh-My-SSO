@@ -193,6 +193,13 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		Realm: s.realmDetail(mustRealmView(realm))})
 }
 
+// handleInfrastructure: the status lines alone (Settings > General), without
+// the dashboard's numbers. Not a realm's: every realm runs on the same servers.
+func (s *Server) handleInfrastructure(w http.ResponseWriter, r *http.Request) {
+	lines := s.cachedHealth(r.Context())
+	writeJSON(w, http.StatusOK, list[healthLine]{Items: lines, Total: len(lines), Limit: len(lines)})
+}
+
 // cachedHealth: the last results if younger than healthCacheTTL, otherwise
 // the checks run, once however many callers ask. A caller waits healthWait
 // for them and then takes the previous results: every admin lands on the

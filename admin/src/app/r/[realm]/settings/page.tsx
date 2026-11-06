@@ -8,7 +8,7 @@ import { apiPath, getMe, loadCached } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { can, canWrite } from "@/lib/permissions";
 import { settingsSection, type SettingsSection } from "@/lib/settings-form";
-import type { Dashboard, RealmDetail, Settings } from "@/lib/types";
+import type { HealthLine, List, RealmDetail, Settings } from "@/lib/types";
 import { PAGES } from "@/lib/pages";
 import { SettingsForm } from "./settings-form";
 import { getI18n } from "@/i18n/server";
@@ -85,22 +85,22 @@ export default async function SettingsPage({
         }
         infrastructure={
           // The Admin API never waits long for the health checks (cachedHealth).
-          showRealm && <Infrastructure realm={realm} />
+          showRealm && <Infrastructure />
         }
       />
     </>
   );
 }
 
-async function Infrastructure({ realm }: { realm: string }) {
-  const dashboard = await loadCached<Dashboard>(apiPath(["realms", realm, "dashboard"]));
-  if (!dashboard.ok) return null;
+async function Infrastructure() {
+  const lines = await loadCached<List<HealthLine>>("/infrastructure");
+  if (!lines.ok) return null;
   const { t } = await getI18n();
   return (
     <Card>
       <CardTitle>{t("settings.infrastructure", "Infrastructure status")}</CardTitle>
       <ul className="mt-4 divide-y divide-border">
-        {dashboard.data.infrastructure.map((i) => (
+        {lines.data.items.map((i) => (
           <li key={i.name} className="flex items-center justify-between gap-4 py-2.5">
             <div className="min-w-0">
               <p className="text-[14px]">{i.name}</p>

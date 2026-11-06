@@ -87,6 +87,13 @@ test("what was typed in the settings stays across their sub-pages", async ({ pag
   await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
 });
 
+test("the settings show the infrastructure's status", async ({ page }) => {
+  await page.goto("/r/master/settings");
+  const main = page.getByRole("main");
+  await expect(main.getByRole("heading", { name: "Infrastructure status" })).toBeVisible();
+  await expect(main.getByText("PostgreSQL")).toBeVisible();
+});
+
 test("the session cookie is out of reach of JavaScript", async ({ page, context }) => {
   await page.goto("/r/master/dashboard");
   const cookies = await context.cookies();
