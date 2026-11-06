@@ -124,6 +124,68 @@ func (f *mfaFixture) totpLogin(t *testing.T, dec *service.LoginDecision, secret 
 	f.advance(30 * time.Second)
 }
 
+// A password typed on a tile must not lock the account into "password, then
+// passkey": the passkey that answers the second step could have signed in alone.
+func TestSignInMemory_PasswordThenSecondFactor(t *testing.T) {
+	ctx := context.Background()
+	password, passkey := string(core.SignInPassword), string(core.SignInPasskey)
+	chosePassword := func(t *testing.T, f *mfaFixture, device string) {
+		t.Helper()
+		row, err := f.known.Find(ctx, realmA, service.DeviceFingerprint(device), aliceID)
+		require.NoError(t, err)
+		f.accounts.PasswordChosen(ctx, service.PasswordChosenInput{RealmID: realmA, DeviceID: device, AccountID: row.ID, UserID: aliceID,
+			Offered: []core.SignInMethod{core.SignInPasskey, core.SignInPassword}})
+	}
+	lastMethod := func(t *testing.T, f *mfaFixture, device string) string {
+		t.Helper()
+		row, err := f.known.Find(ctx, realmA, service.DeviceFingerprint(device), aliceID)
+		require.NoError(t, err)
+		return row.LastMethod
+	}
+
+	t.Run("the passkey as second factor: the tile starts with the passkey again", func(t *testing.T) {
+		f := secondFactorSetup(t)
+		chosePassword(t, f.mfaFixture, deviceA)
+		require.Equal(t, password, lastMethod(t, f.mfaFixture, deviceA))
+		_, err := f.passkeyLogin(t, f.beginOn(t, aliceID, "", f.laptop), f.phone)
+		require.NoError(t, err)
+		require.Equal(t, passkey, lastMethod(t, f.mfaFixture, deviceA))
+	})
+	t.Run("an application that accepts only the passkey: the same", func(t *testing.T) {
+		f := secondFactorSetup(t)
+		chosePassword(t, f.mfaFixture, deviceA)
+		_, err := f.passkeyLogin(t, f.beginOn(t, aliceID, mfaClientPasskey, f.laptop), f.phone)
+		require.NoError(t, err)
+		require.Equal(t, passkey, lastMethod(t, f.mfaFixture, deviceA))
+	})
+	t.Run("the authenticator app as second factor: the password stays the choice", func(t *testing.T) {
+		f := secondFactorSetup(t)
+		chosePassword(t, f.mfaFixture, deviceA)
+		f.totpLogin(t, f.beginOn(t, aliceID, "", f.laptop), f.secret)
+		require.Equal(t, password, lastMethod(t, f.mfaFixture, deviceA))
+	})
+	t.Run("a security key as second factor: the password stays, the key may not sign in alone", func(t *testing.T) {
+		f := newMFAFixture(t)
+		yubikey := passkeytest.New(testOrigin)
+		f.enrollPasskey(t, aliceID, yubikey, service.PasskeyKindSecurityKey)
+		laptop := service.DeviceFingerprint(deviceA)
+		_, err := f.known.Touch(ctx, realmA, laptop, aliceID, f.now)
+		require.NoError(t, err)
+		chosePassword(t, f, deviceA)
+		_, err = f.passkeyLogin(t, f.beginOn(t, aliceID, "", laptop), yubikey)
+		require.NoError(t, err)
+		require.Equal(t, password, lastMethod(t, f, deviceA))
+	})
+	t.Run("a device that does not remember the account: nothing to record", func(t *testing.T) {
+		f := secondFactorSetup(t)
+		other := service.DeviceFingerprint(deviceB)
+		_, err := f.passkeyLogin(t, f.beginOn(t, aliceID, "", other), f.phone)
+		require.NoError(t, err)
+		_, err = f.known.Find(ctx, realmA, other, aliceID)
+		require.Error(t, err)
+	})
+}
+
 func TestSignInMemory_SecondFactor(t *testing.T) {
 	ctx := context.Background()
 	passkeyFirst := []domain.MfaMethodType{domain.MfaMethodPasskey, domain.MfaMethodTOTP, domain.MfaMethodBackupCodes}
