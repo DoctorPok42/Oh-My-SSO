@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { cached, clearCache } from "@/lib/cache";
+import { cached, clearCache, invalidate } from "@/lib/cache";
 import { env } from "@/lib/env";
 import { ApiError, type ApiResult } from "@/lib/api-error";
 import { ENGLISH, translator } from "@/i18n";
@@ -105,8 +105,8 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
   }
   const method = init.method ?? "GET";
   if (res.ok && method !== "GET") {
-    // A change went through: the cached reads (cache.ts) may be stale.
-    clearCache();
+    // A change went through: what it made stale leaves the cache (cache.ts).
+    invalidate(path);
   }
   if (res.status === 204) return undefined as T;
   const data: unknown = await res.json().catch(() => null);
@@ -177,8 +177,8 @@ export async function load<T>(path: string, init?: ApiInit): Promise<ApiResult<T
 }
 
 /**
- * load(), through the 30-second cache (cache.ts): for GET /me, the realm list
- * and the reference lists of the drawers, never for a page's main table.
+ * load(), through the read cache (cache.ts): for what a page shows, not for
+ * the item a drawer is about to edit.
  */
 export async function loadCached<T>(path: string): Promise<ApiResult<T>> {
   const session = await getSession();

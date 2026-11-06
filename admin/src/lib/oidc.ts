@@ -12,14 +12,21 @@ import type { LoginState, Session } from "@/lib/session";
 export const SCOPES = "openid profile email offline_access";
 export const CALLBACK_PATH = "/auth/callback";
 
-let configPromise: Promise<client.Configuration> | undefined;
+// Next.js bundles each route apart, so the metadata lives on globalThis: what
+// instrumentation.ts reads at start-up serves every route. The key is a
+// function of the library: a Configuration only works with the copy of
+// openid-client that made it (next.config.ts makes it one copy for all
+// routes, whatever else Next.js bundles keeps its own).
+const g = globalThis as typeof globalThis & { __omssoOidc?: Map<unknown, Promise<client.Configuration>> };
+const configs = (g.__omssoOidc ??= new Map());
 
 /** The IdP's metadata (discovery document), fetched once and cached. */
 export function oidcConfig(): Promise<client.Configuration> {
-  if (!configPromise) {
+  let config = configs.get(client.discovery);
+  if (!config) {
     const e = env();
     const issuer = new URL(e.OIDC_ISSUER);
-    configPromise = client
+    config = client
       .discovery(
         issuer,
         e.OIDC_CLIENT_ID,
@@ -29,11 +36,12 @@ export function oidcConfig(): Promise<client.Configuration> {
         issuer.protocol === "http:" ? { execute: [client.allowInsecureRequests] } : undefined,
       )
       .catch((err: unknown) => {
-        configPromise = undefined; // retry on the next request
+        configs.delete(client.discovery); // retry on the next request
         throw err;
       });
+    configs.set(client.discovery, config);
   }
-  return configPromise;
+  return config;
 }
 
 export function redirectUri(): string {

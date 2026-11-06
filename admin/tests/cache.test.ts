@@ -1,5 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CACHE_TTL_MS, cached, cacheSize, clearCache } from "@/lib/cache";
+import {
+  CACHE_TTL_MS,
+  cached,
+  cacheSize,
+  clearCache,
+  CONFIG_TTL_MS,
+  invalidate,
+  LIVE_TTL_MS,
+  ttlOf,
+  USERS_TTL_MS,
+} from "@/lib/cache";
 
 type R = { ok: boolean; data?: number };
 
@@ -59,6 +69,76 @@ describe("read cache", () => {
     expect(cacheSize()).toBe(0);
     await cached("a", load);
     expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps what others change for less long", () => {
+    expect(ttlOf("a:1:/realms/demo/dashboard")).toBe(LIVE_TTL_MS);
+    expect(ttlOf("a:1:/realms/demo/sessions?offset=25")).toBe(LIVE_TTL_MS);
+    expect(ttlOf("a:1:/realms/demo/audit-logs?limit=25")).toBe(LIVE_TTL_MS);
+    expect(ttlOf("a:1:/infrastructure")).toBe(LIVE_TTL_MS);
+    expect(ttlOf("a:1:/realms/demo/users?q=bob")).toBe(USERS_TTL_MS);
+    expect(ttlOf("a:1:/realms/demo/clients")).toBe(CONFIG_TTL_MS);
+    expect(ttlOf("a:1:/realms/demo")).toBe(CONFIG_TTL_MS);
+    expect(ttlOf("a:1:/realms/demo/audit-logs/actions")).toBe(CONFIG_TTL_MS); // a fixed catalogue
+    expect(ttlOf("a:1:/me")).toBe(CACHE_TTL_MS);
+    expect(ttlOf("a:1:/realms")).toBe(CACHE_TTL_MS);
+  });
+
+  it("expires each entry after its own TTL", async () => {
+    const load = vi.fn(async (): Promise<R> => ({ ok: true }));
+    const t0 = 1_000_000;
+    await cached("a:1:/realms/demo/sessions", load, t0);
+    await cached("a:1:/realms/demo/sessions", load, t0 + LIVE_TTL_MS - 1);
+    expect(load).toHaveBeenCalledTimes(1);
+    await cached("a:1:/realms/demo/sessions", load, t0 + LIVE_TTL_MS);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  describe("a change", () => {
+    const reads = [
+      "alice:1:/me",
+      "alice:1:/me/language",
+      "alice:1:/realms",
+      "alice:1:/realms/demo",
+      "alice:1:/realms/demo/clients",
+      "alice:1:/realms/demo/users?q=a",
+      "bob:1:/realms/demo/clients",
+      "alice:1:/realms/demo2/clients",
+      "alice:1:/realms/master/users",
+    ];
+    const left = async (change: string) => {
+      const load = async (): Promise<R> => ({ ok: true });
+      for (const r of reads) await cached(r, load);
+      invalidate(change);
+      const hit = vi.fn(load);
+      const kept: string[] = [];
+      for (const r of reads) {
+        const before = hit.mock.calls.length;
+        await cached(r, hit);
+        if (hit.mock.calls.length === before) kept.push(r);
+      }
+      return kept;
+    };
+
+    it("in a realm drops that realm, for every admin, and nothing else", async () => {
+      expect(await left("/realms/demo/clients/42")).toEqual([
+        "alice:1:/me",
+        "alice:1:/me/language",
+        "alice:1:/realms",
+        "alice:1:/realms/demo2/clients",
+        "alice:1:/realms/master/users",
+      ]);
+    });
+
+    it("in the master realm drops everything: it holds the admins' rights", async () => {
+      expect(await left("/realms/master/users/7/roles")).toEqual([]);
+    });
+
+    it("to a realm itself, or a new realm, drops everything: the realm list is on every page", async () => {
+      expect(await left("/realms/demo")).toEqual([]);
+      expect(await left("/realms")).toEqual([]);
+      expect(await left("/realms/demo?force=1")).toEqual([]);
+    });
   });
 
   it("stays bounded", async () => {

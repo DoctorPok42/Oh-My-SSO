@@ -823,7 +823,7 @@
   "timeouts.timeout": "Suspension",
   "timeouts.title_of": "Suspension de {name}",
   "timeouts.when_it_starts": "À son début",
-  "user_menu.account": "Mon compte et ma langue",
+  "user_menu.account": "Mon profil",
   "user_menu.confirm": "Confirmez votre identité pour faire des modifications",
   "user_menu.label": "Menu du compte",
   "user_menu.sign_out": "Se déconnecter",

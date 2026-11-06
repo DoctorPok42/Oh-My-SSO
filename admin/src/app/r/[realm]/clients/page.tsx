@@ -3,7 +3,7 @@ import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
 import { Pagination } from "@/components/console/pagination";
 import { offsetParam } from "@/lib/pagination";
-import { ColumnHeads, TableSkeleton } from "@/components/console/skeletons";
+import { ColumnHeads } from "@/components/console/skeletons";
 import { ManagedBadge, ProtocolBadge, StatusBadge } from "@/components/console/status-badge";
 import { SegmentedLinks } from "@/components/ui/segmented";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
@@ -26,13 +26,9 @@ const LIMIT = 20;
 
 type Search = { protocol?: string; offset?: string; new?: string; edit?: string };
 
-// The page is cut in three parts that load independently (React Suspense):
-//  - the title and the filters: at once (GET /me comes from the console's cache);
-//  - the table: its own Suspense whose `key` is the filter and the page
-//    number. A new filter or page = a new key = the table alone shows a
-//    skeleton while the rest stays in place;
-//  - the drawer: the item and the lists it offers, all loaded in parallel.
-// https://react.dev/reference/react/Suspense#resetting-suspense-boundaries-on-navigation
+// The table arrives with the page (no skeleton around it, see
+// navigation-progress.tsx). The drawer loads apart: the item and the lists it
+// offers, all in parallel.
 export default async function ClientsPage({
   params,
   searchParams,
@@ -65,9 +61,7 @@ export default async function ClientsPage({
           ]}
         />
       </div>
-      <Suspense key={`${protocol}|${offset}`} fallback={<TableSkeleton columns={COLUMNS.clients} />}>
-        <ClientsTable realm={realm} base={base} protocol={protocol} offset={offset} writable={writable} />
-      </Suspense>
+      <ClientsTable realm={realm} base={base} protocol={protocol} offset={offset} writable={writable} />
     </>
   );
 }
@@ -85,7 +79,7 @@ async function ClientsTable({
   offset: number;
   writable: boolean;
 }) {
-  const list = await load<List<ClientSummary>>(
+  const list = await loadCached<List<ClientSummary>>(
     apiPath(["realms", realm, "clients"], { protocol, offset, limit: LIMIT }),
   );
   if (!list.ok) return <ErrorState error={list} />;

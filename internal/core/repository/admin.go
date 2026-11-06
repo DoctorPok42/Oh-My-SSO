@@ -72,7 +72,7 @@ type AdminRepository interface {
 	LoginCounts(ctx context.Context, realmID string, since time.Time) (success, failure int, err error)
 	LoginAttemptsByUser(ctx context.Context, userID string, limit int) ([]*domain.LoginAttempt, error)
 
-	// MFACoverage: active users of the realm, and how many have an active factor.
+	// MFACoverage: active users of the realm (invited, not yet activated ones excluded), and how many have an active factor.
 	MFACoverage(ctx context.Context, realmID string) (enrolled, total int, err error)
 }
 

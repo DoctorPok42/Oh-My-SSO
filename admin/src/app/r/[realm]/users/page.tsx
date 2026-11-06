@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/console/page-header";
 import { Pagination } from "@/components/console/pagination";
 import { offsetParam } from "@/lib/pagination";
 import { SearchForm } from "@/components/console/search-form";
-import { ColumnHeads, TableSkeleton } from "@/components/console/skeletons";
+import { ColumnHeads } from "@/components/console/skeletons";
 import { ManagedBadge, StatusBadge } from "@/components/console/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -40,12 +40,11 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 
 // The roles (or groups) list feeds the table and the drawer: React's cache()
 // makes it one call per request. https://react.dev/reference/react/cache
-const loadAccess = cache((path: string) => load<List<Access>>(path));
+const loadAccess = cache((path: string) => loadCached<List<Access>>(path));
 
-// The title and the search show at once. Each table loads on
-// its own (React Suspense) under a `key` made of what it shows: a new search,
-// page or sub-tab = a new key = only the table shows a skeleton. The drawer
-// loads apart, everything it needs in parallel, and opens at the click.
+// The table arrives with the page (no skeleton around it, see
+// navigation-progress.tsx). The drawer loads apart, everything it needs in
+// parallel, and opens at the click.
 export default async function UsersPage({
   params,
   searchParams,
@@ -106,33 +105,21 @@ export default async function UsersPage({
             </NavLink>
           )}
         </SearchForm>
-        <Suspense key={`${sp.q}|${status}|${offset}`} fallback={<TableSkeleton columns={COLUMNS.users} rows={8} />}>
-          <UsersTable realm={realm} base={base} q={sp.q} status={status} offset={offset} />
-        </Suspense>
+        <UsersTable realm={realm} base={base} q={sp.q} status={status} offset={offset} />
       </>
     );
   } else if (tab === "roles" || tab === "groups") {
     const writable = me.ok && canWrite(me.data, "access");
-    const columns = [
-      tab === "roles" ? m("columns.role", "Role") : m("columns.group", "Group"),
-      ...COLUMNS.access.slice(1),
-    ];
     content = (
       <>
-        <Suspense key={tab} fallback={<TableSkeleton columns={columns} />}>
-          <AccessTab realm={realm} kind={tab} writable={writable} />
-        </Suspense>
+        <AccessTab realm={realm} kind={tab} writable={writable} />
         <Suspense fallback={null}>
           <AccessDrawerSlot realm={realm} kind={tab} sp={sp} me={me} writable={writable} />
         </Suspense>
       </>
     );
   } else {
-    content = (
-      <Suspense key={tab} fallback={<TableSkeleton columns={COLUMNS.permissions} />}>
-        <PermissionsTab realm={realm} writable={me.ok && canWrite(me.data, "access")} />
-      </Suspense>
-    );
+    content = <PermissionsTab realm={realm} writable={me.ok && canWrite(me.data, "access")} />;
   }
 
   let action: React.ReactNode = null;
@@ -238,7 +225,9 @@ async function UsersTable({
   status: string | undefined;
   offset: number;
 }) {
-  const list = await load<List<UserSummary>>(apiPath(["realms", realm, "users"], { q, status, offset, limit: LIMIT }));
+  const list = await loadCached<List<UserSummary>>(
+    apiPath(["realms", realm, "users"], { q, status, offset, limit: LIMIT }),
+  );
   if (!list.ok) return <ErrorState error={list} />;
   const items = list.data.items;
   const tr = await getI18n();
@@ -376,7 +365,7 @@ async function AccessTab({ realm, kind, writable }: { realm: string; kind: "role
 }
 
 async function PermissionsTab({ realm, writable }: { realm: string; writable: boolean }) {
-  const list = await load<List<Permission>>(apiPath(["realms", realm, "permissions"]));
+  const list = await loadCached<List<Permission>>(apiPath(["realms", realm, "permissions"]));
   if (!list.ok) return <ErrorState error={list} />;
   const items = list.data.items;
   const { t } = await getI18n();

@@ -18,9 +18,10 @@ import {
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "@/components/console/nav-link";
+import { usePendingTarget } from "@/components/console/navigation-progress";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/client";
-import { activeNav, type NavIcon } from "@/lib/nav";
+import { activeNav, hrefView, type NavIcon } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
 // The icons the rest of the console already uses for the same things (Ban:
@@ -77,9 +78,14 @@ export function NavTabs({
 }) {
   const { t } = useT();
   const { sentinel, gone } = useHeaderGone();
-  const slug = usePathname().split("/")[3] ?? "";
-  const tab = useSearchParams().get("tab");
-  const { section, page } = activeNav(sections, slug, tab);
+  const pathSlug = usePathname().split("/")[3] ?? "";
+  const pathTab = useSearchParams().get("tab");
+  // The page being opened, as soon as it is clicked: the menus answer at once.
+  const target = usePendingTarget();
+  const next = target ? hrefView(target) : null;
+  const { section, page } = next?.slug
+    ? activeNav(sections, next.slug, next.tab)
+    : activeNav(sections, pathSlug, pathTab);
   const subPages = section?.pages.filter((p) => p.icon) ?? [];
   return (
     <>

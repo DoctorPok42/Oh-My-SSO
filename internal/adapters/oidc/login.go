@@ -235,9 +235,18 @@ func (a *Adapter) mustPickAccount(ar *authRequest, sess *domain.Session) bool {
 	return ar.hasPrompt(oidc.PromptSelectAccount) && !ar.AccountChosen && sess.CreatedAt.Before(ar.CreatedAt)
 }
 
+// redirectToCallback ends a completed login: the library turns the request
+// into a code and sends the browser back to the application. It runs here, in
+// this request, and not behind one more redirect to /oidc/authorize/callback:
+// that is one round trip less for the user, and every caller has already done
+// what that route's checkBrowser would, with browserMatches.
 func (a *Adapter) redirectToCallback(w http.ResponseWriter, r *http.Request, ar *authRequest) {
 	realm, _ := realmFrom(r.Context())
-	http.Redirect(w, r, a.issuer(realm.Name)+"/oidc/authorize/callback?id="+url.QueryEscape(ar.ID), http.StatusFound)
+	cb := r.Clone(op.ContextWithIssuer(r.Context(), a.issuer(realm.Name)))
+	cb.Method = http.MethodGet
+	cb.URL.RawQuery = "id=" + url.QueryEscape(ar.ID)
+	cb.Form, cb.PostForm = nil, nil
+	op.AuthorizeCallback(w, cb, a.provider)
 }
 
 // authError sends the user back to the application with an OAuth error

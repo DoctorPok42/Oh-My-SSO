@@ -772,7 +772,8 @@ func (r *entAdminRepository) LoginAttemptsByUser(ctx context.Context, userID str
 }
 
 
-// MFACoverage: active users, and how many of them have a real factor, in
+// MFACoverage: active users (invitations not yet accepted, i.e. without
+// password, are left out), and how many of them have a real factor, in
 // one query:
 //
 //	SELECT COUNT(*) AS "count",
@@ -786,7 +787,8 @@ func (r *entAdminRepository) MFACoverage(ctx context.Context, realmID string) (i
 		Enrolled int `json:"enrolled"`
 	}
 	err := r.client.User.Query().
-		Where(user.RealmID(realmID), user.DeletedAtIsNil(), user.StatusEQ(entschema.UserActive)).
+		Where(user.RealmID(realmID), user.DeletedAtIsNil(), user.StatusEQ(entschema.UserActive),
+			user.PasswordHashNotNil(), user.PasswordHashNEQ("")).
 		Aggregate(ent.Count(), func(s *sql.Selector) string {
 			return fmt.Sprintf(`COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM %s AS m WHERE m.%s = %s AND m.%s = %s AND m.%s <> %s) THEN 1 ELSE 0 END), 0) AS %s`,
 				quoteIdent(mfamethod.Table), quoteIdent(mfamethod.FieldUserID), s.C(user.FieldID),

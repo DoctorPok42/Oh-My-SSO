@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/console/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Table, TableBody, TableCell, TableContainer, TableHeader, TableRow } from "@/components/ui/table";
-import { apiPath, getMe, load } from "@/lib/api";
+import { apiPath, getMe, loadCached } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { canWrite } from "@/lib/permissions";
 import type { List, Realm } from "@/lib/types";
@@ -23,7 +23,7 @@ export async function generateMetadata() {
 // Every realm of the instance (not only the one in the URL). Realms are never
 // deleted from the console: disabling keeps users, keys and the audit trail.
 export default async function RealmsPage() {
-  const [me, list] = await Promise.all([getMe(), load<List<Realm>>(apiPath(["realms"]))]);
+  const [me, list] = await Promise.all([getMe(), loadCached<List<Realm>>(apiPath(["realms"]))]);
   if (!list.ok) return <ErrorState error={list} />;
   const writable = me.ok && canWrite(me.data, "realm");
   const { t, locale } = await getI18n();

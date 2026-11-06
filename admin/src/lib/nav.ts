@@ -129,6 +129,12 @@ export function pageHref(realm: string, page: Pick<NavPage, "slug" | "tab">): st
   return page.tab ? `${path}?tab=${page.tab}` : path;
 }
 
+/** Which page a console URL opens: /r/<realm>/<slug>, and its ?tab=. */
+export function hrefView(href: string): { path: string; slug: string; tab: string | null } {
+  const url = new URL(href, "http://console.invalid");
+  return { path: url.pathname, slug: url.pathname.split("/")[3] ?? "", tab: url.searchParams.get("tab") };
+}
+
 /** The section and the page of the menus for this URL, among those listed. */
 export function activeNav<P extends Pick<NavPage, "slug" | "tab">, S extends { pages: P[] }>(
   sections: S[],

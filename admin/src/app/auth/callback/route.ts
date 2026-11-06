@@ -46,7 +46,10 @@ export async function GET(req: NextRequest) {
     return fail("signin_failed");
   }
 
-  const res = NextResponse.redirect(new URL(safeReturnTo(login.returnTo, "/"), e.ADMIN_URL));
+  // "/" would only redirect again: straight to the first page.
+  const returnTo = safeReturnTo(login.returnTo, "/");
+  const target = returnTo === "/" ? `/r/${e.DEFAULT_REALM}/dashboard` : returnTo;
+  const res = NextResponse.redirect(new URL(target, e.ADMIN_URL));
   res.headers.set("Cache-Control", "no-store");
   res.cookies.set(names.login, "", cookieOptions(https, 0));
   const value = await seal(session, e.SESSION_SECRET, "session", SESSION_MAX_AGE);

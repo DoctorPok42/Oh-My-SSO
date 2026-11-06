@@ -67,6 +67,91 @@
     });
   }
 
+  // --- tabs: a route cache, in this page's memory only. A tab is fetched
+  // as soon as the pointer or the focus reaches it, and kept 15 seconds: the
+  // click then shows it at once, without reloading the page.
+  //  - A change empties it: htmx requests below; a plain form reloads the
+  //    page, and this memory with it. So does signing out.
+  //  - Only the tabs go through it (a.nav-tab), and no copy is ever written
+  //    anywhere: the pages under them can show backup codes.
+  //  - Each fetch goes through the server's checks: what comes back without
+  //    the tabs (the session ended: the sign-in page), or in error, is not
+  //    used, and the click is a normal navigation.
+  const ROUTE_TTL_MS = 15000;
+  const ROUTE_WAIT_MS = 800; // then the browser's own navigation, with its own progress
+  const routes = new Map();
+  let routeEpoch = 0;
+  let shownPath = location.pathname;
+
+  function fetchRoute(url) {
+    const hit = routes.get(url);
+    if (hit && Date.now() - hit.at < ROUTE_TTL_MS) return hit.page;
+    const epoch = routeEpoch;
+    const page = fetch(url, { credentials: "same-origin", headers: { "X-Account-Prefetch": "1" } })
+      .then(async (res) => {
+        if (!res.ok || res.redirected) return null;
+        const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+        const main = doc.getElementById("main");
+        const tabs = doc.querySelector(".nav-tabs-in");
+        if (!main || !tabs || epoch !== routeEpoch) return null; // started before a change: stale
+        return { title: doc.title, main: main.innerHTML, tabs: tabs.innerHTML };
+      })
+      .catch(() => null);
+    routes.set(url, { at: Date.now(), page });
+    return page;
+  }
+
+  function forgetRoutes() {
+    routeEpoch++;
+    routes.clear();
+  }
+
+  // Before a change, so that nothing started meanwhile is kept, and after it.
+  for (const name of ["htmx:beforeRequest", "htmx:afterRequest"]) {
+    document.body.addEventListener(name, (ev) => {
+      if (ev.detail.requestConfig.verb !== "get") forgetRoutes();
+    });
+  }
+
+  const tabOf = (target) => {
+    const a = target instanceof Element ? target.closest("a.nav-tab") : null;
+    return a && a.href !== location.href ? a : null;
+  };
+  const ahead = (ev) => {
+    const a = tabOf(ev.target);
+    if (a) fetchRoute(a.href);
+  };
+  document.addEventListener("pointerover", ahead);
+  document.addEventListener("focusin", ahead);
+
+  document.addEventListener("click", async (ev) => {
+    const a = tabOf(ev.target);
+    if (!a || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+    ev.preventDefault();
+    const page = await Promise.race([
+      fetchRoute(a.href),
+      new Promise((done) => setTimeout(done, ROUTE_WAIT_MS, null)),
+    ]);
+    if (!page) {
+      location.assign(a.href);
+      return;
+    }
+    const main = $("main");
+    document.title = page.title;
+    main.innerHTML = page.main;
+    document.querySelector(".nav-tabs-in").innerHTML = page.tabs;
+    localTimes(main);
+    if (window.htmx) window.htmx.process(main);
+    history.pushState(null, "", a.href);
+    shownPath = location.pathname;
+    window.scrollTo(0, 0);
+  });
+
+  // Back and forward: the server shows the page again. Not for #main (the skip link).
+  window.addEventListener("popstate", () => {
+    if (location.pathname !== shownPath) location.reload();
+  });
+
   // --- backup codes: copy, download.
   function codesText() {
     const list = $("codes");

@@ -1,16 +1,14 @@
 import { NavLink } from "@/components/console/nav-link";
-import { Suspense } from "react";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
 import { StatusBadge } from "@/components/console/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { apiPath, getMe, load } from "@/lib/api";
+import { apiPath, getMe, loadCached } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { can, canWrite } from "@/lib/permissions";
 import { settingsSection, type SettingsSection } from "@/lib/settings-form";
-import type { Dashboard, RealmDetail, Settings } from "@/lib/types";
+import type { HealthLine, List, RealmDetail, Settings } from "@/lib/types";
 import { PAGES } from "@/lib/pages";
 import { SettingsForm } from "./settings-form";
 import { getI18n } from "@/i18n/server";
@@ -44,8 +42,8 @@ export default async function SettingsPage({
   const me = await getMe();
   const showRealm = section === "general" && me.ok && can(me.data, "realm");
   const [settings, realmInfo] = await Promise.all([
-    load<Settings>(apiPath(["realms", realm, "settings"])),
-    showRealm ? load<RealmDetail>(apiPath(["realms", realm])) : null,
+    loadCached<Settings>(apiPath(["realms", realm, "settings"])),
+    showRealm ? loadCached<RealmDetail>(apiPath(["realms", realm])) : null,
   ]);
   if (!settings.ok) return <ErrorState error={settings} />;
   const base = `/r/${encodeURIComponent(realm)}`;
@@ -86,27 +84,23 @@ export default async function SettingsPage({
           )
         }
         infrastructure={
-          showRealm && (
-            // Streamed: the form shows at once, the health checks arrive after.
-            <Suspense fallback={<InfrastructureSkeleton />}>
-              <Infrastructure realm={realm} />
-            </Suspense>
-          )
+          // The Admin API never waits long for the health checks (cachedHealth).
+          showRealm && <Infrastructure />
         }
       />
     </>
   );
 }
 
-async function Infrastructure({ realm }: { realm: string }) {
-  const dashboard = await load<Dashboard>(apiPath(["realms", realm, "dashboard"]));
-  if (!dashboard.ok) return null;
+async function Infrastructure() {
+  const lines = await loadCached<List<HealthLine>>("/infrastructure");
+  if (!lines.ok) return null;
   const { t } = await getI18n();
   return (
     <Card>
       <CardTitle>{t("settings.infrastructure", "Infrastructure status")}</CardTitle>
       <ul className="mt-4 divide-y divide-border">
-        {dashboard.data.infrastructure.map((i) => (
+        {lines.data.items.map((i) => (
           <li key={i.name} className="flex items-center justify-between gap-4 py-2.5">
             <div className="min-w-0">
               <p className="text-[14px]">{i.name}</p>
@@ -129,20 +123,6 @@ async function Infrastructure({ realm }: { realm: string }) {
           </li>
         ))}
       </ul>
-    </Card>
-  );
-}
-
-async function InfrastructureSkeleton() {
-  const { t } = await getI18n();
-  return (
-    <Card>
-      <CardTitle>{t("settings.infrastructure", "Infrastructure status")}</CardTitle>
-      <div className="mt-4 space-y-3">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Skeleton key={i} className="h-8 w-full" />
-        ))}
-      </div>
     </Card>
   );
 }

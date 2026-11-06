@@ -15,8 +15,13 @@ const FORBIDDEN = "You don't have access to this";
 const SHOTS = "admin/e2e/screenshots/permissions";
 const EMAIL = "limited@example.test";
 
-const sql = (q: string) =>
-  execSync(`docker exec -i postgres psql -U sso -d sso_e2e_dh -At`, { input: q, encoding: "utf8" });
+// The database of the run: the one e2e/run.sh was given (E2E_DATABASE_URL), read the same way.
+const DB = (process.env.E2E_DATABASE_URL ?? "postgres://sso:sso@localhost:5432/sso_e2e").replace(
+  /.*\/([^/?]+)(\?.*)?$/,
+  "$1",
+);
+
+const sql = (q: string) => execSync(`docker exec -i postgres psql -U sso -d ${DB} -At`, { input: q, encoding: "utf8" });
 
 let limited: Page;
 

@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/console/status-badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopyField } from "@/components/ui/copy-button";
 import { getI18n } from "@/i18n/server";
-import { apiPath, getMe, load } from "@/lib/api";
+import { apiPath, getMe, loadCached } from "@/lib/api";
 import { formatPercent, formatRelative } from "@/lib/format";
 import { actionLabel, actorName, isNotification } from "@/lib/labels";
 import { firstReadablePage, pageHref } from "@/lib/nav";
@@ -32,7 +32,7 @@ export default async function DashboardPage({ params }: Readonly<{ params: Promi
   }
   const tr = await getI18n();
   const { t, tm } = tr;
-  const res = await load<Dashboard>(apiPath(["realms", realm, "dashboard"]));
+  const res = await loadCached<Dashboard>(apiPath(["realms", realm, "dashboard"]));
   if (!res.ok) return <ErrorState error={res} />;
   const d = res.data;
   const attempts = d.logins_24h.success + d.logins_24h.failure;

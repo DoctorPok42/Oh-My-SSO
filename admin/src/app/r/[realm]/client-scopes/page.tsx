@@ -1,11 +1,11 @@
 import { cache, Suspense } from "react";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
-import { ColumnHeads, TableSkeleton } from "@/components/console/skeletons";
+import { ColumnHeads } from "@/components/console/skeletons";
 import { ProtocolBadge } from "@/components/console/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
-import { apiPath, getMe, load } from "@/lib/api";
+import { apiPath, getMe, loadCached } from "@/lib/api";
 import { COLUMNS, PAGES } from "@/lib/pages";
 import { canWrite } from "@/lib/permissions";
 import type { ClientScope, List } from "@/lib/types";
@@ -19,10 +19,10 @@ export async function generateMetadata() {
 
 // The table and the drawer both need the list: React's cache() runs the call
 // once per request, whoever asks first. https://react.dev/reference/react/cache
-const loadScopes = cache((realm: string) => load<List<ClientScope>>(apiPath(["realms", realm, "client-scopes"])));
+const loadScopes = cache((realm: string) => loadCached<List<ClientScope>>(apiPath(["realms", realm, "client-scopes"])));
 
-// The title shows at once; the table and the drawer load on their own
-// (React Suspense), the drawer opening at the click (drawer.tsx).
+// The table arrives with the page; the drawer loads apart, opening at the
+// click (drawer.tsx).
 export default async function ClientScopesPage({
   params,
   searchParams,
@@ -38,9 +38,7 @@ export default async function ClientScopesPage({
   return (
     <>
       <PageHeader {...PAGES.clientScopes} actions={writable && <NewScopeButton />} />
-      <Suspense fallback={<TableSkeleton columns={COLUMNS.clientScopes} />}>
-        <ScopesTable realm={realm} writable={writable} />
-      </Suspense>
+      <ScopesTable realm={realm} writable={writable} />
       <Suspense fallback={null}>
         <ScopeDrawerSlot realm={realm} sp={sp} writable={writable} />
       </Suspense>

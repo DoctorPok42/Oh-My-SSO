@@ -80,6 +80,9 @@ func (s *Server) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := page(r)
+	// total=false: the caller shows the latest entries, not how many there
+	// are (the bell). No COUNT over the whole log; "total" answers -1.
+	p.NoTotal = r.URL.Query().Get("total") == "false"
 	f.Page = p
 	v, total, err := s.d.Admin.SearchAudit(r.Context(), realmFrom(r), f)
 	if err != nil {

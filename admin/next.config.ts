@@ -9,6 +9,18 @@ const nextConfig: NextConfig = {
   // Next 16 writes an AGENTS.md for coding assistants on every `next dev`: not here.
   agentRules: false,
   reactStrictMode: true,
+  // One copy for every route: the IdP's metadata read at start-up works with it
+  // alone (src/lib/oidc.ts).
+  serverExternalPackages: ["openid-client"],
+  experimental: {
+    // The browser keeps a page it has shown for 30 seconds: going back to a
+    // tab asks the server nothing. Without this, every visit asks it again.
+    // Every change made in the console empties this cache (router.refresh(),
+    // components/console/use-action.ts), and a reload always asks the server.
+    // The server's own cache: src/lib/cache.ts.
+    // https://nextjs.org/docs/app/api-reference/config/next-config-js/staleTimes
+    staleTimes: { dynamic: 30 },
+  },
   // Headers for every response. The Content-Security-Policy is set per
   // request in src/proxy.ts (it carries a nonce).
   async headers() {

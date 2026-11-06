@@ -43,6 +43,8 @@ import (
 
 const (
 	accountFlashCookie = "sso_account_flash"
+	// Set by account.js on the tabs it fetches ahead of a click.
+	accountPrefetchHeader = "X-Account-Prefetch"
 	csrfField          = "csrf"
 	maxAccountFormSize = 16 << 10
 
@@ -344,7 +346,11 @@ func (s *Server) accountLayout(w http.ResponseWriter, r *http.Request, a *acct, 
 	}
 	l.Orgs = s.accountOrgs(r, a.realm)
 	var flash string
-	l.Notice, l.Error, flash = s.takeFlash(w, r, a)
+	// A page fetched ahead of a click (account.js) may never be shown: the
+	// one-time notice waits for the page that is.
+	if r.Header.Get(accountPrefetchHeader) == "" {
+		l.Notice, l.Error, flash = s.takeFlash(w, r, a)
+	}
 	if flash == "language_saved" {
 		// The same language for the accounts of the other organizations
 		// signed in on this browser (account.js, account_language.go).

@@ -7,7 +7,7 @@ import type { AuditEntry, List } from "@/lib/types";
 export async function recentAlerts(realm: string) {
   return act(() =>
     api<List<AuditEntry>>(
-      apiPath(["realms", realm, "audit-logs"], { level: "suspicious,warning,error,critical", limit: 8 }),
+      apiPath(["realms", realm, "audit-logs"], { level: "suspicious,warning,error,critical", limit: 8, total: false }),
     ),
   );
 }

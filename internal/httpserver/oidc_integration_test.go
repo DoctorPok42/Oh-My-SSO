@@ -340,6 +340,7 @@ func (e *oidcTestEnv) loginAndGetCode(t *testing.T, b *oidcBrowser, cfg *oauth2.
 	require.Equal(t, "authenticated", body["status"])
 
 	resp = b.get(loginURL) // what login.js does: reload
+	require.Equal(t, "/r/"+oidcRealm+"/oidc/login", resp.Request.URL.Path, "back to the application in one redirect")
 	return codeFromRedirect(t, resp, cfg.RedirectURL, state)
 }
 
