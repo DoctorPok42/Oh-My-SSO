@@ -12,6 +12,10 @@
 // The pages link omsso.css first, then their own stylesheet (login.css,
 // account.css) for what is theirs only. The adapters serve these files at
 // their assets path: loginui.Asset falls back to Asset here.
+//
+// web/icon.svg is the favicon of every page of the IdP: change it there, once.
+// It is a copy of admin/src/app/icon.svg (Next.js reads it from there for the
+// admin console); a test keeps the two equal.
 package uikit
 
 import (
@@ -27,13 +31,13 @@ import (
 	"sync"
 )
 
-//go:embed web/omsso.css web/*.woff2
+//go:embed web/omsso.css web/icon.svg web/*.woff2
 var webFS embed.FS
 
 // HasAsset reports whether name is one of the design system's files.
 func HasAsset(name string) bool {
 	switch path.Ext(name) {
-	case ".css", ".woff2":
+	case ".css", ".woff2", ".svg":
 	default:
 		return false
 	}
@@ -41,13 +45,15 @@ func HasAsset(name string) bool {
 	return err == nil
 }
 
-// Asset serves omsso.css and the fonts. name is the file name (the last
+// Asset serves omsso.css, icon.svg (the favicon of every page) and the fonts. name is the file name (the last
 // path segment of the request).
 func Asset(w http.ResponseWriter, r *http.Request, name string) {
 	var ctype, cache string
 	switch path.Ext(name) {
 	case ".css":
 		ctype, cache = "text/css; charset=utf-8", StaticCache
+	case ".svg":
+		ctype, cache = "image/svg+xml", StaticCache
 	case ".woff2":
 		// A font file never changes under the same name.
 		ctype, cache = "font/woff2", "public, max-age=604800"

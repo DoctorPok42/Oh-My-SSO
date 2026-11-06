@@ -5,7 +5,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -83,4 +86,37 @@ func TestStylesheetFonts(t *testing.T) {
 	for _, m := range urls {
 		require.True(t, uikit.HasAsset(m[1]), m[1])
 	}
+}
+
+// The favicon has one source: web/icon.svg. The admin console (Next.js reads
+// admin/src/app/icon.svg) keeps a copy, and no page carries its own.
+func TestFaviconHasOneSource(t *testing.T) {
+	w := httptest.NewRecorder()
+	uikit.Asset(w, httptest.NewRequest(http.MethodGet, "/x/icon.svg", nil), "icon.svg")
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "image/svg+xml", w.Header().Get("Content-Type"))
+	require.True(t, uikit.HasAsset("icon.svg"))
+	own := w.Body.String()
+	require.Contains(t, own, "<svg")
+
+	if admin, err := os.ReadFile("../../../admin/src/app/icon.svg"); err == nil {
+		require.Equal(t, strings.TrimSpace(strings.ReplaceAll(string(admin), "\r\n", "\n")),
+			strings.TrimSpace(strings.ReplaceAll(own, "\r\n", "\n")),
+			"admin/src/app/icon.svg must be a copy of internal/adapters/uikit/web/icon.svg")
+	}
+
+	pages, err := filepath.Glob("../*/web/*.html")
+	require.NoError(t, err)
+	checked := 0
+	for _, p := range pages {
+		raw, err := os.ReadFile(p)
+		require.NoError(t, err)
+		if !strings.Contains(string(raw), "<head>") {
+			continue
+		}
+		checked++
+		require.Contains(t, string(raw), `href="{{.Assets}}/icon.svg"`, "%s must link the shared favicon", p)
+		require.NotContains(t, string(raw), "data:image/svg+xml", "%s carries its own icon", p)
+	}
+	require.GreaterOrEqual(t, checked, 8)
 }
