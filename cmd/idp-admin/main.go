@@ -92,6 +92,7 @@ func serve() {
 	admin, rights := c.AdminService(), valkeycache.NewRightsEpoch(c.Valkey)
 	syncAdminCatalogue(admin, rights)
 	c.StartTimeoutEnforcer()
+	admin.StartUserImportReaper()
 
 	api := adminapi.New(adminapi.Config{PublicURL: c.PublicURL, AllowedNets: nets, KMSBackend: c.KMSBackend, Languages: app.Languages(),
 		LogRequests: os.Getenv("ADMIN_API_LOG_REQUESTS") == "true"}, adminapi.Deps{
@@ -114,6 +115,11 @@ func serve() {
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
+	// Before c.Close: a running import still writes its end to the database,
+	// and the e-mail that tells its administrator.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	admin.StopUserImports(ctx)
 }
 
 // syncAdminCatalogue gives the system groups of the master realm the

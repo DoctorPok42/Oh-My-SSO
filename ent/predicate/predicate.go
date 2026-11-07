@@ -92,3 +92,6 @@ type TrustedDevice func(*sql.Selector)
 
 // User is the predicate function for user builders.
 type User func(*sql.Selector)
+
+// UserImportJob is the predicate function for userimportjob builders.
+type UserImportJob func(*sql.Selector)

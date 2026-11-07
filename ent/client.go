@@ -44,6 +44,7 @@ import (
 	"sso.internal/sso/ent/token"
 	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
+	"sso.internal/sso/ent/userimportjob"
 )
 
 // Client is the client that holds all ent builders.
@@ -109,6 +110,8 @@ type Client struct {
 	TrustedDevice *TrustedDeviceClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// UserImportJob is the client for interacting with the UserImportJob builders.
+	UserImportJob *UserImportJobClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -149,6 +152,7 @@ func (c *Client) init() {
 	c.Token = NewTokenClient(c.config)
 	c.TrustedDevice = NewTrustedDeviceClient(c.config)
 	c.User = NewUserClient(c.config)
+	c.UserImportJob = NewUserImportJobClient(c.config)
 }
 
 type (
@@ -270,6 +274,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Token:              NewTokenClient(cfg),
 		TrustedDevice:      NewTrustedDeviceClient(cfg),
 		User:               NewUserClient(cfg),
+		UserImportJob:      NewUserImportJobClient(cfg),
 	}, nil
 }
 
@@ -318,6 +323,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Token:              NewTokenClient(cfg),
 		TrustedDevice:      NewTrustedDeviceClient(cfg),
 		User:               NewUserClient(cfg),
+		UserImportJob:      NewUserImportJobClient(cfg),
 	}, nil
 }
 
@@ -353,6 +359,7 @@ func (c *Client) Use(hooks ...Hook) {
 		c.KnownAccount, c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.MfaPolicy,
 		c.PasswordResetToken, c.Permission, c.Realm, c.Role, c.RoleClientScope,
 		c.Session, c.SigningKey, c.Timeout, c.Token, c.TrustedDevice, c.User,
+		c.UserImportJob,
 	} {
 		n.Use(hooks...)
 	}
@@ -368,6 +375,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.KnownAccount, c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.MfaPolicy,
 		c.PasswordResetToken, c.Permission, c.Realm, c.Role, c.RoleClientScope,
 		c.Session, c.SigningKey, c.Timeout, c.Token, c.TrustedDevice, c.User,
+		c.UserImportJob,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -434,6 +442,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.TrustedDevice.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
+	case *UserImportJobMutation:
+		return c.UserImportJob.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -4247,6 +4257,22 @@ func (c *RealmClient) QueryTrustedDevices(_m *Realm) *TrustedDeviceQuery {
 	return query
 }
 
+// QueryUserImportJobs queries the user_import_jobs edge of a Realm.
+func (c *RealmClient) QueryUserImportJobs(_m *Realm) *UserImportJobQuery {
+	query := (&UserImportJobClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(realm.Table, realm.FieldID, id),
+			sqlgraph.To(userimportjob.Table, userimportjob.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, realm.UserImportJobsTable, realm.UserImportJobsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *RealmClient) Hooks() []Hook {
 	return c.hooks.Realm
@@ -5832,6 +5858,155 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 	}
 }
 
+// UserImportJobClient is a client for the UserImportJob schema.
+type UserImportJobClient struct {
+	config
+}
+
+// NewUserImportJobClient returns a client for the UserImportJob from the given config.
+func NewUserImportJobClient(c config) *UserImportJobClient {
+	return &UserImportJobClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `userimportjob.Hooks(f(g(h())))`.
+func (c *UserImportJobClient) Use(hooks ...Hook) {
+	c.hooks.UserImportJob = append(c.hooks.UserImportJob, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `userimportjob.Intercept(f(g(h())))`.
+func (c *UserImportJobClient) Intercept(interceptors ...Interceptor) {
+	c.inters.UserImportJob = append(c.inters.UserImportJob, interceptors...)
+}
+
+// Create returns a builder for creating a UserImportJob entity.
+func (c *UserImportJobClient) Create() *UserImportJobCreate {
+	mutation := newUserImportJobMutation(c.config, OpCreate)
+	return &UserImportJobCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of UserImportJob entities.
+func (c *UserImportJobClient) CreateBulk(builders ...*UserImportJobCreate) *UserImportJobCreateBulk {
+	return &UserImportJobCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *UserImportJobClient) MapCreateBulk(slice any, setFunc func(*UserImportJobCreate, int)) *UserImportJobCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &UserImportJobCreateBulk{err: fmt.Errorf("calling to UserImportJobClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*UserImportJobCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &UserImportJobCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for UserImportJob.
+func (c *UserImportJobClient) Update() *UserImportJobUpdate {
+	mutation := newUserImportJobMutation(c.config, OpUpdate)
+	return &UserImportJobUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *UserImportJobClient) UpdateOne(_m *UserImportJob) *UserImportJobUpdateOne {
+	mutation := newUserImportJobMutation(c.config, OpUpdateOne, withUserImportJob(_m))
+	return &UserImportJobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *UserImportJobClient) UpdateOneID(id string) *UserImportJobUpdateOne {
+	mutation := newUserImportJobMutation(c.config, OpUpdateOne, withUserImportJobID(id))
+	return &UserImportJobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for UserImportJob.
+func (c *UserImportJobClient) Delete() *UserImportJobDelete {
+	mutation := newUserImportJobMutation(c.config, OpDelete)
+	return &UserImportJobDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *UserImportJobClient) DeleteOne(_m *UserImportJob) *UserImportJobDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *UserImportJobClient) DeleteOneID(id string) *UserImportJobDeleteOne {
+	builder := c.Delete().Where(userimportjob.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &UserImportJobDeleteOne{builder}
+}
+
+// Query returns a query builder for UserImportJob.
+func (c *UserImportJobClient) Query() *UserImportJobQuery {
+	return &UserImportJobQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeUserImportJob},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a UserImportJob entity by its id.
+func (c *UserImportJobClient) Get(ctx context.Context, id string) (*UserImportJob, error) {
+	return c.Query().Where(userimportjob.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *UserImportJobClient) GetX(ctx context.Context, id string) *UserImportJob {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryRealm queries the realm edge of a UserImportJob.
+func (c *UserImportJobClient) QueryRealm(_m *UserImportJob) *RealmQuery {
+	query := (&RealmClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(userimportjob.Table, userimportjob.FieldID, id),
+			sqlgraph.To(realm.Table, realm.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, userimportjob.RealmTable, userimportjob.RealmColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *UserImportJobClient) Hooks() []Hook {
+	return c.hooks.UserImportJob
+}
+
+// Interceptors returns the client interceptors.
+func (c *UserImportJobClient) Interceptors() []Interceptor {
+	return c.inters.UserImportJob
+}
+
+func (c *UserImportJobClient) mutate(ctx context.Context, m *UserImportJobMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&UserImportJobCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&UserImportJobUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&UserImportJobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&UserImportJobDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown UserImportJob mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
@@ -5839,15 +6014,15 @@ type (
 		Consent, FederatedIdentity, Group, GroupClientScope, IdentityProvider,
 		InstanceSettings, KeyRotationLog, KnownAccount, LoginAttempt, MfaBackupCode,
 		MfaMethod, MfaPolicy, PasswordResetToken, Permission, Realm, Role,
-		RoleClientScope, Session, SigningKey, Timeout, Token, TrustedDevice,
-		User []ent.Hook
+		RoleClientScope, Session, SigningKey, Timeout, Token, TrustedDevice, User,
+		UserImportJob []ent.Hook
 	}
 	inters struct {
 		AuditLog, ClientApp, ClientGroup, ClientRole, ClientScope, ClientScopeMapping,
 		Consent, FederatedIdentity, Group, GroupClientScope, IdentityProvider,
 		InstanceSettings, KeyRotationLog, KnownAccount, LoginAttempt, MfaBackupCode,
 		MfaMethod, MfaPolicy, PasswordResetToken, Permission, Realm, Role,
-		RoleClientScope, Session, SigningKey, Timeout, Token, TrustedDevice,
-		User []ent.Interceptor
+		RoleClientScope, Session, SigningKey, Timeout, Token, TrustedDevice, User,
+		UserImportJob []ent.Interceptor
 	}
 )

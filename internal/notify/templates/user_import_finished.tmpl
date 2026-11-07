@@ -1,0 +1,40 @@
+{{define "subject"}}{{if .ImportInterrupted}}{{t "email.user_import.subject_interrupted" "User import interrupted on {realm}" "realm" .ImportRealm}}{{else}}{{t "email.user_import.subject" "User import finished on {realm}" "realm" .ImportRealm}}{{end}}{{end}}
+
+{{define "text"}}{{template "hello" .}}
+
+{{if .ImportInterrupted}}{{tp "email.user_import.interrupted" "The import of users you started on <strong>{realm}</strong> was interrupted: the server stopped before the end of the file. The accounts already created are kept." "realm" .ImportRealm}}{{else}}{{tp "email.user_import.intro" "The import of users you started on <strong>{realm}</strong> is finished." "realm" .ImportRealm}}{{end}}
+
+{{- if .ImportFile}}
+  {{t "email.user_import.file" "File"}}: {{.ImportFile}}
+{{- end}}
+  {{t "email.user_import.total" "Lines in the file"}}: {{.ImportTotal}}
+  {{t "email.user_import.created" "Accounts created"}}: {{.ImportCreated}}
+  {{t "email.user_import.failed" "Lines refused"}}: {{.ImportFailed}}
+{{- if .ImportNotDone}}
+  {{t "email.user_import.not_done" "Lines not reached"}}: {{.ImportNotDone}}
+{{- end}}
+{{if .ImportURL}}
+{{t "email.user_import.report" "The report, line by line:"}}
+{{.ImportURL}}
+{{end}}
+{{t "email.user_import.why" "You receive this because you asked to be told when the import ends."}}
+{{end}}
+
+{{define "html"}}{{template "badge.info" (t "email.badge.account" "Account")}}
+{{template "title" (t "email.user_import.title" "Your user import")}}
+{{template "hello" .}}
+<p>{{if .ImportInterrupted}}{{th "email.user_import.interrupted" "The import of users you started on <strong>{realm}</strong> was interrupted: the server stopped before the end of the file. The accounts already created are kept." "realm" .ImportRealm}}{{else}}{{th "email.user_import.intro" "The import of users you started on <strong>{realm}</strong> is finished." "realm" .ImportRealm}}{{end}}</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">
+<tr><td bgcolor="#fafbfd" style="padding:10px 16px;border:1px solid #e2e5ee;border-radius:8px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:'IBM Plex Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;mso-line-height-rule:exactly;color:#565b70;">
+{{if .ImportFile}}<tr><td width="170" valign="top" style="padding:4px 0;">{{t "email.user_import.file" "File"}}</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.ImportFile}}</td></tr>{{end}}
+<tr><td width="170" valign="top" style="padding:4px 0;">{{t "email.user_import.total" "Lines in the file"}}</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.ImportTotal}}</td></tr>
+<tr><td width="170" valign="top" style="padding:4px 0;">{{t "email.user_import.created" "Accounts created"}}</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.ImportCreated}}</td></tr>
+<tr><td width="170" valign="top" style="padding:4px 0;">{{t "email.user_import.failed" "Lines refused"}}</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.ImportFailed}}</td></tr>
+{{if .ImportNotDone}}<tr><td width="170" valign="top" style="padding:4px 0;">{{t "email.user_import.not_done" "Lines not reached"}}</td><td valign="top" style="padding:4px 0;color:#13151f;">{{.ImportNotDone}}</td></tr>{{end}}
+</table>
+</td></tr>
+</table>
+{{if .ImportURL}}{{template "button" (button .ImportURL (t "email.user_import.button" "See the report"))}}{{end}}
+{{template "muted" (t "email.user_import.why" "You receive this because you asked to be told when the import ends.")}}
+{{end}}

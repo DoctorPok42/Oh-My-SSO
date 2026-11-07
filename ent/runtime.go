@@ -35,6 +35,7 @@ import (
 	"sso.internal/sso/ent/token"
 	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
+	"sso.internal/sso/ent/userimportjob"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -1059,4 +1060,70 @@ func init() {
 	user.DefaultID = userDescID.Default.(func() string)
 	// user.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	user.IDValidator = userDescID.Validators[0].(func(string) error)
+	userimportjobFields := schema.UserImportJob{}.Fields()
+	_ = userimportjobFields
+	// userimportjobDescRealmID is the schema descriptor for realm_id field.
+	userimportjobDescRealmID := userimportjobFields[1].Descriptor()
+	// userimportjob.RealmIDValidator is a validator for the "realm_id" field. It is called by the builders before save.
+	userimportjob.RealmIDValidator = userimportjobDescRealmID.Validators[0].(func(string) error)
+	// userimportjobDescStatus is the schema descriptor for status field.
+	userimportjobDescStatus := userimportjobFields[2].Descriptor()
+	// userimportjob.DefaultStatus holds the default value on creation for the status field.
+	userimportjob.DefaultStatus = schema.UserImportStatus(userimportjobDescStatus.Default.(string))
+	// userimportjobDescFileName is the schema descriptor for file_name field.
+	userimportjobDescFileName := userimportjobFields[3].Descriptor()
+	// userimportjob.DefaultFileName holds the default value on creation for the file_name field.
+	userimportjob.DefaultFileName = userimportjobDescFileName.Default.(string)
+	// userimportjobDescRequestedBy is the schema descriptor for requested_by field.
+	userimportjobDescRequestedBy := userimportjobFields[4].Descriptor()
+	// userimportjob.RequestedByValidator is a validator for the "requested_by" field. It is called by the builders before save.
+	userimportjob.RequestedByValidator = userimportjobDescRequestedBy.Validators[0].(func(string) error)
+	// userimportjobDescRequestedByName is the schema descriptor for requested_by_name field.
+	userimportjobDescRequestedByName := userimportjobFields[5].Descriptor()
+	// userimportjob.RequestedByNameValidator is a validator for the "requested_by_name" field. It is called by the builders before save.
+	userimportjob.RequestedByNameValidator = userimportjobDescRequestedByName.Validators[0].(func(string) error)
+	// userimportjobDescRequestedByRealm is the schema descriptor for requested_by_realm field.
+	userimportjobDescRequestedByRealm := userimportjobFields[6].Descriptor()
+	// userimportjob.RequestedByRealmValidator is a validator for the "requested_by_realm" field. It is called by the builders before save.
+	userimportjob.RequestedByRealmValidator = userimportjobDescRequestedByRealm.Validators[0].(func(string) error)
+	// userimportjobDescSendEmail is the schema descriptor for send_email field.
+	userimportjobDescSendEmail := userimportjobFields[7].Descriptor()
+	// userimportjob.DefaultSendEmail holds the default value on creation for the send_email field.
+	userimportjob.DefaultSendEmail = userimportjobDescSendEmail.Default.(bool)
+	// userimportjobDescNotifyWhenDone is the schema descriptor for notify_when_done field.
+	userimportjobDescNotifyWhenDone := userimportjobFields[8].Descriptor()
+	// userimportjob.DefaultNotifyWhenDone holds the default value on creation for the notify_when_done field.
+	userimportjob.DefaultNotifyWhenDone = userimportjobDescNotifyWhenDone.Default.(bool)
+	// userimportjobDescTotal is the schema descriptor for total field.
+	userimportjobDescTotal := userimportjobFields[9].Descriptor()
+	// userimportjob.DefaultTotal holds the default value on creation for the total field.
+	userimportjob.DefaultTotal = userimportjobDescTotal.Default.(int)
+	// userimportjobDescProcessed is the schema descriptor for processed field.
+	userimportjobDescProcessed := userimportjobFields[10].Descriptor()
+	// userimportjob.DefaultProcessed holds the default value on creation for the processed field.
+	userimportjob.DefaultProcessed = userimportjobDescProcessed.Default.(int)
+	// userimportjobDescCreatedCount is the schema descriptor for created_count field.
+	userimportjobDescCreatedCount := userimportjobFields[11].Descriptor()
+	// userimportjob.DefaultCreatedCount holds the default value on creation for the created_count field.
+	userimportjob.DefaultCreatedCount = userimportjobDescCreatedCount.Default.(int)
+	// userimportjobDescFailedCount is the schema descriptor for failed_count field.
+	userimportjobDescFailedCount := userimportjobFields[12].Descriptor()
+	// userimportjob.DefaultFailedCount holds the default value on creation for the failed_count field.
+	userimportjob.DefaultFailedCount = userimportjobDescFailedCount.Default.(int)
+	// userimportjobDescCreatedAt is the schema descriptor for created_at field.
+	userimportjobDescCreatedAt := userimportjobFields[15].Descriptor()
+	// userimportjob.DefaultCreatedAt holds the default value on creation for the created_at field.
+	userimportjob.DefaultCreatedAt = userimportjobDescCreatedAt.Default.(func() time.Time)
+	// userimportjobDescUpdatedAt is the schema descriptor for updated_at field.
+	userimportjobDescUpdatedAt := userimportjobFields[16].Descriptor()
+	// userimportjob.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	userimportjob.DefaultUpdatedAt = userimportjobDescUpdatedAt.Default.(func() time.Time)
+	// userimportjob.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	userimportjob.UpdateDefaultUpdatedAt = userimportjobDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// userimportjobDescID is the schema descriptor for id field.
+	userimportjobDescID := userimportjobFields[0].Descriptor()
+	// userimportjob.DefaultID holds the default value on creation for the id field.
+	userimportjob.DefaultID = userimportjobDescID.Default.(func() string)
+	// userimportjob.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	userimportjob.IDValidator = userimportjobDescID.Validators[0].(func(string) error)
 }

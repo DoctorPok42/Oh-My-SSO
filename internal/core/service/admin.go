@@ -155,8 +155,15 @@ type AdminDeps struct {
 	// of them). nil: the embedded ones.
 	Languages *i18n.Bundle
 
+	// UserImports: the imports of CSV files of users. nil outside idp-admin
+	// (the CLI does not import).
+	UserImports repository.UserImportRepository
+
 	// PublicURL of cmd/idp: base of activation links.
 	PublicURL string
+	// ConsoleURL of the admin console: the link in the e-mail at the end of
+	// an import. "": the e-mail has no link.
+	ConsoleURL string
 	// EmailEnabled: invitation e-mails can leave the server.
 	EmailEnabled bool
 	// KMSBackend: "local_dev" keys live in one process only (see CreateRealm).
@@ -168,7 +175,8 @@ type AdminDeps struct {
 
 // AdminService implements the Admin API operations.
 type AdminService struct {
-	d AdminDeps
+	d       AdminDeps
+	imports *userImportRunner
 }
 
 func NewAdminService(d AdminDeps) *AdminService {
@@ -185,7 +193,8 @@ func NewAdminService(d AdminDeps) *AdminService {
 		d.Languages = i18n.MustDefault()
 	}
 	d.PublicURL = strings.TrimRight(d.PublicURL, "/")
-	return &AdminService{d: d}
+	d.ConsoleURL = strings.TrimRight(d.ConsoleURL, "/")
+	return &AdminService{d: d, imports: newUserImportRunner()}
 }
 
 // auditAdmin writes one AuditLog entry for an admin action, in the realm

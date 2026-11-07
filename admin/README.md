@@ -82,6 +82,38 @@ into a 330 ms one (see `navigation-progress.tsx`). A test keeps them out (`tests
 a second per page, once per start of the server). To judge the console's speed, use
 `npm run build && npm start`.
 
+## Importing users from a CSV file
+
+Users > **Import CSV**. The file is checked first and nothing is written until
+you confirm; then it runs on the server (`idp-admin`), so the page can close.
+Reopen the drawer to follow it, or tick the box to get an e-mail at the end.
+
+```csv
+email,username,name,department,groups,roles
+alice@example.com,alice,Alice Moreau,Sales,staff|sales,support
+bob@example.com,,Bob Martin,,staff,
+```
+
+| Column            | Meaning                                               |
+| ----------------- | ----------------------------------------------------- |
+| `email`           | Required.                                             |
+| `username`        | Default: the part of the e-mail before `@`.           |
+| `groups`, `roles` | Names that exist in the realm, separated by `\|`.     |
+| anything else     | A profile attribute (`family_name`, `department`...). |
+
+- **UTF-8**, `,` or `;`, 1 MB and 1000 users at most, one import at a time per realm.
+- **Passwords never come from a file.** A column whose name looks like a password
+  or a secret (`password`, `pwd`, `mdp`, `secret`, `token`, `hash`...) is left out
+  when the header is read: its values reach neither the profile, nor the report,
+  nor the logs. The preview names the columns it ignored.
+- **Creation only.** A line about an account that exists is refused, never merged.
+  Importing the same file again is therefore safe: it finishes an interrupted import.
+- **Activation.** With e-mails, each account gets its invitation. Without, the
+  report offers the links as a file: they are made when you ask (the database only
+  holds their hash), so each download replaces the previous links.
+- Reports are kept 30 days. `ADMIN_PANEL_URL` on `idp-admin` gives the e-mail
+  its link to the report.
+
 ## Security notes
 
 - Session cookie: JWE (`dir` + `A256GCM`), key derived from `SESSION_SECRET` with HKDF, `HttpOnly`,

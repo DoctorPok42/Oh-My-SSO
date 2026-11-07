@@ -70,7 +70,12 @@ const maxBodyBytes = 256 << 10
 // decode reads a JSON body. Unknown fields are refused: a typo like
 // "requireConsent" must not be silently ignored.
 func decode(w http.ResponseWriter, r *http.Request, dst any) bool {
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+	return decodeUpTo(w, r, dst, maxBodyBytes)
+}
+
+// decodeUpTo is decode for the one body that is not a small form.
+func decodeUpTo(w http.ResponseWriter, r *http.Request, dst any, limit int64) bool {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil && !errors.Is(err, io.EOF) {
 		writeErrorT(w, r, http.StatusBadRequest, "invalid_json", i18n.M("admin.error.invalid_json", "the request body is not valid JSON for this endpoint: {error}", "error", err.Error()))

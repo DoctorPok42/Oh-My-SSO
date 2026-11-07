@@ -371,5 +371,7 @@ func (c *Core) AdminService() *service.AdminService {
 		TrustedDevices: c.TrustedDevices,
 		Timeouts:       c.Timeouts,
 		Languages:      Languages(),
+		UserImports:    entstore.NewUserImportRepository(c.Ent),
+		ConsoleURL:     os.Getenv("ADMIN_PANEL_URL"),
 	})
 }

@@ -29,6 +29,7 @@ import (
 	"sso.internal/sso/ent/timeout"
 	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
+	"sso.internal/sso/ent/userimportjob"
 )
 
 // RealmUpdate is the builder for updating Realm entities.
@@ -347,6 +348,21 @@ func (_u *RealmUpdate) AddTrustedDevices(v ...*TrustedDevice) *RealmUpdate {
 	return _u.AddTrustedDeviceIDs(ids...)
 }
 
+// AddUserImportJobIDs adds the "user_import_jobs" edge to the UserImportJob entity by IDs.
+func (_u *RealmUpdate) AddUserImportJobIDs(ids ...string) *RealmUpdate {
+	_u.mutation.AddUserImportJobIDs(ids...)
+	return _u
+}
+
+// AddUserImportJobs adds the "user_import_jobs" edges to the UserImportJob entity.
+func (_u *RealmUpdate) AddUserImportJobs(v ...*UserImportJob) *RealmUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddUserImportJobIDs(ids...)
+}
+
 // Mutation returns the RealmMutation object of the builder.
 func (_u *RealmUpdate) Mutation() *RealmMutation {
 	return _u.mutation
@@ -650,6 +666,27 @@ func (_u *RealmUpdate) RemoveTrustedDevices(v ...*TrustedDevice) *RealmUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveTrustedDeviceIDs(ids...)
+}
+
+// ClearUserImportJobs clears all "user_import_jobs" edges to the UserImportJob entity.
+func (_u *RealmUpdate) ClearUserImportJobs() *RealmUpdate {
+	_u.mutation.ClearUserImportJobs()
+	return _u
+}
+
+// RemoveUserImportJobIDs removes the "user_import_jobs" edge to UserImportJob entities by IDs.
+func (_u *RealmUpdate) RemoveUserImportJobIDs(ids ...string) *RealmUpdate {
+	_u.mutation.RemoveUserImportJobIDs(ids...)
+	return _u
+}
+
+// RemoveUserImportJobs removes "user_import_jobs" edges to UserImportJob entities.
+func (_u *RealmUpdate) RemoveUserImportJobs(v ...*UserImportJob) *RealmUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveUserImportJobIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -1390,6 +1427,51 @@ func (_u *RealmUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.UserImportJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.UserImportJobsTable,
+			Columns: []string{realm.UserImportJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userimportjob.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedUserImportJobsIDs(); len(nodes) > 0 && !_u.mutation.UserImportJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.UserImportJobsTable,
+			Columns: []string{realm.UserImportJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userimportjob.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserImportJobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.UserImportJobsTable,
+			Columns: []string{realm.UserImportJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userimportjob.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{realm.Label}
@@ -1713,6 +1795,21 @@ func (_u *RealmUpdateOne) AddTrustedDevices(v ...*TrustedDevice) *RealmUpdateOne
 	return _u.AddTrustedDeviceIDs(ids...)
 }
 
+// AddUserImportJobIDs adds the "user_import_jobs" edge to the UserImportJob entity by IDs.
+func (_u *RealmUpdateOne) AddUserImportJobIDs(ids ...string) *RealmUpdateOne {
+	_u.mutation.AddUserImportJobIDs(ids...)
+	return _u
+}
+
+// AddUserImportJobs adds the "user_import_jobs" edges to the UserImportJob entity.
+func (_u *RealmUpdateOne) AddUserImportJobs(v ...*UserImportJob) *RealmUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddUserImportJobIDs(ids...)
+}
+
 // Mutation returns the RealmMutation object of the builder.
 func (_u *RealmUpdateOne) Mutation() *RealmMutation {
 	return _u.mutation
@@ -2016,6 +2113,27 @@ func (_u *RealmUpdateOne) RemoveTrustedDevices(v ...*TrustedDevice) *RealmUpdate
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveTrustedDeviceIDs(ids...)
+}
+
+// ClearUserImportJobs clears all "user_import_jobs" edges to the UserImportJob entity.
+func (_u *RealmUpdateOne) ClearUserImportJobs() *RealmUpdateOne {
+	_u.mutation.ClearUserImportJobs()
+	return _u
+}
+
+// RemoveUserImportJobIDs removes the "user_import_jobs" edge to UserImportJob entities by IDs.
+func (_u *RealmUpdateOne) RemoveUserImportJobIDs(ids ...string) *RealmUpdateOne {
+	_u.mutation.RemoveUserImportJobIDs(ids...)
+	return _u
+}
+
+// RemoveUserImportJobs removes "user_import_jobs" edges to UserImportJob entities.
+func (_u *RealmUpdateOne) RemoveUserImportJobs(v ...*UserImportJob) *RealmUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveUserImportJobIDs(ids...)
 }
 
 // Where appends a list predicates to the RealmUpdate builder.
@@ -2779,6 +2897,51 @@ func (_u *RealmUpdateOne) sqlSave(ctx context.Context) (_node *Realm, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.UserImportJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.UserImportJobsTable,
+			Columns: []string{realm.UserImportJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userimportjob.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedUserImportJobsIDs(); len(nodes) > 0 && !_u.mutation.UserImportJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.UserImportJobsTable,
+			Columns: []string{realm.UserImportJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userimportjob.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserImportJobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.UserImportJobsTable,
+			Columns: []string{realm.UserImportJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userimportjob.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
