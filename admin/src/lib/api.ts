@@ -29,6 +29,8 @@ export type ApiInit = {
    * otherwise wait for.
    */
   noI18n?: boolean;
+  /** For the few calls that handle a whole file. Default: 15 s. */
+  timeoutMs?: number;
 };
 
 /** Builds "/realms/demo/clients?protocol=oidc", every dynamic part URL-encoded. */
@@ -91,7 +93,7 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
       headers: reqHeaders,
       body,
       cache: "no-store",
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(init.timeoutMs ?? 15_000),
     });
   } catch (err) {
     console.error("admin api unreachable", url, err);

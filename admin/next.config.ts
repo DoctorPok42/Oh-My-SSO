@@ -20,6 +20,10 @@ const nextConfig: NextConfig = {
     // The server's own cache: src/lib/cache.ts.
     // https://nextjs.org/docs/app/api-reference/config/next-config-js/staleTimes
     staleTimes: { dynamic: 30 },
+    // Default 1 MB: too small for the largest CSV file of users (1 MB, more
+    // once it is inside a Server Action's call).
+    // https://nextjs.org/docs/app/api-reference/config/next-config-js/serverActions
+    serverActions: { bodySizeLimit: "3mb" },
   },
   // Headers for every response. The Content-Security-Policy is set per
   // request in src/proxy.ts (it carries a nonce).

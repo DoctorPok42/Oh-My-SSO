@@ -22,6 +22,7 @@ import { can, canWrite, type Resource } from "@/lib/permissions";
 import type { Access, ClientScope, List, Me, Permission, Settings, UserDetail, UserSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AccessDrawer, AccessRowActions, NewAccessButton } from "./access-drawer";
+import { ImportUsersButton } from "./import-drawer";
 import { NewPermissionButton, PermissionDelete } from "./permissions";
 import { InviteUserButton, UserDrawer, UserRowActions } from "./user-drawer";
 import { m } from "@/i18n";
@@ -29,7 +30,15 @@ import { getI18n } from "@/i18n/server";
 
 const LIMIT = 25;
 type Tab = "users" | "roles" | "groups" | "permissions";
-type Search = { tab?: string; q?: string; status?: string; offset?: string; new?: string; edit?: string };
+type Search = {
+  tab?: string;
+  q?: string;
+  status?: string;
+  offset?: string;
+  new?: string;
+  edit?: string;
+  import?: string;
+};
 
 const parseTab = (tab?: string): Tab => (tab === "roles" || tab === "groups" || tab === "permissions" ? tab : "users");
 
@@ -123,7 +132,13 @@ export default async function UsersPage({
   }
 
   let action: React.ReactNode = null;
-  if (tab === "users" && me.ok && canWrite(me.data, "user")) action = <InviteUserButton />;
+  if (tab === "users" && me.ok && canWrite(me.data, "user"))
+    action = (
+      <>
+        <ImportUsersButton realm={realm} opened={sp.import} />
+        <InviteUserButton />
+      </>
+    );
   if ((tab === "roles" || tab === "groups") && me.ok && canWrite(me.data, "access"))
     action = <NewAccessButton kind={tab} />;
   if (tab === "permissions" && me.ok && canWrite(me.data, "access")) action = <NewPermissionButton realm={realm} />;

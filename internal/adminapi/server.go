@@ -174,6 +174,11 @@ func New(cfg Config, d Deps) *Server {
 
 			r.With(read("user")).Get("/users", s.handleListUsers)
 			r.With(write("user", "write")...).Post("/users", s.handleInviteUser)
+			r.With(read("user")).Get("/users/imports", s.handleListUserImports)
+			r.With(write("user", "write")...).Post("/users/imports", s.handleStartUserImport)
+			r.With(write("user", "write")...).Post("/users/imports/preview", s.handlePreviewUserImport)
+			r.With(read("user")).Get("/users/imports/{id}", s.handleGetUserImport)
+			r.With(write("user", "write")...).Post("/users/imports/{id}/activation-links", s.handleUserImportLinks)
 			r.With(read("user")).Get("/users/{id}", s.handleGetUser)
 			r.With(write("user", "write")...).Patch("/users/{id}", s.handleUpdateUser)
 			r.With(write("user", "write")...).Delete("/users/{id}", s.handleDeleteUser)

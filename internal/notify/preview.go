@@ -53,6 +53,10 @@ func PreviewDataIn(loc *i18n.Localizer, tmpl Template, product string, now time.
 		d.RecoveryKind = knownText(loc, recoveryKinds, "a new administrator account")
 		d.RecoveryActor = "root@admin-host"
 		d.RecoveryAccount = "rescue-admin"
+	case TemplateUserImportFinished:
+		d.ImportRealm, d.ImportFile = "acme", "new-hires.csv"
+		d.ImportTotal, d.ImportCreated, d.ImportFailed = 240, 238, 2
+		d.ImportURL = "https://admin.example.com/r/acme/users?import=8f14e45f"
 	case TemplateTest:
 		d.Realm, d.Username, d.IPAddress, d.Device, d.Location, d.ForgotPasswordURL = "", "", "", "", "", ""
 	}

@@ -77,6 +77,17 @@ type Data struct {
 	RecoveryKind    string
 	RecoveryActor   string
 	RecoveryAccount string
+
+	// user_import_finished. ImportNotDone: lines the import never reached,
+	// because it was interrupted.
+	ImportRealm       string
+	ImportFile        string
+	ImportTotal       int
+	ImportCreated     int
+	ImportFailed      int
+	ImportNotDone     int
+	ImportInterrupted bool
+	ImportURL         string // the report in the admin console
 }
 
 type htmlData struct {

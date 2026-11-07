@@ -1,7 +1,19 @@
 "use server";
 
 import { act, api, apiPath } from "@/lib/api";
-import type { Access, InviteResult, Permission, UserDetail } from "@/lib/types";
+import { invalidate } from "@/lib/cache";
+import type {
+  Access,
+  InviteResult,
+  Permission,
+  UserDetail,
+  UserImport,
+  UserImportLinks,
+  UserImportPreview,
+} from "@/lib/types";
+
+/** A whole file is checked in these calls: up to a thousand lines. */
+const IMPORT_TIMEOUT_MS = 60_000;
 
 export async function inviteUser(
   realm: string,
@@ -15,6 +27,53 @@ export async function inviteUser(
   },
 ) {
   return act(() => api<InviteResult>(apiPath(["realms", realm, "users"]), { method: "POST", body }));
+}
+
+/** What a CSV file would do: nothing is written. */
+export async function previewUserImport(realm: string, csv: string) {
+  return act(() =>
+    api<UserImportPreview>(apiPath(["realms", realm, "users", "imports", "preview"]), {
+      method: "POST",
+      body: { csv },
+      timeoutMs: IMPORT_TIMEOUT_MS,
+    }),
+  );
+}
+
+export async function startUserImport(
+  realm: string,
+  body: { csv: string; file_name: string; send_email: boolean; notify_when_done: boolean },
+) {
+  return act(() =>
+    api<UserImport>(apiPath(["realms", realm, "users", "imports"]), {
+      method: "POST",
+      body,
+      timeoutMs: IMPORT_TIMEOUT_MS,
+    }),
+  );
+}
+
+export async function listUserImports(realm: string) {
+  return act(() => api<{ items: UserImport[] }>(apiPath(["realms", realm, "users", "imports"])));
+}
+
+export async function getUserImport(realm: string, id: string) {
+  return act(async () => {
+    const job = await api<UserImport>(apiPath(["realms", realm, "users", "imports", id]));
+    // The accounts were created outside any call of this console.
+    if (job.status !== "running") invalidate(apiPath(["realms", realm, "users"]));
+    return job;
+  });
+}
+
+/** New links each time: they are not stored, and the previous ones stop working. */
+export async function userImportLinks(realm: string, id: string) {
+  return act(() =>
+    api<UserImportLinks>(apiPath(["realms", realm, "users", "imports", id, "activation-links"]), {
+      method: "POST",
+      timeoutMs: IMPORT_TIMEOUT_MS,
+    }),
+  );
 }
 
 /** Profile keys are merged; a null value removes the key. */

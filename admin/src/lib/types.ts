@@ -255,6 +255,49 @@ export type UserDetail = UserSummary & {
 
 export type InviteResult = { user: UserDetail; emailed: boolean; activation_url?: string; expires_at: string };
 
+export type UserImportRow = {
+  line: number;
+  email: string;
+  username: string;
+  status: "valid" | "created" | "failed";
+  error?: string;
+  emailed: boolean;
+};
+
+export type UserImportPreview = {
+  total: number;
+  valid: number;
+  invalid: number;
+  profile_columns: string[];
+  ignored_columns: string[];
+  rows: UserImportRow[];
+  email_enabled: boolean;
+};
+
+export type UserImport = {
+  id: string;
+  status: "running" | "completed" | "interrupted";
+  file_name: string;
+  requested_by_name: string;
+  send_email: boolean;
+  notify_when_done: boolean;
+  total: number;
+  processed: number;
+  created: number;
+  failed: number;
+  ignored_columns: string[];
+  /** Once it is over. */
+  rows?: UserImportRow[];
+  without_email: number;
+  created_at: string;
+  finished_at: string | null;
+};
+
+export type UserImportLinks = {
+  links: { line: number; email: string; username: string; activation_url: string }[];
+  expires_at: string | null;
+};
+
 export type Access = {
   id: string;
   kind: "role" | "group";

@@ -27,6 +27,7 @@ const (
 	TemplateTest Template = "test"
 	TemplateAccountInvite Template = "account_invite"
 	TemplateAdminRecovery Template = "admin_recovery"
+	TemplateUserImportFinished Template = "user_import_finished"
 )
 
 // AllTemplates lists every template: LoadTemplates parses each one at
@@ -36,6 +37,7 @@ var AllTemplates = []Template{
 	TemplateSuspiciousLogin, TemplateMfaMethodAdded, TemplateMfaMethodRemoved,
 	TemplateMfaReset, TemplateBackupCodesRegenerated, TemplateAccountLocked,
 	TemplateAppConnected, TemplateTest, TemplateAccountInvite, TemplateAdminRecovery,
+	TemplateUserImportFinished,
 }
 
 // Sender is what a realm changes in the identity of its e-mails (Settings >

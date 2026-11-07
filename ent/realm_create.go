@@ -27,6 +27,7 @@ import (
 	"sso.internal/sso/ent/timeout"
 	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
+	"sso.internal/sso/ent/userimportjob"
 )
 
 // RealmCreate is the builder for creating a Realm entity.
@@ -367,6 +368,21 @@ func (_c *RealmCreate) AddTrustedDevices(v ...*TrustedDevice) *RealmCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddTrustedDeviceIDs(ids...)
+}
+
+// AddUserImportJobIDs adds the "user_import_jobs" edge to the UserImportJob entity by IDs.
+func (_c *RealmCreate) AddUserImportJobIDs(ids ...string) *RealmCreate {
+	_c.mutation.AddUserImportJobIDs(ids...)
+	return _c
+}
+
+// AddUserImportJobs adds the "user_import_jobs" edges to the UserImportJob entity.
+func (_c *RealmCreate) AddUserImportJobs(v ...*UserImportJob) *RealmCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddUserImportJobIDs(ids...)
 }
 
 // Mutation returns the RealmMutation object of the builder.
@@ -749,6 +765,22 @@ func (_c *RealmCreate) createSpec() (*Realm, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(trusteddevice.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.UserImportJobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.UserImportJobsTable,
+			Columns: []string{realm.UserImportJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userimportjob.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

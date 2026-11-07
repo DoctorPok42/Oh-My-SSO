@@ -328,6 +328,38 @@ type InviteResult struct {
 
 // InviteUser creates an account without password and its activation link.
 func (s *AdminService) InviteUser(ctx context.Context, actor AdminActor, realm *domain.Realm, in InviteUserInput) (*InviteResult, error) {
+	p, err := s.normalizeInvite(ctx, realm, in)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.checkUnique(ctx, realm.ID, "", p.username, p.email); err != nil {
+		return nil, err
+	}
+	u, err := s.createInvited(ctx, actor, realm, p)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.issueActivation(ctx, actor, realm, u, in.SendEmail)
+	if err != nil {
+		return nil, err
+	}
+	if res.User, err = s.GetUser(ctx, realm, u.ID); err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+// invitedUser is an invitation that passed every check but the uniqueness
+// of its username and e-mail.
+type invitedUser struct {
+	username, email string
+	profile         map[string]interface{}
+	groups, roles   []string
+}
+
+// normalizeInvite checks an invitation without writing anything. It is what
+// the "+ Invite user" drawer and each line of an import have in common.
+func (s *AdminService) normalizeInvite(ctx context.Context, realm *domain.Realm, in InviteUserInput) (*invitedUser, error) {
 	username := strings.TrimSpace(in.Username)
 	email, err := checkEmail(in.Email)
 	if err != nil {
@@ -351,38 +383,44 @@ func (s *AdminService) InviteUser(ctx context.Context, actor AdminActor, realm *
 	if err != nil {
 		return nil, err
 	}
-	if err := s.checkUnique(ctx, realm.ID, "", username, email); err != nil {
+	return &invitedUser{username: username, email: email, profile: profile, groups: groups, roles: roles}, nil
+}
+
+// createInvited creates the account of a checked invitation, and says so in
+// the audit log.
+func (s *AdminService) createInvited(ctx context.Context, actor AdminActor, realm *domain.Realm, p *invitedUser) (*domain.User, error) {
+	u, err := s.createAccount(ctx, realm, p)
+	if err != nil {
 		return nil, err
 	}
+	s.auditAdmin(ctx, actor, realm.ID, audit.UserInvited, "User", u.ID, domain.AuditLogInfo, map[string]interface{}{
+		"username": p.username, "email": p.email, "group_ids": p.groups, "role_ids": p.roles,
+	})
+	return u, nil
+}
 
+// createAccount creates an account without password: nobody can use it
+// before an activation link is issued. No audit entry: an invitation writes
+// its own, an import one for the whole file.
+func (s *AdminService) createAccount(ctx context.Context, realm *domain.Realm, p *invitedUser) (*domain.User, error) {
 	u, err := s.d.Users.Create(ctx, repository.CreateUserParams{
-		RealmID: realm.ID, Username: username, Email: email, Status: domain.UserActive,
+		RealmID: realm.ID, Username: p.username, Email: p.email, Status: domain.UserActive,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("invite user: %w", err)
 	}
-	if len(profile) > 0 {
-		if err := s.d.Admin.SetUserProfile(ctx, u.ID, profile); err != nil {
+	if len(p.profile) > 0 {
+		if err := s.d.Admin.SetUserProfile(ctx, u.ID, p.profile); err != nil {
 			return nil, err
 		}
 	}
-	if err := s.d.Admin.SetUserGroups(ctx, u.ID, groups); err != nil {
+	if err := s.d.Admin.SetUserGroups(ctx, u.ID, p.groups); err != nil {
 		return nil, err
 	}
-	if err := s.d.Admin.SetUserRoles(ctx, u.ID, roles); err != nil {
+	if err := s.d.Admin.SetUserRoles(ctx, u.ID, p.roles); err != nil {
 		return nil, err
 	}
-	s.auditAdmin(ctx, actor, realm.ID, audit.UserInvited, "User", u.ID, domain.AuditLogInfo, map[string]interface{}{
-		"username": username, "email": email, "group_ids": groups, "role_ids": roles,
-	})
-	res, err := s.issueActivation(ctx, actor, realm, u, in.SendEmail)
-	if err != nil {
-		return nil, err
-	}
-	if res.User, err = s.GetUser(ctx, realm, u.ID); err != nil {
-		return nil, err
-	}
-	return res, nil
+	return u, nil
 }
 
 // ResendActivation issues a new activation link for an account that has
@@ -408,6 +446,18 @@ func (s *AdminService) ResendActivation(ctx context.Context, actor AdminActor, r
 }
 
 func (s *AdminService) issueActivation(ctx context.Context, actor AdminActor, realm *domain.Realm, u *domain.User, sendEmail bool) (*InviteResult, error) {
+	return s.issueActivationVia(ctx, actor, realm, u, sendEmail, false, func(ctx context.Context, e domain.NotificationEvent) error {
+		s.d.Notifier.Notify(ctx, e)
+		return nil
+	})
+}
+
+// issueActivationVia is issueActivation with the way the e-mail is queued.
+// When it cannot be queued, the link is returned instead. bulk: one of many,
+// which the caller audits as a whole: no entry per account, here or when the
+// e-mail leaves (a failed e-mail is still written).
+func (s *AdminService) issueActivationVia(ctx context.Context, actor AdminActor, realm *domain.Realm, u *domain.User, sendEmail, bulk bool,
+	deliver func(context.Context, domain.NotificationEvent) error) (*InviteResult, error) {
 	hours := defaultInviteTTLHours
 	if st, serr := s.GetSettings(ctx, realm); serr == nil && st.InviteTTLHours > 0 {
 		hours = st.InviteTTLHours
@@ -418,18 +468,20 @@ func (s *AdminService) issueActivation(ctx context.Context, actor AdminActor, re
 	}
 	res := &InviteResult{ExpiresAt: expires}
 	if sendEmail && s.d.EmailEnabled {
-		s.d.Notifier.Notify(ctx, domain.NotificationEvent{
+		res.Emailed = deliver(ctx, domain.NotificationEvent{
 			Kind: domain.NotificationAccountInvite, RealmID: realm.ID, UserID: u.ID,
 			OccurredAt: s.d.Now(), ResetToken: token, ExpiresAt: expires,
-			IPAddress: actor.IPAddress, UserAgent: actor.UserAgent,
-		})
-		res.Emailed = true
-	} else {
+			IPAddress: actor.IPAddress, UserAgent: actor.UserAgent, QuietAudit: bulk,
+		}) == nil
+	}
+	if !res.Emailed {
 		res.ActivationURL = s.activationURL(realm.Name, token)
 	}
-	s.auditAdmin(ctx, actor, realm.ID, audit.UserActivationLinkSent, "User", u.ID, domain.AuditLogInfo, map[string]interface{}{
-		"emailed": res.Emailed, "expires_at": expires.UTC().Format(time.RFC3339),
-	})
+	if !bulk {
+		s.auditAdmin(ctx, actor, realm.ID, audit.UserActivationLinkSent, "User", u.ID, domain.AuditLogInfo, map[string]interface{}{
+			"emailed": res.Emailed, "expires_at": expires.UTC().Format(time.RFC3339),
+		})
+	}
 	return res, nil
 }
 

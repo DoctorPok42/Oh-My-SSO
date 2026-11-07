@@ -170,6 +170,41 @@ test("invite a user without e-mail: the activation link is shown once", async ({
   await expect(row.getByText("Invited")).toBeVisible();
 });
 
+test("import users from a CSV file: preview, background import, report", async ({ page, baseURL }) => {
+  await page.goto(r("users"));
+  await clickThenStepUp(page, baseURL!, "Import CSV");
+  await page.getByLabel("CSV file").setInputFiles({
+    name: "hires.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      "email,name,password\ncarol@example.test,Carol Durand,not-read\nalice@example.test,Duplicate,not-read\n",
+    ),
+  });
+
+  // The preview: nothing written yet.
+  await expect(page.getByText("Ignored columns, never read: password")).toBeVisible();
+  await expect(page.getByRole("cell", { name: /already used/ })).toBeVisible();
+  const send = page.getByRole("checkbox", { name: "E-mail each user their activation link" });
+  if ((await send.count()) > 0 && (await send.isChecked())) await send.click();
+  const notify = page.getByRole("checkbox", { name: "E-mail me when the import ends" });
+  if ((await notify.count()) > 0) await notify.click();
+  await page.getByRole("button", { name: "Import 1 user" }).click();
+
+  // In the background, then the report.
+  await expect(page.getByText("Import finished.")).toBeVisible();
+  await expect(page.getByRole("cell", { name: /already used/ })).toBeVisible();
+
+  // No e-mail: the links come as a file.
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download the activation links" }).click();
+  const links = await download;
+  expect(links.suggestedFilename()).toBe("activation-links.csv");
+
+  await page.getByRole("dialog").getByRole("button", { name: "Close" }).first().click();
+  const row = page.getByRole("row", { name: /Carol Durand/ });
+  await expect(row.getByText("Invited")).toBeVisible();
+});
+
 test("rotate the realm's JWT signing key", async ({ page, baseURL }) => {
   await page.goto(r("signing-keys"));
   await clickThenStepUp(page, baseURL!, "Rotate key");
