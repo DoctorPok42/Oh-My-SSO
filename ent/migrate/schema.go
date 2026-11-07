@@ -1153,6 +1153,61 @@ var (
 			},
 		},
 	}
+	// UserImportJobsColumns holds the columns for the "user_import_jobs" table.
+	UserImportJobsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "status", Type: field.TypeString, Default: "running"},
+		{Name: "file_name", Type: field.TypeString, Default: ""},
+		{Name: "requested_by", Type: field.TypeString},
+		{Name: "requested_by_name", Type: field.TypeString},
+		{Name: "requested_by_realm", Type: field.TypeString},
+		{Name: "send_email", Type: field.TypeBool, Default: false},
+		{Name: "notify_when_done", Type: field.TypeBool, Default: false},
+		{Name: "total", Type: field.TypeInt, Default: 0},
+		{Name: "processed", Type: field.TypeInt, Default: 0},
+		{Name: "created_count", Type: field.TypeInt, Default: 0},
+		{Name: "failed_count", Type: field.TypeInt, Default: 0},
+		{Name: "ignored_columns", Type: field.TypeJSON, Nullable: true},
+		{Name: "rows", Type: field.TypeJSON, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "finished_at", Type: field.TypeTime, Nullable: true},
+		{Name: "realm_id", Type: field.TypeString},
+	}
+	// UserImportJobsTable holds the schema information for the "user_import_jobs" table.
+	UserImportJobsTable = &schema.Table{
+		Name:       "user_import_jobs",
+		Columns:    UserImportJobsColumns,
+		PrimaryKey: []*schema.Column{UserImportJobsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "user_import_jobs_realms_user_import_jobs",
+				Columns:    []*schema.Column{UserImportJobsColumns[17]},
+				RefColumns: []*schema.Column{RealmsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "userimportjob_realm_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{UserImportJobsColumns[17], UserImportJobsColumns[14]},
+			},
+			{
+				Name:    "userimportjob_realm_id",
+				Unique:  true,
+				Columns: []*schema.Column{UserImportJobsColumns[17]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "status = 'running'",
+				},
+			},
+			{
+				Name:    "userimportjob_status_updated_at",
+				Unique:  false,
+				Columns: []*schema.Column{UserImportJobsColumns[1], UserImportJobsColumns[15]},
+			},
+		},
+	}
 	// GroupPermissionsColumns holds the columns for the "group_permissions" table.
 	GroupPermissionsColumns = []*schema.Column{
 		{Name: "group_id", Type: field.TypeString},
@@ -1284,6 +1339,7 @@ var (
 		TokensTable,
 		TrustedDevicesTable,
 		UsersTable,
+		UserImportJobsTable,
 		GroupPermissionsTable,
 		RolePermissionsTable,
 		UserRolesTable,
@@ -1331,6 +1387,7 @@ func init() {
 	TrustedDevicesTable.ForeignKeys[0].RefTable = RealmsTable
 	TrustedDevicesTable.ForeignKeys[1].RefTable = UsersTable
 	UsersTable.ForeignKeys[0].RefTable = RealmsTable
+	UserImportJobsTable.ForeignKeys[0].RefTable = RealmsTable
 	GroupPermissionsTable.ForeignKeys[0].RefTable = GroupsTable
 	GroupPermissionsTable.ForeignKeys[1].RefTable = PermissionsTable
 	RolePermissionsTable.ForeignKeys[0].RefTable = RolesTable

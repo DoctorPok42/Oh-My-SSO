@@ -59,6 +59,8 @@ const (
 	EdgeKnownAccounts = "known_accounts"
 	// EdgeTrustedDevices holds the string denoting the trusted_devices edge name in mutations.
 	EdgeTrustedDevices = "trusted_devices"
+	// EdgeUserImportJobs holds the string denoting the user_import_jobs edge name in mutations.
+	EdgeUserImportJobs = "user_import_jobs"
 	// Table holds the table name of the realm in the database.
 	Table = "realms"
 	// UsersTable is the table that holds the users relation/edge.
@@ -166,6 +168,13 @@ const (
 	TrustedDevicesInverseTable = "trusted_devices"
 	// TrustedDevicesColumn is the table column denoting the trusted_devices relation/edge.
 	TrustedDevicesColumn = "realm_id"
+	// UserImportJobsTable is the table that holds the user_import_jobs relation/edge.
+	UserImportJobsTable = "user_import_jobs"
+	// UserImportJobsInverseTable is the table name for the UserImportJob entity.
+	// It exists in this package in order to avoid circular dependency with the "userimportjob" package.
+	UserImportJobsInverseTable = "user_import_jobs"
+	// UserImportJobsColumn is the table column denoting the user_import_jobs relation/edge.
+	UserImportJobsColumn = "realm_id"
 )
 
 // Columns holds all SQL columns for realm fields.
@@ -454,6 +463,20 @@ func ByTrustedDevices(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newTrustedDevicesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByUserImportJobsCount orders the results by user_import_jobs count.
+func ByUserImportJobsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newUserImportJobsStep(), opts...)
+	}
+}
+
+// ByUserImportJobs orders the results by user_import_jobs terms.
+func ByUserImportJobs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newUserImportJobsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUsersStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -557,5 +580,12 @@ func newTrustedDevicesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(TrustedDevicesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, TrustedDevicesTable, TrustedDevicesColumn),
+	)
+}
+func newUserImportJobsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(UserImportJobsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, UserImportJobsTable, UserImportJobsColumn),
 	)
 }

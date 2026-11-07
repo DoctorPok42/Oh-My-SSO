@@ -23,7 +23,9 @@ const (
 	// Users.
 	UserInvited                = "user.invited"
 	UserActivationLinkSent     = "user.activation_link_sent"
-	UserUpdated                = "user.updated" // by an administrator
+	UserImportStarted          = "user.import_started"  // a CSV file of users, running in the background
+	UserImportFinished         = "user.import_finished" // ... its totals; one user.invited per account created
+	UserUpdated                = "user.updated"         // by an administrator
 	UserProfileUpdated         = "user.profile_updated"
 	UserDeleted                = "user.deleted"
 	UserGroupsChanged          = "user.groups_changed"
@@ -134,6 +136,8 @@ var Catalog = []ActionInfo{
 
 	{UserInvited, "Users", "User invited"},
 	{UserActivationLinkSent, "Users", "Activation link sent"},
+	{UserImportStarted, "Users", "User import started"},
+	{UserImportFinished, "Users", "User import finished"},
 	{UserUpdated, "Users", "User updated"},
 	{UserProfileUpdated, "Users", "Profile updated"},
 	{UserDeleted, "Users", "User deleted"},

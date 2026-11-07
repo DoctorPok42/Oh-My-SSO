@@ -357,6 +357,18 @@ func (f UserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserMutation", m)
 }
 
+// The UserImportJobFunc type is an adapter to allow the use of ordinary
+// function as UserImportJob mutator.
+type UserImportJobFunc func(context.Context, *ent.UserImportJobMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f UserImportJobFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.UserImportJobMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserImportJobMutation", m)
+}
+
 // Condition is a hook condition function.
 type Condition func(context.Context, ent.Mutation) bool
 

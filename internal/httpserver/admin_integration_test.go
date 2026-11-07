@@ -43,12 +43,18 @@ const (
 type recordingNotifier struct {
 	mu     sync.Mutex
 	events []domain.NotificationEvent
+	// onNotify, when set, runs after the event is recorded.
+	onNotify func(domain.NotificationEvent)
 }
 
 func (n *recordingNotifier) Notify(_ context.Context, e domain.NotificationEvent) {
 	n.mu.Lock()
-	defer n.mu.Unlock()
 	n.events = append(n.events, e)
+	hook := n.onNotify
+	n.mu.Unlock()
+	if hook != nil {
+		hook(e)
+	}
 }
 
 func (n *recordingNotifier) kinds(k domain.NotificationKind) []domain.NotificationEvent {
@@ -79,7 +85,7 @@ type adminTestEnv struct {
 	timeouts *service.TimeoutService
 }
 
-func setupAdminTestEnv(t *testing.T) *adminTestEnv {
+func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *adminTestEnv {
 	t.Helper()
 	if testing.Short() {
 		t.Skip("integration test skipped in -short mode")
@@ -145,7 +151,7 @@ func setupAdminTestEnv(t *testing.T) *adminTestEnv {
 	router = httpserver.New(auth, sessions, rbac, realms, clients, limiter,
 		httpserver.WithMFA(mfa), httpserver.WithJWKS(idp), httpserver.WithOIDC(adapter), httpserver.WithPasswordReset(reset)).Router()
 
-	admin := service.NewAdminService(service.AdminDeps{
+	deps := service.AdminDeps{
 		Realms: realms, Users: users, Clients: clients, Scopes: scopes, Roles: roles, Groups: groups,
 		Permissions: entstore.NewPermissionRepository(client), Settings: settings, Audit: audit, Access: access,
 		MfaMethods: entstore.NewMfaMethodRepository(client), Admin: entstore.NewAdminRepository(client),
@@ -155,11 +161,16 @@ func setupAdminTestEnv(t *testing.T) *adminTestEnv {
 		SAMLClients: service.NewSAMLClientService(clients, scopes, roles, groups),
 		Timeouts:    timeouts,
 		Notifier:    notifier, PublicURL: ts.URL,
+		UserImports: entstore.NewUserImportRepository(client), ConsoleURL: adminConsoleURL,
 		// The in-memory KeyManager is shared by everything in this test
 		// process, so realms may get their keys here (see ensureSigningKey).
 		KMSBackend: "test", Now: clock.Now,
 		TrustedDevices: trusted,
-	})
+	}
+	for _, option := range options {
+		option(&deps)
+	}
+	admin := service.NewAdminService(deps)
 	api := httptest.NewServer(adminapi.New(adminapi.Config{PublicURL: ts.URL, Now: clock.Now}, adminapi.Deps{
 		Admin: admin, Realms: realms, Users: users, Clients: clients, Tokens: tokens, Sessions: sessions,
 		RBAC: rbac, MFA: mfa, Keys: idp, KeyRotation: rotation, Rights: valkeycache.NewRightsEpoch(valkeyClient),

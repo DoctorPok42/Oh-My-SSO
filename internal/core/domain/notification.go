@@ -24,6 +24,9 @@ const (
 
 	NotificationAccountInvite NotificationKind = "account_invite"
 	NotificationAdminRecovery NotificationKind = "admin_recovery"
+	// NotificationUserImportFinished goes to the administrator who asked for
+	// it when starting an import of users.
+	NotificationUserImportFinished NotificationKind = "user_import_finished"
 )
 
 // IsSecurityAlert tells whether the realm's notification_email_enabled
@@ -31,7 +34,7 @@ const (
 func (k NotificationKind) IsSecurityAlert() bool {
 	switch k {
 	case NotificationPasswordReset, NotificationPasswordChanged,
-		NotificationAccountInvite, NotificationAdminRecovery:
+		NotificationAccountInvite, NotificationAdminRecovery, NotificationUserImportFinished:
 		return false
 	default:
 		return true
@@ -58,6 +61,9 @@ type NotificationEvent struct {
 	OccurredAt time.Time
 	IPAddress  string // where the action came from, when known
 	UserAgent  string
+	// QuietAudit: one e-mail of a batch that the audit log records as a whole.
+	// It gets an entry of its own only if it fails.
+	QuietAudit bool
 
 	// password_reset: the raw token. It only ever exists in memory and in
 	// the e-mail; the database keeps its SHA-256.
@@ -93,4 +99,14 @@ type NotificationEvent struct {
 	RecoveryKind    string
 	RecoveryActor   string
 	RecoveryAccount string
+
+	// user_import_finished. ImportURL: the report in the admin console, ""
+	// when the address of the console is not configured.
+	ImportRealm       string
+	ImportFile        string
+	ImportTotal       int
+	ImportCreated     int
+	ImportFailed      int
+	ImportInterrupted bool
+	ImportURL         string
 }

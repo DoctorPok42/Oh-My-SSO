@@ -41,6 +41,7 @@ import (
 	"sso.internal/sso/ent/token"
 	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
+	"sso.internal/sso/ent/userimportjob"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -130,6 +131,7 @@ func checkColumn(t, c string) error {
 			token.Table:              token.ValidColumn,
 			trusteddevice.Table:      trusteddevice.ValidColumn,
 			user.Table:               user.ValidColumn,
+			userimportjob.Table:      userimportjob.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

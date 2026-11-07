@@ -70,6 +70,8 @@ type Tx struct {
 	TrustedDevice *TrustedDeviceClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// UserImportJob is the client for interacting with the UserImportJob builders.
+	UserImportJob *UserImportJobClient
 
 	// lazily loaded.
 	client     *Client
@@ -230,6 +232,7 @@ func (tx *Tx) init() {
 	tx.Token = NewTokenClient(tx.config)
 	tx.TrustedDevice = NewTrustedDeviceClient(tx.config)
 	tx.User = NewUserClient(tx.config)
+	tx.UserImportJob = NewUserImportJobClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

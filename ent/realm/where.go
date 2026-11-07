@@ -836,6 +836,29 @@ func HasTrustedDevicesWith(preds ...predicate.TrustedDevice) predicate.Realm {
 	})
 }
 
+// HasUserImportJobs applies the HasEdge predicate on the "user_import_jobs" edge.
+func HasUserImportJobs() predicate.Realm {
+	return predicate.Realm(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, UserImportJobsTable, UserImportJobsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasUserImportJobsWith applies the HasEdge predicate on the "user_import_jobs" edge with a given conditions (other predicates).
+func HasUserImportJobsWith(preds ...predicate.UserImportJob) predicate.Realm {
+	return predicate.Realm(func(s *sql.Selector) {
+		step := newUserImportJobsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Realm) predicate.Realm {
 	return predicate.Realm(sql.AndPredicates(predicates...))

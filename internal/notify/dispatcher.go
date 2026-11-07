@@ -31,7 +31,8 @@ import (
 //
 // Each e-mail actually attempted writes one AuditLog entry,
 // action="notification.sent" (actor: system, target: the recipient), with the recipient, the template and the
-// outcome in details (status "sent" or "failed").
+// outcome in details (status "sent" or "failed"). The successes of a batch do
+// not (NotificationEvent.QuietAudit).
 type Dispatcher struct {
 	cfg      DispatcherConfig
 	sender   EmailSender
@@ -133,6 +134,24 @@ func (d *Dispatcher) Notify(ctx context.Context, e domain.NotificationEvent) {
 	default:
 		d.logger.ErrorContext(ctx, "notification queue full, e-mail dropped", "kind", e.Kind, "user_id", e.UserID)
 		d.writeAudit(context.WithoutCancel(ctx), e, "", "", 0, errors.New("queue full"))
+	}
+}
+
+// NotifyWait is Notify for a job that sends many e-mails in a row (an import
+// of users): it waits for room in the queue instead of dropping the event,
+// so that a long list goes out at the pace of the mail server. It gives up
+// when ctx ends, and returns the reason. service.QueueNotifier.
+func (d *Dispatcher) NotifyWait(ctx context.Context, e domain.NotificationEvent) error {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	if d.closed {
+		return errors.New("notify: dispatcher closed")
+	}
+	select {
+	case d.queue <- e:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
@@ -239,7 +258,7 @@ func (d *Dispatcher) send(ctx context.Context, to string, tmpl Template, data Da
 }
 
 func (d *Dispatcher) writeAudit(ctx context.Context, e domain.NotificationEvent, to string, tmpl Template, attempts int, sendErr error) {
-	if d.audit == nil {
+	if d.audit == nil || (e.QuietAudit && sendErr == nil) {
 		return
 	}
 	details := map[string]interface{}{
@@ -337,6 +356,15 @@ func (d *Dispatcher) data(loc *i18n.Localizer, e domain.NotificationEvent, user 
 		out.RecoveryKind = knownText(loc, recoveryKinds, e.RecoveryKind)
 		out.RecoveryActor = e.RecoveryActor
 		out.RecoveryAccount = e.RecoveryAccount
+	case domain.NotificationUserImportFinished:
+		out.ImportRealm = e.ImportRealm
+		out.ImportFile = e.ImportFile
+		out.ImportTotal = e.ImportTotal
+		out.ImportCreated = e.ImportCreated
+		out.ImportFailed = e.ImportFailed
+		out.ImportNotDone = e.ImportTotal - e.ImportCreated - e.ImportFailed
+		out.ImportInterrupted = e.ImportInterrupted
+		out.ImportURL = e.ImportURL
 	}
 	return out
 }
