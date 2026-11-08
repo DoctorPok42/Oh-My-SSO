@@ -740,6 +740,7 @@ var signInResults = map[domain.LoginAttemptFailureReason]i18n.Text{
 	domain.LoginFailureTimeoutActive:      i18n.M("account.signin.suspended", "Blocked: access suspended"),
 	domain.LoginFailureAccessDenied:       i18n.M("account.signin.refused", "Refused by the application"),
 	domain.LoginFailurePasskeyRejected:    i18n.M("account.signin.passkey_refused", "Passkey refused"),
+	domain.LoginFailurePasswordChangeRequired: i18n.M("account.signin.password_change_required", "Blocked: a new password is required"),
 }
 
 func (s *Server) handleAccountHistory(w http.ResponseWriter, r *http.Request) {

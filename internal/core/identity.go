@@ -22,6 +22,10 @@ var (
 	ErrAccountNotActive   = errors.New("core: account not active")
 	ErrTimeoutActive      = errors.New("core: an active timeout blocks this user or client")
 	ErrAccountLocked       = errors.New("core: too many failed sign-ins, try again later")
+	// ErrPasswordChangeRequired: the password is right, but an administrator
+	// forced a reset. It only changes through the link sent by e-mail: whoever
+	// holds a stolen password must not be able to replace it.
+	ErrPasswordChangeRequired = errors.New("core: an administrator requires a new password")
 	ErrSessionInvalid      = errors.New("core: session invalid")
 	ErrForbidden           = errors.New("core: forbidden")
 	ErrMFANotImplemented   = errors.New("core: mfa verification not configured")

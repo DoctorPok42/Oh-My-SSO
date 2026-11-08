@@ -504,8 +504,12 @@ func init() {
 	instancesettingsDescMailLogoURL := instancesettingsFields[26].Descriptor()
 	// instancesettings.DefaultMailLogoURL holds the default value on creation for the mail_logo_url field.
 	instancesettings.DefaultMailLogoURL = instancesettingsDescMailLogoURL.Default.(string)
+	// instancesettingsDescBulkLimit is the schema descriptor for bulk_limit field.
+	instancesettingsDescBulkLimit := instancesettingsFields[27].Descriptor()
+	// instancesettings.DefaultBulkLimit holds the default value on creation for the bulk_limit field.
+	instancesettings.DefaultBulkLimit = instancesettingsDescBulkLimit.Default.(int)
 	// instancesettingsDescUpdatedAt is the schema descriptor for updated_at field.
-	instancesettingsDescUpdatedAt := instancesettingsFields[27].Descriptor()
+	instancesettingsDescUpdatedAt := instancesettingsFields[28].Descriptor()
 	// instancesettings.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	instancesettings.DefaultUpdatedAt = instancesettingsDescUpdatedAt.Default.(func() time.Time)
 	// instancesettings.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -1028,30 +1032,34 @@ func init() {
 	userDescUsername := userFields[2].Descriptor()
 	// user.UsernameValidator is a validator for the "username" field. It is called by the builders before save.
 	user.UsernameValidator = userDescUsername.Validators[0].(func(string) error)
+	// userDescMustChangePassword is the schema descriptor for must_change_password field.
+	userDescMustChangePassword := userFields[4].Descriptor()
+	// user.DefaultMustChangePassword holds the default value on creation for the must_change_password field.
+	user.DefaultMustChangePassword = userDescMustChangePassword.Default.(bool)
 	// userDescEmail is the schema descriptor for email field.
-	userDescEmail := userFields[4].Descriptor()
+	userDescEmail := userFields[5].Descriptor()
 	// user.EmailValidator is a validator for the "email" field. It is called by the builders before save.
 	user.EmailValidator = userDescEmail.Validators[0].(func(string) error)
 	// userDescCreatedAt is the schema descriptor for created_at field.
-	userDescCreatedAt := userFields[5].Descriptor()
+	userDescCreatedAt := userFields[6].Descriptor()
 	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
 	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
 	// userDescUpdatedAt is the schema descriptor for updated_at field.
-	userDescUpdatedAt := userFields[6].Descriptor()
+	userDescUpdatedAt := userFields[7].Descriptor()
 	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
 	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// userDescStatus is the schema descriptor for status field.
-	userDescStatus := userFields[8].Descriptor()
+	userDescStatus := userFields[9].Descriptor()
 	// user.DefaultStatus holds the default value on creation for the status field.
 	user.DefaultStatus = schema.UserStatus(userDescStatus.Default.(string))
 	// userDescFailedLoginCount is the schema descriptor for failed_login_count field.
-	userDescFailedLoginCount := userFields[11].Descriptor()
+	userDescFailedLoginCount := userFields[12].Descriptor()
 	// user.DefaultFailedLoginCount holds the default value on creation for the failed_login_count field.
 	user.DefaultFailedLoginCount = userDescFailedLoginCount.Default.(int)
 	// userDescLockoutCount is the schema descriptor for lockout_count field.
-	userDescLockoutCount := userFields[14].Descriptor()
+	userDescLockoutCount := userFields[15].Descriptor()
 	// user.DefaultLockoutCount holds the default value on creation for the lockout_count field.
 	user.DefaultLockoutCount = userDescLockoutCount.Default.(int)
 	// userDescID is the schema descriptor for id field.

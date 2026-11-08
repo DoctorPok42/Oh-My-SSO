@@ -204,6 +204,10 @@ type ResetPassword struct {
 }
 
 type Consent struct {
+	// Client: the public id of the application (OIDC client_id, SAML entity
+	// ID), sent back with the answer: if the request expired meanwhile, the
+	// message page still knows where to send the user back.
+	Client string
 	RealmDisplay string
 	ClientName   string
 	// ClientHost is where the browser goes after the answer (host of the
@@ -256,6 +260,47 @@ func ConsentLines(loc *i18n.Localizer, items []core.ConsentItem, standard map[st
 type Message struct {
 	Title i18n.Text
 	Text  i18n.Text
+	// Back: a button back to the application that started the flow, when it
+	// is known and has a page a browser can open.
+	Back *BackLink
+}
+
+// BackLink is the way back to an application from a message page ("This
+// sign-in link has expired"...): starting again from there is what the
+// message asks.
+type BackLink struct {
+	URL  string // AppHome of the application
+	Name string
+}
+
+// NewBackLink: nil when the application has no address a browser can open.
+func NewBackLink(name string, urls ...string) *BackLink {
+	home := AppHome(urls...)
+	if home == "" || name == "" {
+		return nil
+	}
+	return &BackLink{URL: home, Name: name}
+}
+
+// AppHome is the address of an application: the scheme and host of the
+// first of its registered URLs (redirect URI, ACS URL) that a browser can
+// open, https or http on localhost (development). "" when there is none: a
+// native app (custom scheme) has no page to go back to. Only URLs an
+// administrator registered are passed here, so the button cannot be turned
+// into an open redirect.
+func AppHome(urls ...string) string {
+	for _, raw := range urls {
+		u, err := url.Parse(raw)
+		if err != nil || u.Host == "" || u.User != nil {
+			continue
+		}
+		switch host := u.Hostname(); {
+		case u.Scheme == "https",
+			u.Scheme == "http" && (host == "localhost" || host == "127.0.0.1" || host == "::1"):
+			return u.Scheme + "://" + u.Host + "/"
+		}
+	}
+	return ""
 }
 
 // AutoPost is a form that the browser submits by itself to Action (SAML

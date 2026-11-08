@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { account, signInOnIdP, stepUpIfAsked } from "./helpers";
 
@@ -150,7 +151,7 @@ test("create a client scope with a claim mapper", async ({ page, baseURL }) => {
   await page.getByLabel("User attribute").fill("profile.department");
   await page.getByLabel("Claim name").fill("department");
   await page.getByRole("button", { name: "Create scope" }).click();
-  await expect(page.getByRole("cell", { name: /payroll_profile/ })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "payroll_profile", exact: true })).toBeVisible();
 });
 
 test("invite a user without e-mail: the activation link is shown once", async ({ page, baseURL }) => {
@@ -203,6 +204,211 @@ test("import users from a CSV file: preview, background import, report", async (
   await page.getByRole("dialog").getByRole("button", { name: "Close" }).first().click();
   const row = page.getByRole("row", { name: /Carol Durand/ });
   await expect(row.getByText("Invited")).toBeVisible();
+});
+
+test("bulk: suspend a selection, what cannot change is reported", async ({ page, baseURL }) => {
+  await page.goto(r("users?q=example.test"));
+  const select = (name: RegExp) => page.getByRole("row", { name }).getByRole("checkbox");
+  const bar = page.getByRole("toolbar", { name: "Actions on the selection" });
+
+  await select(/Alice Moreau/).check();
+  await expect(bar.getByText("1 user selected")).toBeVisible();
+  await bar.getByRole("button", { name: "Suspend" }).click();
+  await stepUpIfAsked(page, baseURL!);
+  await page.getByRole("alertdialog", { name: "Suspend 1 user?" }).getByRole("button", { name: "Suspend" }).click();
+  const summary = page.getByTestId("bulk-result");
+  await expect(summary.getByText("1 user updated")).toBeVisible();
+  await expect(page.getByRole("row", { name: /Alice Moreau/ }).getByText("Suspended")).toBeVisible();
+
+  // Selecting again and asking for the same thing: nothing to do, and it says so.
+  await page.getByRole("checkbox", { name: "Select all on this page" }).check();
+  await bar.getByRole("button", { name: "Suspend" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Suspend" }).click();
+  await expect(summary.getByText(/1 already suspended/)).toBeVisible();
+
+  // The result leads to the entries of the operation.
+  await summary.getByRole("link", { name: /audit/ }).click();
+  await expect(page).toHaveURL(/\/audit\?operation=op_/);
+  await expect(page.getByRole("row", { name: /user\.updated|User updated/ }).first()).toBeVisible();
+});
+
+test("bulk: deleting asks for a word, and the selection survives the pages", async ({ page }) => {
+  await page.goto(r("users?q=carol"));
+  await page.getByRole("checkbox", { name: "Select all on this page" }).check();
+  const bar = page.getByRole("toolbar", { name: "Actions on the selection" });
+  await expect(bar).toBeVisible();
+  await page.reload();
+  await expect(bar).toBeVisible();
+
+  await bar.getByRole("button", { name: "Delete" }).click();
+  const dialog = page.getByRole("alertdialog");
+  const confirm = dialog.getByRole("button", { name: "Delete" });
+  await expect(confirm).toBeDisabled();
+  await dialog.getByLabel(/to confirm/).fill("delete");
+  await expect(confirm).toBeEnabled();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await bar.getByRole("button", { name: "Clear selection" }).click();
+  await expect(bar).toBeHidden();
+});
+
+test("bulk: your own session and account are out of reach", async ({ page }) => {
+  await page.goto("/r/master/sessions");
+  const own = page.getByRole("checkbox", { name: "Your own session cannot be part of a bulk action" });
+  await expect(own.first()).toBeDisabled();
+  await page.goto("/r/master/users");
+  await expect(page.getByRole("checkbox", { name: "Your own account cannot be part of a bulk action" })).toBeDisabled();
+});
+
+test("sessions can be filtered by IP address", async ({ page }) => {
+  await page.goto("/r/master/sessions");
+  await page.getByLabel("Filter by IP address").fill("203.0.113.1");
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(page).toHaveURL(/ip=203\.0\.113\.1/);
+  await expect(page.getByText("No active session.")).toBeVisible();
+});
+
+test("the locked accounts are listed with the security settings", async ({ page }) => {
+  await page.goto(r("settings?tab=security"));
+  await expect(page.getByText("No account is locked.")).toBeVisible();
+});
+
+test("bulk: the configuration of clients can be exported", async ({ page }) => {
+  await page.goto(r("clients"));
+  await page.getByRole("checkbox", { name: "Select all on this page" }).check();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export configuration" }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe(`clients-${REALM}.json`);
+  const body = JSON.stringify(JSON.parse(fs.readFileSync(await file.path(), "utf8")));
+  expect(body).toContain("client_id");
+  expect(body).not.toMatch(/"secret"/);
+});
+
+test("bulk: duplicate roles, a role in use is not deleted", async ({ page, baseURL }) => {
+  await page.goto(r("users?tab=roles"));
+  await clickThenStepUp(page, baseURL!, "New role");
+  const drawer = page.getByRole("dialog", { name: "New role" });
+  await drawer.getByLabel("Name").fill("auditor");
+  await drawer.getByRole("button", { name: /Create|Save/ }).click();
+  const row = page.getByRole("row", { name: /auditor/ });
+  await expect(row).toBeVisible();
+
+  await row.getByRole("checkbox").check();
+  const bar = page.getByRole("toolbar", { name: "Actions on the selection" });
+  await bar.getByRole("button", { name: "Duplicate" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Duplicate" }).click();
+  await expect(page.getByTestId("bulk-result").getByText("1 role updated")).toBeVisible();
+  await expect(page.getByRole("row", { name: /auditor-copy/ })).toBeVisible();
+});
+
+test("bulk: a pasted list adds members to a group", async ({ page, baseURL }) => {
+  await page.goto(r("users?tab=groups"));
+  await clickThenStepUp(page, baseURL!, "New group");
+  const created = page.getByRole("dialog", { name: "New group" });
+  await created.getByLabel("Name").fill("ops");
+  await created.getByRole("button", { name: /Create|Save/ }).click();
+  await page
+    .getByRole("row", { name: /^Select ops/ })
+    .getByRole("button", { name: "Edit" })
+    .click();
+  const drawer = page.getByRole("dialog");
+  await drawer.getByLabel("Add members").fill("alice, carol\nnobody");
+  await drawer.getByRole("button", { name: "Add 3 people" }).click();
+  await expect(drawer.getByTestId("bulk-result").getByText("2 members added")).toBeVisible();
+  await expect(drawer.getByTestId("bulk-result").getByText(/1 user not found/)).toBeVisible();
+});
+
+test("bulk: members are removed from a group on a selection", async ({ page, baseURL }) => {
+  await page.goto(r("users?tab=groups"));
+  await page
+    .getByRole("row", { name: /^Select ops/ })
+    .getByRole("button", { name: "Edit" })
+    .click();
+  const drawer = page.getByRole("dialog");
+  await drawer.getByRole("row", { name: /alice/i }).getByRole("checkbox").check();
+  const bar = drawer.getByRole("toolbar", { name: "Actions on the selection" });
+  await expect(bar.getByText("1 member selected")).toBeVisible();
+  await bar.getByRole("button", { name: "Remove from group" }).click();
+  await stepUpIfAsked(page, baseURL!);
+  await page
+    .getByRole("alertdialog", { name: "Remove 1 member from this group?" })
+    .getByRole("button", { name: "Remove from group" })
+    .click();
+  await expect(drawer.getByTestId("bulk-result").getByText("1 member removed")).toBeVisible();
+  await expect(drawer.getByRole("row", { name: /alice/i })).toBeHidden();
+  await expect(drawer.getByRole("row", { name: /carol/i })).toBeVisible();
+});
+
+test("bulk: the MFA policy of a selection of roles", async ({ page, baseURL }) => {
+  await page.goto(r("mfa"));
+  const row = page.getByRole("row", { name: /auditor-copy/ });
+  await expect(row.getByText("Realm default")).toBeVisible();
+  await row.getByRole("checkbox").check();
+  const bar = page.getByRole("toolbar", { name: "Actions on the selection" });
+  await bar.getByRole("button", { name: "Require MFA" }).click();
+  await stepUpIfAsked(page, baseURL!);
+  await page
+    .getByRole("alertdialog", { name: "Require MFA for 1 role?" })
+    .getByRole("button", { name: "Require MFA" })
+    .click();
+  await expect(page.getByTestId("bulk-result").getByText("1 role updated")).toBeVisible();
+  await expect(row.getByText("Own rules")).toBeVisible();
+
+  // Back to the realm default, from the "More" menu.
+  await row.getByRole("checkbox").check();
+  await bar.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: "Back to realm default" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Back to realm default" }).click();
+  await expect(row.getByText("Realm default")).toBeVisible();
+});
+
+test("bulk: the size of a selection is a setting of the realm", async ({ page, baseURL }) => {
+  const setLimit = async (value: string) => {
+    await page.goto(r("settings"));
+    await page.getByLabel("Items per bulk action").fill(value);
+    await clickThenStepUp(page, baseURL!, "Save changes");
+    await expect(page.getByText("Settings saved")).toBeVisible();
+  };
+  await page.goto(r("settings"));
+  await expect(page.getByLabel("Items per bulk action")).toHaveValue("100");
+  await setLimit("1");
+
+  await page.goto(r("users?q=example.test"));
+  await page.getByRole("checkbox", { name: "Select all on this page" }).check();
+  const bar = page.getByRole("toolbar", { name: "Actions on the selection" });
+  await expect(bar.getByText("1 user selected")).toBeVisible();
+  await bar.getByRole("button", { name: "Clear selection" }).click();
+
+  await setLimit("100");
+});
+
+test("bulk: client scopes in use are out of the selection", async ({ page, baseURL }) => {
+  await page.goto(r("client-scopes"));
+  await page.getByRole("checkbox", { name: "Select all on this page" }).check();
+  const bar = page.getByRole("toolbar", { name: "Actions on the selection" });
+  await bar.getByRole("button", { name: "Delete" }).click();
+  await stepUpIfAsked(page, baseURL!);
+  const dialog = page.getByRole("alertdialog");
+  await dialog.getByLabel(/to confirm/).fill("delete");
+  await dialog.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByTestId("bulk-result")).toContainText("deleted");
+});
+
+test("bulk: the selected audit entries can be exported", async ({ page }) => {
+  await page.goto(r("audit"));
+  const rows = page.getByRole("checkbox", { name: /^Select (?!all)/ });
+  await rows.first().check();
+  await expect(page.getByText("Entry ID")).toBeHidden(); // ticking a row does not open it
+  await rows.nth(1).check();
+  await expect(page.getByText("2 entries selected")).toBeVisible();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export as CSV" }).click();
+  const file = await download;
+  const lines = fs
+    .readFileSync(await file.path(), "utf8")
+    .trim()
+    .split("\n");
+  expect(lines).toHaveLength(3); // the header and the two entries
 });
 
 test("rotate the realm's JWT signing key", async ({ page, baseURL }) => {
@@ -261,12 +467,31 @@ test("the theme choice is remembered", async ({ page }) => {
 });
 
 test("step-up: once the second factor is too old, changes ask for it again", async ({ page, baseURL }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   // Shorten the window to 1 minute (the minimum), wait it out.
   await page.goto("/r/master/mfa");
   await page.getByLabel(/Step-up window/).fill("1");
   await page.getByRole("button", { name: "Save" }).first().click();
   await expect(page.getByText("Realm MFA policy saved")).toBeVisible();
+  await page.waitForTimeout(80_000);
+
+  // A bulk action asks too, and the selection comes back from the IdP.
+  await page.goto(r("users?q=example.test"));
+  await page
+    .getByRole("row", { name: /Alice Moreau/ })
+    .getByRole("checkbox")
+    .check();
+  await page.getByRole("button", { name: "Reactivate" }).click();
+  const confirmIt = page.getByRole("dialog", { name: "Confirm it's you" });
+  await confirmIt.getByRole("link", { name: "Continue" }).click();
+  await expect(page.locator("#identifier")).toBeVisible();
+  await signInOnIdP(page, account(), baseURL!);
+  await page
+    .getByRole("alertdialog", { name: "Reactivate 1 user?" })
+    .getByRole("button", { name: "Reactivate" })
+    .click();
+  await expect(page.getByTestId("bulk-result").getByText("1 user updated")).toBeVisible();
+  await expect(page).not.toHaveURL(/bulk=/);
   await page.waitForTimeout(80_000);
 
   await page.goto(r("clients"));

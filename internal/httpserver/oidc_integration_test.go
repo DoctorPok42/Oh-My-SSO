@@ -332,7 +332,7 @@ func (e *oidcTestEnv) loginAndGetCode(t *testing.T, b *oidcBrowser, cfg *oauth2.
 	resp := b.get(cfg.AuthCodeURL(state, opts...))
 	require.Equal(t, http.StatusOK, resp.StatusCode, "expected the login page")
 	loginURL := resp.Request.URL.String()
-	require.Contains(t, loginURL, "/r/"+oidcRealm+"/oidc/login?id=")
+	require.Contains(t, loginURL, "/r/"+oidcRealm+"/oidc/login?client=")
 
 	status, body := b.postJSON(e.realmURL+"/auth/login", map[string]any{
 		"identifier": user, "password": oidcPassword, "client_id": cfg.ClientID})
@@ -605,7 +605,32 @@ func TestOIDC_Integration_LoginRules(t *testing.T) {
 		victim := e.newBrowser(t)
 		status, _ := victim.postJSON(e.realmURL+"/auth/login", map[string]any{"identifier": "alice", "password": oidcPassword})
 		require.Equal(t, http.StatusOK, status)
-		require.Equal(t, http.StatusBadRequest, victim.get(loginURL).StatusCode)
+		resp, body := victim.page(loginURL)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		// The message offers to go back to the application, at its registered address.
+		require.Contains(t, body, `href="https://app.example.test/"`)
+		require.Contains(t, body, "Back to Web App")
+	})
+
+	t.Run("an expired login link still leads back to the application", func(t *testing.T) {
+		b := e.newBrowser(t)
+		resp := b.get(cfg.AuthCodeURL("s", pkce))
+		u := resp.Request.URL
+		require.Equal(t, webClientID, u.Query().Get("client"))
+		q := u.Query()
+		q.Set("id", "expired-request")
+		u.RawQuery = q.Encode()
+		resp, body := b.page(u.String())
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		require.Contains(t, body, "has expired")
+		require.Contains(t, body, `href="https://app.example.test/"`)
+
+		// An unknown client, or none: no button.
+		q.Set("client", "nobody")
+		u.RawQuery = q.Encode()
+		_, body = b.page(u.String())
+		require.Contains(t, body, "has expired")
+		require.NotContains(t, body, "Back to")
 	})
 
 	t.Run("SSO: a second application gets in without a password", func(t *testing.T) {
@@ -759,6 +784,7 @@ func TestOIDC_Integration_MFA(t *testing.T) {
 	resp, body := b.page(loginURL)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Contains(t, body, `data-mode="enroll"`)
+	require.Contains(t, body, `id="enroll-continue"`, "a button asks again once a factor is added")
 
 	status, out := b.postJSON(e.realmURL+"/account/mfa/totp", map[string]string{"name": "phone"})
 	require.Equal(t, http.StatusCreated, status, "%v", out)

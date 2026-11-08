@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqljson"
 
 	"sso.internal/sso/ent"
 	"sso.internal/sso/ent/auditlog"
@@ -117,6 +118,9 @@ func (r *entAdminRepository) SearchUsers(ctx context.Context, f repository.UserS
 	}
 	if f.RoleID != "" {
 		preds = append(preds, user.HasRolesWith(role.ID(f.RoleID)))
+	}
+	if !f.LockedAt.IsZero() {
+		preds = append(preds, user.LockedUntilGT(f.LockedAt))
 	}
 	q := r.client.User.Query().Where(preds...)
 	offset, limit := clampPage(f.Page)
@@ -612,6 +616,9 @@ func sessionPredicates(f repository.SessionSearch) []predicate.Session {
 	if f.UserID != "" {
 		preds = append(preds, session.UserID(f.UserID))
 	}
+	if f.IPAddress != "" {
+		preds = append(preds, session.IPAddress(f.IPAddress))
+	}
 	if f.ClientRef != "" {
 		preds = append(preds, session.HasTokensWith(token.ClientRefID(f.ClientRef), liveToken(f.Now)))
 	}
@@ -673,6 +680,14 @@ func (r *entAdminRepository) SearchAuditLogs(ctx context.Context, f repository.A
 	}
 	if f.ClientRef != "" {
 		preds = append(preds, auditlog.ResourceType("ClientApp"), auditlog.ResourceID(f.ClientRef))
+	}
+	if len(f.IDs) > 0 {
+		preds = append(preds, auditlog.IDIn(f.IDs...))
+	}
+	if f.OperationID != "" {
+		preds = append(preds, func(s *sql.Selector) {
+			s.Where(sqljson.ValueEQ(auditlog.FieldDetails, f.OperationID, sqljson.Path("operation_id")))
+		})
 	}
 	if f.Action != "" {
 		preds = append(preds, auditlog.Action(f.Action))

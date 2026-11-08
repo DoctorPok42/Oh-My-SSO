@@ -107,5 +107,7 @@ func (Session) Edges() []ent.Edge {
 func (Session) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("user_id", "status"),
+		// "Every session of this IP" in the admin console, during an incident.
+		index.Fields("realm_id", "ip_address"),
 	}
 }

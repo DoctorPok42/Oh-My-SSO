@@ -6,10 +6,25 @@ import { getI18n } from "@/i18n/server";
 // log entries matching the filters, as a file. The Admin API streams it
 // (GET /realms/{realm}/audit-logs/export) and records the export in the log;
 // this route only adds the admin's token, which the browser never sees.
+// POST takes the same fields as a form: an export of selected entries (ids)
+// would not fit in a URL once the bulk limit is raised.
 
-const FILTERS = ["format", "action", "actor", "user", "client", "status", "level", "from", "to"];
+const FILTERS = ["format", "action", "actor", "user", "client", "operation", "ids", "status", "level", "from", "to"];
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ realm: string }> }) {
+  return exportAudit(req, (await params).realm, (k) => req.nextUrl.searchParams.get(k));
+}
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ realm: string }> }) {
+  const form = await req.formData().catch(() => null);
+  if (!form) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+  return exportAudit(req, (await params).realm, (k) => {
+    const v = form.get(k);
+    return typeof v === "string" ? v : null;
+  });
+}
+
+async function exportAudit(req: NextRequest, realm: string, get: (key: string) => string | null) {
   // A link clicked on another site must not start an export (it would be
   // recorded under this admin's name): same-origin navigations only.
   const site = req.headers.get("sec-fetch-site");
@@ -20,10 +35,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ real
       { status: 403 },
     );
   }
-  const { realm } = await params;
   const query: Record<string, string> = {};
   for (const k of FILTERS) {
-    const v = req.nextUrl.searchParams.get(k);
+    const v = get(k);
     if (v) query[k] = v;
   }
   let path: string;

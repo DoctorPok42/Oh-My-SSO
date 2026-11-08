@@ -93,6 +93,9 @@ func (r *entUserRepository) Update(ctx context.Context, id string, p repository.
 	if p.Status != nil {
 		builder = builder.SetStatus(entschema.UserStatus(*p.Status))
 	}
+	if p.MustChangePassword != nil {
+		builder = builder.SetMustChangePassword(*p.MustChangePassword)
+	}
 
 	e, err := builder.Save(ctx)
 	if err != nil {
@@ -197,5 +200,7 @@ func toDomainUser(e *ent.User) *domain.User {
 		LastLoginAt:  e.LastLoginAt,
 		Profile:      e.Profile,
 		Lockout:      lockoutFromEnt(e),
+
+		MustChangePassword: e.MustChangePassword,
 	}
 }

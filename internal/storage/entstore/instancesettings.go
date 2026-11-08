@@ -70,6 +70,7 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 		SetNillableMailFromAddress(p.MailFromAddress).
 		SetNillableMailReplyTo(p.MailReplyTo).
 		SetNillableMailLogoURL(p.MailLogoURL).
+		SetNillableBulkLimit(p.BulkLimit).
 		SetNillableUpdatedBy(p.UpdatedBy)
 	if p.IPAllowlist != nil {
 		builder = builder.SetIPAllowlist(p.IPAllowlist)
@@ -115,6 +116,7 @@ func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings 
 		MailFromAddress:             e.MailFromAddress,
 		MailReplyTo:                 e.MailReplyTo,
 		MailLogoURL:                 e.MailLogoURL,
+		BulkLimit:                   e.BulkLimit,
 		UpdatedAt:                   e.UpdatedAt,
 		UpdatedBy:                   e.UpdatedBy,
 	}

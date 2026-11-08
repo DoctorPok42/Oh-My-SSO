@@ -1,10 +1,12 @@
 "use server";
 
-import { act, api, apiPath } from "@/lib/api";
+import { act, api, apiPath, getBulkLimit } from "@/lib/api";
+import { BULK_TIMEOUT_MS, collectIds, type BulkBody, type BulkResult } from "@/lib/bulk";
 import { invalidate } from "@/lib/cache";
 import type {
   Access,
   InviteResult,
+  List,
   Permission,
   UserDetail,
   UserImport,
@@ -14,6 +16,49 @@ import type {
 
 /** A whole file is checked in these calls: up to a thousand lines. */
 const IMPORT_TIMEOUT_MS = 60_000;
+
+export async function bulkUsers(realm: string, body: BulkBody) {
+  return act(() =>
+    api<BulkResult>(apiPath(["realms", realm, "users", "bulk"]), { method: "POST", body, timeoutMs: BULK_TIMEOUT_MS }),
+  );
+}
+
+export async function bulkAccess(realm: string, kind: "roles" | "groups", body: BulkBody) {
+  return act(() =>
+    api<BulkResult>(apiPath(["realms", realm, kind, "bulk"]), { method: "POST", body, timeoutMs: BULK_TIMEOUT_MS }),
+  );
+}
+
+/** A pasted list of usernames or e-mails. */
+export async function addGroupMembers(realm: string, id: string, identifiers: string[]) {
+  return act(() =>
+    api<BulkResult>(apiPath(["realms", realm, "groups", id, "members", "bulk"]), {
+      method: "POST",
+      body: { identifiers },
+      timeoutMs: BULK_TIMEOUT_MS,
+    }),
+  );
+}
+
+/** "Select the results of the filter". */
+export async function matchingUserIds(
+  realm: string,
+  filter: { q?: string; status?: string; locked?: boolean },
+  exclude: string[],
+) {
+  const { locked, ...rest } = filter;
+  return act(async () =>
+    collectIds(
+      (offset, limit) =>
+        api<List<{ id: string }>>(
+          apiPath(["realms", realm, "users"], { ...rest, locked: locked ? "true" : undefined, offset, limit }),
+        ),
+      exclude,
+      undefined,
+      await getBulkLimit(realm),
+    ),
+  );
+}
 
 export async function inviteUser(
   realm: string,

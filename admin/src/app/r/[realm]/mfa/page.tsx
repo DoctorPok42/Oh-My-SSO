@@ -1,3 +1,4 @@
+import { BulkCell, BulkHead } from "@/components/console/bulk";
 import { NavLink } from "@/components/console/nav-link";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
@@ -7,10 +8,12 @@ import { Chips } from "@/components/ui/chip-select";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { TogglePill } from "@/components/ui/toggle-pill";
 import { apiPath, getMe, loadCached } from "@/lib/api";
+import { BULK_ROW } from "@/lib/bulk";
 import { MFA_METHOD_LABELS } from "@/lib/labels";
 import { canWrite } from "@/lib/permissions";
 import { PAGES } from "@/lib/pages";
 import type { MfaPolicies } from "@/lib/types";
+import { RoleMfaBulk } from "./bulk";
 import { RealmMfaCard, RolePolicyActions } from "./mfa-forms";
 import type { Translator } from "@/i18n";
 import { getI18n } from "@/i18n/server";
@@ -38,64 +41,87 @@ export default async function MfaPage({ params }: { params: Promise<{ realm: str
   const tr = await getI18n();
   const { t } = tr;
 
+  // The checkboxes need mfa_policy:write: without it, nothing to do on a selection.
+  const rolesTable = (
+    <TableContainer>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {writable && <BulkHead />}
+            <ColumnHeads columns={COLUMNS.mfaRoles} />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {p.roles.length === 0 && (
+            <TableEmpty colSpan={writable ? 8 : 7}>{t("clients.access.no_role", "No role in this realm.")}</TableEmpty>
+          )}
+          {p.roles.map((r) => (
+            <TableRow key={r.role.id} className={writable ? BULK_ROW : undefined}>
+              {writable && (
+                <BulkCell
+                  id={r.role.id}
+                  label={r.role.name}
+                  blocked={
+                    r.managed_by === "config"
+                      ? t("clients.managed_bulk", "Managed by the configuration: not part of bulk actions")
+                      : undefined
+                  }
+                />
+              )}
+              <TableCell className="font-medium">
+                <span className="flex items-center gap-2">
+                  {r.role.name}
+                  <ManagedBadge managedBy={r.managed_by} />
+                </span>
+              </TableCell>
+              <TableCell>
+                <Badge tone={r.configured ? "accent" : "neutral"}>
+                  {r.configured ? t("mfa.own_rules", "Own rules") : t("mfa.realm_default", "Realm default")}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <TogglePill
+                  checked={r.required || p.required_globally}
+                  onLabel={t("clients.scope.required", "Required")}
+                  offLabel={t("clients.scope.optional", "Optional")}
+                  label={t("columns.mfa_required", "MFA required")}
+                />
+              </TableCell>
+              <TableCell>
+                <TogglePill
+                  checked={r.step_up_for_sensitive_actions}
+                  label={t("columns.step_up", "Step-up for sensitive actions")}
+                />
+              </TableCell>
+              <TableCell className="text-text-secondary">
+                {r.configured ? tr.tn("mfa.grace_days", r.enrollment_grace_days, "{count} day", "{count} days") : "—"}
+              </TableCell>
+              <TableCell>
+                <Chips items={methodChips(r.allowed_methods, tr)} empty={t("mfa.any", "Any")} />
+              </TableCell>
+              <TableCell className="text-right">
+                <RolePolicyActions realm={realm} policy={r} known={p.known_methods} writable={writable} />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
   return (
     <>
       <PageHeader {...PAGES.mfa} />
       <RealmMfaCard realm={realm} policies={p} writable={writable} system={realm === "master"} />
 
       <h2 className="mt-8 mb-3 text-[15px] font-semibold">{t("mfa.per_role", "Per role")}</h2>
-      <TableContainer>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <ColumnHeads columns={COLUMNS.mfaRoles} />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {p.roles.length === 0 && (
-              <TableEmpty colSpan={7}>{t("clients.access.no_role", "No role in this realm.")}</TableEmpty>
-            )}
-            {p.roles.map((r) => (
-              <TableRow key={r.role.id}>
-                <TableCell className="font-medium">
-                  <span className="flex items-center gap-2">
-                    {r.role.name}
-                    <ManagedBadge managedBy={r.managed_by} />
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <Badge tone={r.configured ? "accent" : "neutral"}>
-                    {r.configured ? t("mfa.own_rules", "Own rules") : t("mfa.realm_default", "Realm default")}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <TogglePill
-                    checked={r.required || p.required_globally}
-                    onLabel={t("clients.scope.required", "Required")}
-                    offLabel={t("clients.scope.optional", "Optional")}
-                    label={t("columns.mfa_required", "MFA required")}
-                  />
-                </TableCell>
-                <TableCell>
-                  <TogglePill
-                    checked={r.step_up_for_sensitive_actions}
-                    label={t("columns.step_up", "Step-up for sensitive actions")}
-                  />
-                </TableCell>
-                <TableCell className="text-text-secondary">
-                  {r.configured ? tr.tn("mfa.grace_days", r.enrollment_grace_days, "{count} day", "{count} days") : "—"}
-                </TableCell>
-                <TableCell>
-                  <Chips items={methodChips(r.allowed_methods, tr)} empty={t("mfa.any", "Any")} />
-                </TableCell>
-                <TableCell className="text-right">
-                  <RolePolicyActions realm={realm} policy={r} known={p.known_methods} writable={writable} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {writable ? (
+        <RoleMfaBulk realm={realm} page={p.roles.filter((r) => r.managed_by !== "config").map((r) => r.role.id)}>
+          {rolesTable}
+        </RoleMfaBulk>
+      ) : (
+        rolesTable
+      )}
 
       <h2 className="mt-8 mb-1 text-[15px] font-semibold">{t("mfa.per_client", "Per client")}</h2>
       <p className="mb-3 text-[13px] text-text-secondary">

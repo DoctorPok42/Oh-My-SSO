@@ -1,10 +1,12 @@
 import { NavLink } from "@/components/console/nav-link";
+import { BulkHead } from "@/components/console/bulk";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
 import { Pagination } from "@/components/console/pagination";
 import { offsetParam } from "@/lib/pagination";
 import { SearchForm } from "@/components/console/search-form";
 import { ColumnHeads } from "@/components/console/skeletons";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -17,6 +19,7 @@ import { COLUMNS, PAGES } from "@/lib/pages";
 import type { AuditAction, AuditEntry, List } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AuditRows } from "./audit-rows";
+import { AuditBulk } from "./bulk";
 import { ExportMenu } from "./export-menu";
 import { getI18n } from "@/i18n/server";
 
@@ -33,6 +36,7 @@ type Search = {
   actor?: string;
   user?: string;
   client?: string;
+  operation?: string;
   from?: string;
   to?: string;
   offset?: string;
@@ -54,7 +58,16 @@ export default async function AuditPage({
   const status = sp.status === "success" || sp.status === "failure" ? sp.status : undefined;
   const actor = sp.actor && ACTOR_TYPES.includes(sp.actor) ? sp.actor : undefined;
   const offset = offsetParam(sp.offset);
-  const filters = { status, action: sp.action, actor, user: sp.user, client: sp.client, from: sp.from, to: sp.to };
+  const filters = {
+    status,
+    action: sp.action,
+    actor,
+    user: sp.user,
+    client: sp.client,
+    operation: sp.operation,
+    from: sp.from,
+    to: sp.to,
+  };
   const base = `/r/${encodeURIComponent(realm)}/audit`;
   const withStatus = (s?: string) => {
     const q = new URLSearchParams();
@@ -73,6 +86,17 @@ export default async function AuditPage({
   return (
     <>
       <PageHeader {...PAGES.audit} actions={<ExportMenu base={base} filters={filters} />} />
+      {sp.operation && (
+        <div className="mb-4 flex items-center gap-2 text-[13px] text-text-secondary">
+          {t("audit.filtered_operation", "One bulk action")}
+          <Badge tone="accent" className="font-mono">
+            {sp.operation}
+          </Badge>
+          <NavLink href={base} className="text-accent hover:underline">
+            {t("common.clear", "Clear")}
+          </NavLink>
+        </div>
+      )}
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <SegmentedLinks
           label={t("columns.status", "Status")}
@@ -85,6 +109,7 @@ export default async function AuditPage({
         <SearchForm action={base} className="ml-auto flex flex-wrap items-end gap-2">
           {status && <input type="hidden" name="status" value={status} />}
           {sp.client && <input type="hidden" name="client" value={sp.client} />}
+          {sp.operation && <input type="hidden" name="operation" value={sp.operation} />}
           <label className="flex flex-col text-[12px] text-text-muted">
             {t("columns.action", "Action")}
             <Input
@@ -180,32 +205,35 @@ async function AuditTable({
   if (!list.ok) return <ErrorState error={list} />;
   const { t, locale } = await getI18n();
   return (
-    <TableContainer>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <ColumnHeads columns={COLUMNS.audit} />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {list.data.items.length === 0 && (
-            <TableEmpty colSpan={6}>{t("audit.empty", "No entry matches these filters.")}</TableEmpty>
-          )}
-          <AuditRows
-            items={list.data.items}
-            times={Object.fromEntries(list.data.items.map((a) => [a.id, formatDateTime(a.timestamp, locale)]))}
-            actions={actions}
-          />
-        </TableBody>
-      </Table>
-      <Pagination
-        basePath={base}
-        params={filters}
-        offset={offset}
-        limit={LIMIT}
-        count={list.data.items.length}
-        total={list.data.total}
-      />
-    </TableContainer>
+    <AuditBulk realm={realm} base={base} page={list.data.items.map((a) => a.id)}>
+      <TableContainer>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <BulkHead />
+              <ColumnHeads columns={COLUMNS.audit} />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {list.data.items.length === 0 && (
+              <TableEmpty colSpan={7}>{t("audit.empty", "No entry matches these filters.")}</TableEmpty>
+            )}
+            <AuditRows
+              items={list.data.items}
+              times={Object.fromEntries(list.data.items.map((a) => [a.id, formatDateTime(a.timestamp, locale)]))}
+              actions={actions}
+            />
+          </TableBody>
+        </Table>
+        <Pagination
+          basePath={base}
+          params={filters}
+          offset={offset}
+          limit={LIMIT}
+          count={list.data.items.length}
+          total={list.data.total}
+        />
+      </TableContainer>
+    </AuditBulk>
   );
 }

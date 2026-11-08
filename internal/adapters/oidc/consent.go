@@ -147,6 +147,7 @@ func (a *Adapter) renderConsent(w http.ResponseWriter, r *http.Request, ar *auth
 	a.pages.RenderConsent(w, r, loginui.Consent{
 		RealmDisplay:   firstNonEmpty(realm.DisplayName, realm.Name),
 		ClientName:     firstNonEmpty(pc.App.Name, pc.App.ClientID),
+		Client:         ar.ClientID,
 		ClientHost:     hostOf(ar.RedirectURI),
 		Username:       userLabel(as),
 		Items:          lines,

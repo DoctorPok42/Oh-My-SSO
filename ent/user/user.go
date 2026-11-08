@@ -21,6 +21,8 @@ const (
 	FieldUsername = "username"
 	// FieldPasswordHash holds the string denoting the password_hash field in the database.
 	FieldPasswordHash = "password_hash"
+	// FieldMustChangePassword holds the string denoting the must_change_password field in the database.
+	FieldMustChangePassword = "must_change_password"
 	// FieldEmail holds the string denoting the email field in the database.
 	FieldEmail = "email"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -150,6 +152,7 @@ var Columns = []string{
 	FieldRealmID,
 	FieldUsername,
 	FieldPasswordHash,
+	FieldMustChangePassword,
 	FieldEmail,
 	FieldCreatedAt,
 	FieldUpdatedAt,
@@ -188,6 +191,8 @@ var (
 	RealmIDValidator func(string) error
 	// UsernameValidator is a validator for the "username" field. It is called by the builders before save.
 	UsernameValidator func(string) error
+	// DefaultMustChangePassword holds the default value on creation for the "must_change_password" field.
+	DefaultMustChangePassword bool
 	// EmailValidator is a validator for the "email" field. It is called by the builders before save.
 	EmailValidator func(string) error
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
@@ -229,6 +234,11 @@ func ByUsername(opts ...sql.OrderTermOption) OrderOption {
 // ByPasswordHash orders the results by the password_hash field.
 func ByPasswordHash(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPasswordHash, opts...).ToFunc()
+}
+
+// ByMustChangePassword orders the results by the must_change_password field.
+func ByMustChangePassword(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMustChangePassword, opts...).ToFunc()
 }
 
 // ByEmail orders the results by the email field.

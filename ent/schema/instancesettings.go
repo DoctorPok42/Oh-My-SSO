@@ -75,6 +75,10 @@ func (InstanceSettings) Fields() []ent.Field {
 		field.String("mail_from_address").Default(""),
 		field.String("mail_reply_to").Default(""),
 		field.String("mail_logo_url").Default(""),
+		// The most items one bulk action of the admin console may touch
+		// (1 to 500). A larger selection is done in several passes, so a
+		// mistake stays small.
+		field.Int("bulk_limit").Default(100),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.String("updated_by").Optional(),
 	}

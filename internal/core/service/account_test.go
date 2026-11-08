@@ -302,6 +302,29 @@ func TestAccount_ChangePassword(t *testing.T) {
 	require.Equal(t, f.user.ID, e.UserID)
 }
 
+// A forced reset blocks the password, not a passkey: signed in that way, the
+// user may change the password in the account console, which ends it.
+func TestAccount_ChangePassword_EndsForcedReset(t *testing.T) {
+	f := newAcctFixture(t)
+	ctx := context.Background()
+	f.users.mu.Lock()
+	f.users.byID[f.user.ID].MustChangePassword = true
+	f.users.mu.Unlock()
+
+	auth := service.NewAuthService(f.users, &fakeLoginAttemptRepo{})
+	_, err := auth.AuthenticateLocal(ctx, service.AuthenticateLocalParams{RealmID: acctRealm, Identifier: "dana", Password: alicePassword})
+	require.ErrorIs(t, err, service.ErrPasswordChangeRequired)
+
+	_, err = f.svc.ChangePassword(ctx, service.ChangePasswordInput{
+		User: f.users.get(f.user.ID), SessionID: f.session(t, f.user).ID, Current: alicePassword, New: "a-brand-new-passphrase", Event: ev,
+	})
+	require.NoError(t, err)
+	require.False(t, f.users.get(f.user.ID).MustChangePassword)
+
+	_, err = auth.AuthenticateLocal(ctx, service.AuthenticateLocalParams{RealmID: acctRealm, Identifier: "dana", Password: "a-brand-new-passphrase"})
+	require.NoError(t, err)
+}
+
 func TestAccount_ChangePassword_NoPasswordYet(t *testing.T) {
 	f := newAcctFixture(t)
 	_, err := f.svc.ChangePassword(context.Background(), service.ChangePasswordInput{

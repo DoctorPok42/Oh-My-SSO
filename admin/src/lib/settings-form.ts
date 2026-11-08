@@ -26,6 +26,7 @@ export type SettingsPatch = Partial<
     | "mail_from_address"
     | "mail_reply_to"
     | "mail_logo_url"
+    | "bulk_limit"
   >
 >;
 
@@ -46,6 +47,7 @@ export const NUMBERS = [
   "lockout_threshold",
   "lockout_duration_minutes",
   "key_rotation_grace_hours",
+  "bulk_limit",
 ] as const;
 export type NumberKey = (typeof NUMBERS)[number];
 
@@ -58,7 +60,7 @@ export function settingsSection(tab?: string): SettingsSection {
 }
 
 const SECTION_FIELDS: Record<SettingsSection, readonly string[]> = {
-  general: ["default_locale"],
+  general: ["default_locale", "bulk_limit"],
   security: [
     "min_password_length",
     "password_expiry_days",

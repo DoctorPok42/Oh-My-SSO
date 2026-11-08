@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { BulkCell, BulkHead } from "@/components/console/bulk";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
 import { Pagination } from "@/components/console/pagination";
@@ -6,6 +7,7 @@ import { offsetParam } from "@/lib/pagination";
 import { Badge } from "@/components/ui/badge";
 import { SegmentedLinks } from "@/components/ui/segmented";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
+import { BULK_ROW } from "@/lib/bulk";
 import { apiPath, getMe, load, loadCached } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { COLUMNS, PAGES } from "@/lib/pages";
@@ -13,6 +15,7 @@ import { canWrite } from "@/lib/permissions";
 import { STATUS_BADGE, TARGET_LABELS } from "@/lib/timeout-form";
 import type { List, Timeout } from "@/lib/types";
 import { NewTimeoutButton, TimeoutDrawer, TimeoutRowActions } from "./timeout-drawer";
+import { TimeoutsBulk } from "./bulk";
 import { getI18n } from "@/i18n/server";
 import { ColumnHeads } from "@/components/console/skeletons";
 
@@ -98,20 +101,30 @@ async function TimeoutsTable({
       : status === "past"
         ? t("timeouts.empty.past", "No timeout has ended yet.")
         : t("timeouts.empty.all", "No timeout yet.");
-  return (
+  const liftable = (to: Timeout) => to.status === "active" || to.status === "scheduled";
+  const bulk = writable && status !== "past";
+  const table = (
     <TableContainer>
       <Table>
         <TableHeader>
           <TableRow>
+            {bulk && <BulkHead />}
             <ColumnHeads columns={COLUMNS.timeouts} />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.length === 0 && <TableEmpty colSpan={7}>{empty}</TableEmpty>}
+          {items.length === 0 && <TableEmpty colSpan={bulk ? 8 : 7}>{empty}</TableEmpty>}
           {items.map((to) => {
             const badge = STATUS_BADGE[to.status] ?? STATUS_BADGE.ended;
             return (
-              <TableRow key={to.id}>
+              <TableRow key={to.id} className={BULK_ROW}>
+                {bulk && (
+                  <BulkCell
+                    id={to.id}
+                    label={to.target.name}
+                    blocked={liftable(to) ? undefined : t("timeouts.over_bulk", "This timeout is over")}
+                  />
+                )}
                 <TableCell>
                   <span className="flex items-center gap-2">
                     <Badge tone="neutral">
@@ -156,6 +169,12 @@ async function TimeoutsTable({
         />
       )}
     </TableContainer>
+  );
+  if (!bulk) return table;
+  return (
+    <TimeoutsBulk realm={realm} status={status} page={items.filter(liftable).map((to) => to.id)} total={total}>
+      {table}
+    </TimeoutsBulk>
   );
 }
 

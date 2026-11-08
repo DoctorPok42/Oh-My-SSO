@@ -475,6 +475,27 @@ func (_u *InstanceSettingsUpdate) SetNillableMailLogoURL(v *string) *InstanceSet
 	return _u
 }
 
+// SetBulkLimit sets the "bulk_limit" field.
+func (_u *InstanceSettingsUpdate) SetBulkLimit(v int) *InstanceSettingsUpdate {
+	_u.mutation.ResetBulkLimit()
+	_u.mutation.SetBulkLimit(v)
+	return _u
+}
+
+// SetNillableBulkLimit sets the "bulk_limit" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableBulkLimit(v *int) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetBulkLimit(*v)
+	}
+	return _u
+}
+
+// AddBulkLimit adds value to the "bulk_limit" field.
+func (_u *InstanceSettingsUpdate) AddBulkLimit(v int) *InstanceSettingsUpdate {
+	_u.mutation.AddBulkLimit(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdate) SetUpdatedAt(v time.Time) *InstanceSettingsUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -683,6 +704,12 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.MailLogoURL(); ok {
 		_spec.SetField(instancesettings.FieldMailLogoURL, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.BulkLimit(); ok {
+		_spec.SetField(instancesettings.FieldBulkLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedBulkLimit(); ok {
+		_spec.AddField(instancesettings.FieldBulkLimit, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)
@@ -1158,6 +1185,27 @@ func (_u *InstanceSettingsUpdateOne) SetNillableMailLogoURL(v *string) *Instance
 	return _u
 }
 
+// SetBulkLimit sets the "bulk_limit" field.
+func (_u *InstanceSettingsUpdateOne) SetBulkLimit(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.ResetBulkLimit()
+	_u.mutation.SetBulkLimit(v)
+	return _u
+}
+
+// SetNillableBulkLimit sets the "bulk_limit" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableBulkLimit(v *int) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetBulkLimit(*v)
+	}
+	return _u
+}
+
+// AddBulkLimit adds value to the "bulk_limit" field.
+func (_u *InstanceSettingsUpdateOne) AddBulkLimit(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.AddBulkLimit(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdateOne) SetUpdatedAt(v time.Time) *InstanceSettingsUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -1396,6 +1444,12 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.MailLogoURL(); ok {
 		_spec.SetField(instancesettings.FieldMailLogoURL, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.BulkLimit(); ok {
+		_spec.SetField(instancesettings.FieldBulkLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedBulkLimit(); ok {
+		_spec.AddField(instancesettings.FieldBulkLimit, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

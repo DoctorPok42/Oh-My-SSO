@@ -37,6 +37,7 @@ type InstanceSettings struct {
 	MailFromAddress             string
 	MailReplyTo                 string
 	MailLogoURL                 string
+	BulkLimit                   int
 	UpdatedAt                   time.Time
 	UpdatedBy                   string
 }

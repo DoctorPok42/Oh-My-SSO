@@ -140,7 +140,7 @@ func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *admin
 		Consent: consent, Audit: audit, Timeouts: timeouts}, service.WithIdentityCoreClock(clock.Now))
 	rotation := service.NewKeyRotationService(signingKeys, entstore.NewKeyRotationLogRepository(client), settings, km, "local_dev")
 	reset := service.NewPasswordResetService(service.PasswordResetDeps{Users: users,
-		Tokens: entstore.NewPasswordResetTokenRepository(client), Sessions: sessions, Settings: settings, Audit: audit, Now: clock.Now})
+		Tokens: entstore.NewPasswordResetTokenRepository(client), Sessions: sessions, Settings: settings, Audit: audit, Now: clock.Now, Notifier: notifier})
 
 	var router http.Handler
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { router.ServeHTTP(w, r) }))
@@ -215,7 +215,7 @@ func (e *adminTestEnv) signIn(t *testing.T, cfg *oauth2.Config, username string,
 	verifier := oauth2.GenerateVerifier()
 	resp := b.get(cfg.AuthCodeURL("st", append(opts, oauth2.S256ChallengeOption(verifier))...))
 	loginURL := resp.Request.URL.String()
-	require.Contains(t, loginURL, "/r/master/oidc/login?id=")
+	require.Contains(t, loginURL, "/r/master/oidc/login?client=")
 
 	status, body := b.postJSON(e.oidc.realmURL+"/auth/login", map[string]any{"identifier": username, "password": adminPassword, "client_id": "sso-admin"})
 	require.Equal(t, http.StatusOK, status, "%v", body)

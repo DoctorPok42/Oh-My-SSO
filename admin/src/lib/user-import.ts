@@ -43,8 +43,8 @@ export function importPercent(job: { processed: number; total: number }): number
 }
 
 /** Saves a text as a file, from the browser. */
-export function downloadText(name: string, text: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
+export function downloadText(name: string, text: string, type = "text/csv;charset=utf-8") {
+  const url = URL.createObjectURL(new Blob([text], { type }));
   const a = document.createElement("a");
   a.href = url;
   a.download = name;

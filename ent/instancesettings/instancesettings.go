@@ -67,6 +67,8 @@ const (
 	FieldMailReplyTo = "mail_reply_to"
 	// FieldMailLogoURL holds the string denoting the mail_logo_url field in the database.
 	FieldMailLogoURL = "mail_logo_url"
+	// FieldBulkLimit holds the string denoting the bulk_limit field in the database.
+	FieldBulkLimit = "bulk_limit"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
 	// FieldUpdatedBy holds the string denoting the updated_by field in the database.
@@ -113,6 +115,7 @@ var Columns = []string{
 	FieldMailFromAddress,
 	FieldMailReplyTo,
 	FieldMailLogoURL,
+	FieldBulkLimit,
 	FieldUpdatedAt,
 	FieldUpdatedBy,
 }
@@ -178,6 +181,8 @@ var (
 	DefaultMailReplyTo string
 	// DefaultMailLogoURL holds the default value on creation for the "mail_logo_url" field.
 	DefaultMailLogoURL string
+	// DefaultBulkLimit holds the default value on creation for the "bulk_limit" field.
+	DefaultBulkLimit int
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
@@ -319,6 +324,11 @@ func ByMailReplyTo(opts ...sql.OrderTermOption) OrderOption {
 // ByMailLogoURL orders the results by the mail_logo_url field.
 func ByMailLogoURL(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMailLogoURL, opts...).ToFunc()
+}
+
+// ByBulkLimit orders the results by the bulk_limit field.
+func ByBulkLimit(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBulkLimit, opts...).ToFunc()
 }
 
 // ByUpdatedAt orders the results by the updated_at field.

@@ -30,7 +30,7 @@ var standardScopes = []string{scopeOpenID, scopeProfile, scopeEmail, scopeOfflin
 // client exposes a core.ProtocolClient to the library (op.Client).
 type client struct {
 	pc       *core.ProtocolClient
-	loginURL string // ".../oidc/login?id=" (the request id is appended)
+	loginURL string // ".../oidc/login?client=<client_id>&id=" (the request id is appended)
 }
 
 var _ op.Client = (*client)(nil)

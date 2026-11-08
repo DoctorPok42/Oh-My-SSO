@@ -370,6 +370,20 @@ func (_c *InstanceSettingsCreate) SetNillableMailLogoURL(v *string) *InstanceSet
 	return _c
 }
 
+// SetBulkLimit sets the "bulk_limit" field.
+func (_c *InstanceSettingsCreate) SetBulkLimit(v int) *InstanceSettingsCreate {
+	_c.mutation.SetBulkLimit(v)
+	return _c
+}
+
+// SetNillableBulkLimit sets the "bulk_limit" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableBulkLimit(v *int) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetBulkLimit(*v)
+	}
+	return _c
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_c *InstanceSettingsCreate) SetUpdatedAt(v time.Time) *InstanceSettingsCreate {
 	_c.mutation.SetUpdatedAt(v)
@@ -548,6 +562,10 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultMailLogoURL
 		_c.mutation.SetMailLogoURL(v)
 	}
+	if _, ok := _c.mutation.BulkLimit(); !ok {
+		v := instancesettings.DefaultBulkLimit
+		_c.mutation.SetBulkLimit(v)
+	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := instancesettings.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
@@ -639,6 +657,9 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.MailLogoURL(); !ok {
 		return &ValidationError{Name: "mail_logo_url", err: errors.New(`ent: missing required field "InstanceSettings.mail_logo_url"`)}
+	}
+	if _, ok := _c.mutation.BulkLimit(); !ok {
+		return &ValidationError{Name: "bulk_limit", err: errors.New(`ent: missing required field "InstanceSettings.bulk_limit"`)}
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "InstanceSettings.updated_at"`)}
@@ -785,6 +806,10 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.MailLogoURL(); ok {
 		_spec.SetField(instancesettings.FieldMailLogoURL, field.TypeString, value)
 		_node.MailLogoURL = value
+	}
+	if value, ok := _c.mutation.BulkLimit(); ok {
+		_spec.SetField(instancesettings.FieldBulkLimit, field.TypeInt, value)
+		_node.BulkLimit = value
 	}
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

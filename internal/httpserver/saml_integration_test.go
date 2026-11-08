@@ -675,6 +675,7 @@ func TestSAMLIntegration(t *testing.T) {
 		resp, body := other.get(loginURL)
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 		require.Contains(t, body, "another browser")
+		require.Contains(t, body, `class="btn btn-md btn-block" href="https://`, "a way back to the service provider")
 
 		b.login("alice")
 		yes := true

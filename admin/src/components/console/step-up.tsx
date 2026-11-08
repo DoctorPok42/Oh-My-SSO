@@ -76,6 +76,7 @@ export function StepUpProvider({
   const params = new URLSearchParams(search.toString());
   params.delete("new");
   params.delete("edit");
+  params.delete("bulk");
   if (dialog?.intent) {
     const [k, v] = dialog.intent.split("=");
     if (k && v) params.set(k, v);

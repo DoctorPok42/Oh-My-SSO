@@ -45,6 +45,7 @@ func DefaultInstanceSettings(realmID string) *domain.InstanceSettings {
 		RememberMeEnabled:       true,
 		RememberMeIdleDays:      defaultRememberMeIdleDays,
 		RememberMeMaxDays:       defaultRememberMeMaxDays,
+		BulkLimit:               DefaultBulkLimit,
 	}
 }
 

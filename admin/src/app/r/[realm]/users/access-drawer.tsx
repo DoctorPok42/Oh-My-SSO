@@ -16,6 +16,7 @@ import { TogglePill } from "@/components/ui/toggle-pill";
 import { useT } from "@/i18n/client";
 import type { Access, ClientScope, Permission, UserSummary } from "@/lib/types";
 import { deleteAccess, saveAccess } from "./actions";
+import { AddGroupMembers, GroupMembers } from "./group-members";
 
 // Roles and groups have the same shape (name, permissions, granted client
 // scopes); the drawer serves both. Groups are the recommended way: they
@@ -106,6 +107,7 @@ export function AccessDrawer({
   scopes,
   members,
   writable,
+  canAddMembers = false,
   canSuspend = false,
 }: {
   realm: string;
@@ -116,6 +118,8 @@ export function AccessDrawer({
   scopes: ClientScope[];
   members: UserSummary[] | null;
   writable: boolean;
+  /** user:write: the members of a group can be added from a pasted list, and removed on a selection. */
+  canAddMembers?: boolean;
   /** timeout:write: a group's footer offers "Suspend…" (Timeouts page). */
   canSuspend?: boolean;
 }) {
@@ -285,6 +289,8 @@ export function AccessDrawer({
             <p className="text-[13px] text-text-muted">
               {t("access.no_member", "Nobody yet. Add users to this group from their page.")}
             </p>
+          ) : canAddMembers && item ? (
+            <GroupMembers realm={realm} groupId={item.id} members={members} />
           ) : (
             <ul className="divide-y divide-border rounded-lg border border-border">
               {members.map((m) => (
@@ -295,6 +301,7 @@ export function AccessDrawer({
               ))}
             </ul>
           )}
+          {canAddMembers && item && <AddGroupMembers realm={realm} groupId={item.id} />}
         </section>
       )}
     </Drawer>

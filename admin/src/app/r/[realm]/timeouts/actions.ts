@@ -1,8 +1,31 @@
 "use server";
 
-import { act, api, apiPath } from "@/lib/api";
+import { act, api, apiPath, getBulkLimit } from "@/lib/api";
+import { BULK_TIMEOUT_MS, collectIds, type BulkBody, type BulkResult } from "@/lib/bulk";
 import type { TimeoutCreateBody } from "@/lib/timeout-form";
 import type { Access, ClientSummary, List, Timeout, TimeoutTargetType, UserSummary } from "@/lib/types";
+
+export async function bulkTimeouts(realm: string, body: BulkBody) {
+  return act(() =>
+    api<BulkResult>(apiPath(["realms", realm, "timeouts", "bulk"]), {
+      method: "POST",
+      body,
+      timeoutMs: BULK_TIMEOUT_MS,
+    }),
+  );
+}
+
+/** "Select the results of the filter": what can still be lifted. */
+export async function matchingTimeoutIds(realm: string, status: string, exclude: string[]) {
+  return act(async () =>
+    collectIds(
+      (offset, limit) => api<List<Timeout>>(apiPath(["realms", realm, "timeouts"], { status, offset, limit })),
+      exclude,
+      (x) => x.status === "active" || x.status === "scheduled",
+      await getBulkLimit(realm),
+    ),
+  );
+}
 
 export async function createTimeout(realm: string, body: TimeoutCreateBody) {
   return act(() => api<Timeout>(apiPath(["realms", realm, "timeouts"]), { method: "POST", body }));

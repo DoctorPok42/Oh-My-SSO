@@ -46,6 +46,11 @@ type UserSummary struct {
 	HasPassword bool              `json:"has_password"` // false: invitation not accepted yet
 	MFAEnrolled bool              `json:"mfa_enrolled"`
 	Locked      bool              `json:"locked"`
+	// MustChangePassword: a forced password reset is waiting.
+	MustChangePassword bool `json:"must_change_password"`
+	FailedLogins       int  `json:"failed_logins"`
+	// LockedUntil: nil when the account is not locked.
+	LockedUntil *time.Time `json:"locked_until"`
 	LastLoginAt *time.Time        `json:"last_login_at"`
 	CreatedAt   time.Time         `json:"created_at"`
 	Groups      []NameRef         `json:"groups"`
@@ -56,8 +61,6 @@ type UserSummary struct {
 type UserDetail struct {
 	UserSummary
 	Profile         map[string]interface{} `json:"profile"`
-	FailedLogins    int                    `json:"failed_logins"`
-	LockedUntil     *time.Time             `json:"locked_until"`
 	Factors         []FactorView           `json:"factors"`
 	BackupCodesLeft int                    `json:"backup_codes_left"`
 	Effective       EffectiveAccess        `json:"effective"`
@@ -144,13 +147,17 @@ func (s *AdminService) summaries(ctx context.Context, users []*domain.User) ([]U
 		sum := UserSummary{
 			ID: u.ID, Username: u.Username, Email: u.Email, Name: displayName(u), Status: u.Status,
 			HasPassword: u.PasswordHash != "", MFAEnrolled: mfa[u.ID], Locked: u.Lockout.LockedAt(now),
-			CreatedAt: u.CreatedAt,
+			CreatedAt: u.CreatedAt, MustChangePassword: u.MustChangePassword, FailedLogins: u.Lockout.FailedCount,
 			// Names loaded with the memberships: no query per group or role.
 			Groups: namedRefs(members[u.ID].GroupIDs, members[u.ID].Names),
 			Roles:  namedRefs(members[u.ID].RoleIDs, members[u.ID].Names),
 		}
 		if t, ok := last[u.ID]; ok {
 			sum.LastLoginAt = &t
+		}
+		if sum.Locked {
+			t := u.Lockout.LockedUntil
+			sum.LockedUntil = &t
 		}
 		out = append(out, sum)
 	}
@@ -167,14 +174,9 @@ func (s *AdminService) GetUser(ctx context.Context, realm *domain.Realm, userID 
 	if err != nil {
 		return nil, err
 	}
-	d := &UserDetail{UserSummary: sums[0], Profile: u.Profile, FailedLogins: u.Lockout.FailedCount,
-		Factors: []FactorView{}}
+	d := &UserDetail{UserSummary: sums[0], Profile: u.Profile, Factors: []FactorView{}}
 	if d.Profile == nil {
 		d.Profile = map[string]interface{}{}
-	}
-	if u.Lockout.LockedAt(s.d.Now()) {
-		t := u.Lockout.LockedUntil
-		d.LockedUntil = &t
 	}
 	factors, err := s.d.MFA.ListFactors(ctx, u.ID)
 	if err != nil {

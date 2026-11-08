@@ -149,9 +149,13 @@ func New(cfg Config, d Deps) *Server {
 			r.With(read("realm")).Get("/", s.handleGetRealm)
 			r.With(write("realm", "write")...).Patch("/", s.handleUpdateRealm)
 			r.With(read("realm")).Get("/dashboard", s.handleDashboard)
+			// Any admin: every page with a selection needs it.
+			r.Get("/bulk-limit", s.handleBulkLimit)
 
 			r.With(read("client")).Get("/clients", s.handleListClients)
 			r.With(write("client", "write")...).Post("/clients", s.handleCreateClient)
+			r.With(write("client", "write")...).Post("/clients/bulk", s.bulk(s.d.Admin.BulkClients))
+			r.With(read("client")).Get("/clients/export", s.handleExportClients)
 			r.With(read("client")).Get("/clients/{id}", s.handleGetClient)
 			r.With(write("client", "write")...).Patch("/clients/{id}", s.handleUpdateClient)
 			r.With(write("client", "write")...).Delete("/clients/{id}", s.handleDeleteClient)
@@ -161,11 +165,13 @@ func New(cfg Config, d Deps) *Server {
 
 			r.With(read("client_scope")).Get("/client-scopes", s.handleListScopes)
 			r.With(write("client_scope", "write")...).Post("/client-scopes", s.handleCreateScope)
+			r.With(write("client_scope", "write")...).Post("/client-scopes/bulk", s.bulk(s.d.Admin.BulkClientScopes))
 			r.With(read("client_scope")).Get("/client-scopes/{id}", s.handleGetScope)
 			r.With(write("client_scope", "write")...).Patch("/client-scopes/{id}", s.handleUpdateScope)
 			r.With(write("client_scope", "write")...).Delete("/client-scopes/{id}", s.handleDeleteScope)
 
 			r.With(read("session")).Get("/sessions", s.handleListSessions)
+			r.With(write("session", "revoke")...).Post("/sessions/bulk", s.bulk(s.d.Admin.BulkSessions))
 			r.With(write("session", "revoke")...).Delete("/sessions/{id}", s.handleRevokeSession)
 
 			r.With(read("audit_log")).Get("/audit-logs", s.handleAuditLogs)
@@ -174,6 +180,7 @@ func New(cfg Config, d Deps) *Server {
 
 			r.With(read("user")).Get("/users", s.handleListUsers)
 			r.With(write("user", "write")...).Post("/users", s.handleInviteUser)
+			r.With(write("user", "write")...).Post("/users/bulk", s.bulk(s.d.Admin.BulkUsers))
 			r.With(read("user")).Get("/users/imports", s.handleListUserImports)
 			r.With(write("user", "write")...).Post("/users/imports", s.handleStartUserImport)
 			r.With(write("user", "write")...).Post("/users/imports/preview", s.handlePreviewUserImport)
@@ -193,13 +200,16 @@ func New(cfg Config, d Deps) *Server {
 
 			r.With(read("access")).Get("/roles", s.handleListRoles)
 			r.With(write("access", "write")...).Post("/roles", s.handleCreateRole)
+			r.With(write("access", "write")...).Post("/roles/bulk", s.bulk(s.d.Admin.BulkRoles))
 			r.With(write("access", "write")...).Patch("/roles/{id}", s.handleUpdateRole)
 			r.With(write("access", "write")...).Delete("/roles/{id}", s.handleDeleteRole)
 			r.With(read("access")).Get("/groups", s.handleListGroups)
 			r.With(write("access", "write")...).Post("/groups", s.handleCreateGroup)
+			r.With(write("access", "write")...).Post("/groups/bulk", s.bulk(s.d.Admin.BulkGroups))
 			r.With(write("access", "write")...).Patch("/groups/{id}", s.handleUpdateGroup)
 			r.With(write("access", "write")...).Delete("/groups/{id}", s.handleDeleteGroup)
 			r.With(read("access")).Get("/groups/{id}/members", s.handleGroupMembers)
+			r.With(write("user", "write")...).Post("/groups/{id}/members/bulk", s.handleAddGroupMembers)
 			r.With(read("access")).Get("/permissions", s.handleListPermissions)
 			r.With(write("access", "write")...).Post("/permissions", s.handleCreatePermission)
 			r.With(write("access", "write")...).Delete("/permissions/{id}", s.handleDeletePermission)
@@ -213,6 +223,7 @@ func New(cfg Config, d Deps) *Server {
 			r.With(write("mfa_policy", "write")...).Put("/mfa-policies/realm", s.handleSetRealmMFA)
 			r.With(write("mfa_policy", "write")...).Put("/mfa-policies/roles/{id}", s.handleSetRoleMFA)
 			r.With(write("mfa_policy", "write")...).Delete("/mfa-policies/roles/{id}", s.handleDeleteRoleMFA)
+			r.With(write("mfa_policy", "write")...).Post("/mfa-policies/roles/bulk", s.bulk(s.d.Admin.BulkRoleMFA))
 
 			r.With(read("settings")).Get("/settings", s.handleGetSettings)
 			r.With(write("settings", "write")...).Patch("/settings", s.handleUpdateSettings)
@@ -220,6 +231,7 @@ func New(cfg Config, d Deps) *Server {
 
 			r.With(read("timeout")).Get("/timeouts", s.handleTimeouts)
 			r.With(write("timeout", "write")...).Post("/timeouts", s.handleCreateTimeout)
+			r.With(write("timeout", "write")...).Post("/timeouts/bulk", s.bulk(s.d.Admin.BulkTimeouts))
 			r.With(read("timeout")).Get("/timeouts/{id}", s.handleGetTimeout)
 			r.With(write("timeout", "write")...).Patch("/timeouts/{id}", s.handleUpdateTimeout)
 			r.With(write("timeout", "write")...).Post("/timeouts/{id}/lift", s.handleLiftTimeout)

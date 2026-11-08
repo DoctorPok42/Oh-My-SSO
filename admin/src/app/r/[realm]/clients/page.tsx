@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { BulkCell, BulkHead } from "@/components/console/bulk";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
 import { Pagination } from "@/components/console/pagination";
@@ -9,12 +10,14 @@ import { SegmentedLinks } from "@/components/ui/segmented";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { getI18n } from "@/i18n/server";
 import { apiPath, getMe, load, loadCached } from "@/lib/api";
+import { BULK_ROW } from "@/lib/bulk";
 import { formatDate } from "@/lib/format";
 import { MFA_METHODS } from "@/lib/labels";
 import type { ApiResult } from "@/lib/api-error";
 import { COLUMNS, PAGES } from "@/lib/pages";
 import { can, canWrite, type Resource } from "@/lib/permissions";
 import type { Access, Client, ClientScope, ClientSummary, List, Me } from "@/lib/types";
+import { ClientsBulk } from "./bulk";
 import { ClientDrawer, ClientRowActions, NewClientButton } from "./client-drawer";
 
 export async function generateMetadata() {
@@ -85,24 +88,34 @@ async function ClientsTable({
   if (!list.ok) return <ErrorState error={list} />;
   const items = list.data.items;
   const { t, locale } = await getI18n();
-  return (
+  const table = (
     <TableContainer>
       <Table>
         <TableHeader>
           <TableRow>
+            <BulkHead />
             <ColumnHeads columns={COLUMNS.clients} />
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 && (
-            <TableEmpty colSpan={6}>
+            <TableEmpty colSpan={7}>
               {protocol
                 ? t("clients.empty_protocol", "No client with this protocol.")
                 : t("clients.empty", "No client yet: create one to connect an application.")}
             </TableEmpty>
           )}
           {items.map((c) => (
-            <TableRow key={c.id}>
+            <TableRow key={c.id} className={BULK_ROW}>
+              <BulkCell
+                id={c.id}
+                label={c.name}
+                blocked={
+                  c.managed_by === "config"
+                    ? t("clients.managed_bulk", "Managed by the configuration: not part of bulk actions")
+                    : undefined
+                }
+              />
               <TableCell>
                 <div className="flex items-center gap-2 font-medium">
                   {c.name}
@@ -137,6 +150,17 @@ async function ClientsTable({
         total={list.data.total}
       />
     </TableContainer>
+  );
+  return (
+    <ClientsBulk
+      realm={realm}
+      protocol={protocol}
+      page={items.filter((c) => c.managed_by !== "config").map((c) => c.id)}
+      total={list.data.total}
+      writable={writable}
+    >
+      {table}
+    </ClientsBulk>
   );
 }
 

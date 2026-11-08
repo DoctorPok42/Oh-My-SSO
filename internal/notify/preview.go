@@ -31,7 +31,7 @@ func PreviewDataIn(loc *i18n.Localizer, tmpl Template, product string, now time.
 	}
 	resetURL := base + "/auth/reset-password#token=Xk3pQ9vRt2LmN8wYz4AbCdEfGh7JkLmNoPqRsTuVwXy"
 	switch tmpl {
-	case TemplatePasswordReset:
+	case TemplatePasswordReset, TemplatePasswordResetRequired:
 		d.ResetURL, d.ExpiresIn = resetURL, humanDuration(loc, 30*time.Minute)
 	case TemplateAccountInvite:
 		d.ResetURL, d.ExpiresIn = resetURL, humanDuration(loc, 72*time.Hour)

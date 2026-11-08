@@ -192,6 +192,11 @@ func MailLogoURL(v string) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldMailLogoURL, v))
 }
 
+// BulkLimit applies equality check predicate on the "bulk_limit" field. It's identical to BulkLimitEQ.
+func BulkLimit(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldBulkLimit, v))
+}
+
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldUpdatedAt, v))
@@ -1254,6 +1259,46 @@ func MailLogoURLEqualFold(v string) predicate.InstanceSettings {
 // MailLogoURLContainsFold applies the ContainsFold predicate on the "mail_logo_url" field.
 func MailLogoURLContainsFold(v string) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldContainsFold(FieldMailLogoURL, v))
+}
+
+// BulkLimitEQ applies the EQ predicate on the "bulk_limit" field.
+func BulkLimitEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldBulkLimit, v))
+}
+
+// BulkLimitNEQ applies the NEQ predicate on the "bulk_limit" field.
+func BulkLimitNEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldBulkLimit, v))
+}
+
+// BulkLimitIn applies the In predicate on the "bulk_limit" field.
+func BulkLimitIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldBulkLimit, vs...))
+}
+
+// BulkLimitNotIn applies the NotIn predicate on the "bulk_limit" field.
+func BulkLimitNotIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldBulkLimit, vs...))
+}
+
+// BulkLimitGT applies the GT predicate on the "bulk_limit" field.
+func BulkLimitGT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldBulkLimit, v))
+}
+
+// BulkLimitGTE applies the GTE predicate on the "bulk_limit" field.
+func BulkLimitGTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldBulkLimit, v))
+}
+
+// BulkLimitLT applies the LT predicate on the "bulk_limit" field.
+func BulkLimitLT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldBulkLimit, v))
+}
+
+// BulkLimitLTE applies the LTE predicate on the "bulk_limit" field.
+func BulkLimitLTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldBulkLimit, v))
 }
 
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.

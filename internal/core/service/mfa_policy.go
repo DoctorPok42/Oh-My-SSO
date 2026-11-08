@@ -581,6 +581,9 @@ func (s *MFAPolicyService) logPolicyChange(ctx context.Context, realmID, resourc
 		return
 	}
 	details["triggered_by"] = actor.TriggeredBy
+	if op := bulkOperation(ctx); op != "" {
+		details["operation_id"] = op // a bulk action of the console
+	}
 	actorType, actorID := domain.AuditActorFromTrigger(actor.TriggeredBy, "")
 	_, _ = s.audit.Create(ctx, repository.CreateAuditLogParams{
 		RealmID:      realmID,

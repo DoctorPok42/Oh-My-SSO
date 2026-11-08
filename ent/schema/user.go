@@ -33,6 +33,9 @@ func (User) Fields() []ent.Field {
 		field.String("realm_id").NotEmpty().Immutable(),
 		field.String("username").NotEmpty(),
 		field.String("password_hash").Optional(),
+		// must_change_password: an administrator forced a password reset.
+		// Signing in with the password is refused until it changes.
+		field.Bool("must_change_password").Default(false),
 		field.String("email").NotEmpty(),
 		field.Time("created_at").Default(func() time.Time { return time.Now() }).Immutable(),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),

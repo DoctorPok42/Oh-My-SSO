@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
+import { BulkLimitProvider } from "@/components/console/bulk";
 import { DrawerNavProvider } from "@/components/console/drawer";
 import { Header } from "@/components/console/header";
 import { NavTabs } from "@/components/console/nav-tabs";
@@ -7,7 +8,7 @@ import { NavigationProgress, PendingContent } from "@/components/console/navigat
 import { StepUpProvider } from "@/components/console/step-up";
 import { ErrorState } from "@/components/console/error-state";
 import { getI18n } from "@/i18n/server";
-import { getMe, loadCached } from "@/lib/api";
+import { getBulkLimit, getMe, loadCached } from "@/lib/api";
 import { pageHref, readableNav } from "@/lib/nav";
 import { can, stepUpFresh } from "@/lib/permissions";
 import { parseTheme, THEME_COOKIE } from "@/lib/theme";
@@ -41,6 +42,8 @@ export default async function ConsoleLayout({
   const realmList = realms?.ok ? realms.data.items : [];
   if (realms?.ok && !realmList.some((r) => r.name === realm)) notFound();
 
+  // The size of the selections of every table (Settings > General).
+  const bulkLimit = await getBulkLimit(realm);
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   const { tm } = await getI18n();
   const sections = readableNav(me.data).map((s) => ({
@@ -59,13 +62,21 @@ export default async function ConsoleLayout({
     <StepUpProvider freshUntil={me.data.step_up_fresh_until} initialFresh={stepUpFresh(me.data)}>
       {/* The top bar (NextTopLoader, root layout) also shows for searches, drawers and reloads. */}
       <NavigationProgress />
-      <DrawerNavProvider>
-        <Header me={me.data} realms={realmList} realm={realm} theme={theme} canReadAudit={can(me.data, "audit_log")} />
-        <NavTabs sections={sections} realm={realm} realmSystem={realmList.find((r) => r.name === realm)?.system} />
-        <main className="mx-auto max-w-[1360px] px-4 py-8 sm:px-6">
-          <PendingContent>{realms && !realms.ok ? <ErrorState error={realms} /> : children}</PendingContent>
-        </main>
-      </DrawerNavProvider>
+      <BulkLimitProvider limit={bulkLimit}>
+        <DrawerNavProvider>
+          <Header
+            me={me.data}
+            realms={realmList}
+            realm={realm}
+            theme={theme}
+            canReadAudit={can(me.data, "audit_log")}
+          />
+          <NavTabs sections={sections} realm={realm} realmSystem={realmList.find((r) => r.name === realm)?.system} />
+          <main className="mx-auto max-w-[1360px] px-4 py-8 sm:px-6">
+            <PendingContent>{realms && !realms.ok ? <ErrorState error={realms} /> : children}</PendingContent>
+          </main>
+        </DrawerNavProvider>
+      </BulkLimitProvider>
     </StepUpProvider>
   );
 }

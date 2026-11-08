@@ -107,6 +107,7 @@ func (a *Adapter) renderConsent(w http.ResponseWriter, r *http.Request, p *pendi
 	a.pages.RenderConsent(w, r, loginui.Consent{
 		RealmDisplay:   firstNonEmpty(realm.DisplayName, realm.Name),
 		ClientName:     firstNonEmpty(app.Name, app.EntityID),
+		Client:         p.EntityID,
 		ClientHost:     hostOf(p.ACSURL),
 		Username:       userLabel(as),
 		Items:          lines,

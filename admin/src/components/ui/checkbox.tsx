@@ -1,7 +1,7 @@
 "use client";
 
 import { Checkbox as CheckboxPrimitive } from "radix-ui";
-import { Check } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import type * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -10,13 +10,17 @@ function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxP
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        "peer size-4 shrink-0 rounded-[4px] border border-input-border bg-input-bg transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-accent-soft disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-accent data-[state=checked]:bg-accent data-[state=checked]:text-on-accent",
+        "peer size-4 shrink-0 rounded-[4px] border border-input-border bg-input-bg transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-accent-soft disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-accent data-[state=checked]:bg-accent data-[state=checked]:text-on-accent data-[state=indeterminate]:border-accent data-[state=indeterminate]:bg-accent data-[state=indeterminate]:text-on-accent",
         className,
       )}
       {...props}
     >
       <CheckboxPrimitive.Indicator className="flex items-center justify-center">
-        <Check className="size-3" strokeWidth={3} />
+        {props.checked === "indeterminate" ? (
+          <Minus className="size-3" strokeWidth={3} />
+        ) : (
+          <Check className="size-3" strokeWidth={3} />
+        )}
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   );
