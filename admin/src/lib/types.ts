@@ -18,6 +18,8 @@ export type Me = {
   user: { id: string; username: string; email: string; name: string };
   permissions: string[];
   step_up_fresh_until: string | null;
+  /** The session of this console: bulk revocations leave it out. */
+  session_id: string;
 };
 
 /** GET /me/language: the console's language, asked on every page. */
@@ -221,6 +223,10 @@ export type UserSummary = {
   has_password: boolean;
   mfa_enrolled: boolean;
   locked: boolean;
+  /** A forced password reset is waiting. */
+  must_change_password: boolean;
+  failed_logins: number;
+  locked_until: string | null;
   last_login_at: string | null;
   created_at: string;
   groups: NameRef[];
@@ -382,6 +388,8 @@ export type Settings = {
   mfa_required_globally: boolean;
   mfa_step_up_max_age_minutes: number;
   key_rotation_grace_hours: number;
+  /** The most items one bulk action may touch (1 to 500). */
+  bulk_limit: number;
   notification_email_enabled: boolean;
   suspicious_login_email_enabled: boolean;
   updated_at: string;

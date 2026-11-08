@@ -17,6 +17,7 @@
   <h1 class="auth-title">{{text .Title}}</h1>
   <div class="auth-body">
   <p>{{text .Text}}</p>
+  {{with .Back}}<a class="btn btn-md btn-block" href="{{.URL}}">{{t "message.back_to" "Back to {app}" "app" .Name}}</a>{{end}}
   </div>
 </div>
 {{template "auth-footer"}}

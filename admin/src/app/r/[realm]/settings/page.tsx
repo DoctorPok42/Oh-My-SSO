@@ -10,6 +10,8 @@ import { can, canWrite } from "@/lib/permissions";
 import { settingsSection, type SettingsSection } from "@/lib/settings-form";
 import type { HealthLine, List, RealmDetail, Settings } from "@/lib/types";
 import { PAGES } from "@/lib/pages";
+import { offsetParam } from "@/lib/pagination";
+import { LockedAccounts } from "./locked-accounts";
 import { SettingsForm } from "./settings-form";
 import { getI18n } from "@/i18n/server";
 
@@ -20,7 +22,7 @@ const SECTIONS = {
   email: PAGES.settingsEmail,
 } satisfies Record<SettingsSection, unknown>;
 
-type Search = { tab?: string };
+type Search = { tab?: string; offset?: string };
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<Search> }) {
   const { tm } = await getI18n();
@@ -38,7 +40,8 @@ export default async function SettingsPage({
   searchParams: Promise<Search>;
 }) {
   const { realm } = await params;
-  const section = settingsSection((await searchParams).tab);
+  const sp = await searchParams;
+  const section = settingsSection(sp.tab);
   const me = await getMe();
   const showRealm = section === "general" && me.ok && can(me.data, "realm");
   const [settings, realmInfo] = await Promise.all([
@@ -88,6 +91,9 @@ export default async function SettingsPage({
           showRealm && <Infrastructure />
         }
       />
+      {section === "security" && me.ok && can(me.data, "user") && (
+        <LockedAccounts realm={realm} writable={canWrite(me.data, "user")} offset={offsetParam(sp.offset)} />
+      )}
     </>
   );
 }

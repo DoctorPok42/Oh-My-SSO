@@ -72,6 +72,8 @@ type InstanceSettings struct {
 	MailReplyTo string `json:"mail_reply_to,omitempty"`
 	// MailLogoURL holds the value of the "mail_logo_url" field.
 	MailLogoURL string `json:"mail_logo_url,omitempty"`
+	// BulkLimit holds the value of the "bulk_limit" field.
+	BulkLimit int `json:"bulk_limit,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// UpdatedBy holds the value of the "updated_by" field.
@@ -111,7 +113,7 @@ func (*InstanceSettings) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case instancesettings.FieldRememberMeEnabled, instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled, instancesettings.FieldMfaTrustedDeviceEnabled, instancesettings.FieldSuspiciousLoginEmailEnabled:
 			values[i] = new(sql.NullBool)
-		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldMfaTrustedDeviceDays, instancesettings.FieldPasswordResetTTLMinutes, instancesettings.FieldInviteTTLHours:
+		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldMfaTrustedDeviceDays, instancesettings.FieldPasswordResetTTLMinutes, instancesettings.FieldInviteTTLHours, instancesettings.FieldBulkLimit:
 			values[i] = new(sql.NullInt64)
 		case instancesettings.FieldID, instancesettings.FieldRealmID, instancesettings.FieldManagedBy, instancesettings.FieldDefaultLocale, instancesettings.FieldMailFromName, instancesettings.FieldMailFromAddress, instancesettings.FieldMailReplyTo, instancesettings.FieldMailLogoURL, instancesettings.FieldUpdatedBy:
 			values[i] = new(sql.NullString)
@@ -296,6 +298,12 @@ func (_m *InstanceSettings) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.MailLogoURL = value.String
 			}
+		case instancesettings.FieldBulkLimit:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field bulk_limit", values[i])
+			} else if value.Valid {
+				_m.BulkLimit = int(value.Int64)
+			}
 		case instancesettings.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
@@ -426,6 +434,9 @@ func (_m *InstanceSettings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("mail_logo_url=")
 	builder.WriteString(_m.MailLogoURL)
+	builder.WriteString(", ")
+	builder.WriteString("bulk_limit=")
+	builder.WriteString(fmt.Sprintf("%v", _m.BulkLimit))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))

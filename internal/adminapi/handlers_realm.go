@@ -29,6 +29,8 @@ type meResponse struct {
 	Permissions []string `json:"permissions"`
 	// StepUpFreshUntil: until when changes need no new second factor.
 	StepUpFreshUntil *time.Time `json:"step_up_fresh_until"`
+	// SessionID: bulk revocations leave this session out, the console greys it.
+	SessionID string `json:"session_id"`
 }
 
 // meLanguageResponse: the console's language, asked on every page (cheap: no
@@ -83,6 +85,7 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	out.Permissions = perms
+	out.SessionID = a.session.ID
 	// One step-up check, which also tells the window (the user, the realm's
 	// settings and the factors are read once).
 	window, err := s.d.MFA.CheckStepUpFor(r.Context(), a.session, a.user, service.StepUpSensitiveAction)
@@ -553,6 +556,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		MailFromAddress             *string   `json:"mail_from_address"`
 		MailReplyTo                 *string   `json:"mail_reply_to"`
 		MailLogoURL                 *string   `json:"mail_logo_url"`
+		BulkLimit                   *int      `json:"bulk_limit"`
 	}
 	if !decode(w, r, &in) {
 		return

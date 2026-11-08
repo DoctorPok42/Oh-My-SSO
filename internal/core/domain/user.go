@@ -23,4 +23,7 @@ type User struct {
 	LastLoginAt  *time.Time
 	Profile      map[string]interface{}
 	Lockout      LockoutState
+	// MustChangePassword: an administrator forced a password reset. Signing
+	// in with the password is refused until the password changes.
+	MustChangePassword bool
 }

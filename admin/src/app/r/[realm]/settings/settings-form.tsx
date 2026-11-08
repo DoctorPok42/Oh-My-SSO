@@ -12,6 +12,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { TogglePill } from "@/components/ui/toggle-pill";
 import { useT } from "@/i18n/client";
+import { BULK_LIMIT, MAX_BULK_LIMIT } from "@/lib/bulk";
 import { formatDateTime } from "@/lib/format";
 import {
   fieldSection,
@@ -148,6 +149,25 @@ export function SettingsForm({
                     ))}
                   </NativeSelect>
                 </Field>
+              </div>
+            </Card>
+            <Card>
+              <CardTitle>{t("settings.bulk.title", "Bulk actions")}</CardTitle>
+              <CardDescription>
+                {t(
+                  "settings.bulk.description",
+                  "The tables of this realm let you act on a selection. A larger selection is done in several passes, each one confirmed, so a mistake stays small.",
+                )}
+              </CardDescription>
+              <div className="mt-4 space-y-4">
+                {num(
+                  "bulk_limit",
+                  t("settings.bulk.limit", "Items per bulk action"),
+                  t("settings.bulk.limit_hint", "From 1 to {max}. Default: {default}.", {
+                    max: MAX_BULK_LIMIT,
+                    default: BULK_LIMIT,
+                  }),
+                )}
               </div>
             </Card>
             {infrastructure && <div className="lg:col-span-2">{infrastructure}</div>}

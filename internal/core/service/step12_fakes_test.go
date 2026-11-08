@@ -99,6 +99,9 @@ func (m *memUsers) Update(_ context.Context, id string, p repository.UpdateUserP
 	if p.Status != nil {
 		u.Status = *p.Status
 	}
+	if p.MustChangePassword != nil {
+		u.MustChangePassword = *p.MustChangePassword
+	}
 	cp := *u
 	return &cp, nil
 }

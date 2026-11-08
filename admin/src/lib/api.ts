@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth";
 import { cached, clearCache, invalidate } from "@/lib/cache";
 import { env } from "@/lib/env";
 import { ApiError, type ApiResult } from "@/lib/api-error";
+import { bulkLimitOf } from "@/lib/bulk";
 import { ENGLISH, translator } from "@/i18n";
 import { getI18n } from "@/i18n/server";
 import type { ApiErrorBody, Me } from "@/lib/types";
@@ -210,3 +211,13 @@ export async function act<T>(fn: () => Promise<T>): Promise<ApiResult<T>> {
  * ask (React cache), and at most every 30 seconds per session (loadCached).
  */
 export const getMe = cache(() => loadCached<Me>("/me"));
+
+/**
+ * The most items one bulk action of `realm` may touch (its Settings). Any
+ * admin may read it; the default when the API does not answer (it still
+ * refuses a selection that is too large).
+ */
+export const getBulkLimit = cache(async (realm: string): Promise<number> => {
+  const r = await loadCached<{ limit: number }>(apiPath(["realms", realm, "bulk-limit"]));
+  return bulkLimitOf(r.ok ? r.data.limit : undefined);
+});

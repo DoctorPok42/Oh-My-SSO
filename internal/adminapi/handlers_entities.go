@@ -271,7 +271,8 @@ func (s *Server) handleDeleteScope(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	p := page(r)
 	q := r.URL.Query()
-	v, total, err := s.d.Admin.ListSessions(r.Context(), realmFrom(r), service.SessionFilter{UserID: q.Get("user"), ClientRef: q.Get("client"), Page: p})
+	v, total, err := s.d.Admin.ListSessions(r.Context(), realmFrom(r), service.SessionFilter{UserID: q.Get("user"), ClientRef: q.Get("client"),
+		IPAddress: strings.TrimSpace(q.Get("ip")), Page: p})
 	if err != nil {
 		writeServiceError(w, r, err)
 		return
@@ -301,9 +302,13 @@ func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 		writeErrorT(w, r, http.StatusBadRequest, "invalid_request", i18n.M("admin.error.user_status", "status must be active, inactive or suspended"))
 		return
 	}
-	v, total, err := s.d.Admin.ListUsers(r.Context(), realmFrom(r), repository.UserSearch{
+	f := repository.UserSearch{
 		Query: strings.TrimSpace(q.Get("q")), Status: status, GroupID: q.Get("group"), RoleID: q.Get("role"), Page: p,
-	})
+	}
+	if q.Get("locked") == "true" {
+		f.LockedAt = s.now()
+	}
+	v, total, err := s.d.Admin.ListUsers(r.Context(), realmFrom(r), f)
 	if err != nil {
 		writeServiceError(w, r, err)
 		return

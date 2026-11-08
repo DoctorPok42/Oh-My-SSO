@@ -20,9 +20,9 @@ import (
 
 // userImportEnv: an instance with an administrator and a realm "demo" that
 // has a group "staff" and a role "support".
-func userImportEnv(t *testing.T) (e *adminTestEnv, at string) {
+func userImportEnv(t *testing.T, options ...func(*service.AdminDeps)) (e *adminTestEnv, at string) {
 	t.Helper()
-	e = setupAdminTestEnv(t, func(d *service.AdminDeps) { d.EmailEnabled = true })
+	e = setupAdminTestEnv(t, append([]func(*service.AdminDeps){func(d *service.AdminDeps) { d.EmailEnabled = true }}, options...)...)
 	ctx := context.Background()
 	res, err := e.admin.Bootstrap(ctx, service.BootstrapInput{AdminEmail: "root@example.test",
 		AdminConsoleURL: adminConsoleURL, Actor: "cli:test@host"})

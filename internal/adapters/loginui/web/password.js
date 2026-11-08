@@ -14,6 +14,7 @@
     password_too_short: t("password.js.error.password_too_short", "This password is too short."),
     password_too_long: t("password.js.error.password_too_long", "This password is too long."),
     password_matches_identity: t("password.js.error.password_matches_identity", "Your password must not be your username or e-mail."),
+    password_unchanged: t("password.js.error.password_unchanged", "Choose a password different from the current one."),
     passwords_differ: t("password.js.error.passwords_differ", "The two passwords are not the same."),
   };
 

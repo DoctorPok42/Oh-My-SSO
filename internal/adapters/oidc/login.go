@@ -464,7 +464,36 @@ func (a *Adapter) handleLoggedOut(w http.ResponseWriter, r *http.Request) {
 
 func (a *Adapter) renderMessage(w http.ResponseWriter, r *http.Request, status int, m message) {
 	realm, _ := realmFrom(r.Context())
+	m.Back = a.backLink(r)
 	a.pages.RenderMessage(w, r, status, m, "/r/"+realm.Name+"/oidc/assets")
+}
+
+// backLink: the way back to the application of the page, when it can be
+// told: its auth request ("id"), or the client named by the login URL or the
+// consent form ("client") once the request expired. Nothing for a client
+// that is unknown, disabled or has no address a browser can open.
+func (a *Adapter) backLink(r *http.Request) *loginui.BackLink {
+	ctx := r.Context()
+	realm, ok := realmFrom(ctx)
+	if !ok {
+		return nil
+	}
+	get := r.URL.Query().Get
+	if r.Form != nil { // a form already read (consent): query and body
+		get = r.Form.Get
+	}
+	clientID, used := get("client"), ""
+	if ar, err := a.loadAuthRequest(ctx, get("id")); err == nil && ar.RealmID == realm.ID {
+		clientID, used = ar.ClientID, ar.RedirectURI
+	}
+	if clientID == "" {
+		return nil
+	}
+	pc, err := a.core.LookupClient(ctx, realm.ID, protocolOIDC, clientID)
+	if err != nil {
+		return nil
+	}
+	return loginui.NewBackLink(firstNonEmpty(pc.App.Name, pc.App.ClientID), append([]string{used}, pc.App.RedirectURIs...)...)
 }
 
 func handleAsset(w http.ResponseWriter, r *http.Request) {

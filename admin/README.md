@@ -114,6 +114,38 @@ bob@example.com,,Bob Martin,,staff,
 - Reports are kept 30 days. `ADMIN_PANEL_URL` on `idp-admin` gives the e-mail
   its link to the report.
 
+## Bulk actions
+
+Tick rows, then use the bar above the table: Users, Roles, Groups, Sessions,
+Settings > Security > Locked accounts, Clients, Client scopes, Timeouts and
+Audit Log (export only: the log never changes). A new table needs a
+`BulkProvider` around it (`components/console/bulk.tsx`) and a `POST .../bulk`
+in the Admin API. Signing keys, policies and permissions have none on purpose:
+they are decided one at a time, or are not lists.
+
+- **100 items at most per operation.** "Select the results" takes the first
+  100 of the filter; "Continue with the next results" does the rest, each pass
+  confirmed. Revoking every session of an IP or a client works this way:
+  filter, select the results, revoke.
+- **Items run one after the other.** An item that cannot change is skipped, the
+  others go on: the answer is always 200 and lists what became of each item.
+- **Your own account (master realm) and your own session are left out**, by the
+  API as well as by the greyed-out checkbox.
+- **One audit entry per changed item**, all under one `operation_id`:
+  `/audit?operation=<id>` shows them, and the summary links there.
+- **The selection is kept in `sessionStorage`**, per table and filters: it
+  survives the pagination and the round trip to the IdP of a step-up.
+- **What the configuration manages is left out.** A role can still be
+  duplicated (the copy is an ordinary role, without members); a role still
+  assigned to someone is skipped when deleting, unlike the one-by-one delete
+  where the admin sees the member count.
+
+**Force password reset** signs the users out and sends a link by e-mail;
+signing in with the password is refused until they choose a new one, which
+cannot be the old one. It goes through the e-mail on purpose: whoever holds a
+stolen password must not be able to replace it. Passkeys keep working (they are
+not what leaked). The action needs e-mail to be configured.
+
 ## Security notes
 
 - Session cookie: JWE (`dir` + `A256GCM`), key derived from `SESSION_SECRET` with HKDF, `HttpOnly`,

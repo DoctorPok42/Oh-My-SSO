@@ -35,6 +35,7 @@ const (
 	UserPasswordChanged        = "user.password_changed"
 	UserPasswordResetRequested = "user.password_reset_requested"
 	UserPasswordReset          = "user.password_reset"
+	UserPasswordResetForced    = "user.password_reset_forced" // by an administrator
 
 	// Second factors.
 	MFAMethodEnrolled         = "mfa.method_enrolled"
@@ -148,6 +149,7 @@ var Catalog = []ActionInfo{
 	{UserPasswordChanged, "Users", "Password changed"},
 	{UserPasswordResetRequested, "Users", "Password reset requested"},
 	{UserPasswordReset, "Users", "Password reset"},
+	{UserPasswordResetForced, "Users", "Password reset forced by an administrator"},
 
 	{MFAMethodEnrolled, "Second factors", "Factor enrolled"},
 	{MFAMethodRemoved, "Second factors", "Factor removed"},

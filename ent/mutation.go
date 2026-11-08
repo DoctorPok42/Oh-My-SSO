@@ -13395,6 +13395,8 @@ type InstanceSettingsMutation struct {
 	mail_from_address              *string
 	mail_reply_to                  *string
 	mail_logo_url                  *string
+	bulk_limit                     *int
+	addbulk_limit                  *int
 	updated_at                     *time.Time
 	updated_by                     *string
 	clearedFields                  map[string]struct{}
@@ -14734,6 +14736,62 @@ func (m *InstanceSettingsMutation) ResetMailLogoURL() {
 	m.mail_logo_url = nil
 }
 
+// SetBulkLimit sets the "bulk_limit" field.
+func (m *InstanceSettingsMutation) SetBulkLimit(i int) {
+	m.bulk_limit = &i
+	m.addbulk_limit = nil
+}
+
+// BulkLimit returns the value of the "bulk_limit" field in the mutation.
+func (m *InstanceSettingsMutation) BulkLimit() (r int, exists bool) {
+	v := m.bulk_limit
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBulkLimit returns the old "bulk_limit" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldBulkLimit(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBulkLimit is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBulkLimit requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBulkLimit: %w", err)
+	}
+	return oldValue.BulkLimit, nil
+}
+
+// AddBulkLimit adds i to the "bulk_limit" field.
+func (m *InstanceSettingsMutation) AddBulkLimit(i int) {
+	if m.addbulk_limit != nil {
+		*m.addbulk_limit += i
+	} else {
+		m.addbulk_limit = &i
+	}
+}
+
+// AddedBulkLimit returns the value that was added to the "bulk_limit" field in this mutation.
+func (m *InstanceSettingsMutation) AddedBulkLimit() (r int, exists bool) {
+	v := m.addbulk_limit
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetBulkLimit resets all changes to the "bulk_limit" field.
+func (m *InstanceSettingsMutation) ResetBulkLimit() {
+	m.bulk_limit = nil
+	m.addbulk_limit = nil
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (m *InstanceSettingsMutation) SetUpdatedAt(t time.Time) {
 	m.updated_at = &t
@@ -14880,7 +14938,7 @@ func (m *InstanceSettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstanceSettingsMutation) Fields() []string {
-	fields := make([]string, 0, 28)
+	fields := make([]string, 0, 29)
 	if m.realm != nil {
 		fields = append(fields, instancesettings.FieldRealmID)
 	}
@@ -14959,6 +15017,9 @@ func (m *InstanceSettingsMutation) Fields() []string {
 	if m.mail_logo_url != nil {
 		fields = append(fields, instancesettings.FieldMailLogoURL)
 	}
+	if m.bulk_limit != nil {
+		fields = append(fields, instancesettings.FieldBulkLimit)
+	}
 	if m.updated_at != nil {
 		fields = append(fields, instancesettings.FieldUpdatedAt)
 	}
@@ -15025,6 +15086,8 @@ func (m *InstanceSettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.MailReplyTo()
 	case instancesettings.FieldMailLogoURL:
 		return m.MailLogoURL()
+	case instancesettings.FieldBulkLimit:
+		return m.BulkLimit()
 	case instancesettings.FieldUpdatedAt:
 		return m.UpdatedAt()
 	case instancesettings.FieldUpdatedBy:
@@ -15090,6 +15153,8 @@ func (m *InstanceSettingsMutation) OldField(ctx context.Context, name string) (e
 		return m.OldMailReplyTo(ctx)
 	case instancesettings.FieldMailLogoURL:
 		return m.OldMailLogoURL(ctx)
+	case instancesettings.FieldBulkLimit:
+		return m.OldBulkLimit(ctx)
 	case instancesettings.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
 	case instancesettings.FieldUpdatedBy:
@@ -15285,6 +15350,13 @@ func (m *InstanceSettingsMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetMailLogoURL(v)
 		return nil
+	case instancesettings.FieldBulkLimit:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBulkLimit(v)
+		return nil
 	case instancesettings.FieldUpdatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -15346,6 +15418,9 @@ func (m *InstanceSettingsMutation) AddedFields() []string {
 	if m.addinvite_ttl_hours != nil {
 		fields = append(fields, instancesettings.FieldInviteTTLHours)
 	}
+	if m.addbulk_limit != nil {
+		fields = append(fields, instancesettings.FieldBulkLimit)
+	}
 	return fields
 }
 
@@ -15380,6 +15455,8 @@ func (m *InstanceSettingsMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedPasswordResetTTLMinutes()
 	case instancesettings.FieldInviteTTLHours:
 		return m.AddedInviteTTLHours()
+	case instancesettings.FieldBulkLimit:
+		return m.AddedBulkLimit()
 	}
 	return nil, false
 }
@@ -15479,6 +15556,13 @@ func (m *InstanceSettingsMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddInviteTTLHours(v)
+		return nil
+	case instancesettings.FieldBulkLimit:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddBulkLimit(v)
 		return nil
 	}
 	return fmt.Errorf("unknown InstanceSettings numeric field %s", name)
@@ -15599,6 +15683,9 @@ func (m *InstanceSettingsMutation) ResetField(name string) error {
 		return nil
 	case instancesettings.FieldMailLogoURL:
 		m.ResetMailLogoURL()
+		return nil
+	case instancesettings.FieldBulkLimit:
+		m.ResetBulkLimit()
 		return nil
 	case instancesettings.FieldUpdatedAt:
 		m.ResetUpdatedAt()
@@ -32430,6 +32517,7 @@ type UserMutation struct {
 	id                           *string
 	username                     *string
 	password_hash                *string
+	must_change_password         *bool
 	email                        *string
 	created_at                   *time.Time
 	updated_at                   *time.Time
@@ -32705,6 +32793,42 @@ func (m *UserMutation) PasswordHashCleared() bool {
 func (m *UserMutation) ResetPasswordHash() {
 	m.password_hash = nil
 	delete(m.clearedFields, user.FieldPasswordHash)
+}
+
+// SetMustChangePassword sets the "must_change_password" field.
+func (m *UserMutation) SetMustChangePassword(b bool) {
+	m.must_change_password = &b
+}
+
+// MustChangePassword returns the value of the "must_change_password" field in the mutation.
+func (m *UserMutation) MustChangePassword() (r bool, exists bool) {
+	v := m.must_change_password
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMustChangePassword returns the old "must_change_password" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldMustChangePassword(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMustChangePassword is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMustChangePassword requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMustChangePassword: %w", err)
+	}
+	return oldValue.MustChangePassword, nil
+}
+
+// ResetMustChangePassword resets all changes to the "must_change_password" field.
+func (m *UserMutation) ResetMustChangePassword() {
+	m.must_change_password = nil
 }
 
 // SetEmail sets the "email" field.
@@ -33858,7 +33982,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.realm != nil {
 		fields = append(fields, user.FieldRealmID)
 	}
@@ -33867,6 +33991,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.password_hash != nil {
 		fields = append(fields, user.FieldPasswordHash)
+	}
+	if m.must_change_password != nil {
+		fields = append(fields, user.FieldMustChangePassword)
 	}
 	if m.email != nil {
 		fields = append(fields, user.FieldEmail)
@@ -33918,6 +34045,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Username()
 	case user.FieldPasswordHash:
 		return m.PasswordHash()
+	case user.FieldMustChangePassword:
+		return m.MustChangePassword()
 	case user.FieldEmail:
 		return m.Email()
 	case user.FieldCreatedAt:
@@ -33957,6 +34086,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldUsername(ctx)
 	case user.FieldPasswordHash:
 		return m.OldPasswordHash(ctx)
+	case user.FieldMustChangePassword:
+		return m.OldMustChangePassword(ctx)
 	case user.FieldEmail:
 		return m.OldEmail(ctx)
 	case user.FieldCreatedAt:
@@ -34010,6 +34141,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPasswordHash(v)
+		return nil
+	case user.FieldMustChangePassword:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMustChangePassword(v)
 		return nil
 	case user.FieldEmail:
 		v, ok := value.(string)
@@ -34224,6 +34362,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldPasswordHash:
 		m.ResetPasswordHash()
+		return nil
+	case user.FieldMustChangePassword:
+		m.ResetMustChangePassword()
 		return nil
 	case user.FieldEmail:
 		m.ResetEmail()

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -54,7 +55,8 @@ func (s *storage) GetClientByClientID(ctx context.Context, clientID string) (op.
 		return nil, err
 	}
 	realm, _ := realmFrom(ctx)
-	return &client{pc: pc, loginURL: s.a.issuer(realm.Name) + "/oidc/login?id="}, nil
+	// client=: the message page of an expired request still knows the application.
+	return &client{pc: pc, loginURL: s.a.issuer(realm.Name) + "/oidc/login?client=" + url.QueryEscape(clientID) + "&id="}, nil
 }
 
 func (s *storage) AuthorizeClientIDSecret(ctx context.Context, clientID, clientSecret string) error {

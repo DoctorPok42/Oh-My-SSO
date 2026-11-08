@@ -124,7 +124,8 @@ func (a *Adapter) handleSSO(w http.ResponseWriter, r *http.Request) {
 		a.renderMessage(w, r, http.StatusInternalServerError, msgBadRequest)
 		return
 	}
-	http.Redirect(w, r, a.realmBase(realm)+"/login?id="+url.QueryEscape(p.ID), http.StatusFound)
+	// client=: the message page of an expired request still knows the application.
+	http.Redirect(w, r, a.realmBase(realm)+"/login?client="+url.QueryEscape(p.EntityID)+"&id="+url.QueryEscape(p.ID), http.StatusFound)
 }
 
 // checkAuthnRequest applies SAML Core §3.4 and Profiles §4.1.4.1 to what

@@ -41,6 +41,7 @@ describe("settings form", () => {
     mfa_required_globally: false,
     mfa_step_up_max_age_minutes: 10,
     key_rotation_grace_hours: 24,
+    bulk_limit: 100,
     notification_email_enabled: true,
     suspicious_login_email_enabled: false,
     updated_at: "",
@@ -68,6 +69,7 @@ describe("settings form", () => {
     lockout_threshold: "5",
     lockout_duration_minutes: "15",
     key_rotation_grace_hours: "24",
+    bulk_limit: "100",
   };
 
   it("sends nothing when nothing changed", () => {
@@ -97,6 +99,11 @@ describe("settings form", () => {
         remember: false,
       }),
     ).toEqual({ remember_me_enabled: false, remember_me_idle_days: 14 });
+  });
+
+  it("sends the bulk limit when it changed", () => {
+    const toggles = { notif: true, suspicious: false, remember: true };
+    expect(settingsDiff(before, { ...form, bulk_limit: "250" }, "10.0.0.0/8", toggles)).toEqual({ bulk_limit: 250 });
   });
 
   it("sends the default language when it changed", () => {

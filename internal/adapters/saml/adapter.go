@@ -209,7 +209,39 @@ var (
 
 func (a *Adapter) renderMessage(w http.ResponseWriter, r *http.Request, status int, m message) {
 	realm, _ := realmFrom(r.Context())
+	m.Back = a.backLink(r)
 	a.pages.RenderMessage(w, r, status, m, assets(realm))
+}
+
+// backLink: the way back to the service provider of the page, when it can be
+// told: its pending request ("id"), or the entity ID named by the login URL
+// or the consent form ("client") once the request expired. Nothing for an
+// application that is unknown, disabled or has no address a browser can open.
+func (a *Adapter) backLink(r *http.Request) *loginui.BackLink {
+	ctx := r.Context()
+	realm, ok := realmFrom(ctx)
+	if !ok {
+		return nil
+	}
+	get := r.URL.Query().Get
+	if r.Form != nil { // a form already read (consent): query and body
+		get = r.Form.Get
+	}
+	entityID, used := get("client"), ""
+	if id := get("id"); id != "" {
+		var p pendingRequest
+		if err := a.getJSON(ctx, pendingKey(id), &p, false); err == nil && p.RealmID == realm.ID {
+			entityID, used = p.EntityID, p.ACSURL
+		}
+	}
+	if entityID == "" {
+		return nil
+	}
+	pc, err := a.core.LookupClient(ctx, realm.ID, domain.ClientAppProtocolSAML2, entityID)
+	if err != nil {
+		return nil
+	}
+	return loginui.NewBackLink(firstNonEmpty(pc.App.Name, pc.App.EntityID), used, pc.App.ACSURL)
 }
 
 func (a *Adapter) handleLoggedOut(w http.ResponseWriter, r *http.Request) {

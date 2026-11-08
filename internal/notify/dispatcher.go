@@ -326,7 +326,7 @@ func (d *Dispatcher) data(loc *i18n.Localizer, e domain.NotificationEvent, user 
 		out.Location = e.CountryCode
 	}
 	switch e.Kind {
-	case domain.NotificationPasswordReset:
+	case domain.NotificationPasswordReset, domain.NotificationPasswordResetRequired:
 		// The token goes after "#": browsers never send that part to the
 		// server, so it cannot end up in access logs. The page reads it
 		// with JavaScript.

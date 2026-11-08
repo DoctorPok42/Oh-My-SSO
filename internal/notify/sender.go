@@ -14,6 +14,7 @@ type Template string
 
 const (
 	TemplatePasswordReset          Template = "password_reset"
+	TemplatePasswordResetRequired  Template = "password_reset_required"
 	TemplatePasswordChanged        Template = "password_changed"
 	TemplateNewDeviceLogin         Template = "new_device_login"
 	TemplateSuspiciousLogin        Template = "suspicious_login"
@@ -33,7 +34,7 @@ const (
 // AllTemplates lists every template: LoadTemplates parses each one at
 // start-up.
 var AllTemplates = []Template{
-	TemplatePasswordReset, TemplatePasswordChanged, TemplateNewDeviceLogin,
+	TemplatePasswordReset, TemplatePasswordResetRequired, TemplatePasswordChanged, TemplateNewDeviceLogin,
 	TemplateSuspiciousLogin, TemplateMfaMethodAdded, TemplateMfaMethodRemoved,
 	TemplateMfaReset, TemplateBackupCodesRegenerated, TemplateAccountLocked,
 	TemplateAppConnected, TemplateTest, TemplateAccountInvite, TemplateAdminRecovery,

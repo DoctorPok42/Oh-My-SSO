@@ -109,8 +109,9 @@
 
   <section class="stack-sm" id="enroll" {{if ne .Mode "enroll"}}hidden{{end}}>
     <p>{{t "login.enroll.text" "This application requires a second factor (authenticator app or passkey), and your account does not have one that it accepts yet."}}</p>
-    {{if .EnrollURL}}<p><a href="{{.EnrollURL}}" target="_blank" rel="noopener">{{t "login.enroll.link" "Add one in your account"}}</a> {{t "login.enroll.after_link" "(it opens in a new tab), then come back here and reload this page."}}</p>
-    {{else}}<p>{{t "login.enroll.no_link" "Add one from your account, or ask your administrator, then sign in again."}}</p>{{end}}
+    {{if .EnrollURL}}<p><a href="{{.EnrollURL}}" target="_blank" rel="noopener">{{t "login.enroll.link" "Add one in your account"}}</a> {{t "login.enroll.after_link_continue" "(it opens in a new tab), then come back here and continue."}}</p>
+    {{else}}<p>{{t "login.enroll.no_link_continue" "Add one from your account, or ask your administrator, then continue."}}</p>{{end}}
+    <button type="button" class="btn btn-md btn-block" id="enroll-continue">{{t "login.enroll.continue" "I added one, continue"}}</button>
   </section>
 
   {{if .CancelURL}}<footer class="auth-links"><a href="{{.CancelURL}}">{{if .CancelText}}{{.CancelText}}{{else}}{{t "login.cancel" "Cancel and go back to the application"}}{{end}}</a></footer>{{end}}

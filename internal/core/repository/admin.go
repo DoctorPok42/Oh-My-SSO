@@ -96,6 +96,8 @@ type UserSearch struct {
 	Status  domain.UserStatus // empty: any
 	GroupID string            // empty: any
 	RoleID  string            // empty: any
+	// LockedAt, when set: only the accounts locked at that time.
+	LockedAt time.Time
 	Page
 }
 
@@ -106,6 +108,7 @@ type SessionSearch struct {
 	RealmID   string
 	UserID    string // empty: any
 	ClientRef string // empty: any; else sessions with a live token for it
+	IPAddress string // empty: any
 	Now       time.Time
 	IdleSince time.Time
 	// RememberIdleSince: zero means IdleSince. RememberCreatedSince, when
@@ -141,6 +144,10 @@ type AuditSearch struct {
 	// above); empty: any.
 	Levels   []domain.AuditLogLevel
 	From, To time.Time // zero: unbounded
+	// OperationID: the entries of one bulk action; empty: any.
+	OperationID string
+	// IDs: only these entries (the selection of an export); empty: any.
+	IDs []string
 	// Before: only entries older than this one (keyset paging, newest
 	// first: the export walks the whole log this way). Zero: no bound.
 	Before AuditCursor

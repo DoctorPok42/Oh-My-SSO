@@ -134,32 +134,57 @@ func (s *PasswordResetService) RequestReset(ctx context.Context, in RequestReset
 		return fmt.Errorf("password reset: cancel previous links: %w", err)
 	}
 
+	raw, expires, err := s.newResetLink(ctx, user, in.IPAddress)
+	if err != nil {
+		return err
+	}
+	s.auditEvent(ctx, user, audit.UserPasswordResetRequested, in.IPAddress, in.UserAgent, domain.AuditLogInfo, map[string]interface{}{
+		"expires_at": expires.UTC().Format(time.RFC3339),
+	})
+	s.notifyResetLink(ctx, domain.NotificationPasswordReset, user, raw, expires, in.IPAddress, in.UserAgent)
+	return nil
+}
+
+// SendForcedResetLink e-mails the link of a reset forced by an administrator
+// (the audit entry is the administrator's). Earlier links stop working.
+func (s *PasswordResetService) SendForcedResetLink(ctx context.Context, user *domain.User, requestedIP string) error {
+	if _, err := s.tokens.DeleteUnusedByUser(ctx, user.ID); err != nil {
+		return fmt.Errorf("password reset: cancel previous links: %w", err)
+	}
+	raw, expires, err := s.newResetLink(ctx, user, requestedIP)
+	if err != nil {
+		return err
+	}
+	// No IP in the e-mail: it would be the administrator's.
+	s.notifyResetLink(ctx, domain.NotificationPasswordResetRequired, user, raw, expires, "", "")
+	return nil
+}
+
+func (s *PasswordResetService) newResetLink(ctx context.Context, user *domain.User, ip string) (string, time.Time, error) {
 	raw, hash := newResetToken()
-	now := s.now()
-	expires := now.Add(s.ttl(ctx, user.RealmID))
+	expires := s.now().Add(s.ttl(ctx, user.RealmID))
 	if _, err := s.tokens.Create(ctx, repository.CreatePasswordResetTokenParams{
 		UserID:      user.ID,
 		TokenHash:   hash,
 		ExpiresAt:   expires,
-		RequestedIP: in.IPAddress,
+		RequestedIP: ip,
 	}); err != nil {
-		return fmt.Errorf("password reset: store token: %w", err)
+		return "", time.Time{}, fmt.Errorf("password reset: store token: %w", err)
 	}
+	return raw, expires, nil
+}
 
-	s.auditEvent(ctx, user, audit.UserPasswordResetRequested, in.IPAddress, in.UserAgent, domain.AuditLogInfo, map[string]interface{}{
-		"expires_at": expires.UTC().Format(time.RFC3339),
-	})
+func (s *PasswordResetService) notifyResetLink(ctx context.Context, kind domain.NotificationKind, user *domain.User, raw string, expires time.Time, ip, userAgent string) {
 	s.notifier.Notify(ctx, domain.NotificationEvent{
-		Kind:       domain.NotificationPasswordReset,
+		Kind:       kind,
 		RealmID:    user.RealmID,
 		UserID:     user.ID,
-		OccurredAt: now,
-		IPAddress:  in.IPAddress,
-		UserAgent:  in.UserAgent,
+		OccurredAt: s.now(),
+		IPAddress:  ip,
+		UserAgent:  userAgent,
 		ResetToken: raw,
 		ExpiresAt:  expires,
 	})
-	return nil
 }
 
 func (s *PasswordResetService) IssueActivationToken(ctx context.Context, user *domain.User, ttl time.Duration, issuedBy string) (string, time.Time, error) {
@@ -227,6 +252,9 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 	if err := s.policy.Validate(ctx, user.RealmID, in.NewPassword, user); err != nil {
 		return err
 	}
+	if err := s.refuseSamePassword(ctx, user, in.NewPassword); err != nil {
+		return err
+	}
 	// Hash before using up the token: if hashing failed, the link would be
 	// lost for nothing.
 	hash, err := HashPasswordContext(ctx, in.NewPassword)
@@ -242,7 +270,8 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 		return ErrResetTokenInvalid // another request used it a moment ago
 	}
 
-	if _, err := s.users.Update(ctx, user.ID, repository.UpdateUserParams{PasswordHash: &hash}); err != nil {
+	changeDone := false // a forced reset ends here, in the same write as the password
+	if _, err := s.users.Update(ctx, user.ID, repository.UpdateUserParams{PasswordHash: &hash, MustChangePassword: &changeDone}); err != nil {
 		return fmt.Errorf("password reset: update password: %w", err)
 	}
 
@@ -272,6 +301,22 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 		IPAddress:  in.IPAddress,
 		UserAgent:  in.UserAgent,
 	})
+	return nil
+}
+
+// refuseSamePassword: a forced reset is there to replace the password, so
+// choosing the same one again does not end it.
+func (s *PasswordResetService) refuseSamePassword(ctx context.Context, user *domain.User, password string) error {
+	if !user.MustChangePassword || user.PasswordHash == "" {
+		return nil
+	}
+	same, err := verifyPassword(ctx, password, user.PasswordHash)
+	if err != nil {
+		return fmt.Errorf("password reset: compare password: %w", err)
+	}
+	if same {
+		return &PasswordPolicyError{Err: ErrPasswordUnchanged, MinLength: s.MinPasswordLength(ctx, user.RealmID), MaxLength: MaxPasswordLength}
+	}
 	return nil
 }
 

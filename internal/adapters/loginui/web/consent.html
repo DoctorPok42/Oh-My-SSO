@@ -36,6 +36,7 @@
 
   <form class="stack-sm" method="post" action="{{.Action}}">
     <input type="hidden" name="id" value="{{.RequestID}}">
+    {{if .Client}}<input type="hidden" name="client" value="{{.Client}}">{{end}}
     <input type="hidden" name="consent_token" value="{{.Token}}">
     <button type="submit" class="btn btn-md btn-block" name="decision" value="allow">{{t "consent.allow" "Allow"}}</button>
     <button type="submit" class="btn btn-secondary btn-md btn-block" name="decision" value="deny">{{t "consent.deny" "Deny"}}</button>

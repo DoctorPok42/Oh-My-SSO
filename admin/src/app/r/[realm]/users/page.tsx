@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { cache, Suspense } from "react";
 import { NavLink } from "@/components/console/nav-link";
+import { BulkCell, BulkHead } from "@/components/console/bulk";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
 import { Pagination } from "@/components/console/pagination";
@@ -15,6 +16,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { apiPath, getMe, load, loadCached } from "@/lib/api";
 import type { ApiResult } from "@/lib/api-error";
+import { BULK_ROW } from "@/lib/bulk";
 import { formatRelative } from "@/lib/format";
 import { firstReadablePage, pageHref } from "@/lib/nav";
 import { COLUMNS, PAGES } from "@/lib/pages";
@@ -22,6 +24,8 @@ import { can, canWrite, type Resource } from "@/lib/permissions";
 import type { Access, ClientScope, List, Me, Permission, Settings, UserDetail, UserSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AccessDrawer, AccessRowActions, NewAccessButton } from "./access-drawer";
+import { AccessBulk } from "./access-bulk";
+import { UsersBulk } from "./bulk";
 import { ImportUsersButton } from "./import-drawer";
 import { NewPermissionButton, PermissionDelete } from "./permissions";
 import { InviteUserButton, UserDrawer, UserRowActions } from "./user-drawer";
@@ -114,7 +118,7 @@ export default async function UsersPage({
             </NavLink>
           )}
         </SearchForm>
-        <UsersTable realm={realm} base={base} q={sp.q} status={status} offset={offset} />
+        <UsersTable realm={realm} base={base} q={sp.q} status={status} offset={offset} me={me} />
       </>
     );
   } else if (tab === "roles" || tab === "groups") {
@@ -221,6 +225,7 @@ async function AccessDrawerSlot({
       scopes={scopes?.ok ? scopes.data.items : []}
       members={members?.ok ? members.data.items : null}
       writable={writable}
+      canAddMembers={me.ok && canWrite(me.data, "user")}
       // Not "admins" of master: the Admin API refuses it (the console would be lost).
       canSuspend={me.ok && canWrite(me.data, "timeout") && !(realm === "master" && editing?.name === "admins")}
     />
@@ -233,36 +238,61 @@ async function UsersTable({
   q,
   status,
   offset,
+  me,
 }: {
   realm: string;
   base: string;
   q: string | undefined;
   status: string | undefined;
   offset: number;
+  me: ApiResult<Me>;
 }) {
-  const list = await loadCached<List<UserSummary>>(
-    apiPath(["realms", realm, "users"], { q, status, offset, limit: LIMIT }),
-  );
+  const path = (...s: string[]) => apiPath(["realms", realm, ...s]);
+  const write = me.ok && canWrite(me.data, "user");
+  const revoke = me.ok && canWrite(me.data, "session");
+  const bulk = write || revoke;
+  const may = (r: Resource) => bulk && me.ok && can(me.data, r);
+  const [list, roles, groups, settings] = await Promise.all([
+    loadCached<List<UserSummary>>(apiPath(["realms", realm, "users"], { q, status, offset, limit: LIMIT })),
+    may("access") ? loadCached<List<Access>>(path("roles")) : null,
+    may("access") ? loadCached<List<Access>>(path("groups")) : null,
+    may("settings") ? loadCached<Settings>(path("settings")) : null,
+  ]);
   if (!list.ok) return <ErrorState error={list} />;
   const items = list.data.items;
   const tr = await getI18n();
   const { t } = tr;
-  return (
+  // In the master realm your own account is left out: the API refuses it.
+  const ownId = realm === "master" && me.ok ? me.data.user.id : undefined;
+  const refs = (l: ApiResult<List<Access>> | null) => (l?.ok ? l.data.items.map(({ id, name }) => ({ id, name })) : []);
+  const table = (
     <TableContainer>
       <Table>
         <TableHeader>
           <TableRow>
+            {bulk && <BulkHead />}
             <ColumnHeads columns={COLUMNS.users} />
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 && (
-            <TableEmpty colSpan={7}>
+            <TableEmpty colSpan={bulk ? 8 : 7}>
               {q || status ? t("users.no_match", "No user matches.") : t("users.empty", "No user yet: invite one.")}
             </TableEmpty>
           )}
           {items.map((u) => (
-            <TableRow key={u.id}>
+            <TableRow key={u.id} className={BULK_ROW}>
+              {bulk && (
+                <BulkCell
+                  id={u.id}
+                  label={u.username}
+                  blocked={
+                    u.id === ownId
+                      ? t("users.own_account", "Your own account cannot be part of a bulk action")
+                      : undefined
+                  }
+                />
+              )}
               <TableCell>
                 <p className="font-medium">{u.name || u.username}</p>
                 <p className="font-mono text-[12px] text-text-muted">{u.username}</p>
@@ -306,6 +336,25 @@ async function UsersTable({
       />
     </TableContainer>
   );
+  if (!bulk) return table;
+  return (
+    <UsersBulk
+      realm={realm}
+      scope={`users:${realm}:${q ?? ""}:${status ?? ""}`}
+      filter={{ q, status }}
+      page={items.map((u) => u.id).filter((id) => id !== ownId)}
+      total={list.data.total}
+      ownId={ownId}
+      write={write}
+      revoke={revoke}
+      // Unknown without settings:read: offered, the API skips what it cannot send.
+      mail={settings?.ok ? settings.data.email_enabled : true}
+      groups={refs(groups)}
+      roles={refs(roles)}
+    >
+      {table}
+    </UsersBulk>
+  );
 }
 
 function UserStatus({ user }: { user: UserSummary }) {
@@ -314,6 +363,7 @@ function UserStatus({ user }: { user: UserSummary }) {
     <span className="flex flex-wrap gap-1">
       <StatusBadge status={user.status} />
       {user.locked && <StatusBadge status="locked" />}
+      {user.must_change_password && <StatusBadge status="reset_required" />}
     </span>
   );
 }
@@ -330,23 +380,37 @@ async function AccessTab({ realm, kind, writable }: { realm: string; kind: "role
   const permName = new Map((permissions.ok ? permissions.data.items : []).map((p) => [p.id, p.name]));
   const { t } = await getI18n();
   const label = kind === "roles" ? m("columns.role", "Role") : m("columns.group", "Group");
-  return (
+  // A role managed by the configuration can still be duplicated; a group has nothing else to offer.
+  const fixed = (a: Access) => kind === "groups" && a.managed_by === "config";
+  const table = (
     <>
       <TableContainer>
         <Table>
           <TableHeader>
             <TableRow>
+              {writable && <BulkHead />}
               <ColumnHeads columns={[label, ...COLUMNS.access.slice(1)]} />
             </TableRow>
           </TableHeader>
           <TableBody>
             {items.length === 0 && (
-              <TableEmpty colSpan={6}>
+              <TableEmpty colSpan={writable ? 7 : 6}>
                 {kind === "roles" ? t("users.no_role", "No roles yet.") : t("users.no_group", "No groups yet.")}
               </TableEmpty>
             )}
             {items.map((a) => (
-              <TableRow key={a.id}>
+              <TableRow key={a.id} className={BULK_ROW}>
+                {writable && (
+                  <BulkCell
+                    id={a.id}
+                    label={a.name}
+                    blocked={
+                      fixed(a)
+                        ? t("clients.managed_bulk", "Managed by the configuration: not part of bulk actions")
+                        : undefined
+                    }
+                  />
+                )}
                 <TableCell>
                   <p className="flex items-center gap-2 font-medium">
                     {a.name}
@@ -376,6 +440,12 @@ async function AccessTab({ realm, kind, writable }: { realm: string; kind: "role
         </Table>
       </TableContainer>
     </>
+  );
+  if (!writable) return table;
+  return (
+    <AccessBulk realm={realm} kind={kind} page={items.filter((a) => !fixed(a)).map((a) => a.id)}>
+      {table}
+    </AccessBulk>
   );
 }
 

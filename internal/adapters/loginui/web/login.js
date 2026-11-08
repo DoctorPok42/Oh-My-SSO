@@ -49,6 +49,7 @@
     unauthenticated: t("login.js.error.unauthenticated", "Your session has ended. Please sign in again."),
     unknown_client: t("login.js.error.unknown_client", "This application is not available."),
     access_suspended: t("login.js.error.access_suspended", "Your access is temporarily suspended. Contact your administrator."),
+    password_change_required: t("login.js.error.password_change_required", "Your administrator requires a new password. Use the link sent by e-mail, or \"Forgot password\"."),
     client_unavailable: t("login.js.error.client_unavailable", "This application is temporarily unavailable. Try again later."),
   };
 
@@ -86,6 +87,13 @@
 
   // The server decides what comes next.
   const done = () => location.reload();
+
+  // "One more step": once a factor is added in the account (another tab),
+  // the page asks the server again, which goes on or shows this step again.
+  $("enroll-continue")?.addEventListener("click", (ev) => {
+    ev.currentTarget.disabled = true;
+    done();
+  });
 
   function busy(form, on) {
     for (const b of form.querySelectorAll("button")) b.disabled = on;

@@ -32,4 +32,6 @@ type UpdateUserParams struct {
 	Email        *string
 	PasswordHash *string
 	Status       *domain.UserStatus
+	// MustChangePassword: see domain.User.
+	MustChangePassword *bool
 }

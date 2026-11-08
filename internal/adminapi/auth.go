@@ -165,7 +165,7 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 
 		a := &adminContext{
 			actor: service.AdminActor{UserID: user.ID, Username: user.Username, RealmID: master.ID,
-				IPAddress: s.clientIP(r), UserAgent: s.clientUA(r)},
+				IPAddress: s.clientIP(r), UserAgent: s.clientUA(r), SessionID: sess.ID},
 			user: user, session: sess, master: master, client: client,
 		}
 		a.rights, a.rightsFromToken = l.rights, l.rightsFromToken

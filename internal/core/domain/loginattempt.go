@@ -18,6 +18,9 @@ const (
 	LoginFailureUnknownAccount     LoginAttemptFailureReason = "unknown_account"
 	LoginFailureTimeoutActive      LoginAttemptFailureReason = "timeout_active"
 	LoginFailureAccessDenied       LoginAttemptFailureReason = "access_denied"
+	// LoginFailurePasswordChangeRequired: right password, but an administrator
+	// forced a reset that was not done yet.
+	LoginFailurePasswordChangeRequired LoginAttemptFailureReason = "password_change_required"
 )
 
 // LoginFailurePasskeyRejected: a sign-in without password whose passkey or

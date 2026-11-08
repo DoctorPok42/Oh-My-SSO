@@ -2,11 +2,13 @@
 
 import { ChevronRight, Mail } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
+import { BulkCell } from "@/components/console/bulk";
 import { StatusBadge } from "@/components/console/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { m, type Msg } from "@/i18n";
 import { useT } from "@/i18n/client";
+import { BULK_ROW } from "@/lib/bulk";
 import { ACTOR_TYPE_LABELS, actionLabel, isNotification } from "@/lib/labels";
 import type { AuditAction, AuditEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -65,7 +67,8 @@ export function AuditRows({
         const target = targetName(a);
         return (
           <Fragment key={a.id}>
-            <TableRow className="cursor-pointer" onClick={() => setOpen(expanded ? null : a.id)}>
+            <TableRow className={cn("cursor-pointer", BULK_ROW)} onClick={() => setOpen(expanded ? null : a.id)}>
+              <BulkCell id={a.id} label={a.action} />
               <TableCell className="font-mono text-[12px] whitespace-nowrap text-text-secondary">
                 {times[a.id]}
               </TableCell>
@@ -127,7 +130,7 @@ export function AuditRows({
             </TableRow>
             {expanded && (
               <TableRow className="bg-surface-alt hover:bg-surface-alt!">
-                <TableCell colSpan={6}>
+                <TableCell colSpan={7}>
                   <dl className="grid gap-x-6 gap-y-2 text-[12px] sm:grid-cols-[140px_1fr]">
                     <dt className="text-text-muted">{t("audit.entry_id", "Entry ID")}</dt>
                     <dd className="font-mono">{a.id}</dd>

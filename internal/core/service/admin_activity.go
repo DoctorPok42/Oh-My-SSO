@@ -40,6 +40,7 @@ type SessionView struct {
 type SessionFilter struct {
 	UserID    string
 	ClientRef string
+	IPAddress string
 	Page      repository.Page
 }
 
@@ -49,7 +50,7 @@ func (s *AdminService) ListSessions(ctx context.Context, realm *domain.Realm, f 
 		return nil, 0, err
 	}
 	now := win.Now
-	win.UserID, win.ClientRef, win.Page = f.UserID, f.ClientRef, f.Page
+	win.UserID, win.ClientRef, win.IPAddress, win.Page = f.UserID, f.ClientRef, f.IPAddress, f.Page
 	sessions, total, err := s.d.Admin.SearchSessions(ctx, win)
 	if err != nil {
 		return nil, 0, err
@@ -518,6 +519,13 @@ func (s *AdminService) SetRoleMFA(ctx context.Context, actor AdminActor, realm *
 	if err != nil {
 		return nil, err
 	}
+	if err := s.setRoleMFA(ctx, actor, realm, r, in); err != nil {
+		return nil, err
+	}
+	return s.MFAPolicies(ctx, realm)
+}
+
+func (s *AdminService) setRoleMFA(ctx context.Context, actor AdminActor, realm *domain.Realm, r *domain.Role, in RolePolicyInput) error {
 	methods := []domain.MfaMethodType{}
 	for _, m := range in.AllowedMethods {
 		methods = append(methods, domain.MfaMethodType(m))
@@ -525,9 +533,9 @@ func (s *AdminService) SetRoleMFA(ctx context.Context, actor AdminActor, realm *
 	if _, err := s.d.MFAPolicy.SetRolePolicy(ctx, SetRoleMFAPolicyInput{RealmID: realm.ID, RoleName: r.Name,
 		Required: in.Required, AllowedMethods: methods, EnrollmentGraceDays: in.EnrollmentGraceDays,
 		StepUpForSensitiveActions: in.StepUpForSensitiveActions, Actor: PolicyActor{TriggeredBy: actor.By()}}); err != nil {
-		return nil, asAdminError(err)
+		return asAdminError(err)
 	}
-	return s.MFAPolicies(ctx, realm)
+	return nil
 }
 
 func (s *AdminService) DeleteRoleMFA(ctx context.Context, actor AdminActor, realm *domain.Realm, roleID string) (*MFAPoliciesView, error) {
@@ -535,11 +543,19 @@ func (s *AdminService) DeleteRoleMFA(ctx context.Context, actor AdminActor, real
 	if err != nil {
 		return nil, err
 	}
-	if err := s.d.MFAPolicy.DeleteRolePolicy(ctx, realm.ID, r.Name, PolicyActor{TriggeredBy: actor.By()}); err != nil &&
-		!errors.Is(err, repository.ErrNotFound) {
-		return nil, asAdminError(err)
+	if err := s.deleteRoleMFA(ctx, actor, realm, r); err != nil {
+		return nil, err
 	}
 	return s.MFAPolicies(ctx, realm)
+}
+
+// deleteRoleMFA: the role follows the realm default again (nothing to do if it already does).
+func (s *AdminService) deleteRoleMFA(ctx context.Context, actor AdminActor, realm *domain.Realm, r *domain.Role) error {
+	if err := s.d.MFAPolicy.DeleteRolePolicy(ctx, realm.ID, r.Name, PolicyActor{TriggeredBy: actor.By()}); err != nil &&
+		!errors.Is(err, repository.ErrNotFound) {
+		return asAdminError(err)
+	}
+	return nil
 }
 
 

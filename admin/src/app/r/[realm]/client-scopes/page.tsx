@@ -1,4 +1,5 @@
 import { cache, Suspense } from "react";
+import { BulkCell, BulkHead } from "@/components/console/bulk";
 import { ErrorState } from "@/components/console/error-state";
 import { PageHeader } from "@/components/console/page-header";
 import { ColumnHeads } from "@/components/console/skeletons";
@@ -6,9 +7,11 @@ import { ProtocolBadge } from "@/components/console/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { apiPath, getMe, loadCached } from "@/lib/api";
+import { BULK_ROW } from "@/lib/bulk";
 import { COLUMNS, PAGES } from "@/lib/pages";
 import { canWrite } from "@/lib/permissions";
 import type { ClientScope, List } from "@/lib/types";
+import { ScopesBulk } from "./bulk";
 import { NewScopeButton, ScopeDrawer, ScopeRowActions } from "./scope-drawer";
 import { getI18n } from "@/i18n/server";
 
@@ -51,18 +54,30 @@ async function ScopesTable({ realm, writable }: { realm: string; writable: boole
   if (!list.ok) return <ErrorState error={list} />;
   const items = list.data.items;
   const { t, tn } = await getI18n();
-  return (
+  const table = (
     <TableContainer>
       <Table>
         <TableHeader>
           <TableRow>
+            {writable && <BulkHead />}
             <ColumnHeads columns={COLUMNS.clientScopes} />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.length === 0 && <TableEmpty colSpan={6}>{t("scopes.empty", "No client scope yet.")}</TableEmpty>}
+          {items.length === 0 && (
+            <TableEmpty colSpan={writable ? 7 : 6}>{t("scopes.empty", "No client scope yet.")}</TableEmpty>
+          )}
           {items.map((s) => (
-            <TableRow key={s.id}>
+            <TableRow key={s.id} className={BULK_ROW}>
+              {writable && (
+                <BulkCell
+                  id={s.id}
+                  label={s.name}
+                  blocked={
+                    s.clients > 0 ? t("scopes.in_use_bulk", "Used by clients: remove it from them first") : undefined
+                  }
+                />
+              )}
               <TableCell>
                 <p className="font-mono text-[13px] font-medium">{s.name}</p>
                 {s.description && <p className="text-[12px] text-text-muted">{s.description}</p>}
@@ -87,6 +102,12 @@ async function ScopesTable({ realm, writable }: { realm: string; writable: boole
         </TableBody>
       </Table>
     </TableContainer>
+  );
+  if (!writable) return table;
+  return (
+    <ScopesBulk realm={realm} page={items.filter((s) => s.clients === 0).map((s) => s.id)}>
+      {table}
+    </ScopesBulk>
   );
 }
 

@@ -256,6 +256,12 @@ func (s *AccountService) ChangePassword(ctx context.Context, in ChangePasswordIn
 	if !swapped {
 		return nil, ErrWrongPassword
 	}
+	if user.MustChangePassword { // signed in with a passkey: the forced reset ends here too
+		changeDone := false
+		if _, err := s.d.Users.Update(ctx, user.ID, repository.UpdateUserParams{MustChangePassword: &changeDone}); err != nil {
+			return nil, fmt.Errorf("change password: %w", err)
+		}
+	}
 	n, err := s.d.Sessions.RevokeOthers(ctx, user.ID, in.SessionID, domain.SessionRevokedPasswordChanged)
 	if err != nil {
 		return nil, fmt.Errorf("change password: sign out other sessions: %w", err)

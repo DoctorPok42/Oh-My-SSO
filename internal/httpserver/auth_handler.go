@@ -170,6 +170,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			// Only returned after a correct password: saying so reveals
 			// nothing to someone who does not know it.
 			writeTimeoutError(w, err)
+		case errors.Is(err, service.ErrPasswordChangeRequired):
+			writeError(w, http.StatusForbidden, "password_change_required")
 		case errors.Is(err, service.ErrInvalidCredentials),
 			errors.Is(err, service.ErrAccountNotActive):
 			writeError(w, http.StatusUnauthorized, "invalid_credentials")

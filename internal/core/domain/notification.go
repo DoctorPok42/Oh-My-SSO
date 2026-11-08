@@ -9,6 +9,8 @@ const (
 	// cannot switch off "forgot password".
 	NotificationPasswordReset   NotificationKind = "password_reset"
 	NotificationPasswordChanged NotificationKind = "password_changed"
+	// NotificationPasswordResetRequired: an administrator forced a reset.
+	NotificationPasswordResetRequired NotificationKind = "password_reset_required"
 
 	// Security alerts. Sent only when the realm's notification_email_enabled
 	// is on.
@@ -33,7 +35,7 @@ const (
 // switch applies to this kind.
 func (k NotificationKind) IsSecurityAlert() bool {
 	switch k {
-	case NotificationPasswordReset, NotificationPasswordChanged,
+	case NotificationPasswordReset, NotificationPasswordResetRequired, NotificationPasswordChanged,
 		NotificationAccountInvite, NotificationAdminRecovery, NotificationUserImportFinished:
 		return false
 	default:

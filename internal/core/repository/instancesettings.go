@@ -43,5 +43,6 @@ type UpdateInstanceSettingsParams struct {
 	MailFromAddress             *string
 	MailReplyTo                 *string
 	MailLogoURL                 *string
+	BulkLimit                   *int
 	UpdatedBy                   *string
 }

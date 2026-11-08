@@ -25,6 +25,9 @@ type AdminActor struct {
 	RealmID   string // the master realm
 	IPAddress string
 	UserAgent string
+	// SessionID: the session the call comes from (bulk revocations leave it
+	// out). Empty: not an Admin API call.
+	SessionID string
 }
 
 // By is how other services record the actor ("user:<id>", like the CLI's
@@ -215,6 +218,9 @@ func (s *AdminService) auditAdminAbout(ctx context.Context, actor AdminActor, re
 	}
 	d := map[string]interface{}{"admin_realm": MasterRealmName, "admin_username": actor.Username}
 	maps.Copy(d, details)
+	if op := bulkOperation(ctx); op != "" {
+		d["operation_id"] = op
+	}
 	if _, err := s.d.Audit.Create(ctx, repository.CreateAuditLogParams{
 		RealmID:      realmID,
 		UserID:       actor.UserID,

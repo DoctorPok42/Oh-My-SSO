@@ -25,6 +25,8 @@ import (
 //	status=failure       success or failure
 //	level=warning,error  any of these levels
 //	from, to             RFC 3339 or YYYY-MM-DD (to: that whole day)
+//	operation=<id>       the entries of one bulk action
+//	ids=<id>,<id>        only these entries (the selection of an export)
 func auditSearch(r *http.Request) (repository.AuditSearch, i18n.Text) {
 	q := r.URL.Query()
 	from, ok1 := timeParam(r, "from")
@@ -35,7 +37,13 @@ func auditSearch(r *http.Request) (repository.AuditSearch, i18n.Text) {
 	if len(q.Get("to")) == len("2006-01-02") {
 		to = to.Add(24 * time.Hour) // a date means "this whole day"
 	}
-	f := repository.AuditSearch{UserID: q.Get("user"), ClientRef: q.Get("client"), From: from, To: to}
+	f := repository.AuditSearch{UserID: q.Get("user"), ClientRef: q.Get("client"), OperationID: q.Get("operation"), From: from, To: to}
+	if ids := strings.TrimSpace(q.Get("ids")); ids != "" {
+		f.IDs = strings.Split(ids, ",")
+		if len(f.IDs) > service.MaxBulkLimit {
+			return repository.AuditSearch{}, i18n.M("admin.error.bulk_limit", "at most {limit} items at a time", "limit", service.MaxBulkLimit)
+		}
+	}
 
 	action := strings.TrimSpace(q.Get("action"))
 	if prefix, ok := strings.CutSuffix(action, "*"); ok {

@@ -1,12 +1,39 @@
 "use server";
 
-import { act, api, apiPath } from "@/lib/api";
-import type { Client, ClientBody, ClientCreated } from "@/lib/types";
+import { act, api, apiPath, getBulkLimit } from "@/lib/api";
+import { BULK_TIMEOUT_MS, collectIds, type BulkBody, type BulkResult } from "@/lib/bulk";
+import type { Client, ClientBody, ClientCreated, ClientSummary, List } from "@/lib/types";
 
 // Server Actions: functions the browser calls like an API, run here on the
 // server (POST to the page, protected against cross-site calls by Next.js).
 // They only forward to the Admin API, which checks permissions and step-up.
 // https://nextjs.org/docs/app/getting-started/updating-data
+
+export async function bulkClients(realm: string, body: BulkBody) {
+  return act(() =>
+    api<BulkResult>(apiPath(["realms", realm, "clients", "bulk"]), {
+      method: "POST",
+      body,
+      timeoutMs: BULK_TIMEOUT_MS,
+    }),
+  );
+}
+
+/** "Select the results of the filter": not those the configuration manages. */
+export async function matchingClientIds(realm: string, protocol: string | undefined, exclude: string[]) {
+  return act(async () =>
+    collectIds(
+      (offset, limit) => api<List<ClientSummary>>(apiPath(["realms", realm, "clients"], { protocol, offset, limit })),
+      exclude,
+      (c) => c.managed_by !== "config",
+      await getBulkLimit(realm),
+    ),
+  );
+}
+
+export async function exportClients(realm: string, ids: string[]) {
+  return act(() => api<{ items: Client[] }>(apiPath(["realms", realm, "clients", "export"], { ids: ids.join(",") })));
+}
 
 export async function createClient(realm: string, body: ClientBody) {
   return act(() => api<ClientCreated>(apiPath(["realms", realm, "clients"]), { method: "POST", body }));

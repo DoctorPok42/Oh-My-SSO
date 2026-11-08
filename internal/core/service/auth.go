@@ -17,6 +17,7 @@ import (
 var (
 	ErrInvalidCredentials = core.ErrInvalidCredentials
 	ErrAccountNotActive   = core.ErrAccountNotActive
+	ErrPasswordChangeRequired = core.ErrPasswordChangeRequired
 	ErrTimeoutActive      = core.ErrTimeoutActive
 )
 
@@ -128,6 +129,12 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 		}
 		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, domain.LoginFailureTimeoutActive)
 		return nil, err
+	}
+
+	// Same rule: only said to someone who knows the password.
+	if user.MustChangePassword {
+		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, domain.LoginFailurePasswordChangeRequired)
+		return nil, ErrPasswordChangeRequired
 	}
 
 	s.upgradePasswordHash(ctx, user, p.Password)
