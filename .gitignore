@@ -9,10 +9,11 @@
 certs/
 *.pem
 
-# env
+# settings with secrets: only the examples are versioned
 .env
-.env.compose
-.env.production
+.env.*
+!.env.example
+compose.yml
 
 graphify-out
 .claude

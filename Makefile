@@ -11,7 +11,10 @@ MAKEFLAGS += --no-print-directory
 
 # --- Variables (override on the command line: `make run PORT=9090`) -----------
 PORT              ?= 8080
-COMPOSE           ?= docker compose -f compose.dev.yml
+# Development data stack: the "dev" profile of compose.example.yml, as its own
+# project (never the volumes of a production stack).
+COMPOSE           ?= docker compose -f compose.example.yml -p oh-my-sso-dev --profile dev
+DEV_SERVICES      ?= dev-postgres dev-valkey dev-vault dev-mailpit
 GOBIN             ?= $(CURDIR)/bin
 
 POSTGRES_USER     ?= sso
@@ -90,7 +93,7 @@ tidy:
 generate:
 	go generate ./ent/...
 
-##@ Development stack (Docker: postgres, valkey, vault, mailpit)
+##@ Development stack (Docker: postgres, valkey, vault, mailpit; profile dev of compose.example.yml)
 
 ## dev: Everything needed to code: containers up, migrations applied, Vault Transit enabled
 dev: docker-up migrate-apply vault-enable-transit
@@ -98,7 +101,7 @@ dev: docker-up migrate-apply vault-enable-transit
 
 ## docker-up: Start the containers in the background (mailpit inbox: http://localhost:8025)
 docker-up:
-	$(COMPOSE) up -d --wait
+	$(COMPOSE) up -d --wait $(DEV_SERVICES)
 
 ## docker-down: Stop the containers (keep the data)
 docker-down:
@@ -118,12 +121,12 @@ mailpit:
 
 ## psql: Open psql on the development database
 psql:
-	$(COMPOSE) exec postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
+	$(COMPOSE) exec dev-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
 
 ## vault-enable-transit: Enable the Transit engine on the dev Vault (idempotent)
 vault-enable-transit:
 	@$(COMPOSE) exec -e VAULT_ADDR=http://127.0.0.1:8200 -e VAULT_TOKEN=$(VAULT_TOKEN) \
-		vault vault secrets enable transit 2>/dev/null || true
+		dev-vault vault secrets enable transit 2>/dev/null || true
 
 ##@ Database (Ent + Atlas)
 
