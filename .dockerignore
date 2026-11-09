@@ -7,4 +7,5 @@ coverage.*
 .env
 .env.*
 !.env.example
+compose.yml
 certs/

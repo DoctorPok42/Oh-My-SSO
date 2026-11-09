@@ -24,7 +24,7 @@ if [[ -n "${E2E_RESET_DB:-}" ]]; then
   eval "$E2E_RESET_DB"
 else
   db=$(sed -E 's|.*/([^/?]+)(\?.*)?$|\1|' <<<"$DB_URL")
-  docker compose -f compose.dev.yml exec -T postgres psql -v ON_ERROR_STOP=1 -U sso -d postgres \
+  docker compose -f compose.example.yml -p oh-my-sso-dev --profile dev exec -T dev-postgres psql -v ON_ERROR_STOP=1 -U sso -d postgres \
     -c "DROP DATABASE IF EXISTS \"$db\" WITH (FORCE)" -c "CREATE DATABASE \"$db\""
   atlas migrate apply --dir file://ent/migrate/migrations --url "$DB_URL"
 fi
