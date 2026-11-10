@@ -686,6 +686,8 @@
   "message.logout_failed.title": "La déconnexion a échoué",
   "message.other_browser.text": "Pour votre sécurité, une connexion doit se terminer dans le navigateur qui l'a commencée. Revenez à l'application et recommencez ici.",
   "message.other_browser.title": "Connexion commencée dans un autre navigateur",
+  "message.too_many_requests.text": "Trop de demandes sont venues de votre réseau. Patientez quelques minutes, puis réessayez.",
+  "message.too_many_requests.title": "Trop de demandes",
   "oidc.message.logout_expired.text": "Rien n'a été modifié. Revenez à l'application et déconnectez-vous de nouveau si vous le souhaitez toujours.",
   "password.js.error.generic": "Une erreur est survenue. Veuillez réessayer.",
   "password.js.error.invalid_or_expired_token": "Ce lien n'est pas valide, a déjà servi ou a expiré. Demandez-en un nouveau.",

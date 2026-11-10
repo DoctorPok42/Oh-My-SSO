@@ -14,6 +14,7 @@ import (
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/httptimeout"
 	"sso.internal/sso/internal/i18n"
 )
 
@@ -154,8 +155,8 @@ func New(cfg Config, d Deps) *Server {
 
 			r.With(read("client")).Get("/clients", s.handleListClients)
 			r.With(write("client", "write")...).Post("/clients", s.handleCreateClient)
-			r.With(write("client", "write")...).Post("/clients/bulk", s.bulk(s.d.Admin.BulkClients))
-			r.With(read("client")).Get("/clients/export", s.handleExportClients)
+			r.With(write("client", "write")...).With(longRequest).Post("/clients/bulk", s.bulk(s.d.Admin.BulkClients))
+			r.With(read("client")).With(longRequest).Get("/clients/export", s.handleExportClients)
 			r.With(read("client")).Get("/clients/{id}", s.handleGetClient)
 			r.With(write("client", "write")...).Patch("/clients/{id}", s.handleUpdateClient)
 			r.With(write("client", "write")...).Delete("/clients/{id}", s.handleDeleteClient)
@@ -165,27 +166,27 @@ func New(cfg Config, d Deps) *Server {
 
 			r.With(read("client_scope")).Get("/client-scopes", s.handleListScopes)
 			r.With(write("client_scope", "write")...).Post("/client-scopes", s.handleCreateScope)
-			r.With(write("client_scope", "write")...).Post("/client-scopes/bulk", s.bulk(s.d.Admin.BulkClientScopes))
+			r.With(write("client_scope", "write")...).With(longRequest).Post("/client-scopes/bulk", s.bulk(s.d.Admin.BulkClientScopes))
 			r.With(read("client_scope")).Get("/client-scopes/{id}", s.handleGetScope)
 			r.With(write("client_scope", "write")...).Patch("/client-scopes/{id}", s.handleUpdateScope)
 			r.With(write("client_scope", "write")...).Delete("/client-scopes/{id}", s.handleDeleteScope)
 
 			r.With(read("session")).Get("/sessions", s.handleListSessions)
-			r.With(write("session", "revoke")...).Post("/sessions/bulk", s.bulk(s.d.Admin.BulkSessions))
+			r.With(write("session", "revoke")...).With(longRequest).Post("/sessions/bulk", s.bulk(s.d.Admin.BulkSessions))
 			r.With(write("session", "revoke")...).Delete("/sessions/{id}", s.handleRevokeSession)
 
 			r.With(read("audit_log")).Get("/audit-logs", s.handleAuditLogs)
 			r.With(read("audit_log")).Get("/audit-logs/actions", s.handleAuditActions)
-			r.With(read("audit_log")).Get("/audit-logs/export", s.handleAuditExport)
+			r.With(read("audit_log")).With(longRequest).Get("/audit-logs/export", s.handleAuditExport)
 
 			r.With(read("user")).Get("/users", s.handleListUsers)
 			r.With(write("user", "write")...).Post("/users", s.handleInviteUser)
-			r.With(write("user", "write")...).Post("/users/bulk", s.bulk(s.d.Admin.BulkUsers))
+			r.With(write("user", "write")...).With(longRequest).Post("/users/bulk", s.bulk(s.d.Admin.BulkUsers))
 			r.With(read("user")).Get("/users/imports", s.handleListUserImports)
-			r.With(write("user", "write")...).Post("/users/imports", s.handleStartUserImport)
-			r.With(write("user", "write")...).Post("/users/imports/preview", s.handlePreviewUserImport)
+			r.With(write("user", "write")...).With(longRequest).Post("/users/imports", s.handleStartUserImport)
+			r.With(write("user", "write")...).With(longRequest).Post("/users/imports/preview", s.handlePreviewUserImport)
 			r.With(read("user")).Get("/users/imports/{id}", s.handleGetUserImport)
-			r.With(write("user", "write")...).Post("/users/imports/{id}/activation-links", s.handleUserImportLinks)
+			r.With(write("user", "write")...).With(longRequest).Post("/users/imports/{id}/activation-links", s.handleUserImportLinks)
 			r.With(read("user")).Get("/users/{id}", s.handleGetUser)
 			r.With(write("user", "write")...).Patch("/users/{id}", s.handleUpdateUser)
 			r.With(write("user", "write")...).Delete("/users/{id}", s.handleDeleteUser)
@@ -200,16 +201,16 @@ func New(cfg Config, d Deps) *Server {
 
 			r.With(read("access")).Get("/roles", s.handleListRoles)
 			r.With(write("access", "write")...).Post("/roles", s.handleCreateRole)
-			r.With(write("access", "write")...).Post("/roles/bulk", s.bulk(s.d.Admin.BulkRoles))
+			r.With(write("access", "write")...).With(longRequest).Post("/roles/bulk", s.bulk(s.d.Admin.BulkRoles))
 			r.With(write("access", "write")...).Patch("/roles/{id}", s.handleUpdateRole)
 			r.With(write("access", "write")...).Delete("/roles/{id}", s.handleDeleteRole)
 			r.With(read("access")).Get("/groups", s.handleListGroups)
 			r.With(write("access", "write")...).Post("/groups", s.handleCreateGroup)
-			r.With(write("access", "write")...).Post("/groups/bulk", s.bulk(s.d.Admin.BulkGroups))
+			r.With(write("access", "write")...).With(longRequest).Post("/groups/bulk", s.bulk(s.d.Admin.BulkGroups))
 			r.With(write("access", "write")...).Patch("/groups/{id}", s.handleUpdateGroup)
 			r.With(write("access", "write")...).Delete("/groups/{id}", s.handleDeleteGroup)
 			r.With(read("access")).Get("/groups/{id}/members", s.handleGroupMembers)
-			r.With(write("user", "write")...).Post("/groups/{id}/members/bulk", s.handleAddGroupMembers)
+			r.With(write("user", "write")...).With(longRequest).Post("/groups/{id}/members/bulk", s.handleAddGroupMembers)
 			r.With(read("access")).Get("/permissions", s.handleListPermissions)
 			r.With(write("access", "write")...).Post("/permissions", s.handleCreatePermission)
 			r.With(write("access", "write")...).Delete("/permissions/{id}", s.handleDeletePermission)
@@ -223,7 +224,7 @@ func New(cfg Config, d Deps) *Server {
 			r.With(write("mfa_policy", "write")...).Put("/mfa-policies/realm", s.handleSetRealmMFA)
 			r.With(write("mfa_policy", "write")...).Put("/mfa-policies/roles/{id}", s.handleSetRoleMFA)
 			r.With(write("mfa_policy", "write")...).Delete("/mfa-policies/roles/{id}", s.handleDeleteRoleMFA)
-			r.With(write("mfa_policy", "write")...).Post("/mfa-policies/roles/bulk", s.bulk(s.d.Admin.BulkRoleMFA))
+			r.With(write("mfa_policy", "write")...).With(longRequest).Post("/mfa-policies/roles/bulk", s.bulk(s.d.Admin.BulkRoleMFA))
 
 			r.With(read("settings")).Get("/settings", s.handleGetSettings)
 			r.With(write("settings", "write")...).Patch("/settings", s.handleUpdateSettings)
@@ -231,7 +232,7 @@ func New(cfg Config, d Deps) *Server {
 
 			r.With(read("timeout")).Get("/timeouts", s.handleTimeouts)
 			r.With(write("timeout", "write")...).Post("/timeouts", s.handleCreateTimeout)
-			r.With(write("timeout", "write")...).Post("/timeouts/bulk", s.bulk(s.d.Admin.BulkTimeouts))
+			r.With(write("timeout", "write")...).With(longRequest).Post("/timeouts/bulk", s.bulk(s.d.Admin.BulkTimeouts))
 			r.With(read("timeout")).Get("/timeouts/{id}", s.handleGetTimeout)
 			r.With(write("timeout", "write")...).Patch("/timeouts/{id}", s.handleUpdateTimeout)
 			r.With(write("timeout", "write")...).Post("/timeouts/{id}/lift", s.handleLiftTimeout)
@@ -262,6 +263,22 @@ func (s *Server) logSlow(next http.Handler) http.Handler {
 			slog.InfoContext(r.Context(), "admin api", "method", r.Method, "path", r.URL.Path,
 				"status", ww.Status(), "duration_ms", d.Milliseconds())
 		}
+	})
+}
+
+// longRequestBudget: what a long call (an export, a bulk action, a CSV
+// import) has to read its body and write its answer, past the server's
+// timeouts (httptimeout.Admin). Above the console's longest wait: 10 minutes
+// for an audit export (admin/src/lib/api.ts).
+const longRequestBudget = 15 * time.Minute
+
+// longRequest extends the deadlines of the call. Set after the
+// authentication and the rights check: an anonymous caller keeps the
+// server's short timeouts.
+func longRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		httptimeout.Extend(w, r, longRequestBudget)
+		next.ServeHTTP(w, r)
 	})
 }
 

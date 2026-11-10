@@ -17,6 +17,7 @@ import (
 	"sso.internal/sso/internal/app"
 	valkeycache "sso.internal/sso/internal/cache/valkey"
 	"sso.internal/sso/internal/core/domain"
+	"sso.internal/sso/internal/httptimeout"
 	"sso.internal/sso/internal/notify"
 )
 
@@ -101,7 +102,7 @@ func serve() {
 		Health: healthChecks(c), TestEmail: testEmail, Rights: rights,
 	})
 
-	srv := &http.Server{Addr: addr, Handler: api.Router(), ReadHeaderTimeout: 10 * time.Second}
+	srv := httptimeout.NewServer(addr, api.Router(), httptimeout.Admin)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	go func() {

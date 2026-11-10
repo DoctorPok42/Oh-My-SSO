@@ -70,6 +70,7 @@ func (s *storage) AuthorizeClientIDSecret(ctx context.Context, clientID, clientS
 		}
 		return err
 	}
+	ReportClientAuthenticated(ctx, clientID)
 	return nil
 }
 

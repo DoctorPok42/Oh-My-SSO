@@ -25,6 +25,15 @@ func (l *denyingLimiter) Allow(_ context.Context, key string, _ int64, _ time.Du
 	return false, nil
 }
 
+func (l *denyingLimiter) Reserve(_ context.Context, rules ...ratelimit.Rule) (ratelimit.Reservation, error) {
+	for _, r := range rules {
+		l.keys = append(l.keys, r.Key)
+	}
+	return ratelimit.Reservation{RetryAfter: time.Minute}, nil
+}
+
+func (l *denyingLimiter) Release(context.Context, ...ratelimit.Hit) error { return nil }
+
 func newLoginGuardServer(lim ratelimit.Limiter, opts ...Option) *Server {
 	realm := &domain.Realm{ID: "realm-1", Name: "acme", Status: domain.RealmActive}
 	return New(nil, nil, nil, &fakeRealmByName{realm: realm}, nil, lim, opts...)

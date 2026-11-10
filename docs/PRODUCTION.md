@@ -175,6 +175,11 @@ Then:
   `docker network inspect oh-my-sso_edge -f '{{(index .IPAM.Config 0).Gateway}}'`. Because nginx overwrites
   `X-Forwarded-For` with `$remote_addr`, the default header is right; use `CLIENT_IP_HEADER` only if you forward the
   address in another header.
+- **Rate limits** (per client address, so `TRUSTED_PROXIES` must be right): `/token`, `/introspect` and `/revoke`
+  count the requests that authenticate no client (600/min per address) and the failed secrets of a client_id
+  (10/15 min per address); a client that proves its secret is never limited. The SAML endpoints allow 300 requests per
+  minute per address. A refusal is `429` with `Retry-After`: applications should wait that long before retrying. The
+  `RATE_LIMIT_*` variables of `.env.example` change these values.
 - **The console reaches the IdP through nginx**: its `extra_hosts` sends the host name of `PUBLIC_URL` to the host.
   nginx must listen on every address (`listen 443`, as above), and the firewall must accept connections from the
   Docker networks to the host's port 443.
