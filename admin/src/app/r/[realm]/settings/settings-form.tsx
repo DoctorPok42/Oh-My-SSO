@@ -18,6 +18,7 @@ import {
   fieldSection,
   MAIL_FIELDS,
   NUMBERS,
+  RETENTION_DAYS,
   settingsDiff,
   type MailForm,
   type NumberKey,
@@ -167,6 +168,26 @@ export function SettingsForm({
                     max: MAX_BULK_LIMIT,
                     default: BULK_LIMIT,
                   }),
+                )}
+              </div>
+            </Card>
+            <Card>
+              <CardTitle>{t("settings.retention.title", "Data retention")}</CardTitle>
+              <CardDescription>
+                {t(
+                  "settings.retention.description",
+                  "What has ended is deleted once this time has passed: expired or revoked sessions and tokens, used or expired reset and activation links, sign-in attempts, remembered accounts and trusted devices unused for as long. The audit log is not affected.",
+                )}
+              </CardDescription>
+              <div className="mt-4 space-y-4">
+                {num(
+                  "expired_data_retention_days",
+                  t("settings.retention.days", "Retention (days)"),
+                  t(
+                    "settings.retention.days_hint",
+                    "From {min} to {max}. Default: {default}, the history used to spot a sign-in from a new device: below that, more devices look new.",
+                    RETENTION_DAYS,
+                  ),
                 )}
               </div>
             </Card>

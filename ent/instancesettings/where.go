@@ -197,6 +197,11 @@ func BulkLimit(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldBulkLimit, v))
 }
 
+// ExpiredDataRetentionDays applies equality check predicate on the "expired_data_retention_days" field. It's identical to ExpiredDataRetentionDaysEQ.
+func ExpiredDataRetentionDays(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldExpiredDataRetentionDays, v))
+}
+
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldUpdatedAt, v))
@@ -1299,6 +1304,46 @@ func BulkLimitLT(v int) predicate.InstanceSettings {
 // BulkLimitLTE applies the LTE predicate on the "bulk_limit" field.
 func BulkLimitLTE(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldLTE(FieldBulkLimit, v))
+}
+
+// ExpiredDataRetentionDaysEQ applies the EQ predicate on the "expired_data_retention_days" field.
+func ExpiredDataRetentionDaysEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldExpiredDataRetentionDays, v))
+}
+
+// ExpiredDataRetentionDaysNEQ applies the NEQ predicate on the "expired_data_retention_days" field.
+func ExpiredDataRetentionDaysNEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldExpiredDataRetentionDays, v))
+}
+
+// ExpiredDataRetentionDaysIn applies the In predicate on the "expired_data_retention_days" field.
+func ExpiredDataRetentionDaysIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldExpiredDataRetentionDays, vs...))
+}
+
+// ExpiredDataRetentionDaysNotIn applies the NotIn predicate on the "expired_data_retention_days" field.
+func ExpiredDataRetentionDaysNotIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldExpiredDataRetentionDays, vs...))
+}
+
+// ExpiredDataRetentionDaysGT applies the GT predicate on the "expired_data_retention_days" field.
+func ExpiredDataRetentionDaysGT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldExpiredDataRetentionDays, v))
+}
+
+// ExpiredDataRetentionDaysGTE applies the GTE predicate on the "expired_data_retention_days" field.
+func ExpiredDataRetentionDaysGTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldExpiredDataRetentionDays, v))
+}
+
+// ExpiredDataRetentionDaysLT applies the LT predicate on the "expired_data_retention_days" field.
+func ExpiredDataRetentionDaysLT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldExpiredDataRetentionDays, v))
+}
+
+// ExpiredDataRetentionDaysLTE applies the LTE predicate on the "expired_data_retention_days" field.
+func ExpiredDataRetentionDaysLTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldExpiredDataRetentionDays, v))
 }
 
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.

@@ -38,6 +38,7 @@ type InstanceSettings struct {
 	MailReplyTo                 string
 	MailLogoURL                 string
 	BulkLimit                   int
+	ExpiredDataRetentionDays    int
 	UpdatedAt                   time.Time
 	UpdatedBy                   string
 }

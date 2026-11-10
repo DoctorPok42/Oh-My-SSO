@@ -390,6 +390,8 @@ export type Settings = {
   key_rotation_grace_hours: number;
   /** The most items one bulk action may touch (1 to 500). */
   bulk_limit: number;
+  /** How long ended sessions, tokens, links, sign-in attempts… are kept before they are deleted (7 to 3650 days). */
+  expired_data_retention_days: number;
   notification_email_enabled: boolean;
   suspicious_login_email_enabled: boolean;
   updated_at: string;

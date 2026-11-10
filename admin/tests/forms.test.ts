@@ -42,6 +42,7 @@ describe("settings form", () => {
     mfa_step_up_max_age_minutes: 10,
     key_rotation_grace_hours: 24,
     bulk_limit: 100,
+    expired_data_retention_days: 90,
     notification_email_enabled: true,
     suspicious_login_email_enabled: false,
     updated_at: "",
@@ -70,6 +71,7 @@ describe("settings form", () => {
     lockout_duration_minutes: "15",
     key_rotation_grace_hours: "24",
     bulk_limit: "100",
+    expired_data_retention_days: "90",
   };
 
   it("sends nothing when nothing changed", () => {
@@ -104,6 +106,13 @@ describe("settings form", () => {
   it("sends the bulk limit when it changed", () => {
     const toggles = { notif: true, suspicious: false, remember: true };
     expect(settingsDiff(before, { ...form, bulk_limit: "250" }, "10.0.0.0/8", toggles)).toEqual({ bulk_limit: 250 });
+  });
+
+  it("sends the data retention when it changed", () => {
+    const toggles = { notif: true, suspicious: false, remember: true };
+    expect(settingsDiff(before, { ...form, expired_data_retention_days: "365" }, "10.0.0.0/8", toggles)).toEqual({
+      expired_data_retention_days: 365,
+    });
   });
 
   it("sends the default language when it changed", () => {

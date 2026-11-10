@@ -65,6 +65,8 @@ type Core struct {
 	TrustedDevices *service.TrustedDeviceService
 	// Account is the account console's service (Step 14c).
 	Account *service.AccountService
+	// Purge deletes the data that ended (StartTimeoutEnforcer runs it).
+	Purge *service.PurgeService
 
 	stopEnforcer func() // StartTimeoutEnforcer
 }
@@ -154,6 +156,12 @@ func BuildCore() *Core {
 
 	// Timeouts: checked at every sign-in and token, and the targets signed
 	// out when one starts (StartTimeoutEnforcer for the scheduled ones).
+	c.Purge = service.NewPurgeService(service.PurgeDeps{
+		Purge:    entstore.NewPurgeRepository(client),
+		Settings: c.Settings,
+		Realms:   c.Admin.ListRealms,
+	})
+
 	c.Timeouts = service.NewTimeoutService(service.TimeoutDeps{
 		Timeouts: entstore.NewTimeoutRepository(client),
 		Users:    c.Users,
@@ -284,7 +292,9 @@ func BuildCore() *Core {
 
 // StartTimeoutEnforcer signs out the targets of scheduled timeouts when
 // they start (every service.EnforcerInterval), until Close. Both servers
-// (idp and idp-admin) run it; each timeout is enforced once.
+// (idp and idp-admin) run it; each timeout is enforced once. It also starts
+// the other periodic jobs: retiring expired signing keys, and purging the
+// data that ended (every service.PurgeInterval, each row deleted once).
 func (c *Core) StartTimeoutEnforcer() {
 	if c.stopEnforcer != nil {
 		return
@@ -301,10 +311,16 @@ func (c *Core) StartTimeoutEnforcer() {
 		// Expired signing keys are retired and removed from the wallet.
 		c.KeyRotation.RunRetirer(ctx, c.Admin.ListRealms, 10*time.Minute)
 	}()
+	purgeDone := make(chan struct{})
+	go func() {
+		defer close(purgeDone)
+		c.Purge.Run(ctx, service.PurgeInterval)
+	}()
 	c.stopEnforcer = func() {
 		cancel()
 		<-done // a sign-out in progress finishes before the database closes
 		<-retirerDone
+		<-purgeDone // cancelled mid-pass: the next start goes on from there
 	}
 }
 
