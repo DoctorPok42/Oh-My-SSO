@@ -89,7 +89,8 @@ type oidcTestEnv struct {
 	web      *domain.ClientApp
 }
 
-func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
+// setupOIDCTestEnv: opts are added to the router's (e.g. lower rate limits).
+func setupOIDCTestEnv(t *testing.T, opts ...httpserver.Option) *oidcTestEnv {
 	t.Helper()
 	if testing.Short() {
 		t.Skip("integration test skipped in -short mode")
@@ -172,9 +173,9 @@ func setupOIDCTestEnv(t *testing.T) *oidcTestEnv {
 		Now:               clock.Now,
 	}, idp, valkeycache.NewOIDCStore(valkeyClient))
 	require.NoError(t, err)
-	router = httpserver.New(auth, sessions, rbac, realms, clients, limiter,
+	router = httpserver.New(auth, sessions, rbac, realms, clients, limiter, append([]httpserver.Option{
 		httpserver.WithMFA(mfa), httpserver.WithJWKS(idp), httpserver.WithOIDC(adapter),
-		httpserver.WithKnownAccounts(known)).Router()
+		httpserver.WithKnownAccounts(known)}, opts...)...).Router()
 
 	realm, err := realms.Create(ctx, repository.CreateRealmParams{Name: oidcRealm, DisplayName: "Acme Corp"})
 	require.NoError(t, err)

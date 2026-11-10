@@ -11,6 +11,12 @@ import (
 func (s *Server) mountSAML(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		r.Use(samlRealm)
+		// Each parses a SAML message or shows a page: rate limited per
+		// address (protocol_limits.go). Metadata and assets are not.
+		limited := s.limitSAML(s.saml.Handler())
+		for _, p := range []string{"/saml/sso", "/saml/login", "/saml/consent", "/saml/slo"} {
+			r.Handle(p, limited)
+		}
 		r.Handle("/saml/*", s.saml.Handler())
 	})
 }

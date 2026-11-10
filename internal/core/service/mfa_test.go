@@ -20,6 +20,7 @@ import (
 	localdev "sso.internal/sso/internal/keymanager/local_dev"
 	"sso.internal/sso/internal/mfastore"
 	"sso.internal/sso/internal/passkey"
+	"sso.internal/sso/internal/ratelimit"
 	"sso.internal/sso/internal/storage/memstore"
 )
 
@@ -161,6 +162,13 @@ func (l *countingLimiter) Allow(_ context.Context, key string, _ int64, _ time.D
 	l.seen[key]++
 	return l.seen[key] <= l.limit, nil
 }
+
+// Reserve and Release: not used by the MFA service.
+func (l *countingLimiter) Reserve(context.Context, ...ratelimit.Rule) (ratelimit.Reservation, error) {
+	return ratelimit.Reservation{OK: true}, nil
+}
+
+func (l *countingLimiter) Release(context.Context, ...ratelimit.Hit) error { return nil }
 
 
 const (

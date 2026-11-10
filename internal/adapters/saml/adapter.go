@@ -207,6 +207,21 @@ var (
 		Text: i18n.M("saml.message.no_key.text", "This server has no SAML signing key yet. Its administrator must create one.")}
 )
 
+// msgTooManyRequests: shared with the HTTP server's other pages.
+var msgTooManyRequests = message{Title: i18n.M("message.too_many_requests.title", "Too many requests"),
+	Text: i18n.M("message.too_many_requests.text", "Too many requests came from your network. Wait a few minutes, then try again.")}
+
+// RenderTooManyRequests answers 429 with a page, for a request the rate limit
+// refused (the caller sets Retry-After). Nothing is looked up: no link back
+// to the application, a refused request must cost nothing.
+func (a *Adapter) RenderTooManyRequests(w http.ResponseWriter, r *http.Request) {
+	realm, _ := realmFrom(r.Context())
+	h := w.Header()
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Referrer-Policy", "no-referrer")
+	a.pages.RenderMessage(w, r, http.StatusTooManyRequests, msgTooManyRequests, assets(realm))
+}
+
 func (a *Adapter) renderMessage(w http.ResponseWriter, r *http.Request, status int, m message) {
 	realm, _ := realmFrom(r.Context())
 	m.Back = a.backLink(r)

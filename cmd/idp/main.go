@@ -19,6 +19,7 @@ import (
 	valkeycache "sso.internal/sso/internal/cache/valkey"
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/httpserver"
+	"sso.internal/sso/internal/httptimeout"
 	"sso.internal/sso/internal/keymanager"
 	"sso.internal/sso/internal/oidcstore"
 )
@@ -131,6 +132,7 @@ func serve() {
 
 	opts := []httpserver.Option{
 		httpserver.WithClientIP(app.ClientIP()),
+		httpserver.WithProtocolLimits(app.ProtocolRateLimits()),
 		httpserver.WithJWKS(c.IdentityCore),
 		httpserver.WithMFA(c.MFA),
 		httpserver.WithAccountConsole(c.Account),
@@ -151,7 +153,7 @@ func serve() {
 		opts...,
 	)
 
-	httpSrv := &http.Server{Addr: ":" + port, Handler: srv.Router(), ReadHeaderTimeout: 10 * time.Second}
+	httpSrv := httptimeout.NewServer(":"+port, srv.Router(), httptimeout.Public)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	go func() {

@@ -24,6 +24,8 @@ type Server struct {
 	realms      repository.RealmRepository
 	clients     repository.ClientRepository
 	rateLimiter ratelimit.Limiter
+	// protocolLimits: of the OIDC client endpoints and SAML (protocol_limits.go).
+	protocolLimits ProtocolLimits
 
 	publicKeys PublicKeySource
 
@@ -38,7 +40,7 @@ type Server struct {
 
 	saml SAMLProvider
 
-	passwordReset *service.PasswordResetService
+	passwordReset  *service.PasswordResetService
 	forgotPassword bool
 
 	accounts *service.KnownAccountService
@@ -61,6 +63,9 @@ type OIDCProvider interface {
 type SAMLProvider interface {
 	// Handler serves /r/{realm}/saml/*.
 	Handler() http.Handler
+	// RenderTooManyRequests answers 429 with a page (the rate limit refused
+	// the request; Retry-After is set).
+	RenderTooManyRequests(w http.ResponseWriter, r *http.Request)
 }
 
 // Option configures optional parts of the Server.
@@ -118,13 +123,14 @@ func New(
 	opts ...Option,
 ) *Server {
 	s := &Server{
-		router:      chi.NewRouter(),
-		auth:        auth,
-		sessions:    sessions,
-		authz:       authz,
-		realms:      realms,
-		clients:     clients,
-		rateLimiter: rateLimiter,
+		router:         chi.NewRouter(),
+		auth:           auth,
+		sessions:       sessions,
+		authz:          authz,
+		realms:         realms,
+		clients:        clients,
+		rateLimiter:    rateLimiter,
+		protocolLimits: DefaultProtocolLimits,
 	}
 	for _, opt := range opts {
 		opt(s)
