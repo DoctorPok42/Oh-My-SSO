@@ -496,6 +496,27 @@ func (_u *InstanceSettingsUpdate) AddBulkLimit(v int) *InstanceSettingsUpdate {
 	return _u
 }
 
+// SetExpiredDataRetentionDays sets the "expired_data_retention_days" field.
+func (_u *InstanceSettingsUpdate) SetExpiredDataRetentionDays(v int) *InstanceSettingsUpdate {
+	_u.mutation.ResetExpiredDataRetentionDays()
+	_u.mutation.SetExpiredDataRetentionDays(v)
+	return _u
+}
+
+// SetNillableExpiredDataRetentionDays sets the "expired_data_retention_days" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableExpiredDataRetentionDays(v *int) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetExpiredDataRetentionDays(*v)
+	}
+	return _u
+}
+
+// AddExpiredDataRetentionDays adds value to the "expired_data_retention_days" field.
+func (_u *InstanceSettingsUpdate) AddExpiredDataRetentionDays(v int) *InstanceSettingsUpdate {
+	_u.mutation.AddExpiredDataRetentionDays(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdate) SetUpdatedAt(v time.Time) *InstanceSettingsUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -710,6 +731,12 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.AddedBulkLimit(); ok {
 		_spec.AddField(instancesettings.FieldBulkLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.ExpiredDataRetentionDays(); ok {
+		_spec.SetField(instancesettings.FieldExpiredDataRetentionDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedExpiredDataRetentionDays(); ok {
+		_spec.AddField(instancesettings.FieldExpiredDataRetentionDays, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)
@@ -1206,6 +1233,27 @@ func (_u *InstanceSettingsUpdateOne) AddBulkLimit(v int) *InstanceSettingsUpdate
 	return _u
 }
 
+// SetExpiredDataRetentionDays sets the "expired_data_retention_days" field.
+func (_u *InstanceSettingsUpdateOne) SetExpiredDataRetentionDays(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.ResetExpiredDataRetentionDays()
+	_u.mutation.SetExpiredDataRetentionDays(v)
+	return _u
+}
+
+// SetNillableExpiredDataRetentionDays sets the "expired_data_retention_days" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableExpiredDataRetentionDays(v *int) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetExpiredDataRetentionDays(*v)
+	}
+	return _u
+}
+
+// AddExpiredDataRetentionDays adds value to the "expired_data_retention_days" field.
+func (_u *InstanceSettingsUpdateOne) AddExpiredDataRetentionDays(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.AddExpiredDataRetentionDays(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdateOne) SetUpdatedAt(v time.Time) *InstanceSettingsUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -1450,6 +1498,12 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.AddedBulkLimit(); ok {
 		_spec.AddField(instancesettings.FieldBulkLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.ExpiredDataRetentionDays(); ok {
+		_spec.SetField(instancesettings.FieldExpiredDataRetentionDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedExpiredDataRetentionDays(); ok {
+		_spec.AddField(instancesettings.FieldExpiredDataRetentionDays, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

@@ -34,18 +34,19 @@ const (
 // changes them.
 func DefaultInstanceSettings(realmID string) *domain.InstanceSettings {
 	return &domain.InstanceSettings{
-		RealmID:                 realmID,
-		MinPasswordLength:       defaultMinPasswordLength,
-		LockoutThreshold:        defaultLockoutThreshold,
-		LockoutDurationMinutes:  defaultLockoutDurationMinutes,
-		PasswordResetTTLMinutes: defaultPasswordResetTTLMinutes,
-		InviteTTLHours:          defaultInviteTTLHours,
-		SessionIdleMinutes:      int(defaultSessionIdleTimeout / time.Minute),
-		SessionMaxHours:         int(defaultSessionMaxLifetime / time.Hour),
-		RememberMeEnabled:       true,
-		RememberMeIdleDays:      defaultRememberMeIdleDays,
-		RememberMeMaxDays:       defaultRememberMeMaxDays,
-		BulkLimit:               DefaultBulkLimit,
+		RealmID:                  realmID,
+		MinPasswordLength:        defaultMinPasswordLength,
+		LockoutThreshold:         defaultLockoutThreshold,
+		LockoutDurationMinutes:   defaultLockoutDurationMinutes,
+		PasswordResetTTLMinutes:  defaultPasswordResetTTLMinutes,
+		InviteTTLHours:           defaultInviteTTLHours,
+		SessionIdleMinutes:       int(defaultSessionIdleTimeout / time.Minute),
+		SessionMaxHours:          int(defaultSessionMaxLifetime / time.Hour),
+		RememberMeEnabled:        true,
+		RememberMeIdleDays:       defaultRememberMeIdleDays,
+		RememberMeMaxDays:        defaultRememberMeMaxDays,
+		BulkLimit:                DefaultBulkLimit,
+		ExpiredDataRetentionDays: DefaultRetentionDays,
 	}
 }
 

@@ -384,6 +384,20 @@ func (_c *InstanceSettingsCreate) SetNillableBulkLimit(v *int) *InstanceSettings
 	return _c
 }
 
+// SetExpiredDataRetentionDays sets the "expired_data_retention_days" field.
+func (_c *InstanceSettingsCreate) SetExpiredDataRetentionDays(v int) *InstanceSettingsCreate {
+	_c.mutation.SetExpiredDataRetentionDays(v)
+	return _c
+}
+
+// SetNillableExpiredDataRetentionDays sets the "expired_data_retention_days" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableExpiredDataRetentionDays(v *int) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetExpiredDataRetentionDays(*v)
+	}
+	return _c
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_c *InstanceSettingsCreate) SetUpdatedAt(v time.Time) *InstanceSettingsCreate {
 	_c.mutation.SetUpdatedAt(v)
@@ -566,6 +580,10 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultBulkLimit
 		_c.mutation.SetBulkLimit(v)
 	}
+	if _, ok := _c.mutation.ExpiredDataRetentionDays(); !ok {
+		v := instancesettings.DefaultExpiredDataRetentionDays
+		_c.mutation.SetExpiredDataRetentionDays(v)
+	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := instancesettings.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
@@ -660,6 +678,9 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.BulkLimit(); !ok {
 		return &ValidationError{Name: "bulk_limit", err: errors.New(`ent: missing required field "InstanceSettings.bulk_limit"`)}
+	}
+	if _, ok := _c.mutation.ExpiredDataRetentionDays(); !ok {
+		return &ValidationError{Name: "expired_data_retention_days", err: errors.New(`ent: missing required field "InstanceSettings.expired_data_retention_days"`)}
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "InstanceSettings.updated_at"`)}
@@ -810,6 +831,10 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.BulkLimit(); ok {
 		_spec.SetField(instancesettings.FieldBulkLimit, field.TypeInt, value)
 		_node.BulkLimit = value
+	}
+	if value, ok := _c.mutation.ExpiredDataRetentionDays(); ok {
+		_spec.SetField(instancesettings.FieldExpiredDataRetentionDays, field.TypeInt, value)
+		_node.ExpiredDataRetentionDays = value
 	}
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

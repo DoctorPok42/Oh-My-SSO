@@ -557,6 +557,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		MailReplyTo                 *string   `json:"mail_reply_to"`
 		MailLogoURL                 *string   `json:"mail_logo_url"`
 		BulkLimit                   *int      `json:"bulk_limit"`
+		ExpiredDataRetentionDays    *int      `json:"expired_data_retention_days"`
 	}
 	if !decode(w, r, &in) {
 		return

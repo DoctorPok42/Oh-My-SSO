@@ -44,5 +44,6 @@ type UpdateInstanceSettingsParams struct {
 	MailReplyTo                 *string
 	MailLogoURL                 *string
 	BulkLimit                   *int
+	ExpiredDataRetentionDays    *int
 	UpdatedBy                   *string
 }

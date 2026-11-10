@@ -79,6 +79,13 @@ func (InstanceSettings) Fields() []ent.Field {
 		// (1 to 500). A larger selection is done in several passes, so a
 		// mistake stays small.
 		field.Int("bulk_limit").Default(100),
+		// How long data that has ended is kept before it is deleted (7 to
+		// 3650 days): sessions and tokens after they expired or were
+		// revoked, used or expired reset / activation links, sign-in
+		// attempts, accounts of "Pick an account" and trusted devices
+		// unused for that long. 90 days: the history the suspicious
+		// sign-in check looks at.
+		field.Int("expired_data_retention_days").Default(90),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.String("updated_by").Optional(),
 	}

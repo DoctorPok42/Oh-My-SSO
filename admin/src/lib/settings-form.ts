@@ -27,8 +27,12 @@ export type SettingsPatch = Partial<
     | "mail_reply_to"
     | "mail_logo_url"
     | "bulk_limit"
+    | "expired_data_retention_days"
   >
 >;
+
+/** expired_data_retention_days: its bounds and default (service.MinRetentionDays…). */
+export const RETENTION_DAYS = { min: 7, max: 3650, default: 90 } as const;
 
 /** The e-mail sender fields of the form (all optional). */
 export const MAIL_FIELDS = ["mail_from_name", "mail_from_address", "mail_reply_to", "mail_logo_url"] as const;
@@ -48,6 +52,7 @@ export const NUMBERS = [
   "lockout_duration_minutes",
   "key_rotation_grace_hours",
   "bulk_limit",
+  "expired_data_retention_days",
 ] as const;
 export type NumberKey = (typeof NUMBERS)[number];
 
@@ -60,7 +65,7 @@ export function settingsSection(tab?: string): SettingsSection {
 }
 
 const SECTION_FIELDS: Record<SettingsSection, readonly string[]> = {
-  general: ["default_locale", "bulk_limit"],
+  general: ["default_locale", "bulk_limit", "expired_data_retention_days"],
   security: [
     "min_password_length",
     "password_expiry_days",

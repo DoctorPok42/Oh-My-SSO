@@ -232,6 +232,11 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   `docker compose exec -T postgres pg_dump -U sso sso | gzip > sso-$(date +%F).sql.gz`, **and** the key manager:
   Vault's Transit keys, or the OKMS domain and its access certificate. Without the keys, encrypted secrets and signing
   keys are lost even with a good database backup. Keep a copy of `.env`. Test a restore.
+- **Purge**: every hour, `idp` and `idp-admin` delete what has ended longer ago than the realm's retention (Settings >
+  General > Data retention, 90 days by default): expired or revoked sessions and tokens, used or expired reset and
+  activation links, sign-in attempts, remembered accounts and trusted devices unused for that long. Each row is
+  deleted by one server (batches of 1000, `FOR UPDATE SKIP LOCKED`); the logs show `purge: expired data deleted` with
+  the counts. The audit log is not purged.
 - **Key rotation**: `docker compose run --rm idp keys rotate --realm <realm>`, wait for tokens to expire, then
   `keys retire`. SAML: `keys rotate --purpose saml_signing`, share the new metadata with service providers, then
   `keys activate --purpose saml_signing`.

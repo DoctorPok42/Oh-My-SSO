@@ -71,6 +71,7 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 		SetNillableMailReplyTo(p.MailReplyTo).
 		SetNillableMailLogoURL(p.MailLogoURL).
 		SetNillableBulkLimit(p.BulkLimit).
+		SetNillableExpiredDataRetentionDays(p.ExpiredDataRetentionDays).
 		SetNillableUpdatedBy(p.UpdatedBy)
 	if p.IPAllowlist != nil {
 		builder = builder.SetIPAllowlist(p.IPAllowlist)
@@ -117,6 +118,7 @@ func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings 
 		MailReplyTo:                 e.MailReplyTo,
 		MailLogoURL:                 e.MailLogoURL,
 		BulkLimit:                   e.BulkLimit,
+		ExpiredDataRetentionDays:    e.ExpiredDataRetentionDays,
 		UpdatedAt:                   e.UpdatedAt,
 		UpdatedBy:                   e.UpdatedBy,
 	}

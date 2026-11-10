@@ -199,7 +199,8 @@ type SettingsView struct {
 	MailReplyTo                 string    `json:"mail_reply_to"`
 	MailLogoURL                 string    `json:"mail_logo_url"`
 	BulkLimit                   int       `json:"bulk_limit"`
-	UpdatedAt                   time.Time `json:"updated_at"`
+	ExpiredDataRetentionDays    int       `json:"expired_data_retention_days"`
+	UpdatedAt                  time.Time `json:"updated_at"`
 	UpdatedBy                   string    `json:"updated_by"`
 }
 
@@ -235,6 +236,7 @@ func (s *AdminService) GetSettings(ctx context.Context, realm *domain.Realm) (*S
 		KeyRotationGraceHours: st.KeyRotationGraceHours, NotificationEmailEnabled: st.NotificationEmailEnabled,
 		SuspiciousLoginEmailEnabled: st.SuspiciousLoginEmailEnabled, DefaultLocale: localeOrEnglish(st.DefaultLocale),
 		MailFromName: st.MailFromName, MailFromAddress: st.MailFromAddress, MailReplyTo: st.MailReplyTo, MailLogoURL: st.MailLogoURL, BulkLimit: effectiveBulkLimit(st),
+		ExpiredDataRetentionDays: EffectiveRetentionDays(st),
 		UpdatedAt: st.UpdatedAt, UpdatedBy: st.UpdatedBy,
 	}, nil
 }
@@ -264,6 +266,7 @@ type SettingsPatch struct {
 	MailReplyTo                 *string
 	MailLogoURL                 *string
 	BulkLimit                   *int
+	ExpiredDataRetentionDays    *int
 }
 
 // UpdateSettings validates and applies a patch. Changes apply within a
@@ -293,6 +296,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		{"mfa_step_up_max_age_minutes", p.MFAStepUpMaxAgeMinutes, int(minMFAStepUpMaxAge / time.Minute), int(maxMFAStepUpMaxAge / time.Minute)},
 		{"key_rotation_grace_hours", p.KeyRotationGraceHours, int(MinKeyRotationGrace / time.Hour), 365 * 24},
 		{"bulk_limit", p.BulkLimit, 1, MaxBulkLimit},
+		{"expired_data_retention_days", p.ExpiredDataRetentionDays, MinRetentionDays, MaxRetentionDays},
 	} {
 		if err := rangeCheck(c.field, c.v, c.lo, c.hi); err != nil {
 			return nil, err
@@ -359,6 +363,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		KeyRotationGraceHours: p.KeyRotationGraceHours, NotificationEmailEnabled: p.NotificationEmailEnabled,
 		SuspiciousLoginEmailEnabled: p.SuspiciousLoginEmailEnabled, DefaultLocale: p.DefaultLocale, UpdatedBy: &by,
 		MailFromName: p.MailFromName, MailFromAddress: p.MailFromAddress, MailReplyTo: p.MailReplyTo, MailLogoURL: p.MailLogoURL, BulkLimit: p.BulkLimit,
+		ExpiredDataRetentionDays: p.ExpiredDataRetentionDays,
 	}
 	if _, err := s.d.Settings.Update(ctx, st.ID, upd); err != nil {
 		return nil, fmt.Errorf("update settings: %w", err)
@@ -380,6 +385,7 @@ func settingsChanges(p SettingsPatch) map[string]interface{} {
 		"remember_me_max_days": p.RememberMeMaxDays, "lockout_threshold": p.LockoutThreshold,
 		"lockout_duration_minutes": p.LockoutDurationMinutes, "mfa_step_up_max_age_minutes": p.MFAStepUpMaxAgeMinutes,
 		"key_rotation_grace_hours": p.KeyRotationGraceHours, "bulk_limit": p.BulkLimit,
+		"expired_data_retention_days": p.ExpiredDataRetentionDays,
 	}
 	for k, v := range ints {
 		if v != nil {
