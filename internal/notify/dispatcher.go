@@ -124,6 +124,7 @@ func (d *Dispatcher) Start() {
 // Notify queues an event (service.Notifier). It never blocks: when the
 // queue is full the event is dropped, logged and audited.
 func (d *Dispatcher) Notify(ctx context.Context, e domain.NotificationEvent) {
+	e = inBatch(ctx, e)
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	if d.closed {
@@ -142,6 +143,7 @@ func (d *Dispatcher) Notify(ctx context.Context, e domain.NotificationEvent) {
 // so that a long list goes out at the pace of the mail server. It gives up
 // when ctx ends, and returns the reason. service.QueueNotifier.
 func (d *Dispatcher) NotifyWait(ctx context.Context, e domain.NotificationEvent) error {
+	e = inBatch(ctx, e)
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	if d.closed {
@@ -153,6 +155,23 @@ func (d *Dispatcher) NotifyWait(ctx context.Context, e domain.NotificationEvent)
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+// inBatch: an e-mail queued by a bulk action is recorded in the one audit
+// entry of the action, not in an entry of its own (unless it fails).
+func inBatch(ctx context.Context, e domain.NotificationEvent) domain.NotificationEvent {
+	b := audit.BatchOf(ctx)
+	if b == nil {
+		return e
+	}
+	if b.Add(audit.Entry{
+		Action: audit.NotificationSent, ResourceType: "User", ResourceID: e.UserID, TargetUserID: e.UserID,
+		Details: map[string]interface{}{"kind": string(e.Kind), "status": "queued"},
+	}) {
+		e.QuietAudit = true
+	}
+	e.OperationID = b.Operation()
+	return e
 }
 
 // Close stops accepting events, lets the workers send what is queued, and
@@ -273,6 +292,9 @@ func (d *Dispatcher) writeAudit(ctx context.Context, e domain.NotificationEvent,
 		details["status"] = "failed"
 		details["error"] = sendErr.Error()
 		level, status = domain.AuditLogWarning, domain.AuditLogFailure
+	}
+	if e.OperationID != "" {
+		details["operation_id"] = e.OperationID
 	}
 	if _, err := d.audit.Create(ctx, repository.CreateAuditLogParams{
 		RealmID:      e.RealmID,

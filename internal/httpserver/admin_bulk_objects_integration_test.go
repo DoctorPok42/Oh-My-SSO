@@ -187,9 +187,9 @@ func TestAdmin_Integration_BulkRoleMFA(t *testing.T) {
 	require.Equal(t, true, line(support)["configured"])
 	require.Equal(t, true, line(support)["required"])
 	op := out["operation_id"].(string)
-	status, audit := e.call(t, at, http.MethodGet, realm+"/audit-logs?operation="+op, nil)
-	require.Equal(t, http.StatusOK, status, "%v", audit)
-	require.Len(t, audit["items"], 1, "the MFA policy change carries the operation id")
+	changes := bulkAuditEntry(t, e, at, "demo", op)[support]["changes"].([]any)
+	require.Len(t, changes, 1, "the MFA policy change is in the entry of the operation")
+	require.Equal(t, "mfa.policy_changed", changes[0].(map[string]any)["action"])
 
 	status, out = post(map[string]any{"action": "require", "ids": []string{support}})
 	requireBulk(t, status, out, 0, 1, 0)

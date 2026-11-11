@@ -95,7 +95,8 @@ func BuildCore() *Core {
 	c.Tokens = entstore.NewTokenRepository(client)
 	c.SigningKeys = entstore.NewSigningKeyRepository(client)
 	c.Settings = entstore.NewInstanceSettingsRepository(client)
-	c.Audit = entstore.NewAuditLogRepository(client)
+	// A bulk action of the console leaves one entry (service.BatchedAuditLog).
+	c.Audit = service.BatchedAuditLog(entstore.NewAuditLogRepository(client))
 	c.Roles = entstore.NewRoleRepository(client)
 	c.Groups = entstore.NewGroupRepository(client)
 	c.Scopes = entstore.NewClientScopeRepository(client)

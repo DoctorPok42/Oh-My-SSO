@@ -108,7 +108,7 @@ func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *admin
 	clients := entstore.NewClientRepository(client)
 	settings := entstore.NewInstanceSettingsRepository(client)
 	attempts := entstore.NewLoginAttemptRepository(client)
-	audit := entstore.NewAuditLogRepository(client)
+	audit := service.BatchedAuditLog(entstore.NewAuditLogRepository(client)) // as in app.Core
 	tokens := entstore.NewTokenRepository(client)
 	signingKeys := entstore.NewSigningKeyRepository(client)
 	access := entstore.NewAccessRepository(client)

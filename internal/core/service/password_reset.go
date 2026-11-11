@@ -145,19 +145,43 @@ func (s *PasswordResetService) RequestReset(ctx context.Context, in RequestReset
 	return nil
 }
 
-// SendForcedResetLink e-mails the link of a reset forced by an administrator
-// (the audit entry is the administrator's). Earlier links stop working.
-func (s *PasswordResetService) SendForcedResetLink(ctx context.Context, user *domain.User, requestedIP string) error {
+// ForcedResetLink is a reset link created for a reset forced by an
+// administrator, not e-mailed yet.
+type ForcedResetLink struct {
+	user    *domain.User
+	raw     string
+	expires time.Time
+}
+
+// PrepareForcedResetLink creates the link of a reset forced by an
+// administrator (earlier links stop working) without e-mailing it: the caller
+// changes the account first, then calls SendForcedResetLink, so that the user
+// never holds a link to an account that was not switched. If a later step
+// fails the caller calls CancelForcedResetLink.
+func (s *PasswordResetService) PrepareForcedResetLink(ctx context.Context, user *domain.User, requestedIP string) (*ForcedResetLink, error) {
 	if _, err := s.tokens.DeleteUnusedByUser(ctx, user.ID); err != nil {
-		return fmt.Errorf("password reset: cancel previous links: %w", err)
+		return nil, fmt.Errorf("password reset: cancel previous links: %w", err)
 	}
 	raw, expires, err := s.newResetLink(ctx, user, requestedIP)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	return &ForcedResetLink{user: user, raw: raw, expires: expires}, nil
+}
+
+// SendForcedResetLink e-mails a prepared link (the audit entry is the
+// administrator's).
+func (s *PasswordResetService) SendForcedResetLink(ctx context.Context, link *ForcedResetLink) {
 	// No IP in the e-mail: it would be the administrator's.
-	s.notifyResetLink(ctx, domain.NotificationPasswordResetRequired, user, raw, expires, "", "")
-	return nil
+	s.notifyResetLink(ctx, domain.NotificationPasswordResetRequired, link.user, link.raw, link.expires, "", "")
+}
+
+// CancelForcedResetLink drops the unused links of a user after a forced
+// reset that could not be completed.
+func (s *PasswordResetService) CancelForcedResetLink(ctx context.Context, userID string) {
+	if _, err := s.tokens.DeleteUnusedByUser(ctx, userID); err != nil {
+		s.logger.WarnContext(ctx, "password reset: cannot cancel forced link", "user_id", userID, "error", err)
+	}
 }
 
 func (s *PasswordResetService) newResetLink(ctx context.Context, user *domain.User, ip string) (string, time.Time, error) {

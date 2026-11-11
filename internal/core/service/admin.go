@@ -196,6 +196,7 @@ func NewAdminService(d AdminDeps) *AdminService {
 	if d.Notifier == nil {
 		d.Notifier = NopNotifier{}
 	}
+	d.Audit = BatchedAuditLog(d.Audit) // one entry per bulk action
 	if d.Languages == nil {
 		d.Languages = i18n.MustDefault()
 	}

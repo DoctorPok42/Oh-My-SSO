@@ -131,7 +131,10 @@ they are decided one at a time, or are not lists.
   others go on: the answer is always 200 and lists what became of each item.
 - **Your own account (master realm) and your own session are left out**, by the
   API as well as by the greyed-out checkbox.
-- **One audit entry per changed item**, all under one `operation_id`:
+- **One audit entry per bulk action**, `bulk.completed` (`bulk.interrupted` when
+  the server stopped first): it lists each item, its outcome and the changes
+  made (including the e-mails queued), instead of one entry per item. Only a
+  failed e-mail still gets an entry of its own, with the same `operation_id`.
   `/audit?operation=<id>` shows them, and the summary links there.
 - **The selection is kept in `sessionStorage`**, per table and filters: it
   survives the pagination and the round trip to the IdP of a step-up.
