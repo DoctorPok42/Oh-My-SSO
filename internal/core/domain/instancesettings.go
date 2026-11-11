@@ -39,6 +39,7 @@ type InstanceSettings struct {
 	MailLogoURL                 string
 	BulkLimit                   int
 	ExpiredDataRetentionDays    int
+	AuditLogRetentionDays       int // 0: the audit log is kept forever
 	UpdatedAt                   time.Time
 	UpdatedBy                   string
 }

@@ -540,6 +540,7 @@ var (
 		{Name: "mail_logo_url", Type: field.TypeString, Default: ""},
 		{Name: "bulk_limit", Type: field.TypeInt, Default: 100},
 		{Name: "expired_data_retention_days", Type: field.TypeInt, Default: 90},
+		{Name: "audit_log_retention_days", Type: field.TypeInt, Default: 365},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "updated_by", Type: field.TypeString, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString, Unique: true},
@@ -552,7 +553,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instance_settings_realms_instance_settings",
-				Columns:    []*schema.Column{InstanceSettingsColumns[30]},
+				Columns:    []*schema.Column{InstanceSettingsColumns[31]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},

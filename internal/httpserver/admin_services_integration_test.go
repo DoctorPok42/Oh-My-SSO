@@ -128,6 +128,7 @@ func TestAdminService_Integration(t *testing.T) {
 		before, err := svc.GetSettings(ctx, demo)
 		require.NoError(t, err)
 		require.Equal(t, "en", before.DefaultLocale)
+		require.Equal(t, service.DefaultAuditLogRetentionDays, before.AuditLogRetentionDays, "one year until the realm changes it")
 		require.NotEmpty(t, svc.Languages())
 
 		for name, patch := range map[string]service.SettingsPatch{
@@ -139,6 +140,8 @@ func TestAdminService_Integration(t *testing.T) {
 			"remember max<normal":  {SessionMaxHours: ptr(48), RememberMeIdleDays: ptr(1), RememberMeMaxDays: ptr(1)},
 			"remember idle<normal": {SessionIdleMinutes: ptr(4320), RememberMeIdleDays: ptr(1), RememberMeMaxDays: ptr(30)},
 			"idle<step-up":         {RememberMeEnabled: ptr(false), SessionIdleMinutes: ptr(2), MFAStepUpMaxAgeMinutes: nil},
+			"audit retention":      {AuditLogRetentionDays: ptr(7)},
+			"audit retention < 0":  {AuditLogRetentionDays: ptr(-1)},
 		} {
 			_, err := svc.UpdateSettings(ctx, root, demo, patch)
 			require.Error(t, err, name)
@@ -155,10 +158,11 @@ func TestAdminService_Integration(t *testing.T) {
 			RememberMeMaxDays: ptr(20), LockoutThreshold: ptr(4), LockoutDurationMinutes: ptr(15),
 			IPAllowlist: ptr([]string{"10.0.0.0/8", " ", "192.0.2.7"}), MFARequiredGlobally: ptr(true), MFAStepUpMaxAgeMinutes: ptr(15),
 			KeyRotationGraceHours: ptr(48), NotificationEmailEnabled: ptr(false), SuspiciousLoginEmailEnabled: ptr(false),
-			DefaultLocale: ptr("fr"),
+			DefaultLocale: ptr("fr"), AuditLogRetentionDays: ptr(365),
 		})
 		require.NoError(t, err)
 		require.Equal(t, 14, after.MinPasswordLength)
+		require.Equal(t, 365, after.AuditLogRetentionDays)
 		require.Equal(t, []string{"10.0.0.0/8", "192.0.2.7"}, after.IPAllowlist)
 		require.Equal(t, "fr", after.DefaultLocale)
 		require.True(t, after.MFARequiredGlobally)

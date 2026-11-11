@@ -398,6 +398,20 @@ func (_c *InstanceSettingsCreate) SetNillableExpiredDataRetentionDays(v *int) *I
 	return _c
 }
 
+// SetAuditLogRetentionDays sets the "audit_log_retention_days" field.
+func (_c *InstanceSettingsCreate) SetAuditLogRetentionDays(v int) *InstanceSettingsCreate {
+	_c.mutation.SetAuditLogRetentionDays(v)
+	return _c
+}
+
+// SetNillableAuditLogRetentionDays sets the "audit_log_retention_days" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableAuditLogRetentionDays(v *int) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetAuditLogRetentionDays(*v)
+	}
+	return _c
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_c *InstanceSettingsCreate) SetUpdatedAt(v time.Time) *InstanceSettingsCreate {
 	_c.mutation.SetUpdatedAt(v)
@@ -584,6 +598,10 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultExpiredDataRetentionDays
 		_c.mutation.SetExpiredDataRetentionDays(v)
 	}
+	if _, ok := _c.mutation.AuditLogRetentionDays(); !ok {
+		v := instancesettings.DefaultAuditLogRetentionDays
+		_c.mutation.SetAuditLogRetentionDays(v)
+	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := instancesettings.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
@@ -681,6 +699,9 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.ExpiredDataRetentionDays(); !ok {
 		return &ValidationError{Name: "expired_data_retention_days", err: errors.New(`ent: missing required field "InstanceSettings.expired_data_retention_days"`)}
+	}
+	if _, ok := _c.mutation.AuditLogRetentionDays(); !ok {
+		return &ValidationError{Name: "audit_log_retention_days", err: errors.New(`ent: missing required field "InstanceSettings.audit_log_retention_days"`)}
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "InstanceSettings.updated_at"`)}
@@ -835,6 +856,10 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.ExpiredDataRetentionDays(); ok {
 		_spec.SetField(instancesettings.FieldExpiredDataRetentionDays, field.TypeInt, value)
 		_node.ExpiredDataRetentionDays = value
+	}
+	if value, ok := _c.mutation.AuditLogRetentionDays(); ok {
+		_spec.SetField(instancesettings.FieldAuditLogRetentionDays, field.TypeInt, value)
+		_node.AuditLogRetentionDays = value
 	}
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

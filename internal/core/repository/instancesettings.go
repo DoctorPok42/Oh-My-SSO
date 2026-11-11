@@ -45,5 +45,6 @@ type UpdateInstanceSettingsParams struct {
 	MailLogoURL                 *string
 	BulkLimit                   *int
 	ExpiredDataRetentionDays    *int
+	AuditLogRetentionDays       *int
 	UpdatedBy                   *string
 }

@@ -71,6 +71,8 @@ const (
 	FieldBulkLimit = "bulk_limit"
 	// FieldExpiredDataRetentionDays holds the string denoting the expired_data_retention_days field in the database.
 	FieldExpiredDataRetentionDays = "expired_data_retention_days"
+	// FieldAuditLogRetentionDays holds the string denoting the audit_log_retention_days field in the database.
+	FieldAuditLogRetentionDays = "audit_log_retention_days"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
 	// FieldUpdatedBy holds the string denoting the updated_by field in the database.
@@ -119,6 +121,7 @@ var Columns = []string{
 	FieldMailLogoURL,
 	FieldBulkLimit,
 	FieldExpiredDataRetentionDays,
+	FieldAuditLogRetentionDays,
 	FieldUpdatedAt,
 	FieldUpdatedBy,
 }
@@ -188,6 +191,8 @@ var (
 	DefaultBulkLimit int
 	// DefaultExpiredDataRetentionDays holds the default value on creation for the "expired_data_retention_days" field.
 	DefaultExpiredDataRetentionDays int
+	// DefaultAuditLogRetentionDays holds the default value on creation for the "audit_log_retention_days" field.
+	DefaultAuditLogRetentionDays int
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
@@ -339,6 +344,11 @@ func ByBulkLimit(opts ...sql.OrderTermOption) OrderOption {
 // ByExpiredDataRetentionDays orders the results by the expired_data_retention_days field.
 func ByExpiredDataRetentionDays(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldExpiredDataRetentionDays, opts...).ToFunc()
+}
+
+// ByAuditLogRetentionDays orders the results by the audit_log_retention_days field.
+func ByAuditLogRetentionDays(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAuditLogRetentionDays, opts...).ToFunc()
 }
 
 // ByUpdatedAt orders the results by the updated_at field.

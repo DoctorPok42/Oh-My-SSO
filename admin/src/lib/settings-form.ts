@@ -28,11 +28,39 @@ export type SettingsPatch = Partial<
     | "mail_logo_url"
     | "bulk_limit"
     | "expired_data_retention_days"
+    | "audit_log_retention_days"
   >
 >;
 
 /** expired_data_retention_days: its bounds and default (service.MinRetentionDays…). */
 export const RETENTION_DAYS = { min: 7, max: 3650, default: 90 } as const;
+
+/** audit_log_retention_days: the default (service.DefaultAuditLogRetentionDays). */
+export const AUDIT_RETENTION_DEFAULT = 365;
+
+/** The choices offered, in days (30 to 3650); 0 (unlimited) is always offered, last. */
+export const AUDIT_RETENTION_CHOICES: readonly number[] = [30, 90, 180, 365, 730, 1095, 1825, 2555, 3650];
+
+/**
+ * The choices of the audit retention select: the usual ones, plus the saved
+ * value when it is another one (set through the Admin API, 30 to 3650 days),
+ * so that the select shows it. Shortest first, "forever" last.
+ */
+export function auditRetentionChoices(saved: number): number[] {
+  const days = new Set(AUDIT_RETENTION_CHOICES);
+  if (saved > 0) days.add(saved);
+  return [...[...days].sort((a, b) => a - b), 0];
+}
+
+/**
+ * Whether saving `after` (days, 0 = forever) in place of `before` deletes
+ * audit log entries that are kept today: a shorter retention, or one where
+ * there was none.
+ */
+export function shortensAuditRetention(before: number, after: number): boolean {
+  if (!Number.isFinite(after) || after <= 0) return false;
+  return before <= 0 || after < before;
+}
 
 /** The e-mail sender fields of the form (all optional). */
 export const MAIL_FIELDS = ["mail_from_name", "mail_from_address", "mail_reply_to", "mail_logo_url"] as const;
@@ -53,11 +81,12 @@ export const NUMBERS = [
   "key_rotation_grace_hours",
   "bulk_limit",
   "expired_data_retention_days",
+  "audit_log_retention_days",
 ] as const;
 export type NumberKey = (typeof NUMBERS)[number];
 
 /** The sub-pages of the settings (?tab=; no tab: the first one). One form across them. */
-export const SETTINGS_SECTIONS = ["general", "security", "sessions", "email"] as const;
+export const SETTINGS_SECTIONS = ["general", "security", "sessions", "email", "audit"] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 export function settingsSection(tab?: string): SettingsSection {
@@ -84,6 +113,7 @@ const SECTION_FIELDS: Record<SettingsSection, readonly string[]> = {
     "remember_me_max_days",
   ],
   email: ["notification_email_enabled", "suspicious_login_email_enabled", ...MAIL_FIELDS],
+  audit: ["audit_log_retention_days"],
 };
 
 /** The section that shows a field: an error on another one must not go unseen. */

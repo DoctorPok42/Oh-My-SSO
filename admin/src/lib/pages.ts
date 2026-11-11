@@ -88,6 +88,10 @@ export const PAGES = {
       "Security e-mails sent to users and how they appear in the inbox",
     ),
   },
+  settingsAudit: {
+    title: m("pages.settings_audit.title", "Audit"),
+    description: m("pages.settings_audit.description", "How long the audit log of this realm is kept"),
+  },
   realms: {
     title: m("pages.realms.title", "Realms"),
     description: m("pages.realms.description", "Separate identity spaces: users, applications, keys and policies"),

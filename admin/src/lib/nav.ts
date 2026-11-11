@@ -20,7 +20,8 @@ export type NavIcon =
   | "general"
   | "security"
   | "sessionPolicy"
-  | "email";
+  | "email"
+  | "auditPolicy";
 
 export type NavPage = {
   /** /r/<realm>/<slug>; `tab` adds ?tab=<tab> (no tab: the page's default one). */
@@ -101,6 +102,7 @@ export const NAV: readonly NavSection[] = [
         icon: "sessionPolicy",
       },
       { slug: "settings", tab: "email", label: PAGES.settingsEmail.title, resource: "settings", icon: "email" },
+      { slug: "settings", tab: "audit", label: PAGES.settingsAudit.title, resource: "settings", icon: "auditPolicy" },
     ],
   },
 ];

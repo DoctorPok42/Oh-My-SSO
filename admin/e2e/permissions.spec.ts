@@ -167,6 +167,7 @@ test("screens of the double header, as a full admin", async ({ browser, baseURL 
     ["security", "settings?tab=security", "Security"],
     ["settings-sessions", "settings?tab=sessions", "Sessions"],
     ["email", "settings?tab=email", "Email"],
+    ["settings-audit", "settings?tab=audit", "Audit"],
   ] as const) {
     await admin.goto(`/r/master/${path}`);
     await expect(admin.getByRole("heading", { level: 1, name: heading })).toBeVisible();

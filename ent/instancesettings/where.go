@@ -202,6 +202,11 @@ func ExpiredDataRetentionDays(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldExpiredDataRetentionDays, v))
 }
 
+// AuditLogRetentionDays applies equality check predicate on the "audit_log_retention_days" field. It's identical to AuditLogRetentionDaysEQ.
+func AuditLogRetentionDays(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldAuditLogRetentionDays, v))
+}
+
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldUpdatedAt, v))
@@ -1344,6 +1349,46 @@ func ExpiredDataRetentionDaysLT(v int) predicate.InstanceSettings {
 // ExpiredDataRetentionDaysLTE applies the LTE predicate on the "expired_data_retention_days" field.
 func ExpiredDataRetentionDaysLTE(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldLTE(FieldExpiredDataRetentionDays, v))
+}
+
+// AuditLogRetentionDaysEQ applies the EQ predicate on the "audit_log_retention_days" field.
+func AuditLogRetentionDaysEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldAuditLogRetentionDays, v))
+}
+
+// AuditLogRetentionDaysNEQ applies the NEQ predicate on the "audit_log_retention_days" field.
+func AuditLogRetentionDaysNEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldAuditLogRetentionDays, v))
+}
+
+// AuditLogRetentionDaysIn applies the In predicate on the "audit_log_retention_days" field.
+func AuditLogRetentionDaysIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldAuditLogRetentionDays, vs...))
+}
+
+// AuditLogRetentionDaysNotIn applies the NotIn predicate on the "audit_log_retention_days" field.
+func AuditLogRetentionDaysNotIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldAuditLogRetentionDays, vs...))
+}
+
+// AuditLogRetentionDaysGT applies the GT predicate on the "audit_log_retention_days" field.
+func AuditLogRetentionDaysGT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldAuditLogRetentionDays, v))
+}
+
+// AuditLogRetentionDaysGTE applies the GTE predicate on the "audit_log_retention_days" field.
+func AuditLogRetentionDaysGTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldAuditLogRetentionDays, v))
+}
+
+// AuditLogRetentionDaysLT applies the LT predicate on the "audit_log_retention_days" field.
+func AuditLogRetentionDaysLT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldAuditLogRetentionDays, v))
+}
+
+// AuditLogRetentionDaysLTE applies the LTE predicate on the "audit_log_retention_days" field.
+func AuditLogRetentionDaysLTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldAuditLogRetentionDays, v))
 }
 
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.

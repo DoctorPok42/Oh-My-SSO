@@ -86,6 +86,10 @@ func (InstanceSettings) Fields() []ent.Field {
 		// unused for that long. 90 days: the history the suspicious
 		// sign-in check looks at.
 		field.Int("expired_data_retention_days").Default(90),
+		// How long the entries of the audit log are kept before they are
+		// deleted (30 to 3650 days); 0 keeps them forever. One year by
+		// default (service.DefaultAuditLogRetentionDays).
+		field.Int("audit_log_retention_days").Default(365),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.String("updated_by").Optional(),
 	}

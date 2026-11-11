@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 
 	"sso.internal/sso/ent"
+	"sso.internal/sso/ent/auditlog"
 	"sso.internal/sso/ent/knownaccount"
 	"sso.internal/sso/ent/loginattempt"
 	"sso.internal/sso/ent/passwordresettoken"
@@ -120,6 +121,16 @@ func (r *entPurgeRepository) DeleteExpiredTrustedDevices(ctx context.Context, re
 		s.Where(sql.And(
 			sql.EQ(t.C(trusteddevice.FieldRealmID), realmID),
 			sql.LT(t.C(trusteddevice.FieldExpiresAt), before),
+		))
+	}))).Exec(ctx)
+}
+
+// DeleteAuditLogs walks the index (realm_id, timestamp).
+func (r *entPurgeRepository) DeleteAuditLogs(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
+	return r.client.AuditLog.Delete().Where(predicate.AuditLog(batch(auditlog.Table, limit, func(t *sql.SelectTable, s *sql.Selector) {
+		s.Where(sql.And(
+			sql.EQ(t.C(auditlog.FieldRealmID), realmID),
+			sql.LT(t.C(auditlog.FieldTimestamp), before),
 		))
 	}))).Exec(ctx)
 }
