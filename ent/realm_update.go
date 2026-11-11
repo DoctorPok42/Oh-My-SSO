@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"sso.internal/sso/ent/auditlog"
+	"sso.internal/sso/ent/bulkjob"
 	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/group"
@@ -363,6 +364,21 @@ func (_u *RealmUpdate) AddUserImportJobs(v ...*UserImportJob) *RealmUpdate {
 	return _u.AddUserImportJobIDs(ids...)
 }
 
+// AddBulkJobIDs adds the "bulk_jobs" edge to the BulkJob entity by IDs.
+func (_u *RealmUpdate) AddBulkJobIDs(ids ...string) *RealmUpdate {
+	_u.mutation.AddBulkJobIDs(ids...)
+	return _u
+}
+
+// AddBulkJobs adds the "bulk_jobs" edges to the BulkJob entity.
+func (_u *RealmUpdate) AddBulkJobs(v ...*BulkJob) *RealmUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddBulkJobIDs(ids...)
+}
+
 // Mutation returns the RealmMutation object of the builder.
 func (_u *RealmUpdate) Mutation() *RealmMutation {
 	return _u.mutation
@@ -687,6 +703,27 @@ func (_u *RealmUpdate) RemoveUserImportJobs(v ...*UserImportJob) *RealmUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUserImportJobIDs(ids...)
+}
+
+// ClearBulkJobs clears all "bulk_jobs" edges to the BulkJob entity.
+func (_u *RealmUpdate) ClearBulkJobs() *RealmUpdate {
+	_u.mutation.ClearBulkJobs()
+	return _u
+}
+
+// RemoveBulkJobIDs removes the "bulk_jobs" edge to BulkJob entities by IDs.
+func (_u *RealmUpdate) RemoveBulkJobIDs(ids ...string) *RealmUpdate {
+	_u.mutation.RemoveBulkJobIDs(ids...)
+	return _u
+}
+
+// RemoveBulkJobs removes "bulk_jobs" edges to BulkJob entities.
+func (_u *RealmUpdate) RemoveBulkJobs(v ...*BulkJob) *RealmUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveBulkJobIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -1472,6 +1509,51 @@ func (_u *RealmUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.BulkJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.BulkJobsTable,
+			Columns: []string{realm.BulkJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(bulkjob.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedBulkJobsIDs(); len(nodes) > 0 && !_u.mutation.BulkJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.BulkJobsTable,
+			Columns: []string{realm.BulkJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(bulkjob.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.BulkJobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.BulkJobsTable,
+			Columns: []string{realm.BulkJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(bulkjob.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{realm.Label}
@@ -1810,6 +1892,21 @@ func (_u *RealmUpdateOne) AddUserImportJobs(v ...*UserImportJob) *RealmUpdateOne
 	return _u.AddUserImportJobIDs(ids...)
 }
 
+// AddBulkJobIDs adds the "bulk_jobs" edge to the BulkJob entity by IDs.
+func (_u *RealmUpdateOne) AddBulkJobIDs(ids ...string) *RealmUpdateOne {
+	_u.mutation.AddBulkJobIDs(ids...)
+	return _u
+}
+
+// AddBulkJobs adds the "bulk_jobs" edges to the BulkJob entity.
+func (_u *RealmUpdateOne) AddBulkJobs(v ...*BulkJob) *RealmUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddBulkJobIDs(ids...)
+}
+
 // Mutation returns the RealmMutation object of the builder.
 func (_u *RealmUpdateOne) Mutation() *RealmMutation {
 	return _u.mutation
@@ -2134,6 +2231,27 @@ func (_u *RealmUpdateOne) RemoveUserImportJobs(v ...*UserImportJob) *RealmUpdate
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUserImportJobIDs(ids...)
+}
+
+// ClearBulkJobs clears all "bulk_jobs" edges to the BulkJob entity.
+func (_u *RealmUpdateOne) ClearBulkJobs() *RealmUpdateOne {
+	_u.mutation.ClearBulkJobs()
+	return _u
+}
+
+// RemoveBulkJobIDs removes the "bulk_jobs" edge to BulkJob entities by IDs.
+func (_u *RealmUpdateOne) RemoveBulkJobIDs(ids ...string) *RealmUpdateOne {
+	_u.mutation.RemoveBulkJobIDs(ids...)
+	return _u
+}
+
+// RemoveBulkJobs removes "bulk_jobs" edges to BulkJob entities.
+func (_u *RealmUpdateOne) RemoveBulkJobs(v ...*BulkJob) *RealmUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveBulkJobIDs(ids...)
 }
 
 // Where appends a list predicates to the RealmUpdate builder.
@@ -2942,6 +3060,51 @@ func (_u *RealmUpdateOne) sqlSave(ctx context.Context) (_node *Realm, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(userimportjob.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.BulkJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.BulkJobsTable,
+			Columns: []string{realm.BulkJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(bulkjob.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedBulkJobsIDs(); len(nodes) > 0 && !_u.mutation.BulkJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.BulkJobsTable,
+			Columns: []string{realm.BulkJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(bulkjob.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.BulkJobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.BulkJobsTable,
+			Columns: []string{realm.BulkJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(bulkjob.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

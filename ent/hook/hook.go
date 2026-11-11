@@ -21,6 +21,18 @@ func (f AuditLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AuditLogMutation", m)
 }
 
+// The BulkJobFunc type is an adapter to allow the use of ordinary
+// function as BulkJob mutator.
+type BulkJobFunc func(context.Context, *ent.BulkJobMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f BulkJobFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.BulkJobMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BulkJobMutation", m)
+}
+
 // The ClientAppFunc type is an adapter to allow the use of ordinary
 // function as ClientApp mutator.
 type ClientAppFunc func(context.Context, *ent.ClientAppMutation) (ent.Value, error)

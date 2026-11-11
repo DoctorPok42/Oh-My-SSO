@@ -117,6 +117,12 @@ services:
     # extra_hosts: ["mail.example.com:172.22.1.253"]
     read_only: true
     restart: unless-stopped
+    # The default (10 s) is shorter than what idp-admin needs to stop: up to
+    # 15 s to finish the requests in flight, then the bulk action or CSV import
+    # running stops at its current item and writes its report. Killed before,
+    # it would leave a half-done operation that only the reaper finds, minutes
+    # later.
+    stop_grace_period: 30s
 
   admin:
     image: doctorpok/omsso:admin-${IMAGE_ADMIN:-latest}

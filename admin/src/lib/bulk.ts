@@ -11,8 +11,14 @@ export const MAX_BULK_LIMIT = 500;
 /** For a <TableRow> holding a BulkCell: the selected row stands out. */
 export const BULK_ROW = "has-[[data-bulk-row][data-state=checked]]:bg-accent-soft/50";
 
-/** Up to MAX_BULK_LIMIT items, each with its own checks and writes. */
-export const BULK_TIMEOUT_MS = 180_000;
+/**
+ * A bulk action runs in the background of idp-admin (POST .../bulk answers at
+ * once with the job, GET /realms/{realm}/bulk-jobs/{id} follows it): this is
+ * how often the console asks where it stands.
+ */
+export const BULK_POLL_MS = 1_000;
+/** The first look comes sooner: a small selection is often over by then. */
+export const BULK_FIRST_POLL_MS = 250;
 
 /** The largest page the Admin API answers. */
 const API_PAGE = 200;
@@ -20,19 +26,33 @@ const API_PAGE = 200;
 export type BulkItem = {
   id: string;
   label: string;
-  status: "done" | "skipped" | "failed";
+  /** not_run, unknown: the server stopped before / while working on the item. */
+  status: "done" | "skipped" | "failed" | "not_run" | "unknown";
   code?: string;
   message?: string;
 };
 
-export type BulkResult = {
+/** A bulk action: where it stands while it runs, its report (items) once it is over. */
+export type BulkJob = {
+  id: string;
   operation_id: string;
   action: string;
+  status: "running" | "completed" | "interrupted";
+  total: number;
+  processed: number;
   done: number;
   skipped: number;
   failed: number;
+  /** Items the server stopped before: an interrupted job only. */
+  not_run: number;
   items: BulkItem[];
+  created_at: string;
+  finished_at: string | null;
 };
+
+/** What the summary of a bulk action needs: a finished job. */
+export type BulkResult = Pick<BulkJob, "operation_id" | "action" | "done" | "skipped" | "failed" | "items"> &
+  Partial<Pick<BulkJob, "status" | "not_run">>;
 
 /** What POST .../bulk takes. */
 export type BulkBody = { action: string; ids: string[]; reason?: string; group_id?: string; role_id?: string };
@@ -78,9 +98,17 @@ export function bulkReasons(items: readonly BulkItem[]): BulkReason[] {
   return [...out.values()].sort((a, b) => b.count - a.count);
 }
 
-export function bulkTone(r: Pick<BulkResult, "done" | "skipped" | "failed">): "success" | "warning" | "danger" {
+export function bulkTone(
+  r: Pick<BulkResult, "done" | "skipped" | "failed" | "not_run">,
+): "success" | "warning" | "danger" {
   if (r.failed > 0) return "danger";
-  return r.skipped > 0 ? "warning" : "success";
+  return r.skipped > 0 || (r.not_run ?? 0) > 0 ? "warning" : "success";
+}
+
+/** Whole percent of a running job, 0 to 100. */
+export function bulkPercent(job: Pick<BulkJob, "processed" | "total">): number {
+  if (job.total <= 0) return 0;
+  return Math.min(100, Math.round((job.processed / job.total) * 100));
 }
 
 type IdPage<T> = { items: T[]; total: number };

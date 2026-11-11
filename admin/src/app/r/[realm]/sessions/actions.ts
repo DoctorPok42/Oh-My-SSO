@@ -1,7 +1,7 @@
 "use server";
 
 import { act, api, apiPath, getBulkLimit } from "@/lib/api";
-import { BULK_TIMEOUT_MS, collectIds, type BulkBody, type BulkResult } from "@/lib/bulk";
+import { collectIds, type BulkBody, type BulkJob } from "@/lib/bulk";
 import type { List } from "@/lib/types";
 
 /** Signs the user out of this session: its tokens stop working at once. */
@@ -11,10 +11,9 @@ export async function revokeSession(realm: string, id: string) {
 
 export async function bulkSessions(realm: string, body: BulkBody) {
   return act(() =>
-    api<BulkResult>(apiPath(["realms", realm, "sessions", "bulk"]), {
+    api<BulkJob>(apiPath(["realms", realm, "sessions", "bulk"]), {
       method: "POST",
       body,
-      timeoutMs: BULK_TIMEOUT_MS,
     }),
   );
 }

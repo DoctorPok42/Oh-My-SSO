@@ -162,6 +162,7 @@ func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *admin
 		Timeouts:    timeouts,
 		Notifier:    notifier, PublicURL: ts.URL,
 		UserImports: entstore.NewUserImportRepository(client), ConsoleURL: adminConsoleURL,
+		BulkJobs: entstore.NewBulkJobRepository(client),
 		// The in-memory KeyManager is shared by everything in this test
 		// process, so realms may get their keys here (see ensureSigningKey).
 		KMSBackend: "test", Now: clock.Now,
@@ -182,8 +183,37 @@ func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *admin
 		valkey: valkeyClient, devices: devices, ent: client, timeouts: timeouts}
 }
 
-// call sends one Admin API request with the admin's access token.
+// call sends one Admin API request with the admin's access token. A bulk
+// action answers 202 with its job: call then waits for the job to end, as
+// the console does, and returns its report (200), so that a test reads the
+// items of a bulk action like it always did. send does not wait.
 func (e *adminTestEnv) call(t *testing.T, token, method, path string, body any) (int, map[string]any) {
+	t.Helper()
+	status, out := e.send(t, token, method, path, body)
+	if status != http.StatusAccepted || method != http.MethodPost || !strings.HasSuffix(path, "/bulk") {
+		return status, out
+	}
+	return e.awaitBulk(t, token, path, out)
+}
+
+// awaitBulk polls a bulk job started by POST path (.../realms/{realm}/.../bulk).
+func (e *adminTestEnv) awaitBulk(t *testing.T, token, path string, started map[string]any) (int, map[string]any) {
+	t.Helper()
+	id, _ := started["id"].(string)
+	require.NotEmpty(t, id, "a bulk action answers with its job: %v", started)
+	realm := path[:strings.Index(path, "/realms/")+len("/realms/")]
+	realm += strings.SplitN(path[len(realm):], "/", 2)[0]
+	var status int
+	var job map[string]any
+	require.Eventually(t, func() bool {
+		status, job = e.send(t, token, http.MethodGet, realm+"/bulk-jobs/"+id, nil)
+		return status != http.StatusOK || job["status"] != "running"
+	}, 30*time.Second, 10*time.Millisecond, "the bulk action never ended")
+	return status, job
+}
+
+// send sends one Admin API request with the admin's access token.
+func (e *adminTestEnv) send(t *testing.T, token, method, path string, body any) (int, map[string]any) {
 	t.Helper()
 	var r io.Reader
 	if body != nil {

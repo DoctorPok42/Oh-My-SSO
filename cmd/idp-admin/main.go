@@ -94,6 +94,7 @@ func serve() {
 	syncAdminCatalogue(admin, rights)
 	c.StartTimeoutEnforcer()
 	admin.StartUserImportReaper()
+	admin.StartBulkReaper()
 
 	api := adminapi.New(adminapi.Config{PublicURL: c.PublicURL, AllowedNets: nets, KMSBackend: c.KMSBackend, Languages: app.Languages(),
 		LogRequests: os.Getenv("ADMIN_API_LOG_REQUESTS") == "true"}, adminapi.Deps{
@@ -105,7 +106,9 @@ func serve() {
 	srv := httptimeout.NewServer(addr, api.Router(), httptimeout.Admin)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	drained := make(chan struct{})
 	go func() {
+		defer close(drained)
 		<-stop
 		log.Printf("shutting down...")
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -116,10 +119,17 @@ func serve() {
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
-	// Before c.Close: a running import still writes its end to the database,
-	// and the e-mail that tells its administrator.
+	// ListenAndServe returns as soon as Shutdown starts: wait for the requests
+	// in flight to end, or leaving would cut them.
+	<-drained
+	// Before c.Close: a running import or bulk action stops at its current
+	// item, writes its end to the database (the items it did not get to, the
+	// audit entry) and the e-mail that tells its administrator. The two
+	// together stay within the 30 s the container is given to stop
+	// (stop_grace_period in compose.example.yml), after the 15 s above.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	admin.StopBulkJobs(ctx)
 	admin.StopUserImports(ctx)
 }
 

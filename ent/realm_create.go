@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"sso.internal/sso/ent/auditlog"
+	"sso.internal/sso/ent/bulkjob"
 	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/group"
@@ -383,6 +384,21 @@ func (_c *RealmCreate) AddUserImportJobs(v ...*UserImportJob) *RealmCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddUserImportJobIDs(ids...)
+}
+
+// AddBulkJobIDs adds the "bulk_jobs" edge to the BulkJob entity by IDs.
+func (_c *RealmCreate) AddBulkJobIDs(ids ...string) *RealmCreate {
+	_c.mutation.AddBulkJobIDs(ids...)
+	return _c
+}
+
+// AddBulkJobs adds the "bulk_jobs" edges to the BulkJob entity.
+func (_c *RealmCreate) AddBulkJobs(v ...*BulkJob) *RealmCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddBulkJobIDs(ids...)
 }
 
 // Mutation returns the RealmMutation object of the builder.
@@ -781,6 +797,22 @@ func (_c *RealmCreate) createSpec() (*Realm, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(userimportjob.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.BulkJobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.BulkJobsTable,
+			Columns: []string{realm.BulkJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(bulkjob.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

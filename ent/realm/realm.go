@@ -61,6 +61,8 @@ const (
 	EdgeTrustedDevices = "trusted_devices"
 	// EdgeUserImportJobs holds the string denoting the user_import_jobs edge name in mutations.
 	EdgeUserImportJobs = "user_import_jobs"
+	// EdgeBulkJobs holds the string denoting the bulk_jobs edge name in mutations.
+	EdgeBulkJobs = "bulk_jobs"
 	// Table holds the table name of the realm in the database.
 	Table = "realms"
 	// UsersTable is the table that holds the users relation/edge.
@@ -175,6 +177,13 @@ const (
 	UserImportJobsInverseTable = "user_import_jobs"
 	// UserImportJobsColumn is the table column denoting the user_import_jobs relation/edge.
 	UserImportJobsColumn = "realm_id"
+	// BulkJobsTable is the table that holds the bulk_jobs relation/edge.
+	BulkJobsTable = "bulk_jobs"
+	// BulkJobsInverseTable is the table name for the BulkJob entity.
+	// It exists in this package in order to avoid circular dependency with the "bulkjob" package.
+	BulkJobsInverseTable = "bulk_jobs"
+	// BulkJobsColumn is the table column denoting the bulk_jobs relation/edge.
+	BulkJobsColumn = "realm_id"
 )
 
 // Columns holds all SQL columns for realm fields.
@@ -477,6 +486,20 @@ func ByUserImportJobs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newUserImportJobsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByBulkJobsCount orders the results by bulk_jobs count.
+func ByBulkJobsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newBulkJobsStep(), opts...)
+	}
+}
+
+// ByBulkJobs orders the results by bulk_jobs terms.
+func ByBulkJobs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newBulkJobsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUsersStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -587,5 +610,12 @@ func newUserImportJobsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UserImportJobsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UserImportJobsTable, UserImportJobsColumn),
+	)
+}
+func newBulkJobsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(BulkJobsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, BulkJobsTable, BulkJobsColumn),
 	)
 }

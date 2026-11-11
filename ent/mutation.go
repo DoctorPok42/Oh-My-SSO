@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"sso.internal/sso/ent/auditlog"
+	"sso.internal/sso/ent/bulkjob"
 	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/clientgroup"
 	"sso.internal/sso/ent/clientrole"
@@ -55,6 +56,7 @@ const (
 
 	// Node types.
 	TypeAuditLog           = "AuditLog"
+	TypeBulkJob            = "BulkJob"
 	TypeClientApp          = "ClientApp"
 	TypeClientGroup        = "ClientGroup"
 	TypeClientRole         = "ClientRole"
@@ -1254,6 +1256,1498 @@ func (m *AuditLogMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown AuditLog edge %s", name)
+}
+
+// BulkJobMutation represents an operation that mutates the BulkJob nodes in the graph.
+type BulkJobMutation struct {
+	config
+	op                 Op
+	typ                string
+	id                 *string
+	action             *string
+	operation_id       *string
+	status             *schema.BulkJobStatus
+	requested_by       *string
+	requested_by_name  *string
+	requested_by_realm *string
+	ids                *[]string
+	appendids          []string
+	total              *int
+	addtotal           *int
+	processed          *int
+	addprocessed       *int
+	done_count         *int
+	adddone_count      *int
+	skipped_count      *int
+	addskipped_count   *int
+	failed_count       *int
+	addfailed_count    *int
+	items              *[]schema.BulkJobItem
+	appenditems        []schema.BulkJobItem
+	created_at         *time.Time
+	updated_at         *time.Time
+	finished_at        *time.Time
+	clearedFields      map[string]struct{}
+	realm              *string
+	clearedrealm       bool
+	done               bool
+	oldValue           func(context.Context) (*BulkJob, error)
+	predicates         []predicate.BulkJob
+}
+
+var _ ent.Mutation = (*BulkJobMutation)(nil)
+
+// bulkjobOption allows management of the mutation configuration using functional options.
+type bulkjobOption func(*BulkJobMutation)
+
+// newBulkJobMutation creates new mutation for the BulkJob entity.
+func newBulkJobMutation(c config, op Op, opts ...bulkjobOption) *BulkJobMutation {
+	m := &BulkJobMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeBulkJob,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withBulkJobID sets the ID field of the mutation.
+func withBulkJobID(id string) bulkjobOption {
+	return func(m *BulkJobMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *BulkJob
+		)
+		m.oldValue = func(ctx context.Context) (*BulkJob, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().BulkJob.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withBulkJob sets the old BulkJob of the mutation.
+func withBulkJob(node *BulkJob) bulkjobOption {
+	return func(m *BulkJobMutation) {
+		m.oldValue = func(context.Context) (*BulkJob, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m BulkJobMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m BulkJobMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of BulkJob entities.
+func (m *BulkJobMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *BulkJobMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *BulkJobMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().BulkJob.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetRealmID sets the "realm_id" field.
+func (m *BulkJobMutation) SetRealmID(s string) {
+	m.realm = &s
+}
+
+// RealmID returns the value of the "realm_id" field in the mutation.
+func (m *BulkJobMutation) RealmID() (r string, exists bool) {
+	v := m.realm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRealmID returns the old "realm_id" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldRealmID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRealmID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRealmID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRealmID: %w", err)
+	}
+	return oldValue.RealmID, nil
+}
+
+// ResetRealmID resets all changes to the "realm_id" field.
+func (m *BulkJobMutation) ResetRealmID() {
+	m.realm = nil
+}
+
+// SetAction sets the "action" field.
+func (m *BulkJobMutation) SetAction(s string) {
+	m.action = &s
+}
+
+// Action returns the value of the "action" field in the mutation.
+func (m *BulkJobMutation) Action() (r string, exists bool) {
+	v := m.action
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAction returns the old "action" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldAction(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAction is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAction requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAction: %w", err)
+	}
+	return oldValue.Action, nil
+}
+
+// ResetAction resets all changes to the "action" field.
+func (m *BulkJobMutation) ResetAction() {
+	m.action = nil
+}
+
+// SetOperationID sets the "operation_id" field.
+func (m *BulkJobMutation) SetOperationID(s string) {
+	m.operation_id = &s
+}
+
+// OperationID returns the value of the "operation_id" field in the mutation.
+func (m *BulkJobMutation) OperationID() (r string, exists bool) {
+	v := m.operation_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOperationID returns the old "operation_id" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldOperationID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOperationID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOperationID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOperationID: %w", err)
+	}
+	return oldValue.OperationID, nil
+}
+
+// ResetOperationID resets all changes to the "operation_id" field.
+func (m *BulkJobMutation) ResetOperationID() {
+	m.operation_id = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *BulkJobMutation) SetStatus(sjs schema.BulkJobStatus) {
+	m.status = &sjs
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *BulkJobMutation) Status() (r schema.BulkJobStatus, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldStatus(ctx context.Context) (v schema.BulkJobStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *BulkJobMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetRequestedBy sets the "requested_by" field.
+func (m *BulkJobMutation) SetRequestedBy(s string) {
+	m.requested_by = &s
+}
+
+// RequestedBy returns the value of the "requested_by" field in the mutation.
+func (m *BulkJobMutation) RequestedBy() (r string, exists bool) {
+	v := m.requested_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestedBy returns the old "requested_by" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldRequestedBy(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestedBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestedBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestedBy: %w", err)
+	}
+	return oldValue.RequestedBy, nil
+}
+
+// ResetRequestedBy resets all changes to the "requested_by" field.
+func (m *BulkJobMutation) ResetRequestedBy() {
+	m.requested_by = nil
+}
+
+// SetRequestedByName sets the "requested_by_name" field.
+func (m *BulkJobMutation) SetRequestedByName(s string) {
+	m.requested_by_name = &s
+}
+
+// RequestedByName returns the value of the "requested_by_name" field in the mutation.
+func (m *BulkJobMutation) RequestedByName() (r string, exists bool) {
+	v := m.requested_by_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestedByName returns the old "requested_by_name" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldRequestedByName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestedByName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestedByName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestedByName: %w", err)
+	}
+	return oldValue.RequestedByName, nil
+}
+
+// ResetRequestedByName resets all changes to the "requested_by_name" field.
+func (m *BulkJobMutation) ResetRequestedByName() {
+	m.requested_by_name = nil
+}
+
+// SetRequestedByRealm sets the "requested_by_realm" field.
+func (m *BulkJobMutation) SetRequestedByRealm(s string) {
+	m.requested_by_realm = &s
+}
+
+// RequestedByRealm returns the value of the "requested_by_realm" field in the mutation.
+func (m *BulkJobMutation) RequestedByRealm() (r string, exists bool) {
+	v := m.requested_by_realm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestedByRealm returns the old "requested_by_realm" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldRequestedByRealm(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestedByRealm is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestedByRealm requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestedByRealm: %w", err)
+	}
+	return oldValue.RequestedByRealm, nil
+}
+
+// ResetRequestedByRealm resets all changes to the "requested_by_realm" field.
+func (m *BulkJobMutation) ResetRequestedByRealm() {
+	m.requested_by_realm = nil
+}
+
+// SetIds sets the "ids" field.
+func (m *BulkJobMutation) SetIds(s []string) {
+	m.ids = &s
+	m.appendids = nil
+}
+
+// Ids returns the value of the "ids" field in the mutation.
+func (m *BulkJobMutation) Ids() (r []string, exists bool) {
+	v := m.ids
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIds returns the old "ids" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldIds(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIds is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIds requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIds: %w", err)
+	}
+	return oldValue.Ids, nil
+}
+
+// AppendIds adds s to the "ids" field.
+func (m *BulkJobMutation) AppendIds(s []string) {
+	m.appendids = append(m.appendids, s...)
+}
+
+// AppendedIds returns the list of values that were appended to the "ids" field in this mutation.
+func (m *BulkJobMutation) AppendedIds() ([]string, bool) {
+	if len(m.appendids) == 0 {
+		return nil, false
+	}
+	return m.appendids, true
+}
+
+// ResetIds resets all changes to the "ids" field.
+func (m *BulkJobMutation) ResetIds() {
+	m.ids = nil
+	m.appendids = nil
+}
+
+// SetTotal sets the "total" field.
+func (m *BulkJobMutation) SetTotal(i int) {
+	m.total = &i
+	m.addtotal = nil
+}
+
+// Total returns the value of the "total" field in the mutation.
+func (m *BulkJobMutation) Total() (r int, exists bool) {
+	v := m.total
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotal returns the old "total" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldTotal(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotal is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotal requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotal: %w", err)
+	}
+	return oldValue.Total, nil
+}
+
+// AddTotal adds i to the "total" field.
+func (m *BulkJobMutation) AddTotal(i int) {
+	if m.addtotal != nil {
+		*m.addtotal += i
+	} else {
+		m.addtotal = &i
+	}
+}
+
+// AddedTotal returns the value that was added to the "total" field in this mutation.
+func (m *BulkJobMutation) AddedTotal() (r int, exists bool) {
+	v := m.addtotal
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotal resets all changes to the "total" field.
+func (m *BulkJobMutation) ResetTotal() {
+	m.total = nil
+	m.addtotal = nil
+}
+
+// SetProcessed sets the "processed" field.
+func (m *BulkJobMutation) SetProcessed(i int) {
+	m.processed = &i
+	m.addprocessed = nil
+}
+
+// Processed returns the value of the "processed" field in the mutation.
+func (m *BulkJobMutation) Processed() (r int, exists bool) {
+	v := m.processed
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProcessed returns the old "processed" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldProcessed(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProcessed is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProcessed requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProcessed: %w", err)
+	}
+	return oldValue.Processed, nil
+}
+
+// AddProcessed adds i to the "processed" field.
+func (m *BulkJobMutation) AddProcessed(i int) {
+	if m.addprocessed != nil {
+		*m.addprocessed += i
+	} else {
+		m.addprocessed = &i
+	}
+}
+
+// AddedProcessed returns the value that was added to the "processed" field in this mutation.
+func (m *BulkJobMutation) AddedProcessed() (r int, exists bool) {
+	v := m.addprocessed
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetProcessed resets all changes to the "processed" field.
+func (m *BulkJobMutation) ResetProcessed() {
+	m.processed = nil
+	m.addprocessed = nil
+}
+
+// SetDoneCount sets the "done_count" field.
+func (m *BulkJobMutation) SetDoneCount(i int) {
+	m.done_count = &i
+	m.adddone_count = nil
+}
+
+// DoneCount returns the value of the "done_count" field in the mutation.
+func (m *BulkJobMutation) DoneCount() (r int, exists bool) {
+	v := m.done_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDoneCount returns the old "done_count" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldDoneCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDoneCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDoneCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDoneCount: %w", err)
+	}
+	return oldValue.DoneCount, nil
+}
+
+// AddDoneCount adds i to the "done_count" field.
+func (m *BulkJobMutation) AddDoneCount(i int) {
+	if m.adddone_count != nil {
+		*m.adddone_count += i
+	} else {
+		m.adddone_count = &i
+	}
+}
+
+// AddedDoneCount returns the value that was added to the "done_count" field in this mutation.
+func (m *BulkJobMutation) AddedDoneCount() (r int, exists bool) {
+	v := m.adddone_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDoneCount resets all changes to the "done_count" field.
+func (m *BulkJobMutation) ResetDoneCount() {
+	m.done_count = nil
+	m.adddone_count = nil
+}
+
+// SetSkippedCount sets the "skipped_count" field.
+func (m *BulkJobMutation) SetSkippedCount(i int) {
+	m.skipped_count = &i
+	m.addskipped_count = nil
+}
+
+// SkippedCount returns the value of the "skipped_count" field in the mutation.
+func (m *BulkJobMutation) SkippedCount() (r int, exists bool) {
+	v := m.skipped_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkippedCount returns the old "skipped_count" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldSkippedCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkippedCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkippedCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkippedCount: %w", err)
+	}
+	return oldValue.SkippedCount, nil
+}
+
+// AddSkippedCount adds i to the "skipped_count" field.
+func (m *BulkJobMutation) AddSkippedCount(i int) {
+	if m.addskipped_count != nil {
+		*m.addskipped_count += i
+	} else {
+		m.addskipped_count = &i
+	}
+}
+
+// AddedSkippedCount returns the value that was added to the "skipped_count" field in this mutation.
+func (m *BulkJobMutation) AddedSkippedCount() (r int, exists bool) {
+	v := m.addskipped_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSkippedCount resets all changes to the "skipped_count" field.
+func (m *BulkJobMutation) ResetSkippedCount() {
+	m.skipped_count = nil
+	m.addskipped_count = nil
+}
+
+// SetFailedCount sets the "failed_count" field.
+func (m *BulkJobMutation) SetFailedCount(i int) {
+	m.failed_count = &i
+	m.addfailed_count = nil
+}
+
+// FailedCount returns the value of the "failed_count" field in the mutation.
+func (m *BulkJobMutation) FailedCount() (r int, exists bool) {
+	v := m.failed_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFailedCount returns the old "failed_count" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldFailedCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFailedCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFailedCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFailedCount: %w", err)
+	}
+	return oldValue.FailedCount, nil
+}
+
+// AddFailedCount adds i to the "failed_count" field.
+func (m *BulkJobMutation) AddFailedCount(i int) {
+	if m.addfailed_count != nil {
+		*m.addfailed_count += i
+	} else {
+		m.addfailed_count = &i
+	}
+}
+
+// AddedFailedCount returns the value that was added to the "failed_count" field in this mutation.
+func (m *BulkJobMutation) AddedFailedCount() (r int, exists bool) {
+	v := m.addfailed_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetFailedCount resets all changes to the "failed_count" field.
+func (m *BulkJobMutation) ResetFailedCount() {
+	m.failed_count = nil
+	m.addfailed_count = nil
+}
+
+// SetItems sets the "items" field.
+func (m *BulkJobMutation) SetItems(sji []schema.BulkJobItem) {
+	m.items = &sji
+	m.appenditems = nil
+}
+
+// Items returns the value of the "items" field in the mutation.
+func (m *BulkJobMutation) Items() (r []schema.BulkJobItem, exists bool) {
+	v := m.items
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldItems returns the old "items" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldItems(ctx context.Context) (v []schema.BulkJobItem, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldItems is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldItems requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldItems: %w", err)
+	}
+	return oldValue.Items, nil
+}
+
+// AppendItems adds sji to the "items" field.
+func (m *BulkJobMutation) AppendItems(sji []schema.BulkJobItem) {
+	m.appenditems = append(m.appenditems, sji...)
+}
+
+// AppendedItems returns the list of values that were appended to the "items" field in this mutation.
+func (m *BulkJobMutation) AppendedItems() ([]schema.BulkJobItem, bool) {
+	if len(m.appenditems) == 0 {
+		return nil, false
+	}
+	return m.appenditems, true
+}
+
+// ClearItems clears the value of the "items" field.
+func (m *BulkJobMutation) ClearItems() {
+	m.items = nil
+	m.appenditems = nil
+	m.clearedFields[bulkjob.FieldItems] = struct{}{}
+}
+
+// ItemsCleared returns if the "items" field was cleared in this mutation.
+func (m *BulkJobMutation) ItemsCleared() bool {
+	_, ok := m.clearedFields[bulkjob.FieldItems]
+	return ok
+}
+
+// ResetItems resets all changes to the "items" field.
+func (m *BulkJobMutation) ResetItems() {
+	m.items = nil
+	m.appenditems = nil
+	delete(m.clearedFields, bulkjob.FieldItems)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *BulkJobMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *BulkJobMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *BulkJobMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *BulkJobMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *BulkJobMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *BulkJobMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetFinishedAt sets the "finished_at" field.
+func (m *BulkJobMutation) SetFinishedAt(t time.Time) {
+	m.finished_at = &t
+}
+
+// FinishedAt returns the value of the "finished_at" field in the mutation.
+func (m *BulkJobMutation) FinishedAt() (r time.Time, exists bool) {
+	v := m.finished_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFinishedAt returns the old "finished_at" field's value of the BulkJob entity.
+// If the BulkJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BulkJobMutation) OldFinishedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFinishedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFinishedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFinishedAt: %w", err)
+	}
+	return oldValue.FinishedAt, nil
+}
+
+// ClearFinishedAt clears the value of the "finished_at" field.
+func (m *BulkJobMutation) ClearFinishedAt() {
+	m.finished_at = nil
+	m.clearedFields[bulkjob.FieldFinishedAt] = struct{}{}
+}
+
+// FinishedAtCleared returns if the "finished_at" field was cleared in this mutation.
+func (m *BulkJobMutation) FinishedAtCleared() bool {
+	_, ok := m.clearedFields[bulkjob.FieldFinishedAt]
+	return ok
+}
+
+// ResetFinishedAt resets all changes to the "finished_at" field.
+func (m *BulkJobMutation) ResetFinishedAt() {
+	m.finished_at = nil
+	delete(m.clearedFields, bulkjob.FieldFinishedAt)
+}
+
+// ClearRealm clears the "realm" edge to the Realm entity.
+func (m *BulkJobMutation) ClearRealm() {
+	m.clearedrealm = true
+	m.clearedFields[bulkjob.FieldRealmID] = struct{}{}
+}
+
+// RealmCleared reports if the "realm" edge to the Realm entity was cleared.
+func (m *BulkJobMutation) RealmCleared() bool {
+	return m.clearedrealm
+}
+
+// RealmIDs returns the "realm" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// RealmID instead. It exists only for internal usage by the builders.
+func (m *BulkJobMutation) RealmIDs() (ids []string) {
+	if id := m.realm; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRealm resets all changes to the "realm" edge.
+func (m *BulkJobMutation) ResetRealm() {
+	m.realm = nil
+	m.clearedrealm = false
+}
+
+// Where appends a list predicates to the BulkJobMutation builder.
+func (m *BulkJobMutation) Where(ps ...predicate.BulkJob) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the BulkJobMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *BulkJobMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.BulkJob, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *BulkJobMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *BulkJobMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (BulkJob).
+func (m *BulkJobMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *BulkJobMutation) Fields() []string {
+	fields := make([]string, 0, 17)
+	if m.realm != nil {
+		fields = append(fields, bulkjob.FieldRealmID)
+	}
+	if m.action != nil {
+		fields = append(fields, bulkjob.FieldAction)
+	}
+	if m.operation_id != nil {
+		fields = append(fields, bulkjob.FieldOperationID)
+	}
+	if m.status != nil {
+		fields = append(fields, bulkjob.FieldStatus)
+	}
+	if m.requested_by != nil {
+		fields = append(fields, bulkjob.FieldRequestedBy)
+	}
+	if m.requested_by_name != nil {
+		fields = append(fields, bulkjob.FieldRequestedByName)
+	}
+	if m.requested_by_realm != nil {
+		fields = append(fields, bulkjob.FieldRequestedByRealm)
+	}
+	if m.ids != nil {
+		fields = append(fields, bulkjob.FieldIds)
+	}
+	if m.total != nil {
+		fields = append(fields, bulkjob.FieldTotal)
+	}
+	if m.processed != nil {
+		fields = append(fields, bulkjob.FieldProcessed)
+	}
+	if m.done_count != nil {
+		fields = append(fields, bulkjob.FieldDoneCount)
+	}
+	if m.skipped_count != nil {
+		fields = append(fields, bulkjob.FieldSkippedCount)
+	}
+	if m.failed_count != nil {
+		fields = append(fields, bulkjob.FieldFailedCount)
+	}
+	if m.items != nil {
+		fields = append(fields, bulkjob.FieldItems)
+	}
+	if m.created_at != nil {
+		fields = append(fields, bulkjob.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, bulkjob.FieldUpdatedAt)
+	}
+	if m.finished_at != nil {
+		fields = append(fields, bulkjob.FieldFinishedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *BulkJobMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case bulkjob.FieldRealmID:
+		return m.RealmID()
+	case bulkjob.FieldAction:
+		return m.Action()
+	case bulkjob.FieldOperationID:
+		return m.OperationID()
+	case bulkjob.FieldStatus:
+		return m.Status()
+	case bulkjob.FieldRequestedBy:
+		return m.RequestedBy()
+	case bulkjob.FieldRequestedByName:
+		return m.RequestedByName()
+	case bulkjob.FieldRequestedByRealm:
+		return m.RequestedByRealm()
+	case bulkjob.FieldIds:
+		return m.Ids()
+	case bulkjob.FieldTotal:
+		return m.Total()
+	case bulkjob.FieldProcessed:
+		return m.Processed()
+	case bulkjob.FieldDoneCount:
+		return m.DoneCount()
+	case bulkjob.FieldSkippedCount:
+		return m.SkippedCount()
+	case bulkjob.FieldFailedCount:
+		return m.FailedCount()
+	case bulkjob.FieldItems:
+		return m.Items()
+	case bulkjob.FieldCreatedAt:
+		return m.CreatedAt()
+	case bulkjob.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case bulkjob.FieldFinishedAt:
+		return m.FinishedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *BulkJobMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case bulkjob.FieldRealmID:
+		return m.OldRealmID(ctx)
+	case bulkjob.FieldAction:
+		return m.OldAction(ctx)
+	case bulkjob.FieldOperationID:
+		return m.OldOperationID(ctx)
+	case bulkjob.FieldStatus:
+		return m.OldStatus(ctx)
+	case bulkjob.FieldRequestedBy:
+		return m.OldRequestedBy(ctx)
+	case bulkjob.FieldRequestedByName:
+		return m.OldRequestedByName(ctx)
+	case bulkjob.FieldRequestedByRealm:
+		return m.OldRequestedByRealm(ctx)
+	case bulkjob.FieldIds:
+		return m.OldIds(ctx)
+	case bulkjob.FieldTotal:
+		return m.OldTotal(ctx)
+	case bulkjob.FieldProcessed:
+		return m.OldProcessed(ctx)
+	case bulkjob.FieldDoneCount:
+		return m.OldDoneCount(ctx)
+	case bulkjob.FieldSkippedCount:
+		return m.OldSkippedCount(ctx)
+	case bulkjob.FieldFailedCount:
+		return m.OldFailedCount(ctx)
+	case bulkjob.FieldItems:
+		return m.OldItems(ctx)
+	case bulkjob.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case bulkjob.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case bulkjob.FieldFinishedAt:
+		return m.OldFinishedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown BulkJob field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BulkJobMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case bulkjob.FieldRealmID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRealmID(v)
+		return nil
+	case bulkjob.FieldAction:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAction(v)
+		return nil
+	case bulkjob.FieldOperationID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOperationID(v)
+		return nil
+	case bulkjob.FieldStatus:
+		v, ok := value.(schema.BulkJobStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case bulkjob.FieldRequestedBy:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestedBy(v)
+		return nil
+	case bulkjob.FieldRequestedByName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestedByName(v)
+		return nil
+	case bulkjob.FieldRequestedByRealm:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestedByRealm(v)
+		return nil
+	case bulkjob.FieldIds:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIds(v)
+		return nil
+	case bulkjob.FieldTotal:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotal(v)
+		return nil
+	case bulkjob.FieldProcessed:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProcessed(v)
+		return nil
+	case bulkjob.FieldDoneCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDoneCount(v)
+		return nil
+	case bulkjob.FieldSkippedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkippedCount(v)
+		return nil
+	case bulkjob.FieldFailedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFailedCount(v)
+		return nil
+	case bulkjob.FieldItems:
+		v, ok := value.([]schema.BulkJobItem)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetItems(v)
+		return nil
+	case bulkjob.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case bulkjob.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case bulkjob.FieldFinishedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFinishedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown BulkJob field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *BulkJobMutation) AddedFields() []string {
+	var fields []string
+	if m.addtotal != nil {
+		fields = append(fields, bulkjob.FieldTotal)
+	}
+	if m.addprocessed != nil {
+		fields = append(fields, bulkjob.FieldProcessed)
+	}
+	if m.adddone_count != nil {
+		fields = append(fields, bulkjob.FieldDoneCount)
+	}
+	if m.addskipped_count != nil {
+		fields = append(fields, bulkjob.FieldSkippedCount)
+	}
+	if m.addfailed_count != nil {
+		fields = append(fields, bulkjob.FieldFailedCount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *BulkJobMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case bulkjob.FieldTotal:
+		return m.AddedTotal()
+	case bulkjob.FieldProcessed:
+		return m.AddedProcessed()
+	case bulkjob.FieldDoneCount:
+		return m.AddedDoneCount()
+	case bulkjob.FieldSkippedCount:
+		return m.AddedSkippedCount()
+	case bulkjob.FieldFailedCount:
+		return m.AddedFailedCount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BulkJobMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case bulkjob.FieldTotal:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotal(v)
+		return nil
+	case bulkjob.FieldProcessed:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddProcessed(v)
+		return nil
+	case bulkjob.FieldDoneCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDoneCount(v)
+		return nil
+	case bulkjob.FieldSkippedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSkippedCount(v)
+		return nil
+	case bulkjob.FieldFailedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFailedCount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown BulkJob numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *BulkJobMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(bulkjob.FieldItems) {
+		fields = append(fields, bulkjob.FieldItems)
+	}
+	if m.FieldCleared(bulkjob.FieldFinishedAt) {
+		fields = append(fields, bulkjob.FieldFinishedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *BulkJobMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *BulkJobMutation) ClearField(name string) error {
+	switch name {
+	case bulkjob.FieldItems:
+		m.ClearItems()
+		return nil
+	case bulkjob.FieldFinishedAt:
+		m.ClearFinishedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown BulkJob nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *BulkJobMutation) ResetField(name string) error {
+	switch name {
+	case bulkjob.FieldRealmID:
+		m.ResetRealmID()
+		return nil
+	case bulkjob.FieldAction:
+		m.ResetAction()
+		return nil
+	case bulkjob.FieldOperationID:
+		m.ResetOperationID()
+		return nil
+	case bulkjob.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case bulkjob.FieldRequestedBy:
+		m.ResetRequestedBy()
+		return nil
+	case bulkjob.FieldRequestedByName:
+		m.ResetRequestedByName()
+		return nil
+	case bulkjob.FieldRequestedByRealm:
+		m.ResetRequestedByRealm()
+		return nil
+	case bulkjob.FieldIds:
+		m.ResetIds()
+		return nil
+	case bulkjob.FieldTotal:
+		m.ResetTotal()
+		return nil
+	case bulkjob.FieldProcessed:
+		m.ResetProcessed()
+		return nil
+	case bulkjob.FieldDoneCount:
+		m.ResetDoneCount()
+		return nil
+	case bulkjob.FieldSkippedCount:
+		m.ResetSkippedCount()
+		return nil
+	case bulkjob.FieldFailedCount:
+		m.ResetFailedCount()
+		return nil
+	case bulkjob.FieldItems:
+		m.ResetItems()
+		return nil
+	case bulkjob.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case bulkjob.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case bulkjob.FieldFinishedAt:
+		m.ResetFinishedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown BulkJob field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *BulkJobMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.realm != nil {
+		edges = append(edges, bulkjob.EdgeRealm)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *BulkJobMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case bulkjob.EdgeRealm:
+		if id := m.realm; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *BulkJobMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *BulkJobMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *BulkJobMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedrealm {
+		edges = append(edges, bulkjob.EdgeRealm)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *BulkJobMutation) EdgeCleared(name string) bool {
+	switch name {
+	case bulkjob.EdgeRealm:
+		return m.clearedrealm
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *BulkJobMutation) ClearEdge(name string) error {
+	switch name {
+	case bulkjob.EdgeRealm:
+		m.ClearRealm()
+		return nil
+	}
+	return fmt.Errorf("unknown BulkJob unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *BulkJobMutation) ResetEdge(name string) error {
+	switch name {
+	case bulkjob.EdgeRealm:
+		m.ResetRealm()
+		return nil
+	}
+	return fmt.Errorf("unknown BulkJob edge %s", name)
 }
 
 // ClientAppMutation represents an operation that mutates the ClientApp nodes in the graph.
@@ -23004,6 +24498,9 @@ type RealmMutation struct {
 	user_import_jobs          map[string]struct{}
 	removeduser_import_jobs   map[string]struct{}
 	cleareduser_import_jobs   bool
+	bulk_jobs                 map[string]struct{}
+	removedbulk_jobs          map[string]struct{}
+	clearedbulk_jobs          bool
 	done                      bool
 	oldValue                  func(context.Context) (*Realm, error)
 	predicates                []predicate.Realm
@@ -24240,6 +25737,60 @@ func (m *RealmMutation) ResetUserImportJobs() {
 	m.removeduser_import_jobs = nil
 }
 
+// AddBulkJobIDs adds the "bulk_jobs" edge to the BulkJob entity by ids.
+func (m *RealmMutation) AddBulkJobIDs(ids ...string) {
+	if m.bulk_jobs == nil {
+		m.bulk_jobs = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.bulk_jobs[ids[i]] = struct{}{}
+	}
+}
+
+// ClearBulkJobs clears the "bulk_jobs" edge to the BulkJob entity.
+func (m *RealmMutation) ClearBulkJobs() {
+	m.clearedbulk_jobs = true
+}
+
+// BulkJobsCleared reports if the "bulk_jobs" edge to the BulkJob entity was cleared.
+func (m *RealmMutation) BulkJobsCleared() bool {
+	return m.clearedbulk_jobs
+}
+
+// RemoveBulkJobIDs removes the "bulk_jobs" edge to the BulkJob entity by IDs.
+func (m *RealmMutation) RemoveBulkJobIDs(ids ...string) {
+	if m.removedbulk_jobs == nil {
+		m.removedbulk_jobs = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.bulk_jobs, ids[i])
+		m.removedbulk_jobs[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedBulkJobs returns the removed IDs of the "bulk_jobs" edge to the BulkJob entity.
+func (m *RealmMutation) RemovedBulkJobsIDs() (ids []string) {
+	for id := range m.removedbulk_jobs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// BulkJobsIDs returns the "bulk_jobs" edge IDs in the mutation.
+func (m *RealmMutation) BulkJobsIDs() (ids []string) {
+	for id := range m.bulk_jobs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetBulkJobs resets all changes to the "bulk_jobs" edge.
+func (m *RealmMutation) ResetBulkJobs() {
+	m.bulk_jobs = nil
+	m.clearedbulk_jobs = false
+	m.removedbulk_jobs = nil
+}
+
 // Where appends a list predicates to the RealmMutation builder.
 func (m *RealmMutation) Where(ps ...predicate.Realm) {
 	m.predicates = append(m.predicates, ps...)
@@ -24490,7 +26041,7 @@ func (m *RealmMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RealmMutation) AddedEdges() []string {
-	edges := make([]string, 0, 16)
+	edges := make([]string, 0, 17)
 	if m.users != nil {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -24538,6 +26089,9 @@ func (m *RealmMutation) AddedEdges() []string {
 	}
 	if m.user_import_jobs != nil {
 		edges = append(edges, realm.EdgeUserImportJobs)
+	}
+	if m.bulk_jobs != nil {
+		edges = append(edges, realm.EdgeBulkJobs)
 	}
 	return edges
 }
@@ -24640,13 +26194,19 @@ func (m *RealmMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case realm.EdgeBulkJobs:
+		ids := make([]ent.Value, 0, len(m.bulk_jobs))
+		for id := range m.bulk_jobs {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RealmMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 16)
+	edges := make([]string, 0, 17)
 	if m.removedusers != nil {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -24691,6 +26251,9 @@ func (m *RealmMutation) RemovedEdges() []string {
 	}
 	if m.removeduser_import_jobs != nil {
 		edges = append(edges, realm.EdgeUserImportJobs)
+	}
+	if m.removedbulk_jobs != nil {
+		edges = append(edges, realm.EdgeBulkJobs)
 	}
 	return edges
 }
@@ -24789,13 +26352,19 @@ func (m *RealmMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case realm.EdgeBulkJobs:
+		ids := make([]ent.Value, 0, len(m.removedbulk_jobs))
+		for id := range m.removedbulk_jobs {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RealmMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 16)
+	edges := make([]string, 0, 17)
 	if m.clearedusers {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -24844,6 +26413,9 @@ func (m *RealmMutation) ClearedEdges() []string {
 	if m.cleareduser_import_jobs {
 		edges = append(edges, realm.EdgeUserImportJobs)
 	}
+	if m.clearedbulk_jobs {
+		edges = append(edges, realm.EdgeBulkJobs)
+	}
 	return edges
 }
 
@@ -24883,6 +26455,8 @@ func (m *RealmMutation) EdgeCleared(name string) bool {
 		return m.clearedtrusted_devices
 	case realm.EdgeUserImportJobs:
 		return m.cleareduser_import_jobs
+	case realm.EdgeBulkJobs:
+		return m.clearedbulk_jobs
 	}
 	return false
 }
@@ -24949,6 +26523,9 @@ func (m *RealmMutation) ResetEdge(name string) error {
 		return nil
 	case realm.EdgeUserImportJobs:
 		m.ResetUserImportJobs()
+		return nil
+	case realm.EdgeBulkJobs:
+		m.ResetBulkJobs()
 		return nil
 	}
 	return fmt.Errorf("unknown Realm edge %s", name)

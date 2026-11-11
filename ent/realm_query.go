@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"sso.internal/sso/ent/auditlog"
+	"sso.internal/sso/ent/bulkjob"
 	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/group"
@@ -55,6 +56,7 @@ type RealmQuery struct {
 	withKnownAccounts     *KnownAccountQuery
 	withTrustedDevices    *TrustedDeviceQuery
 	withUserImportJobs    *UserImportJobQuery
+	withBulkJobs          *BulkJobQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -443,6 +445,28 @@ func (_q *RealmQuery) QueryUserImportJobs() *UserImportJobQuery {
 	return query
 }
 
+// QueryBulkJobs chains the current query on the "bulk_jobs" edge.
+func (_q *RealmQuery) QueryBulkJobs() *BulkJobQuery {
+	query := (&BulkJobClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(realm.Table, realm.FieldID, selector),
+			sqlgraph.To(bulkjob.Table, bulkjob.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, realm.BulkJobsTable, realm.BulkJobsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // First returns the first Realm entity from the query.
 // Returns a *NotFoundError when no Realm was found.
 func (_q *RealmQuery) First(ctx context.Context) (*Realm, error) {
@@ -651,6 +675,7 @@ func (_q *RealmQuery) Clone() *RealmQuery {
 		withKnownAccounts:     _q.withKnownAccounts.Clone(),
 		withTrustedDevices:    _q.withTrustedDevices.Clone(),
 		withUserImportJobs:    _q.withUserImportJobs.Clone(),
+		withBulkJobs:          _q.withBulkJobs.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -833,6 +858,17 @@ func (_q *RealmQuery) WithUserImportJobs(opts ...func(*UserImportJobQuery)) *Rea
 	return _q
 }
 
+// WithBulkJobs tells the query-builder to eager-load the nodes that are connected to
+// the "bulk_jobs" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *RealmQuery) WithBulkJobs(opts ...func(*BulkJobQuery)) *RealmQuery {
+	query := (&BulkJobClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withBulkJobs = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
@@ -911,7 +947,7 @@ func (_q *RealmQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Realm,
 	var (
 		nodes       = []*Realm{}
 		_spec       = _q.querySpec()
-		loadedTypes = [16]bool{
+		loadedTypes = [17]bool{
 			_q.withUsers != nil,
 			_q.withRoles != nil,
 			_q.withGroups != nil,
@@ -928,6 +964,7 @@ func (_q *RealmQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Realm,
 			_q.withKnownAccounts != nil,
 			_q.withTrustedDevices != nil,
 			_q.withUserImportJobs != nil,
+			_q.withBulkJobs != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -1056,6 +1093,13 @@ func (_q *RealmQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Realm,
 		if err := _q.loadUserImportJobs(ctx, query, nodes,
 			func(n *Realm) { n.Edges.UserImportJobs = []*UserImportJob{} },
 			func(n *Realm, e *UserImportJob) { n.Edges.UserImportJobs = append(n.Edges.UserImportJobs, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withBulkJobs; query != nil {
+		if err := _q.loadBulkJobs(ctx, query, nodes,
+			func(n *Realm) { n.Edges.BulkJobs = []*BulkJob{} },
+			func(n *Realm, e *BulkJob) { n.Edges.BulkJobs = append(n.Edges.BulkJobs, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1524,6 +1568,36 @@ func (_q *RealmQuery) loadUserImportJobs(ctx context.Context, query *UserImportJ
 	}
 	query.Where(predicate.UserImportJob(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(realm.UserImportJobsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.RealmID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "realm_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *RealmQuery) loadBulkJobs(ctx context.Context, query *BulkJobQuery, nodes []*Realm, init func(*Realm), assign func(*Realm, *BulkJob)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*Realm)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(bulkjob.FieldRealmID)
+	}
+	query.Where(predicate.BulkJob(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(realm.BulkJobsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

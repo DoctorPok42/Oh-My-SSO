@@ -1,16 +1,15 @@
 "use server";
 
 import { act, api, apiPath, getBulkLimit } from "@/lib/api";
-import { BULK_TIMEOUT_MS, collectIds, type BulkBody, type BulkResult } from "@/lib/bulk";
+import { collectIds, type BulkBody, type BulkJob } from "@/lib/bulk";
 import type { TimeoutCreateBody } from "@/lib/timeout-form";
 import type { Access, ClientSummary, List, Timeout, TimeoutTargetType, UserSummary } from "@/lib/types";
 
 export async function bulkTimeouts(realm: string, body: BulkBody) {
   return act(() =>
-    api<BulkResult>(apiPath(["realms", realm, "timeouts", "bulk"]), {
+    api<BulkJob>(apiPath(["realms", realm, "timeouts", "bulk"]), {
       method: "POST",
       body,
-      timeoutMs: BULK_TIMEOUT_MS,
     }),
   );
 }

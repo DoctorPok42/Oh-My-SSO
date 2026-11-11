@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BULK_LIMIT,
   bulkLimitOf,
+  bulkPercent,
   bulkReasons,
   bulkTone,
   collectIds,
@@ -71,11 +72,35 @@ describe("result", () => {
     ]);
   });
 
+  it("lists the items an interrupted job did not do among the reasons", () => {
+    const items = [
+      item("done"),
+      item("not_run", "not_run", "not processed: the server stopped before this item"),
+      item("not_run", "not_run", "not processed: the server stopped before this item"),
+      item("unknown", "unknown", "the server stopped while working on this item"),
+    ];
+    expect(bulkReasons(items)).toEqual([
+      { code: "not_run", message: "not processed: the server stopped before this item", count: 2 },
+      { code: "unknown", message: "the server stopped while working on this item", count: 1 },
+    ]);
+  });
+
   it("chooses the tone", () => {
     expect(bulkTone({ done: 3, skipped: 0, failed: 0 })).toBe("success");
     expect(bulkTone({ done: 3, skipped: 1, failed: 0 })).toBe("warning");
     expect(bulkTone({ done: 3, skipped: 1, failed: 1 })).toBe("danger");
+    // A job the server stopped did not do everything: never a plain success.
+    expect(bulkTone({ done: 3, skipped: 0, failed: 0, not_run: 2 })).toBe("warning");
+    expect(bulkTone({ done: 3, skipped: 0, failed: 0, not_run: 0 })).toBe("success");
   });
+});
+
+it("tells the percent of a running job", () => {
+  expect(bulkPercent({ processed: 0, total: 0 })).toBe(0);
+  expect(bulkPercent({ processed: 0, total: 500 })).toBe(0);
+  expect(bulkPercent({ processed: 125, total: 500 })).toBe(25);
+  expect(bulkPercent({ processed: 500, total: 500 })).toBe(100);
+  expect(bulkPercent({ processed: 9, total: 3 })).toBe(100);
 });
 
 describe("collectIds", () => {

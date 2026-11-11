@@ -1,7 +1,7 @@
 "use server";
 
 import { act, api, apiPath, getBulkLimit } from "@/lib/api";
-import { BULK_TIMEOUT_MS, collectIds, type BulkBody, type BulkResult } from "@/lib/bulk";
+import { collectIds, type BulkBody, type BulkJob } from "@/lib/bulk";
 import { invalidate } from "@/lib/cache";
 import type {
   Access,
@@ -18,24 +18,19 @@ import type {
 const IMPORT_TIMEOUT_MS = 60_000;
 
 export async function bulkUsers(realm: string, body: BulkBody) {
-  return act(() =>
-    api<BulkResult>(apiPath(["realms", realm, "users", "bulk"]), { method: "POST", body, timeoutMs: BULK_TIMEOUT_MS }),
-  );
+  return act(() => api<BulkJob>(apiPath(["realms", realm, "users", "bulk"]), { method: "POST", body }));
 }
 
 export async function bulkAccess(realm: string, kind: "roles" | "groups", body: BulkBody) {
-  return act(() =>
-    api<BulkResult>(apiPath(["realms", realm, kind, "bulk"]), { method: "POST", body, timeoutMs: BULK_TIMEOUT_MS }),
-  );
+  return act(() => api<BulkJob>(apiPath(["realms", realm, kind, "bulk"]), { method: "POST", body }));
 }
 
 /** A pasted list of usernames or e-mails. */
 export async function addGroupMembers(realm: string, id: string, identifiers: string[]) {
   return act(() =>
-    api<BulkResult>(apiPath(["realms", realm, "groups", id, "members", "bulk"]), {
+    api<BulkJob>(apiPath(["realms", realm, "groups", id, "members", "bulk"]), {
       method: "POST",
       body: { identifiers },
-      timeoutMs: BULK_TIMEOUT_MS,
     }),
   );
 }

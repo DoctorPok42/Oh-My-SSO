@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
@@ -17,12 +18,41 @@ import (
 
 // The most items one bulk action may touch: the realm's bulk_limit
 // (Settings), DefaultBulkLimit until it is changed. A selection larger than
-// that is done in several passes, so a mistake stays small. MaxBulkLimit
-// keeps one action within the console's wait (BULK_TIMEOUT_MS): the items
-// are done one after the other.
+// that is done in several passes, so a mistake stays small.
+//
+// A bulk action runs in the background, like a CSV import. The request that
+// starts it checks everything the whole selection needs, records the job
+// (bulk_jobs) and answers at once; the items are then done one after the
+// other (the guardrails of an item read the state the previous one left), by
+// the idp-admin process that received the request. The console follows the
+// job by its id, from any idp-admin process: the state lives in the
+// database.
+//
+// One bulk action runs per realm at a time. If the process stops cleanly
+// (a deployment), the job ends as "interrupted" at the current item: it is
+// finished once begun, the others are listed as not run, and the audit log
+// gets a bulk.interrupted entry naming them. If the process dies, the reaper
+// finds the job by its silence and does the same.
 const (
 	DefaultBulkLimit = 100
 	MaxBulkLimit     = 500
+)
+
+const (
+	// bulkCountEvery: how often a running bulk action saves its totals, what
+	// the console's progress bar shows.
+	bulkCountEvery = 200 * time.Millisecond
+	// bulkFlushEvery: how often it also saves its items, which only matters
+	// if the process dies.
+	bulkFlushEvery = 2 * time.Second
+	// bulkStaleAfter: a running job silent for this long lost its process.
+	// Far above the time one item takes.
+	bulkStaleAfter = 2 * time.Minute
+	bulkReapEvery  = 30 * time.Second
+	// bulkRetention: a report holds the names of what it touched. The audit
+	// log keeps the trace.
+	bulkRetention = 7 * 24 * time.Hour
+	bulkFinishTTL = 30 * time.Second
 )
 
 // BulkLimit is the realm's bulk_limit, DefaultBulkLimit when it has no
@@ -44,9 +74,9 @@ func effectiveBulkLimit(st *domain.InstanceSettings) int {
 
 // What became of one item of a bulk action.
 const (
-	BulkDone    = "done"
-	BulkSkipped = "skipped" // a guardrail or nothing to do: the sentence says why
-	BulkFailed  = "failed"  // a server problem: logged, never shown
+	BulkDone    = domain.BulkItemDone
+	BulkSkipped = domain.BulkItemSkipped // a guardrail or nothing to do: the sentence says why
+	BulkFailed  = domain.BulkItemFailed  // a server problem: logged, never shown
 )
 
 // The actions of POST /users/bulk.
@@ -80,26 +110,58 @@ type BulkInput struct {
 }
 
 // BulkItem is the outcome of one item.
-type BulkItem struct {
-	ID      string `json:"id"`
-	Label   string `json:"label"`
-	Status  string `json:"status"`
-	Code    string `json:"code,omitempty"`
-	Message string `json:"message,omitempty"`
+type BulkItem = domain.BulkItem
+
+// BulkJobView is a bulk action as the console shows it: where it stands
+// while it runs, its report once it is over (Items comes then). The audit
+// entries of the items carry OperationID.
+type BulkJobView struct {
+	ID          string               `json:"id"`
+	OperationID string               `json:"operation_id"`
+	Action      string               `json:"action"`
+	Status      domain.BulkJobStatus `json:"status"`
+	Total       int                  `json:"total"`
+	Processed   int                  `json:"processed"`
+	Done        int                  `json:"done"`
+	Skipped     int                  `json:"skipped"`
+	Failed      int                  `json:"failed"`
+	// NotRun: items the server stopped before (an interrupted job only).
+	NotRun     int        `json:"not_run"`
+	Items      []BulkItem `json:"items"`
+	CreatedAt  time.Time  `json:"created_at"`
+	FinishedAt *time.Time `json:"finished_at"`
 }
 
-// BulkResult is the summary of a bulk action. The audit entries of the items
-// carry OperationID.
-type BulkResult struct {
-	OperationID string     `json:"operation_id"`
-	Action      string     `json:"action"`
-	Done        int        `json:"done"`
-	Skipped     int        `json:"skipped"`
-	Failed      int        `json:"failed"`
-	Items       []BulkItem `json:"items"`
+// bulkJobView: loc says, in the language of the reader, what became of the
+// items the server did not (or could not tell it did) run.
+func bulkJobView(j *domain.BulkJob, loc *i18n.Localizer) *BulkJobView {
+	v := &BulkJobView{
+		ID: j.ID, OperationID: j.OperationID, Action: j.Action, Status: j.Status,
+		Total: j.Total, Processed: j.Processed, Done: j.Done, Skipped: j.Skipped, Failed: j.Failed,
+		Items: []BulkItem{}, CreatedAt: j.CreatedAt, FinishedAt: j.FinishedAt,
+	}
+	if j.Status == domain.BulkJobRunning {
+		return v
+	}
+	for _, it := range j.Items {
+		switch it.Status {
+		case domain.BulkItemNotRun:
+			it.Code, it.Message = it.Status, loc.Text(i18n.M("admin.error.bulk_not_run", "not processed: the server stopped before this item"))
+			v.NotRun++
+		case domain.BulkItemUnknown:
+			it.Code, it.Message = it.Status, loc.Text(i18n.M("admin.error.bulk_unknown", "the server stopped while working on this item: see the audit log of the operation"))
+			v.NotRun++
+		}
+		v.Items = append(v.Items, it)
+	}
+	return v
 }
 
 type bulkOperationKey struct{}
+
+func withBulkOperation(ctx context.Context, op string) context.Context {
+	return context.WithValue(ctx, bulkOperationKey{}, op)
+}
 
 // bulkOperation is the id of the running bulk action ("" outside one):
 // auditAdminAbout writes it in every entry.
@@ -146,36 +208,235 @@ func bulkUnknownAction() error {
 // it fails, and an error when the item was not changed.
 type bulkStep func(ctx context.Context, id string) (label string, err error)
 
-// runBulk does the items one after the other: the guardrails read the
-// current state, so a selection holding every administrator stops at the
-// last one. The console hanging up does not stop it half-way.
-func (s *AdminService) runBulk(ctx context.Context, action string, ids []string, loc *i18n.Localizer, step bulkStep) (*BulkResult, error) {
+// runBulk records the job and starts it in the background: it answers with
+// the job as it stands, the console follows it with GetBulkJob. The items
+// are done one after the other: the guardrails read the current state, so a
+// selection holding every administrator stops at the last one. The console
+// hanging up does not stop it, and a server that stops finishes the current
+// item, then ends the job as interrupted (see runBulkJob).
+func (s *AdminService) runBulk(ctx context.Context, actor AdminActor, realm *domain.Realm, action string, ids []string, loc *i18n.Localizer, step bulkStep) (*BulkJobView, error) {
 	op, err := newBulkOperationID()
 	if err != nil {
 		return nil, err
 	}
-	ctx = context.WithValue(context.WithoutCancel(ctx), bulkOperationKey{}, op)
-	res := &BulkResult{OperationID: op, Action: action, Items: make([]BulkItem, 0, len(ids))}
-	for _, id := range ids {
-		label, err := step(ctx, id)
-		if label == "" {
-			label = id
-		}
-		item := BulkItem{ID: id, Label: label, Status: BulkDone}
-		var ae *AdminError
-		switch {
-		case err == nil:
-			res.Done++
-		case errors.As(err, &ae):
-			item.Status, item.Code, item.Message = BulkSkipped, ae.Code, s.bulkErrorText(ctx, err, loc)
-			res.Skipped++
-		default:
-			item.Status, item.Code, item.Message = BulkFailed, "internal_error", s.bulkErrorText(ctx, err, loc)
-			res.Failed++
-		}
-		res.Items = append(res.Items, item)
+	if !s.bulks.begin() {
+		return nil, adminText(AdminRefused, "stopping", "", i18n.M("admin.error.bulk_stopping", "the server is stopping: start the action again in a moment"))
 	}
-	return res, nil
+	job, err := s.d.BulkJobs.Create(ctx, repository.CreateBulkJobParams{
+		RealmID: realm.ID, Action: action, OperationID: op,
+		RequestedBy: actor.UserID, RequestedByName: actor.Username, RequestedByRealm: actor.RealmID,
+		IDs: ids,
+	})
+	if err != nil {
+		s.bulks.wg.Done()
+		if errors.Is(err, repository.ErrConflict) {
+			return nil, adminText(AdminConflict, "bulk_running", "", i18n.M("admin.error.bulk_running", "another bulk action is running in this realm: wait for it to end"))
+		}
+		return nil, err
+	}
+	go s.runBulkJob(job, loc, step)
+	return bulkJobView(job, loc), nil
+}
+
+// runBulkJob does the work of one job. It owns one s.bulks.wg slot.
+//
+// The items run on a context that ignores the server's stop (work): an item
+// is finished once begun, so that nothing is left half done. The stop is
+// looked at between two items only.
+func (s *AdminService) runBulkJob(job *domain.BulkJob, loc *i18n.Localizer, step bulkStep) {
+	defer s.bulks.wg.Done()
+	stop := s.bulks.ctx
+	work := withBulkOperation(context.WithoutCancel(stop), job.OperationID)
+
+	p := repository.BulkJobProgress{Items: make([]BulkItem, 0, len(job.IDs))}
+	status := domain.BulkJobInterrupted // until the last item is done
+	defer func() { s.finishBulkJob(work, job, status, p) }()
+
+	counted, saved := s.d.Now(), s.d.Now()
+	for _, id := range job.IDs {
+		if stop.Err() != nil {
+			return
+		}
+		item := s.bulkItemOf(work, id, loc, step)
+		p.Processed++
+		switch item.Status {
+		case BulkDone:
+			p.Done++
+		case BulkSkipped:
+			p.Skipped++
+		default:
+			p.Failed++
+		}
+		p.Items = append(p.Items, item)
+		now := s.d.Now()
+		if now.Sub(counted) < bulkCountEvery {
+			continue
+		}
+		counted = now
+		update := repository.BulkJobProgress{Processed: p.Processed, Done: p.Done, Skipped: p.Skipped, Failed: p.Failed}
+		if now.Sub(saved) >= bulkFlushEvery {
+			saved, update.Items = now, p.Items
+		}
+		if err := s.d.BulkJobs.UpdateProgress(work, job.ID, update); err != nil {
+			s.d.Logger.WarnContext(work, "bulk action: progress not saved", "job_id", job.ID, "error", err)
+		}
+	}
+	status = domain.BulkJobCompleted
+}
+
+// bulkItemOf does one item. A step that panics fails its item, not the job.
+func (s *AdminService) bulkItemOf(ctx context.Context, id string, loc *i18n.Localizer, step bulkStep) BulkItem {
+	var label string
+	var err error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				s.d.Logger.ErrorContext(ctx, "bulk action: item panicked", "operation_id", bulkOperation(ctx), "item", id, "panic", r)
+				err = fmt.Errorf("bulk item %s: panic: %v", id, r)
+			}
+		}()
+		label, err = step(ctx, id)
+	}()
+	if label == "" {
+		label = id
+	}
+	item := BulkItem{ID: id, Label: label, Status: BulkDone}
+	var ae *AdminError
+	switch {
+	case err == nil:
+	case errors.As(err, &ae):
+		item.Status, item.Code, item.Message = BulkSkipped, ae.Code, s.bulkErrorText(ctx, err, loc)
+	default:
+		item.Status, item.Code, item.Message = BulkFailed, "internal_error", s.bulkErrorText(ctx, err, loc)
+	}
+	return item
+}
+
+// finishBulkJob saves the end of a job. An interrupted one lists what it did
+// not get to, and says so in the audit log.
+func (s *AdminService) finishBulkJob(ctx context.Context, job *domain.BulkJob, status domain.BulkJobStatus, p repository.BulkJobProgress) {
+	if status == domain.BulkJobInterrupted {
+		p.Items = append(p.Items, bulkItemsLeft(job.IDs, len(p.Items), len(p.Items), domain.BulkItemNotRun)...)
+	}
+	ctx, cancel := context.WithTimeout(ctx, bulkFinishTTL)
+	defer cancel()
+	ok, err := s.d.BulkJobs.Finish(ctx, job.ID, status, p, s.d.Now())
+	if err != nil {
+		s.d.Logger.ErrorContext(ctx, "bulk action: end not saved", "job_id", job.ID, "error", err)
+		return
+	}
+	if !ok || status != domain.BulkJobInterrupted {
+		return // the reaper was first (and told), or nothing to tell
+	}
+	job.Status, job.Processed, job.Done, job.Skipped, job.Failed, job.Items = status, p.Processed, p.Done, p.Skipped, p.Failed, p.Items
+	s.announceBulkInterrupted(ctx, job)
+}
+
+// bulkItemsLeft lists ids[from:], as unknown up to ids[:unknownUntil], not run
+// after: the outcomes a stopped job did not record.
+func bulkItemsLeft(ids []string, from, unknownUntil int, status string) []BulkItem {
+	if from >= len(ids) {
+		return nil
+	}
+	out := make([]BulkItem, 0, len(ids)-from)
+	for i := from; i < len(ids); i++ {
+		st := status
+		if i < unknownUntil {
+			st = domain.BulkItemUnknown
+		}
+		out = append(out, BulkItem{ID: ids[i], Label: ids[i], Status: st})
+	}
+	return out
+}
+
+// announceBulkInterrupted writes to the audit log what a stopped job did not
+// do: the trace of the items nobody touched.
+func (s *AdminService) announceBulkInterrupted(ctx context.Context, job *domain.BulkJob) {
+	var left []string
+	for _, it := range job.Items {
+		if it.Status == domain.BulkItemNotRun || it.Status == domain.BulkItemUnknown {
+			left = append(left, it.ID)
+		}
+	}
+	actor := AdminActor{UserID: job.RequestedBy, Username: job.RequestedByName, RealmID: job.RequestedByRealm}
+	s.auditAdmin(withBulkOperation(ctx, job.OperationID), actor, job.RealmID, audit.BulkInterrupted, "BulkJob", job.ID, domain.AuditLogWarning, map[string]interface{}{
+		"bulk_action": job.Action, "total": job.Total, "processed": job.Processed,
+		"done": job.Done, "skipped": job.Skipped, "failed": job.Failed,
+		"not_processed": len(left), "not_processed_ids": left,
+	})
+}
+
+// StartBulkReaper ends the bulk actions whose process died, and purges old
+// reports, until StopBulkJobs. Only idp-admin needs it.
+func (s *AdminService) StartBulkReaper() {
+	if !s.bulks.begin() {
+		return
+	}
+	go func() {
+		defer s.bulks.wg.Done()
+		s.RunBulkReaper(s.bulks.ctx, bulkReapEvery)
+	}()
+}
+
+// StopBulkJobs tells the running bulk actions to stop at their current item
+// and waits for them, until ctx ends. A job still running then is found by
+// the reaper of another process.
+func (s *AdminService) StopBulkJobs(ctx context.Context) {
+	if !s.bulks.stop(ctx) {
+		s.d.Logger.Warn("bulk actions: stopped waiting for the running bulk actions")
+	}
+}
+
+// RunBulkReaper checks every `every`, at once for the first time, until ctx
+// ends.
+func (s *AdminService) RunBulkReaper(ctx context.Context, every time.Duration) {
+	tick := time.NewTicker(every)
+	defer tick.Stop()
+	for {
+		s.reapBulkJobs(ctx)
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+		}
+	}
+}
+
+func (s *AdminService) reapBulkJobs(ctx context.Context) {
+	now := s.d.Now()
+	jobs, err := s.d.BulkJobs.ReapStale(ctx, now.Add(-bulkStaleAfter), now)
+	if err != nil && ctx.Err() == nil {
+		s.d.Logger.Warn("bulk actions: cannot look for lost bulk actions", "error", err)
+	}
+	for _, job := range jobs {
+		s.d.Logger.Warn("bulk action: its process is gone, marked as interrupted",
+			"job_id", job.ID, "operation_id", job.OperationID, "processed", job.Processed, "total", job.Total)
+		// The items saved last may be behind the counts, and the one being
+		// done when the process died is unknown: the audit log tells.
+		saved := len(job.Items)
+		job.Items = append(job.Items, bulkItemsLeft(job.IDs, saved, job.Processed+1, domain.BulkItemNotRun)...)
+		if err := s.d.BulkJobs.SaveItems(ctx, job.ID, job.Items); err != nil {
+			s.d.Logger.Warn("bulk action: report not saved", "job_id", job.ID, "error", err)
+		}
+		s.announceBulkInterrupted(ctx, job)
+	}
+	if _, err := s.d.BulkJobs.DeleteFinishedBefore(ctx, now.Add(-bulkRetention)); err != nil && ctx.Err() == nil {
+		s.d.Logger.Warn("bulk actions: cannot purge old reports", "error", err)
+	}
+}
+
+// GetBulkJob returns where a bulk action stands, or its report. Only the
+// administrator who started it reads it: the items name what it touched.
+func (s *AdminService) GetBulkJob(ctx context.Context, actor AdminActor, realm *domain.Realm, id string, loc *i18n.Localizer) (*BulkJobView, error) {
+	job, err := s.d.BulkJobs.GetByID(ctx, id)
+	if errors.Is(err, repository.ErrNotFound) ||
+		(err == nil && (job.RealmID != realm.ID || job.RequestedBy != actor.UserID || job.RequestedByRealm != actor.RealmID)) {
+		return nil, adminNotFound(i18n.M("admin.error.not_found.bulk_job", "bulk action not found"))
+	}
+	if err != nil {
+		return nil, err
+	}
+	return bulkJobView(job, loc), nil
 }
 
 func (s *AdminService) bulkErrorText(ctx context.Context, err error, loc *i18n.Localizer) string {
@@ -194,7 +455,7 @@ func (s *AdminService) bulkErrorText(ctx context.Context, err error, loc *i18n.L
 type userStep func(ctx context.Context, u *domain.User) error
 
 // BulkUsers runs one action on many users.
-func (s *AdminService) BulkUsers(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkResult, error) {
+func (s *AdminService) BulkUsers(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkJobView, error) {
 	ids, err := s.cleanBulkIDs(ctx, realm, in.IDs)
 	if err != nil {
 		return nil, err
@@ -203,7 +464,7 @@ func (s *AdminService) BulkUsers(ctx context.Context, actor AdminActor, realm *d
 	if err != nil {
 		return nil, err
 	}
-	return s.runBulk(ctx, in.Action, ids, loc, s.onUsers(actor, realm, step))
+	return s.runBulk(ctx, actor, realm, in.Action, ids, loc, s.onUsers(actor, realm, step))
 }
 
 // onUsers loads each user and leaves out the administrator who asked: in
@@ -388,18 +649,18 @@ func (s *AdminService) forcePasswordReset(ctx context.Context, actor AdminActor,
 }
 
 // BulkSessions revokes sessions, chosen one by one or by user.
-func (s *AdminService) BulkSessions(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkResult, error) {
+func (s *AdminService) BulkSessions(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkJobView, error) {
 	ids, err := s.cleanBulkIDs(ctx, realm, in.IDs)
 	if err != nil {
 		return nil, err
 	}
 	switch in.Action {
 	case BulkRevoke:
-		return s.runBulk(ctx, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
+		return s.runBulk(ctx, actor, realm, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
 			return s.bulkRevokeSession(ctx, actor, realm, id)
 		})
 	case BulkRevokeUsers:
-		return s.runBulk(ctx, in.Action, ids, loc, s.onUsers(actor, realm, func(ctx context.Context, u *domain.User) error {
+		return s.runBulk(ctx, actor, realm, in.Action, ids, loc, s.onUsers(actor, realm, func(ctx context.Context, u *domain.User) error {
 			win, err := s.activeWindow(ctx, realm)
 			if err != nil {
 				return err

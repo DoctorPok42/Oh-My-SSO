@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { NavLink } from "@/components/console/nav-link";
 import { useStepUp } from "@/components/console/step-up";
 import { useAction } from "@/components/console/use-action";
+import { useBulkJob } from "@/components/console/use-bulk-job";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -41,6 +42,7 @@ import { useT } from "@/i18n/client";
 import type { ApiResult } from "@/lib/api-error";
 import {
   BULK_LIMIT,
+  bulkPercent,
   bulkReasons,
   bulkTone,
   EMPTY_SELECTION,
@@ -48,6 +50,7 @@ import {
   parseSelection,
   toggleId,
   togglePage,
+  type BulkJob,
   type BulkResult,
   type BulkSelection,
 } from "@/lib/bulk";
@@ -84,7 +87,7 @@ export type BulkConfirmedAction = BulkActionBase & {
   reason?: boolean;
   /** Asks to choose one group or role. */
   picker?: { label: string; options: { id: string; name: string }[] };
-  run: (ids: string[], params: BulkParams) => Promise<ApiResult<BulkResult>>;
+  run: (ids: string[], params: BulkParams) => Promise<ApiResult<BulkJob>>;
 };
 
 export type BulkAction = BulkDirectAction | BulkConfirmedAction;
@@ -189,6 +192,7 @@ export function BulkProvider({
   const { t } = useT();
   const stepUp = useStepUp();
   const { run, pending } = useAction();
+  const { progress, follow } = useBulkJob(realm);
   const search = useSearchParams();
   const limit = useBulkLimit();
   const [selection, save] = useSelection(`omsso.bulk.${scope}`, limit);
@@ -251,8 +255,9 @@ export function BulkProvider({
 
   return (
     <Ctx.Provider value={context}>
-      {(result || selected.length > 0) && (
+      {(result || progress || selected.length > 0) && (
         <div className="mb-3 space-y-2">
+          {progress && <BulkRunning job={progress} />}
           {result && (
             <BulkSummary
               realm={realm}
@@ -302,11 +307,22 @@ export function BulkProvider({
           onCancel={() => setDialogId(null)}
           onConfirm={async (params) => {
             const ids = [...selected];
+            // The API answers once the job is recorded: it runs in the background.
             const r = await run(() => action.run(ids, params), { intent: `bulk=${action.id}` });
             setDialogId(null);
             if (!r.ok) return;
-            setResult({ data: r.data, action, more: fromFilter && ids.length === limit });
             save({ selected: [], fromFilter: false, seen: [...seen, ...ids] });
+            setResult(null);
+            const job = await follow(r.data);
+            if (!job) return;
+            if (job.status === "interrupted") {
+              // What the server did not get to is still to do: the next pass finds it again.
+              const left = new Set(
+                job.items.filter((i) => i.status === "not_run" || i.status === "unknown").map((i) => i.id),
+              );
+              save({ selected: [], fromFilter: false, seen: [...seen, ...ids.filter((id) => !left.has(id))] });
+            }
+            setResult({ data: job, action, more: fromFilter && ids.length === limit && job.status === "completed" });
           }}
         />
       )}
@@ -481,6 +497,34 @@ function BulkConfirm({
   );
 }
 
+/** A bulk action that runs in the background: how far it went. */
+export function BulkRunning({ job }: { job: BulkJob }) {
+  const { t } = useT();
+  const percent = bulkPercent(job);
+  return (
+    <Banner tone="info" data-testid="bulk-progress">
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <p className="font-semibold">
+          {t("bulk.running", "Working… {processed} of {total}", { processed: job.processed, total: job.total })}
+        </p>
+        <div
+          role="progressbar"
+          aria-valuenow={percent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={t("bulk.progress", "Progress of the bulk action")}
+          className="h-2 overflow-hidden rounded-full bg-neutral-soft"
+        >
+          <div className="h-full bg-accent transition-[width]" style={{ width: `${percent}%` }} />
+        </div>
+        <p className="text-[12px] text-text-secondary">
+          {t("bulk.running_hint", "It goes on if you leave this page; the result is in the audit log.")}
+        </p>
+      </div>
+    </Banner>
+  );
+}
+
 export function BulkSummary({
   realm,
   result,
@@ -501,12 +545,24 @@ export function BulkSummary({
   const { t, tn } = useT();
   const reasons = bulkReasons(result.items);
   const others = result.items.filter((i) => i.status !== "done");
-  const left = result.skipped + result.failed;
+  const interrupted = result.status === "interrupted";
+  const left = result.skipped + result.failed + (result.not_run ?? 0);
+  // An interrupted job also leaves its own audit entry, naming what was not done.
+  const entries = result.done + (interrupted ? 1 : 0);
   return (
     <Banner tone={bulkTone(result)} data-testid="bulk-result">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold">{doneLabel(result.done)}</p>
+          {interrupted && (
+            <p className="text-[12px] font-medium" data-testid="bulk-interrupted">
+              {t(
+                "bulk.interrupted",
+                "The server stopped before the end: {count} not processed. Select them again to finish.",
+                { count: result.not_run ?? 0 },
+              )}
+            </p>
+          )}
           <p className="text-[12px] text-text-secondary">
             {left === 0
               ? t("bulk.nothing_skipped", "Nothing skipped.")
@@ -514,12 +570,12 @@ export function BulkSummary({
                   count: left,
                   reasons: reasons.map((r) => `${r.count} ${r.message}`).join(", "),
                 })}{" "}
-            {result.done > 0 && (
+            {entries > 0 && (
               <NavLink
                 href={`/r/${encodeURIComponent(realm)}/audit?operation=${encodeURIComponent(result.operation_id)}`}
                 className="underline"
               >
-                {tn("bulk.audit_link", result.done, "See the audit entry", "See the {count} audit entries")}
+                {tn("bulk.audit_link", entries, "See the audit entry", "See the {count} audit entries")}
               </NavLink>
             )}
           </p>
