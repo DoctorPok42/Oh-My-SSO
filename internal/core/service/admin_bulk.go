@@ -157,17 +157,12 @@ func bulkJobView(j *domain.BulkJob, loc *i18n.Localizer) *BulkJobView {
 	return v
 }
 
-type bulkOperationKey struct{}
-
-func withBulkOperation(ctx context.Context, op string) context.Context {
-	return context.WithValue(ctx, bulkOperationKey{}, op)
-}
-
-// bulkOperation is the id of the running bulk action ("" outside one):
-// auditAdminAbout writes it in every entry.
+// bulkOperation is the id of the running bulk action ("" outside one).
 func bulkOperation(ctx context.Context) string {
-	id, _ := ctx.Value(bulkOperationKey{}).(string)
-	return id
+	if b := audit.BatchOf(ctx); b != nil {
+		return b.Operation()
+	}
+	return ""
 }
 
 func newBulkOperationID() (string, error) {
@@ -246,17 +241,21 @@ func (s *AdminService) runBulk(ctx context.Context, actor AdminActor, realm *dom
 func (s *AdminService) runBulkJob(job *domain.BulkJob, loc *i18n.Localizer, step bulkStep) {
 	defer s.bulks.wg.Done()
 	stop := s.bulks.ctx
-	work := withBulkOperation(context.WithoutCancel(stop), job.OperationID)
+	// The audit entries of the items are gathered: the job writes one entry
+	// at the end (finishBulkJob).
+	batch := audit.NewBatch(job.OperationID)
+	work := audit.WithBatch(context.WithoutCancel(stop), batch)
 
 	p := repository.BulkJobProgress{Items: make([]BulkItem, 0, len(job.IDs))}
 	status := domain.BulkJobInterrupted // until the last item is done
-	defer func() { s.finishBulkJob(work, job, status, p) }()
+	defer func() { s.finishBulkJob(work, job, status, p, batch) }()
 
 	counted, saved := s.d.Now(), s.d.Now()
 	for _, id := range job.IDs {
 		if stop.Err() != nil {
 			return
 		}
+		batch.Item(id)
 		item := s.bulkItemOf(work, id, loc, step)
 		p.Processed++
 		switch item.Status {
@@ -312,9 +311,10 @@ func (s *AdminService) bulkItemOf(ctx context.Context, id string, loc *i18n.Loca
 	return item
 }
 
-// finishBulkJob saves the end of a job. An interrupted one lists what it did
-// not get to, and says so in the audit log.
-func (s *AdminService) finishBulkJob(ctx context.Context, job *domain.BulkJob, status domain.BulkJobStatus, p repository.BulkJobProgress) {
+// finishBulkJob saves the end of a job and writes its one audit entry. An
+// interrupted one lists what it did not get to.
+func (s *AdminService) finishBulkJob(ctx context.Context, job *domain.BulkJob, status domain.BulkJobStatus, p repository.BulkJobProgress, batch *audit.Batch) {
+	changes := batch.Close() // from here on, entries are written as usual
 	if status == domain.BulkJobInterrupted {
 		p.Items = append(p.Items, bulkItemsLeft(job.IDs, len(p.Items), len(p.Items), domain.BulkItemNotRun)...)
 	}
@@ -322,14 +322,13 @@ func (s *AdminService) finishBulkJob(ctx context.Context, job *domain.BulkJob, s
 	defer cancel()
 	ok, err := s.d.BulkJobs.Finish(ctx, job.ID, status, p, s.d.Now())
 	if err != nil {
+		// The report is lost, the trace must not be.
 		s.d.Logger.ErrorContext(ctx, "bulk action: end not saved", "job_id", job.ID, "error", err)
-		return
-	}
-	if !ok || status != domain.BulkJobInterrupted {
-		return // the reaper was first (and told), or nothing to tell
+	} else if !ok {
+		return // the reaper was first, and wrote the entry
 	}
 	job.Status, job.Processed, job.Done, job.Skipped, job.Failed, job.Items = status, p.Processed, p.Done, p.Skipped, p.Failed, p.Items
-	s.announceBulkInterrupted(ctx, job)
+	s.auditBulkJob(ctx, job, changes)
 }
 
 // bulkItemsLeft lists ids[from:], as unknown up to ids[:unknownUntil], not run
@@ -349,21 +348,55 @@ func bulkItemsLeft(ids []string, from, unknownUntil int, status string) []BulkIt
 	return out
 }
 
-// announceBulkInterrupted writes to the audit log what a stopped job did not
-// do: the trace of the items nobody touched.
-func (s *AdminService) announceBulkInterrupted(ctx context.Context, job *domain.BulkJob) {
+// bulkAuditItem is one item in the audit entry of a bulk action.
+type bulkAuditItem struct {
+	ID      string        `json:"id"`
+	Label   string        `json:"label,omitempty"`
+	Status  string        `json:"status"`
+	Code    string        `json:"code,omitempty"`
+	Changes []audit.Entry `json:"changes,omitempty"`
+}
+
+// auditBulkJob writes the one audit entry of a bulk action: bulk.completed,
+// or bulk.interrupted when the server stopped before the end. It holds, item
+// by item, the outcome and the changes made (changes: the entries the items
+// would have written one by one; none when the process died, the outcomes
+// saved in the report remain).
+func (s *AdminService) auditBulkJob(ctx context.Context, job *domain.BulkJob, changes map[string][]audit.Entry) {
+	action, level := audit.BulkCompleted, domain.AuditLogInfo
+	if job.Status == domain.BulkJobInterrupted {
+		action, level = audit.BulkInterrupted, domain.AuditLogWarning
+	}
+	if job.Failed > 0 {
+		level = domain.AuditLogWarning
+	}
 	var left []string
+	items := make([]bulkAuditItem, 0, len(job.Items))
 	for _, it := range job.Items {
 		if it.Status == domain.BulkItemNotRun || it.Status == domain.BulkItemUnknown {
 			left = append(left, it.ID)
 		}
+		ai := bulkAuditItem{ID: it.ID, Status: it.Status, Code: it.Code, Changes: changes[it.ID]}
+		if it.Label != it.ID {
+			ai.Label = it.Label
+		}
+		for _, c := range ai.Changes {
+			if c.Warning {
+				level = domain.AuditLogWarning
+			}
+		}
+		items = append(items, ai)
+	}
+	details := map[string]interface{}{
+		"operation_id": job.OperationID, "bulk_action": job.Action, "total": job.Total, "processed": job.Processed,
+		"done": job.Done, "skipped": job.Skipped, "failed": job.Failed,
+		"items": items,
+	}
+	if job.Status == domain.BulkJobInterrupted {
+		details["not_processed"], details["not_processed_ids"] = len(left), left
 	}
 	actor := AdminActor{UserID: job.RequestedBy, Username: job.RequestedByName, RealmID: job.RequestedByRealm}
-	s.auditAdmin(withBulkOperation(ctx, job.OperationID), actor, job.RealmID, audit.BulkInterrupted, "BulkJob", job.ID, domain.AuditLogWarning, map[string]interface{}{
-		"bulk_action": job.Action, "total": job.Total, "processed": job.Processed,
-		"done": job.Done, "skipped": job.Skipped, "failed": job.Failed,
-		"not_processed": len(left), "not_processed_ids": left,
-	})
+	s.auditAdmin(ctx, actor, job.RealmID, action, "BulkJob", job.ID, level, details)
 }
 
 // StartBulkReaper ends the bulk actions whose process died, and purges old
@@ -418,7 +451,8 @@ func (s *AdminService) reapBulkJobs(ctx context.Context) {
 		if err := s.d.BulkJobs.SaveItems(ctx, job.ID, job.Items); err != nil {
 			s.d.Logger.Warn("bulk action: report not saved", "job_id", job.ID, "error", err)
 		}
-		s.announceBulkInterrupted(ctx, job)
+		job.Status = domain.BulkJobInterrupted
+		s.auditBulkJob(ctx, job, nil) // the changes of the items died with the process
 	}
 	if _, err := s.d.BulkJobs.DeleteFinishedBefore(ctx, now.Add(-bulkRetention)); err != nil && ctx.Err() == nil {
 		s.d.Logger.Warn("bulk actions: cannot purge old reports", "error", err)
@@ -633,18 +667,35 @@ func (s *AdminService) forcePasswordReset(ctx context.Context, actor AdminActor,
 	if err := s.guardAdminRemoval(ctx, actor, realm, u.ID, i18n.M("admin.error.bulk_self", "your own account is left out of bulk actions")); err != nil {
 		return err
 	}
-	// The link first: if it cannot be created, nothing changed for the user.
-	if err := s.d.PasswordReset.SendForcedResetLink(ctx, u, actor.IPAddress); err != nil {
+	// The link is created first but e-mailed last: whatever fails before,
+	// the user never holds a link to an account that was not switched.
+	link, err := s.d.PasswordReset.PrepareForcedResetLink(ctx, u, actor.IPAddress)
+	if err != nil {
 		return err
 	}
+	// undo puts the account back as it was, so that the admin can retry
+	// (an account left flagged would be skipped as "already required").
+	// It must run even when the request is cancelled.
+	undo := func() {
+		bg := context.WithoutCancel(ctx)
+		notRequired := false
+		if _, err := s.d.Users.Update(bg, u.ID, repository.UpdateUserParams{MustChangePassword: &notRequired}); err != nil {
+			s.d.Logger.WarnContext(bg, "force password reset: cannot clear the flag", "user_id", u.ID, "error", err)
+		}
+		s.d.PasswordReset.CancelForcedResetLink(bg, u.ID)
+	}
+	// Flag before sign-out: nobody can sign in with the password in between.
 	required := true
 	if _, err := s.d.Users.Update(ctx, u.ID, repository.UpdateUserParams{MustChangePassword: &required}); err != nil {
+		s.d.PasswordReset.CancelForcedResetLink(context.WithoutCancel(ctx), u.ID)
 		return fmt.Errorf("force password reset: %w", err)
 	}
 	if err := s.d.Sessions.RevokeAllForUser(ctx, u.ID, domain.SessionRevokedAdminRevoked); err != nil {
+		undo()
 		return fmt.Errorf("force password reset: sign out: %w", err)
 	}
 	s.auditAdmin(ctx, actor, realm.ID, audit.UserPasswordResetForced, "User", u.ID, domain.AuditLogWarning, nil)
+	s.d.PasswordReset.SendForcedResetLink(ctx, link)
 	return nil
 }
 

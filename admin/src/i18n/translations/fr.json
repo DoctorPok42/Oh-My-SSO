@@ -48,6 +48,7 @@
   "audit.action.auth.logout": "Déconnexion",
   "audit.action.auth.mfa_failed": "Échec du second facteur",
   "audit.action.auth.trusted_device_challenged": "Appareil de confiance soumis au second facteur",
+  "audit.action.bulk.completed": "Action en masse",
   "audit.action.bulk.interrupted": "Action en masse interrompue",
   "audit.action.client.certificate_added": "Certificat ajouté",
   "audit.action.client.certificate_removed": "Certificat retiré",

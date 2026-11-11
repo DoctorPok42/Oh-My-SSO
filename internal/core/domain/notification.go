@@ -66,6 +66,9 @@ type NotificationEvent struct {
 	// QuietAudit: one e-mail of a batch that the audit log records as a whole.
 	// It gets an entry of its own only if it fails.
 	QuietAudit bool
+	// OperationID: the bulk action the e-mail belongs to, written in its
+	// entry when it fails.
+	OperationID string
 
 	// password_reset: the raw token. It only ever exists in memory and in
 	// the e-mail; the database keeps its SHA-256.

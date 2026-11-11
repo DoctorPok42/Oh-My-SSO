@@ -79,6 +79,25 @@ func requireBulk(t *testing.T, status int, out map[string]any, done, skipped, fa
 	require.EqualValues(t, failed, out["failed"], "%v", out)
 }
 
+// bulkAuditEntry checks that a bulk action left exactly one audit entry,
+// bulk.completed, and returns its items by id.
+func bulkAuditEntry(t *testing.T, e *adminTestEnv, token, realm, op string) map[string]map[string]any {
+	t.Helper()
+	status, entries := e.call(t, token, http.MethodGet, "/api/v1/realms/"+realm+"/audit-logs?operation="+op, nil)
+	require.Equal(t, http.StatusOK, status, "%v", entries)
+	require.EqualValues(t, 1, entries["total"], "one entry per bulk action: %v", entries)
+	entry := entries["items"].([]any)[0].(map[string]any)
+	require.Equal(t, audit.BulkCompleted, entry["action"])
+	details := entry["details"].(map[string]any)
+	require.Equal(t, op, details["operation_id"])
+	items := map[string]map[string]any{}
+	for _, x := range details["items"].([]any) {
+		it := x.(map[string]any)
+		items[it["id"].(string)] = it
+	}
+	return items
+}
+
 func TestAdmin_Integration_BulkUsers(t *testing.T) {
 	e, at := userImportEnv(t)
 	ctx := context.Background()
@@ -110,21 +129,26 @@ func TestAdmin_Integration_BulkUsers(t *testing.T) {
 	op := out["operation_id"].(string)
 	require.Regexp(t, `^op_[0-9a-f]{16}$`, op)
 
-	// One audit entry per changed item, under the same operation.
-	status, entries := e.call(t, at, http.MethodGet, "/api/v1/realms/demo/audit-logs?operation="+op, nil)
-	require.Equal(t, http.StatusOK, status, "%v", entries)
-	require.EqualValues(t, 2, entries["total"])
-	for _, x := range entries["items"].([]any) {
-		require.Equal(t, audit.UserUpdated, x.(map[string]any)["action"])
+	// One audit entry for the whole action: each item, and what it changed.
+	items := bulkAuditEntry(t, e, at, "demo", op)
+	require.Len(t, items, 3)
+	for _, id := range []string{alice, bob} {
+		require.Equal(t, "done", items[id]["status"])
+		changes := items[id]["changes"].([]any)
+		require.Len(t, changes, 1)
+		require.Equal(t, audit.UserUpdated, changes[0].(map[string]any)["action"])
 	}
+	require.Equal(t, "skipped", items["ghost"]["status"])
+	require.Equal(t, "not_found", items["ghost"]["code"])
+	require.Nil(t, items["ghost"]["changes"])
 
-	// Nothing to do: skipped, and no audit entry.
+	// Nothing to do: skipped, the entry says so and holds no change.
 	status, out = e.call(t, at, http.MethodPost, bulkUsers, map[string]any{"action": "suspend", "ids": []string{alice}})
 	requireBulk(t, status, out, 0, 1, 0)
 	require.Equal(t, "already_suspended", bulkItem(t, out, alice)["code"])
-	status, entries = e.call(t, at, http.MethodGet, "/api/v1/realms/demo/audit-logs?operation="+out["operation_id"].(string), nil)
-	require.Equal(t, http.StatusOK, status, "%v", entries)
-	require.EqualValues(t, 0, entries["total"])
+	items = bulkAuditEntry(t, e, at, "demo", out["operation_id"].(string))
+	require.Equal(t, "already_suspended", items[alice]["code"])
+	require.Nil(t, items[alice]["changes"])
 
 	status, out = e.call(t, at, http.MethodPost, bulkUsers, map[string]any{"action": "reactivate", "ids": []string{alice, bob}})
 	requireBulk(t, status, out, 2, 0, 0)
@@ -290,13 +314,16 @@ func TestAdmin_Integration_ForcedPasswordReset(t *testing.T) {
 	require.Equal(t, "no_password", bulkItem(t, out, invited)["code"])
 	require.Equal(t, "not_active", bulkItem(t, out, suspended)["code"])
 
-	// Signed out everywhere, the entry under the operation.
+	// Signed out everywhere, one entry for the operation: the reset and its
+	// e-mail are in it, not in entries of their own.
 	_, err := e.sessions.GetActive(ctx, live.ID)
 	require.Error(t, err)
-	status, entries := e.call(t, at, http.MethodGet, "/api/v1/realms/demo/audit-logs?operation="+out["operation_id"].(string), nil)
-	require.Equal(t, http.StatusOK, status)
-	require.EqualValues(t, 1, entries["total"])
-	require.Equal(t, audit.UserPasswordResetForced, entries["items"].([]any)[0].(map[string]any)["action"])
+	items := bulkAuditEntry(t, e, at, "demo", out["operation_id"].(string))
+	var actions []any
+	for _, c := range items[alice]["changes"].([]any) {
+		actions = append(actions, c.(map[string]any)["action"])
+	}
+	require.Contains(t, actions, audit.UserPasswordResetForced)
 
 	// Asking twice sends no second link.
 	status, again := e.call(t, at, http.MethodPost, bulkUsers, map[string]any{"action": "force_password_reset", "ids": []string{alice}})
