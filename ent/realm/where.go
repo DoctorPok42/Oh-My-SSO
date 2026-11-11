@@ -859,6 +859,29 @@ func HasUserImportJobsWith(preds ...predicate.UserImportJob) predicate.Realm {
 	})
 }
 
+// HasBulkJobs applies the HasEdge predicate on the "bulk_jobs" edge.
+func HasBulkJobs() predicate.Realm {
+	return predicate.Realm(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, BulkJobsTable, BulkJobsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasBulkJobsWith applies the HasEdge predicate on the "bulk_jobs" edge with a given conditions (other predicates).
+func HasBulkJobsWith(preds ...predicate.BulkJob) predicate.Realm {
+	return predicate.Realm(func(s *sql.Selector) {
+		step := newBulkJobsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Realm) predicate.Realm {
 	return predicate.Realm(sql.AndPredicates(predicates...))

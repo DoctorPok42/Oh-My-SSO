@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// AuditLog is the client for interacting with the AuditLog builders.
 	AuditLog *AuditLogClient
+	// BulkJob is the client for interacting with the BulkJob builders.
+	BulkJob *BulkJobClient
 	// ClientApp is the client for interacting with the ClientApp builders.
 	ClientApp *ClientAppClient
 	// ClientGroup is the client for interacting with the ClientGroup builders.
@@ -204,6 +206,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.AuditLog = NewAuditLogClient(tx.config)
+	tx.BulkJob = NewBulkJobClient(tx.config)
 	tx.ClientApp = NewClientAppClient(tx.config)
 	tx.ClientGroup = NewClientGroupClient(tx.config)
 	tx.ClientRole = NewClientRoleClient(tx.config)

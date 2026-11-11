@@ -7,8 +7,8 @@
 // Every server built here bounds the whole request, the response and the
 // idle time between two requests.
 //
-// A handler that legitimately takes longer (a streamed export, a bulk
-// action) calls Extend first, once its caller is authenticated.
+// A handler that legitimately takes longer (a streamed export, a CSV
+// import) calls Extend first, once its caller is authenticated.
 package httptimeout
 
 import (
@@ -38,7 +38,8 @@ var (
 	// redirects; a handler (an e-mail, a KMS signature) ends in seconds.
 	Public = Timeouts{ReadHeader: 10 * time.Second, Read: 30 * time.Second, Write: 30 * time.Second, Idle: 2 * time.Minute}
 	// Admin: cmd/idp-admin, called by the console's server only. The longer
-	// calls (exports, bulk actions, CSV imports) call Extend.
+	// calls (exports, CSV imports) call Extend. Bulk actions do not: they run in
+	// the background and answer at once.
 	Admin = Timeouts{ReadHeader: 10 * time.Second, Read: time.Minute, Write: time.Minute, Idle: 2 * time.Minute}
 )
 

@@ -73,9 +73,11 @@ type RealmEdges struct {
 	TrustedDevices []*TrustedDevice `json:"trusted_devices,omitempty"`
 	// UserImportJobs holds the value of the user_import_jobs edge.
 	UserImportJobs []*UserImportJob `json:"user_import_jobs,omitempty"`
+	// BulkJobs holds the value of the bulk_jobs edge.
+	BulkJobs []*BulkJob `json:"bulk_jobs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [16]bool
+	loadedTypes [17]bool
 }
 
 // UsersOrErr returns the Users value or an error if the edge
@@ -222,6 +224,15 @@ func (e RealmEdges) UserImportJobsOrErr() ([]*UserImportJob, error) {
 		return e.UserImportJobs, nil
 	}
 	return nil, &NotLoadedError{edge: "user_import_jobs"}
+}
+
+// BulkJobsOrErr returns the BulkJobs value or an error if the edge
+// was not loaded in eager-loading.
+func (e RealmEdges) BulkJobsOrErr() ([]*BulkJob, error) {
+	if e.loadedTypes[16] {
+		return e.BulkJobs, nil
+	}
+	return nil, &NotLoadedError{edge: "bulk_jobs"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -389,6 +400,11 @@ func (_m *Realm) QueryTrustedDevices() *TrustedDeviceQuery {
 // QueryUserImportJobs queries the "user_import_jobs" edge of the Realm entity.
 func (_m *Realm) QueryUserImportJobs() *UserImportJobQuery {
 	return NewRealmClient(_m.config).QueryUserImportJobs(_m)
+}
+
+// QueryBulkJobs queries the "bulk_jobs" edge of the Realm entity.
+func (_m *Realm) QueryBulkJobs() *BulkJobQuery {
+	return NewRealmClient(_m.config).QueryBulkJobs(_m)
 }
 
 // Update returns a builder for updating this Realm.

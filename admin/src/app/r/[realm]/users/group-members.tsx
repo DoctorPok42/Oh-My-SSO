@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { BulkCell, BulkHead, BulkProvider, BulkSummary, useBulkLimit } from "@/components/console/bulk";
+import { BulkCell, BulkHead, BulkProvider, BulkRunning, BulkSummary, useBulkLimit } from "@/components/console/bulk";
 import { useAction } from "@/components/console/use-action";
+import { useBulkJob } from "@/components/console/use-bulk-job";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useT } from "@/i18n/client";
-import { BULK_ROW, parseIdentifiers, type BulkResult } from "@/lib/bulk";
+import { BULK_ROW, parseIdentifiers, type BulkJob } from "@/lib/bulk";
 import type { UserSummary } from "@/lib/types";
 import { addGroupMembers, bulkUsers } from "./actions";
 
@@ -77,7 +78,8 @@ export function AddGroupMembers({ realm, groupId }: { realm: string; groupId: st
   const limit = useBulkLimit();
   const { run, pending } = useAction();
   const [text, setText] = useState("");
-  const [result, setResult] = useState<BulkResult | null>(null);
+  const { progress, follow } = useBulkJob(realm);
+  const [result, setResult] = useState<BulkJob | null>(null);
   const names = parseIdentifiers(text);
   const tooMany = names.length > limit;
   return (
@@ -103,6 +105,7 @@ export function AddGroupMembers({ realm, groupId }: { realm: string; groupId: st
           {t("access.add_members_limit", "{limit} people at most at a time.", { limit })}
         </p>
       )}
+      {progress && <BulkRunning job={progress} />}
       {result && (
         <BulkSummary
           realm={realm}
@@ -115,12 +118,12 @@ export function AddGroupMembers({ realm, groupId }: { realm: string; groupId: st
         variant="secondary"
         size="sm"
         loading={pending}
-        disabled={pending || names.length === 0 || tooMany}
+        disabled={pending || progress !== null || names.length === 0 || tooMany}
         onClick={async () => {
           const r = await run(() => addGroupMembers(realm, groupId, names), { intent: `edit=${groupId}` });
           if (!r.ok) return;
-          setResult(r.data);
           setText("");
+          setResult(await follow(r.data));
         }}
       >
         {names.length > 0

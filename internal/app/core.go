@@ -388,6 +388,7 @@ func (c *Core) AdminService() *service.AdminService {
 		Timeouts:       c.Timeouts,
 		Languages:      Languages(),
 		UserImports:    entstore.NewUserImportRepository(c.Ent),
-		ConsoleURL:     os.Getenv("ADMIN_PANEL_URL"),
+		BulkJobs:       entstore.NewBulkJobRepository(c.Ent),
+		ConsoleURL:    os.Getenv("ADMIN_PANEL_URL"),
 	})
 }

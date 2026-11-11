@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"sso.internal/sso/ent/auditlog"
+	"sso.internal/sso/ent/bulkjob"
 	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/clientgroup"
 	"sso.internal/sso/ent/clientrole"
@@ -74,6 +75,72 @@ func init() {
 	auditlog.DefaultID = auditlogDescID.Default.(func() string)
 	// auditlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	auditlog.IDValidator = auditlogDescID.Validators[0].(func(string) error)
+	bulkjobFields := schema.BulkJob{}.Fields()
+	_ = bulkjobFields
+	// bulkjobDescRealmID is the schema descriptor for realm_id field.
+	bulkjobDescRealmID := bulkjobFields[1].Descriptor()
+	// bulkjob.RealmIDValidator is a validator for the "realm_id" field. It is called by the builders before save.
+	bulkjob.RealmIDValidator = bulkjobDescRealmID.Validators[0].(func(string) error)
+	// bulkjobDescAction is the schema descriptor for action field.
+	bulkjobDescAction := bulkjobFields[2].Descriptor()
+	// bulkjob.ActionValidator is a validator for the "action" field. It is called by the builders before save.
+	bulkjob.ActionValidator = bulkjobDescAction.Validators[0].(func(string) error)
+	// bulkjobDescOperationID is the schema descriptor for operation_id field.
+	bulkjobDescOperationID := bulkjobFields[3].Descriptor()
+	// bulkjob.OperationIDValidator is a validator for the "operation_id" field. It is called by the builders before save.
+	bulkjob.OperationIDValidator = bulkjobDescOperationID.Validators[0].(func(string) error)
+	// bulkjobDescStatus is the schema descriptor for status field.
+	bulkjobDescStatus := bulkjobFields[4].Descriptor()
+	// bulkjob.DefaultStatus holds the default value on creation for the status field.
+	bulkjob.DefaultStatus = schema.BulkJobStatus(bulkjobDescStatus.Default.(string))
+	// bulkjobDescRequestedBy is the schema descriptor for requested_by field.
+	bulkjobDescRequestedBy := bulkjobFields[5].Descriptor()
+	// bulkjob.RequestedByValidator is a validator for the "requested_by" field. It is called by the builders before save.
+	bulkjob.RequestedByValidator = bulkjobDescRequestedBy.Validators[0].(func(string) error)
+	// bulkjobDescRequestedByName is the schema descriptor for requested_by_name field.
+	bulkjobDescRequestedByName := bulkjobFields[6].Descriptor()
+	// bulkjob.RequestedByNameValidator is a validator for the "requested_by_name" field. It is called by the builders before save.
+	bulkjob.RequestedByNameValidator = bulkjobDescRequestedByName.Validators[0].(func(string) error)
+	// bulkjobDescRequestedByRealm is the schema descriptor for requested_by_realm field.
+	bulkjobDescRequestedByRealm := bulkjobFields[7].Descriptor()
+	// bulkjob.RequestedByRealmValidator is a validator for the "requested_by_realm" field. It is called by the builders before save.
+	bulkjob.RequestedByRealmValidator = bulkjobDescRequestedByRealm.Validators[0].(func(string) error)
+	// bulkjobDescTotal is the schema descriptor for total field.
+	bulkjobDescTotal := bulkjobFields[9].Descriptor()
+	// bulkjob.DefaultTotal holds the default value on creation for the total field.
+	bulkjob.DefaultTotal = bulkjobDescTotal.Default.(int)
+	// bulkjobDescProcessed is the schema descriptor for processed field.
+	bulkjobDescProcessed := bulkjobFields[10].Descriptor()
+	// bulkjob.DefaultProcessed holds the default value on creation for the processed field.
+	bulkjob.DefaultProcessed = bulkjobDescProcessed.Default.(int)
+	// bulkjobDescDoneCount is the schema descriptor for done_count field.
+	bulkjobDescDoneCount := bulkjobFields[11].Descriptor()
+	// bulkjob.DefaultDoneCount holds the default value on creation for the done_count field.
+	bulkjob.DefaultDoneCount = bulkjobDescDoneCount.Default.(int)
+	// bulkjobDescSkippedCount is the schema descriptor for skipped_count field.
+	bulkjobDescSkippedCount := bulkjobFields[12].Descriptor()
+	// bulkjob.DefaultSkippedCount holds the default value on creation for the skipped_count field.
+	bulkjob.DefaultSkippedCount = bulkjobDescSkippedCount.Default.(int)
+	// bulkjobDescFailedCount is the schema descriptor for failed_count field.
+	bulkjobDescFailedCount := bulkjobFields[13].Descriptor()
+	// bulkjob.DefaultFailedCount holds the default value on creation for the failed_count field.
+	bulkjob.DefaultFailedCount = bulkjobDescFailedCount.Default.(int)
+	// bulkjobDescCreatedAt is the schema descriptor for created_at field.
+	bulkjobDescCreatedAt := bulkjobFields[15].Descriptor()
+	// bulkjob.DefaultCreatedAt holds the default value on creation for the created_at field.
+	bulkjob.DefaultCreatedAt = bulkjobDescCreatedAt.Default.(func() time.Time)
+	// bulkjobDescUpdatedAt is the schema descriptor for updated_at field.
+	bulkjobDescUpdatedAt := bulkjobFields[16].Descriptor()
+	// bulkjob.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	bulkjob.DefaultUpdatedAt = bulkjobDescUpdatedAt.Default.(func() time.Time)
+	// bulkjob.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	bulkjob.UpdateDefaultUpdatedAt = bulkjobDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// bulkjobDescID is the schema descriptor for id field.
+	bulkjobDescID := bulkjobFields[0].Descriptor()
+	// bulkjob.DefaultID holds the default value on creation for the id field.
+	bulkjob.DefaultID = bulkjobDescID.Default.(func() string)
+	// bulkjob.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	bulkjob.IDValidator = bulkjobDescID.Validators[0].(func(string) error)
 	clientappFields := schema.ClientApp{}.Fields()
 	_ = clientappFields
 	// clientappDescRealmID is the schema descriptor for realm_id field.

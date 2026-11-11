@@ -9,6 +9,9 @@ import (
 // AuditLog is the predicate function for auditlog builders.
 type AuditLog func(*sql.Selector)
 
+// BulkJob is the predicate function for bulkjob builders.
+type BulkJob func(*sql.Selector)
+
 // ClientApp is the predicate function for clientapp builders.
 type ClientApp func(*sql.Selector)
 

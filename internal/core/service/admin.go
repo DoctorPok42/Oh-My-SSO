@@ -161,6 +161,9 @@ type AdminDeps struct {
 	// UserImports: the imports of CSV files of users. nil outside idp-admin
 	// (the CLI does not import).
 	UserImports repository.UserImportRepository
+	// BulkJobs: the bulk actions of the console, run in the background. nil
+	// outside idp-admin.
+	BulkJobs repository.BulkJobRepository
 
 	// PublicURL of cmd/idp: base of activation links.
 	PublicURL string
@@ -179,7 +182,8 @@ type AdminDeps struct {
 // AdminService implements the Admin API operations.
 type AdminService struct {
 	d       AdminDeps
-	imports *userImportRunner
+	imports *jobRunner
+	bulks   *jobRunner
 }
 
 func NewAdminService(d AdminDeps) *AdminService {
@@ -197,7 +201,7 @@ func NewAdminService(d AdminDeps) *AdminService {
 	}
 	d.PublicURL = strings.TrimRight(d.PublicURL, "/")
 	d.ConsoleURL = strings.TrimRight(d.ConsoleURL, "/")
-	return &AdminService{d: d, imports: newUserImportRunner()}
+	return &AdminService{d: d, imports: newJobRunner(), bulks: newJobRunner()}
 }
 
 // auditAdmin writes one AuditLog entry for an admin action, in the realm

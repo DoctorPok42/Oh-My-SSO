@@ -25,6 +25,7 @@ const (
 	UserActivationLinkSent     = "user.activation_link_sent"
 	UserImportStarted          = "user.import_started"  // a CSV file of users, running in the background
 	UserImportFinished         = "user.import_finished" // ... its totals; one user.invited per account created
+	BulkInterrupted            = "bulk.interrupted"     // a bulk action stopped half-way (server stopped): lists the items not processed
 	UserUpdated                = "user.updated"         // by an administrator
 	UserProfileUpdated         = "user.profile_updated"
 	UserDeleted                = "user.deleted"
@@ -139,6 +140,7 @@ var Catalog = []ActionInfo{
 	{UserActivationLinkSent, "Users", "Activation link sent"},
 	{UserImportStarted, "Users", "User import started"},
 	{UserImportFinished, "Users", "User import finished"},
+	{BulkInterrupted, "Users", "Bulk action interrupted"},
 	{UserUpdated, "Users", "User updated"},
 	{UserProfileUpdated, "Users", "Profile updated"},
 	{UserDeleted, "Users", "User deleted"},

@@ -232,6 +232,13 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   it there, nothing changed), writes the `IMAGE_*` lines of `.env`, then `docker compose up -d`: only the containers
   whose image or settings changed are recreated, and `migrate` applies the pending migrations before `idp` and
   `idp-admin` start. Rollback: the previous sha (only if no migration ran in between).
+  Recreating `idp-admin` during a bulk action or a CSV import is safe: on `SIGTERM` it finishes the requests in flight
+  (15 s at most), then the job stops **at the item it is on** (an item is never left half done), lists the items it did
+  not get to as _not processed_ in its report, and writes a `bulk.interrupted` audit entry naming them (an import ends
+  as _interrupted_). The container is given 30 s to do so (`stop_grace_period` of `compose.example.yml`: keep it if
+  you write your own compose file; Docker's default of 10 s is too short). Start the action again on the items left. A
+  process that is killed anyway leaves a job that another `idp-admin` marks as interrupted once it has been silent for
+  2 minutes (a bulk action) or 10 minutes (an import); the realm takes no new one before.
 - **Settings**: after a change of `.env`, `docker compose up -d` recreates the containers that use it.
 - **Backups**: PostgreSQL (users, clients, audit log), e.g.
   `docker compose exec -T postgres pg_dump -U sso sso | gzip > sso-$(date +%F).sql.gz`, **and** the key manager:

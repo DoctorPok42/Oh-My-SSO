@@ -72,9 +72,10 @@ func (s *AdminService) notifyWait(ctx context.Context, e domain.NotificationEven
 	return nil
 }
 
-// userImportRunner tracks the goroutines of the imports, so that a stopping
-// server can end them before it closes the database.
-type userImportRunner struct {
+// jobRunner tracks the goroutines of background jobs (the imports, the bulk
+// actions), so that a stopping server can end them before it closes the
+// database.
+type jobRunner struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -83,13 +84,13 @@ type userImportRunner struct {
 	wg      sync.WaitGroup
 }
 
-func newUserImportRunner() *userImportRunner {
+func newJobRunner() *jobRunner {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &userImportRunner{ctx: ctx, cancel: cancel}
+	return &jobRunner{ctx: ctx, cancel: cancel}
 }
 
 // begin registers a goroutine. false: the server is stopping.
-func (r *userImportRunner) begin() bool {
+func (r *jobRunner) begin() bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.stopped {
@@ -97,6 +98,24 @@ func (r *userImportRunner) begin() bool {
 	}
 	r.wg.Add(1)
 	return true
+}
+
+// stop refuses new goroutines, tells the running ones to stop at their next
+// item, and waits for them until ctx ends. false: ctx ended first.
+func (r *jobRunner) stop(ctx context.Context) bool {
+	r.mu.Lock()
+	r.stopped = true
+	r.mu.Unlock()
+	r.cancel()
+
+	done := make(chan struct{})
+	go func() { r.wg.Wait(); close(done) }()
+	select {
+	case <-done:
+		return true
+	case <-ctx.Done():
+		return false
+	}
 }
 
 // StartUserImportReaper ends the imports whose process died, and purges old
@@ -114,16 +133,7 @@ func (s *AdminService) StartUserImportReaper() {
 // StopUserImports interrupts the running imports at their current line and
 // waits for them, until ctx ends.
 func (s *AdminService) StopUserImports(ctx context.Context) {
-	s.imports.mu.Lock()
-	s.imports.stopped = true
-	s.imports.mu.Unlock()
-	s.imports.cancel()
-
-	done := make(chan struct{})
-	go func() { s.imports.wg.Wait(); close(done) }()
-	select {
-	case <-done:
-	case <-ctx.Done():
+	if !s.imports.stop(ctx) {
 		s.d.Logger.Warn("user imports: stopped waiting for the running imports")
 	}
 }

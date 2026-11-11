@@ -1,7 +1,7 @@
 "use server";
 
 import { act, api, apiPath, getBulkLimit } from "@/lib/api";
-import { BULK_TIMEOUT_MS, collectIds, type BulkBody, type BulkResult } from "@/lib/bulk";
+import { collectIds, type BulkBody, type BulkJob } from "@/lib/bulk";
 import type { Client, ClientBody, ClientCreated, ClientSummary, List } from "@/lib/types";
 
 // Server Actions: functions the browser calls like an API, run here on the
@@ -11,10 +11,9 @@ import type { Client, ClientBody, ClientCreated, ClientSummary, List } from "@/l
 
 export async function bulkClients(realm: string, body: BulkBody) {
   return act(() =>
-    api<BulkResult>(apiPath(["realms", realm, "clients", "bulk"]), {
+    api<BulkJob>(apiPath(["realms", realm, "clients", "bulk"]), {
       method: "POST",
       body,
-      timeoutMs: BULK_TIMEOUT_MS,
     }),
   );
 }

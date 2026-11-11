@@ -59,5 +59,6 @@ func (Realm) Edges() []ent.Edge {
 		edge.To("known_accounts", KnownAccount.Type).Annotations(entsql.OnDelete(entsql.Restrict)),
 		edge.To("trusted_devices", TrustedDevice.Type).Annotations(entsql.OnDelete(entsql.Restrict)),
 		edge.To("user_import_jobs", UserImportJob.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
+		edge.To("bulk_jobs", BulkJob.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 	}
 }

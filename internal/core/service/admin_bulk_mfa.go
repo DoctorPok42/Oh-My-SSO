@@ -22,7 +22,7 @@ const (
 // of the role form (any method, no grace period) and the setting asked; a
 // role with its own rules keeps the others. Roles managed by the
 // configuration are skipped.
-func (s *AdminService) BulkRoleMFA(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkResult, error) {
+func (s *AdminService) BulkRoleMFA(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkJobView, error) {
 	ids, err := s.cleanBulkIDs(ctx, realm, in.IDs)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (s *AdminService) BulkRoleMFA(ctx context.Context, actor AdminActor, realm 
 	for _, l := range view.Roles {
 		lines[l.Role.ID] = l
 	}
-	return s.runBulk(ctx, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
+	return s.runBulk(ctx, actor, realm, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
 		r, err := s.roleInRealm(ctx, realm.ID, id)
 		if err != nil {
 			return "", err

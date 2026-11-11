@@ -23,7 +23,7 @@ const (
 
 // BulkClients suspends, reactivates or deletes clients. Those managed by the
 // configuration are skipped by the unitary methods.
-func (s *AdminService) BulkClients(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkResult, error) {
+func (s *AdminService) BulkClients(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkJobView, error) {
 	ids, err := s.cleanBulkIDs(ctx, realm, in.IDs)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (s *AdminService) BulkClients(ctx context.Context, actor AdminActor, realm 
 	default:
 		return nil, bulkUnknownAction()
 	}
-	return s.runBulk(ctx, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
+	return s.runBulk(ctx, actor, realm, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
 		app, err := s.clientInRealm(ctx, realm.ID, id)
 		if err != nil {
 			return "", err
@@ -77,7 +77,7 @@ func (s *AdminService) ExportClients(ctx context.Context, realm *domain.Realm, i
 }
 
 // BulkGroups deletes groups.
-func (s *AdminService) BulkGroups(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkResult, error) {
+func (s *AdminService) BulkGroups(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkJobView, error) {
 	ids, err := s.cleanBulkIDs(ctx, realm, in.IDs)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (s *AdminService) BulkGroups(ctx context.Context, actor AdminActor, realm *
 	if in.Action != BulkDelete {
 		return nil, bulkUnknownAction()
 	}
-	return s.runBulk(ctx, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
+	return s.runBulk(ctx, actor, realm, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
 		g, err := s.groupInRealm(ctx, realm.ID, id)
 		if err != nil {
 			return "", err
@@ -95,7 +95,7 @@ func (s *AdminService) BulkGroups(ctx context.Context, actor AdminActor, realm *
 }
 
 // AddGroupMembers adds users, given by username or e-mail, to a group.
-func (s *AdminService) AddGroupMembers(ctx context.Context, actor AdminActor, realm *domain.Realm, groupID string, identifiers []string, loc *i18n.Localizer) (*BulkResult, error) {
+func (s *AdminService) AddGroupMembers(ctx context.Context, actor AdminActor, realm *domain.Realm, groupID string, identifiers []string, loc *i18n.Localizer) (*BulkJobView, error) {
 	names, err := s.cleanBulkIDs(ctx, realm, identifiers)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func (s *AdminService) AddGroupMembers(ctx context.Context, actor AdminActor, re
 	if err != nil {
 		return nil, err
 	}
-	return s.runBulk(ctx, "add_members", names, loc, func(ctx context.Context, name string) (string, error) {
+	return s.runBulk(ctx, actor, realm, "add_members", names, loc, func(ctx context.Context, name string) (string, error) {
 		u, err := findUserByIdentifier(ctx, s.d.Users, realm.ID, name)
 		if errors.Is(err, repository.ErrNotFound) {
 			return name, adminNotFound(i18n.M("admin.error.not_found.user", "user not found"))
@@ -136,7 +136,7 @@ func (b bulkStep) run(ctx context.Context, id string) error {
 // still assigned (the assignments go with it): one by one, an administrator
 // sees the member count; on a whole selection, that would strip rights from
 // people nobody looked at, so such a role is skipped.
-func (s *AdminService) BulkRoles(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkResult, error) {
+func (s *AdminService) BulkRoles(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkJobView, error) {
 	ids, err := s.cleanBulkIDs(ctx, realm, in.IDs)
 	if err != nil {
 		return nil, err
@@ -161,7 +161,7 @@ func (s *AdminService) BulkRoles(ctx context.Context, actor AdminActor, realm *d
 	default:
 		return nil, bulkUnknownAction()
 	}
-	return s.runBulk(ctx, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
+	return s.runBulk(ctx, actor, realm, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
 		r, err := s.roleInRealm(ctx, realm.ID, id)
 		if err != nil {
 			return "", err
@@ -217,7 +217,7 @@ func (s *AdminService) freeRoleName(ctx context.Context, realmID, name string) (
 
 // BulkClientScopes deletes client scopes. One still mapped to a client is
 // skipped by the unitary method.
-func (s *AdminService) BulkClientScopes(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkResult, error) {
+func (s *AdminService) BulkClientScopes(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkJobView, error) {
 	ids, err := s.cleanBulkIDs(ctx, realm, in.IDs)
 	if err != nil {
 		return nil, err
@@ -225,7 +225,7 @@ func (s *AdminService) BulkClientScopes(ctx context.Context, actor AdminActor, r
 	if in.Action != BulkDelete {
 		return nil, bulkUnknownAction()
 	}
-	return s.runBulk(ctx, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
+	return s.runBulk(ctx, actor, realm, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
 		cs, err := s.scopeInRealm(ctx, realm.ID, id)
 		if err != nil {
 			return "", err
@@ -236,7 +236,7 @@ func (s *AdminService) BulkClientScopes(ctx context.Context, actor AdminActor, r
 
 // BulkTimeouts lifts timeouts. There is no delete: a timeout stays in the
 // history once it is over.
-func (s *AdminService) BulkTimeouts(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkResult, error) {
+func (s *AdminService) BulkTimeouts(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, loc *i18n.Localizer) (*BulkJobView, error) {
 	ids, err := s.cleanBulkIDs(ctx, realm, in.IDs)
 	if err != nil {
 		return nil, err
@@ -244,7 +244,7 @@ func (s *AdminService) BulkTimeouts(ctx context.Context, actor AdminActor, realm
 	if in.Action != BulkLift {
 		return nil, bulkUnknownAction()
 	}
-	return s.runBulk(ctx, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
+	return s.runBulk(ctx, actor, realm, in.Action, ids, loc, func(ctx context.Context, id string) (string, error) {
 		v, err := s.LiftTimeout(ctx, actor, realm, id)
 		if err != nil {
 			return "", err

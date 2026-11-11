@@ -67,6 +67,56 @@ var (
 			},
 		},
 	}
+	// BulkJobsColumns holds the columns for the "bulk_jobs" table.
+	BulkJobsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "action", Type: field.TypeString},
+		{Name: "operation_id", Type: field.TypeString},
+		{Name: "status", Type: field.TypeString, Default: "running"},
+		{Name: "requested_by", Type: field.TypeString},
+		{Name: "requested_by_name", Type: field.TypeString},
+		{Name: "requested_by_realm", Type: field.TypeString},
+		{Name: "ids", Type: field.TypeJSON},
+		{Name: "total", Type: field.TypeInt, Default: 0},
+		{Name: "processed", Type: field.TypeInt, Default: 0},
+		{Name: "done_count", Type: field.TypeInt, Default: 0},
+		{Name: "skipped_count", Type: field.TypeInt, Default: 0},
+		{Name: "failed_count", Type: field.TypeInt, Default: 0},
+		{Name: "items", Type: field.TypeJSON, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "finished_at", Type: field.TypeTime, Nullable: true},
+		{Name: "realm_id", Type: field.TypeString},
+	}
+	// BulkJobsTable holds the schema information for the "bulk_jobs" table.
+	BulkJobsTable = &schema.Table{
+		Name:       "bulk_jobs",
+		Columns:    BulkJobsColumns,
+		PrimaryKey: []*schema.Column{BulkJobsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "bulk_jobs_realms_bulk_jobs",
+				Columns:    []*schema.Column{BulkJobsColumns[17]},
+				RefColumns: []*schema.Column{RealmsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "bulkjob_realm_id",
+				Unique:  true,
+				Columns: []*schema.Column{BulkJobsColumns[17]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "status = 'running'",
+				},
+			},
+			{
+				Name:    "bulkjob_status_updated_at",
+				Unique:  false,
+				Columns: []*schema.Column{BulkJobsColumns[3], BulkJobsColumns[15]},
+			},
+		},
+	}
 	// ClientAppsColumns holds the columns for the "client_apps" table.
 	ClientAppsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
@@ -1319,6 +1369,7 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AuditLogsTable,
+		BulkJobsTable,
 		ClientAppsTable,
 		ClientGroupsTable,
 		ClientRolesTable,
@@ -1357,6 +1408,7 @@ var (
 
 func init() {
 	AuditLogsTable.ForeignKeys[0].RefTable = RealmsTable
+	BulkJobsTable.ForeignKeys[0].RefTable = RealmsTable
 	ClientAppsTable.ForeignKeys[0].RefTable = RealmsTable
 	ClientGroupsTable.ForeignKeys[0].RefTable = ClientAppsTable
 	ClientGroupsTable.ForeignKeys[1].RefTable = GroupsTable
