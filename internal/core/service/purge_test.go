@@ -16,12 +16,13 @@ import (
 // purgeRepo records each call and deletes from a pretend stock of rows
 // (per realm), at most limit at a time.
 type purgeRepo struct {
-	stock  map[string]int       // realm → rows left, for every kind
-	before map[string]time.Time // realm → the date it was purged with
-	calls  int
-	failOn string // "<realm>/sessions" fails
-	cancel func() // called by the first call, when set
-	kinds  map[string][]string
+	stock       map[string]int       // "<realm>/<kind>" → rows left
+	before      map[string]time.Time // realm → the date its ended data was purged with
+	auditBefore map[string]time.Time // realm → the date its audit log was purged with
+	calls       int
+	failOn      string // "<realm>/sessions" fails
+	cancel      func() // called by the first call, when set
+	kinds       map[string][]string
 }
 
 func (r *purgeRepo) del(kind string) func(context.Context, string, time.Time, int) (int, error) {
@@ -35,7 +36,14 @@ func (r *purgeRepo) del(kind string) func(context.Context, string, time.Time, in
 			r.kinds = map[string][]string{}
 		}
 		r.kinds[realmID] = append(r.kinds[realmID], kind)
-		r.before[realmID] = before
+		if kind == "audit" {
+			if r.auditBefore == nil {
+				r.auditBefore = map[string]time.Time{}
+			}
+			r.auditBefore[realmID] = before
+		} else {
+			r.before[realmID] = before
+		}
 		if r.failOn == realmID+"/"+kind {
 			return 0, errors.New("boom")
 		}
@@ -62,6 +70,9 @@ func (r *purgeRepo) DeleteUnusedKnownAccounts(ctx context.Context, realmID strin
 }
 func (r *purgeRepo) DeleteExpiredTrustedDevices(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
 	return r.del("trusted")(ctx, realmID, before, limit)
+}
+func (r *purgeRepo) DeleteAuditLogs(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
+	return r.del("audit")(ctx, realmID, before, limit)
 }
 
 // purgeSettings: realm → settings; "broken" fails; others are not found.
@@ -125,7 +136,8 @@ func TestPurgeAll_DeletesInBatchesUntilDone(t *testing.T) {
 	require.Zero(t, repo.stock["r/tokens"])
 	// tokens: 1000, 1000, 500; known: 1000, then 0 to see it is done;
 	// the four other kinds once each; the attempts of no realm once.
-	require.Equal(t, 3+2+4+1, repo.calls)
+	// plus the audit log of r (no settings: the default retention), once.
+	require.Equal(t, 3+2+4+1+1, repo.calls)
 }
 
 func TestPurgeAll_OneFailureDoesNotStopTheRest(t *testing.T) {
@@ -149,6 +161,50 @@ func TestPurgeAll_StopsWhenCancelled(t *testing.T) {
 	_, err := svc.PurgeAll(ctx)
 	require.ErrorIs(t, err, context.Canceled)
 	require.Equal(t, 1, repo.calls, "nothing more once the server stops")
+}
+
+func TestPurgeAll_AuditLogOnlyWhenTheRealmHasARetention(t *testing.T) {
+	repo := &purgeRepo{stock: map[string]int{"year/audit": 2500, "forever/audit": 9}, before: map[string]time.Time{}}
+	svc, now := newPurge(repo, map[string]*domain.InstanceSettings{
+		"year":    {ExpiredDataRetentionDays: 30, AuditLogRetentionDays: 365},
+		"forever": {AuditLogRetentionDays: 0},
+		"invalid": {AuditLogRetentionDays: service.MinAuditLogRetentionDays - 1},
+	}, "year", "forever", "invalid", "unset")
+
+	got, err := svc.PurgeAll(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, 2500, got.AuditLogs, "in batches until done")
+	require.Equal(t, 2500, got.Total())
+	require.Equal(t, now.AddDate(0, 0, -365), repo.auditBefore["year"], "its own retention")
+	require.Equal(t, now.AddDate(0, 0, -30), repo.before["year"], "the ended data keeps theirs")
+	require.Equal(t, []string{"tokens", "sessions", "reset", "attempts", "known", "trusted", "audit", "audit", "audit"},
+		repo.kinds["year"], "the audit log after the ended data")
+	for _, kept := range []string{"forever", "invalid"} {
+		require.NotContains(t, repo.kinds[kept], "audit", "%s: kept forever", kept)
+	}
+	require.Equal(t, now.AddDate(0, 0, -service.DefaultAuditLogRetentionDays), repo.auditBefore["unset"],
+		"no settings row: the default retention")
+	require.Equal(t, 9, repo.stock["forever/audit"])
+}
+
+func TestPurgeAll_AuditLogFailureIsReported(t *testing.T) {
+	repo := &purgeRepo{stock: map[string]int{"a/reset": 5}, before: map[string]time.Time{}, failOn: "a/audit"}
+	svc, _ := newPurge(repo, map[string]*domain.InstanceSettings{"a": {AuditLogRetentionDays: 90}}, "a")
+
+	got, err := svc.PurgeAll(context.Background())
+	require.ErrorContains(t, err, "realm a: audit log: boom")
+	require.Equal(t, 5, got.ResetLinks, "the ended data is purged all the same")
+}
+
+func TestEffectiveAuditLogRetentionDays(t *testing.T) {
+	require.Equal(t, service.DefaultAuditLogRetentionDays, service.EffectiveAuditLogRetentionDays(nil), "no settings: the default")
+	for _, bad := range []int{-1, 1, service.MinAuditLogRetentionDays - 1, service.MaxAuditLogRetentionDays + 1} {
+		require.Zero(t, service.EffectiveAuditLogRetentionDays(&domain.InstanceSettings{AuditLogRetentionDays: bad}),
+			"%d: out of bounds never deletes", bad)
+	}
+	for _, ok := range []int{0, service.MinAuditLogRetentionDays, 365, service.MaxAuditLogRetentionDays} {
+		require.Equal(t, ok, service.EffectiveAuditLogRetentionDays(&domain.InstanceSettings{AuditLogRetentionDays: ok}))
+	}
 }
 
 func TestEffectiveRetentionDays(t *testing.T) {

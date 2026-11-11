@@ -8,6 +8,7 @@ import {
   Lock,
   Mail,
   Monitor,
+  ScrollText,
   Settings2,
   ShieldCheck,
   Timer,
@@ -39,6 +40,7 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   security: Lock,
   sessionPolicy: Timer,
   email: Mail,
+  auditPolicy: ScrollText,
 };
 
 /** A section of lib/nav.ts, readable by this admin and translated (ConsoleLayout). */

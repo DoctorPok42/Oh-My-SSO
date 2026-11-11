@@ -101,6 +101,7 @@ describe("activeNav", () => {
     expect(active("users")).toEqual(["users", "users"]);
     expect(active("users", "groups")).toEqual(["users", "groups"]);
     expect(active("settings", "email")).toEqual(["settings", "email"]);
+    expect(active("settings", "audit")).toEqual(["settings", "audit"]);
   });
 
   it("shows the default tab for an unknown ?tab=", () => {

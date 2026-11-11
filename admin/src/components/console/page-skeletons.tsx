@@ -29,6 +29,7 @@ const SETTINGS_PAGES = {
   security: PAGES.settingsSecurity,
   sessions: PAGES.settingsSessions,
   email: PAGES.settingsEmail,
+  audit: PAGES.settingsAudit,
 } as const;
 
 function body(slug: string, tab: string | null) {
@@ -118,7 +119,7 @@ function body(slug: string, tab: string | null) {
       return (
         <>
           <PageHeader
-            {...(tab === "security" || tab === "sessions" || tab === "email"
+            {...(tab === "security" || tab === "sessions" || tab === "email" || tab === "audit"
               ? SETTINGS_PAGES[tab]
               : PAGES.settingsGeneral)}
           />

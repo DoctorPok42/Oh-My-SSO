@@ -20,6 +20,7 @@ const SECTIONS = {
   security: PAGES.settingsSecurity,
   sessions: PAGES.settingsSessions,
   email: PAGES.settingsEmail,
+  audit: PAGES.settingsAudit,
 } satisfies Record<SettingsSection, unknown>;
 
 type Search = { tab?: string; offset?: string };

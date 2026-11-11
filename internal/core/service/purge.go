@@ -29,6 +29,17 @@ const (
 	purgeBatch = 1000
 )
 
+// The audit log has its own retention, audit_log_retention_days (Settings >
+// Audit): DefaultAuditLogRetentionDays until the realm changes it, 0 = kept
+// forever. It is evidence of who did what, not data that has ended: the
+// retention of expired data never touches it, and a shorter one deletes
+// entries for good at the next pass.
+const (
+	DefaultAuditLogRetentionDays = 365
+	MinAuditLogRetentionDays     = 30
+	MaxAuditLogRetentionDays     = 3650
+)
+
 // EffectiveRetentionDays is the realm's expired_data_retention_days,
 // DefaultRetentionDays when it has no valid one.
 func EffectiveRetentionDays(st *domain.InstanceSettings) int {
@@ -36,6 +47,25 @@ func EffectiveRetentionDays(st *domain.InstanceSettings) int {
 		return DefaultRetentionDays
 	}
 	return st.ExpiredDataRetentionDays
+}
+
+// EffectiveAuditLogRetentionDays is the realm's audit_log_retention_days,
+// DefaultAuditLogRetentionDays when it has no settings. A stored value out of
+// bounds means 0 (kept forever): it never deletes the audit log.
+func EffectiveAuditLogRetentionDays(st *domain.InstanceSettings) int {
+	if st == nil {
+		return DefaultAuditLogRetentionDays
+	}
+	if !validAuditLogRetention(st.AuditLogRetentionDays) {
+		return 0
+	}
+	return st.AuditLogRetentionDays
+}
+
+// validAuditLogRetention: 0 (forever), or MinAuditLogRetentionDays to
+// MaxAuditLogRetentionDays.
+func validAuditLogRetention(days int) bool {
+	return days == 0 || (days >= MinAuditLogRetentionDays && days <= MaxAuditLogRetentionDays)
 }
 
 type PurgeDeps struct {
@@ -48,7 +78,7 @@ type PurgeDeps struct {
 }
 
 // PurgeService deletes the data that ended longer ago than the retention
-// of its realm.
+// of its realm, and the audit log entries older than its audit retention.
 type PurgeService struct {
 	d PurgeDeps
 }
@@ -71,9 +101,15 @@ type PurgeCounts struct {
 	LoginAttempts  int
 	KnownAccounts  int
 	TrustedDevices int
+	AuditLogs      int
 }
 
 func (c PurgeCounts) Total() int {
+	return c.ended() + c.AuditLogs
+}
+
+// ended: the rows of data that had ended (all but the audit log).
+func (c PurgeCounts) ended() int {
 	return c.Sessions + c.Tokens + c.ResetLinks + c.LoginAttempts + c.KnownAccounts + c.TrustedDevices
 }
 
@@ -84,6 +120,7 @@ func (c *PurgeCounts) add(o PurgeCounts) {
 	c.LoginAttempts += o.LoginAttempts
 	c.KnownAccounts += o.KnownAccounts
 	c.TrustedDevices += o.TrustedDevices
+	c.AuditLogs += o.AuditLogs
 }
 
 // Run purges every realm every `every`, until ctx is done. Several servers
@@ -103,8 +140,9 @@ func (s *PurgeService) Run(ctx context.Context, every time.Duration) {
 	}
 }
 
-// PurgeAll purges every realm with its own retention, then the sign-in
-// attempts of no existing realm with the default one.
+// PurgeAll purges every realm with its own retentions (expired data, and
+// the audit log when the realm keeps it for a limited time), then the
+// sign-in attempts of no existing realm with the default one.
 func (s *PurgeService) PurgeAll(ctx context.Context) (PurgeCounts, error) {
 	var total PurgeCounts
 	realms, err := s.d.Realms(ctx)
@@ -114,22 +152,33 @@ func (s *PurgeService) PurgeAll(ctx context.Context) (PurgeCounts, error) {
 	now := s.d.Now()
 	var errs []error
 	for _, r := range realms {
-		days, err := s.retentionDays(ctx, r.ID)
+		st, err := s.settings(ctx, r.ID)
 		if err != nil {
-			// Not with the default: it may be shorter than what the
+			// Not with the defaults: they may be shorter than what the
 			// realm asks for.
 			errs = append(errs, fmt.Errorf("realm %s: settings: %w", r.ID, err))
 			continue
 		}
+		days, auditDays := EffectiveRetentionDays(st), EffectiveAuditLogRetentionDays(st)
 		c, err := s.PurgeRealm(ctx, r.ID, now.AddDate(0, 0, -days))
+		if err != nil {
+			errs = append(errs, fmt.Errorf("realm %s: %w", r.ID, err))
+		}
+		if auditDays > 0 && ctx.Err() == nil {
+			c.AuditLogs, err = s.PurgeAuditLogs(ctx, r.ID, now.AddDate(0, 0, -auditDays))
+			if err != nil {
+				errs = append(errs, fmt.Errorf("realm %s: audit log: %w", r.ID, err))
+			}
+		}
 		total.add(c)
-		if c.Total() > 0 {
+		if c.ended() > 0 {
 			s.d.Logger.InfoContext(ctx, "purge: expired data deleted", "realm_id", r.ID, "retention_days", days,
 				"sessions", c.Sessions, "tokens", c.Tokens, "reset_links", c.ResetLinks,
 				"login_attempts", c.LoginAttempts, "known_accounts", c.KnownAccounts, "trusted_devices", c.TrustedDevices)
 		}
-		if err != nil {
-			errs = append(errs, fmt.Errorf("realm %s: %w", r.ID, err))
+		if c.AuditLogs > 0 {
+			s.d.Logger.InfoContext(ctx, "purge: audit log entries deleted", "realm_id", r.ID,
+				"audit_log_retention_days", auditDays, "audit_logs", c.AuditLogs)
 		}
 		if ctx.Err() != nil {
 			return total, ctx.Err()
@@ -145,15 +194,19 @@ func (s *PurgeService) PurgeAll(ctx context.Context) (PurgeCounts, error) {
 	return total, errors.Join(errs...)
 }
 
-func (s *PurgeService) retentionDays(ctx context.Context, realmID string) (int, error) {
+// settings: nil when the realm has no settings row (the defaults apply).
+func (s *PurgeService) settings(ctx context.Context, realmID string) (*domain.InstanceSettings, error) {
 	st, err := s.d.Settings.GetByRealmID(ctx, realmID)
 	if errors.Is(err, repository.ErrNotFound) {
-		return DefaultRetentionDays, nil
+		return nil, nil
 	}
-	if err != nil {
-		return 0, err
-	}
-	return EffectiveRetentionDays(st), nil
+	return st, err
+}
+
+// PurgeAuditLogs deletes the entries of a realm's audit log written before
+// `before`, in batches like the rest.
+func (s *PurgeService) PurgeAuditLogs(ctx context.Context, realmID string, before time.Time) (int, error) {
+	return drain(ctx, func(limit int) (int, error) { return s.d.Purge.DeleteAuditLogs(ctx, realmID, before, limit) })
 }
 
 // PurgeRealm deletes the data of a realm that ended before `before`. It

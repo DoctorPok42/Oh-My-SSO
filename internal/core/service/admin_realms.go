@@ -200,6 +200,7 @@ type SettingsView struct {
 	MailLogoURL                 string    `json:"mail_logo_url"`
 	BulkLimit                   int       `json:"bulk_limit"`
 	ExpiredDataRetentionDays    int       `json:"expired_data_retention_days"`
+	AuditLogRetentionDays       int       `json:"audit_log_retention_days"` // 0: kept forever
 	UpdatedAt                  time.Time `json:"updated_at"`
 	UpdatedBy                   string    `json:"updated_by"`
 }
@@ -236,7 +237,7 @@ func (s *AdminService) GetSettings(ctx context.Context, realm *domain.Realm) (*S
 		KeyRotationGraceHours: st.KeyRotationGraceHours, NotificationEmailEnabled: st.NotificationEmailEnabled,
 		SuspiciousLoginEmailEnabled: st.SuspiciousLoginEmailEnabled, DefaultLocale: localeOrEnglish(st.DefaultLocale),
 		MailFromName: st.MailFromName, MailFromAddress: st.MailFromAddress, MailReplyTo: st.MailReplyTo, MailLogoURL: st.MailLogoURL, BulkLimit: effectiveBulkLimit(st),
-		ExpiredDataRetentionDays: EffectiveRetentionDays(st),
+		ExpiredDataRetentionDays: EffectiveRetentionDays(st), AuditLogRetentionDays: EffectiveAuditLogRetentionDays(st),
 		UpdatedAt: st.UpdatedAt, UpdatedBy: st.UpdatedBy,
 	}, nil
 }
@@ -267,6 +268,7 @@ type SettingsPatch struct {
 	MailLogoURL                 *string
 	BulkLimit                   *int
 	ExpiredDataRetentionDays    *int
+	AuditLogRetentionDays       *int
 }
 
 // UpdateSettings validates and applies a patch. Changes apply within a
@@ -301,6 +303,9 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		if err := rangeCheck(c.field, c.v, c.lo, c.hi); err != nil {
 			return nil, err
 		}
+	}
+	if v := p.AuditLogRetentionDays; v != nil && !validAuditLogRetention(*v) {
+		return nil, adminInvalid("audit_log_retention_days", i18n.M("admin.error.audit_retention", "audit_log_retention_days must be 0 (keep forever) or between {lo} and {hi}", "lo", MinAuditLogRetentionDays, "hi", MaxAuditLogRetentionDays))
 	}
 	var allow []string
 	if p.IPAllowlist != nil {
@@ -363,7 +368,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		KeyRotationGraceHours: p.KeyRotationGraceHours, NotificationEmailEnabled: p.NotificationEmailEnabled,
 		SuspiciousLoginEmailEnabled: p.SuspiciousLoginEmailEnabled, DefaultLocale: p.DefaultLocale, UpdatedBy: &by,
 		MailFromName: p.MailFromName, MailFromAddress: p.MailFromAddress, MailReplyTo: p.MailReplyTo, MailLogoURL: p.MailLogoURL, BulkLimit: p.BulkLimit,
-		ExpiredDataRetentionDays: p.ExpiredDataRetentionDays,
+		ExpiredDataRetentionDays: p.ExpiredDataRetentionDays, AuditLogRetentionDays: p.AuditLogRetentionDays,
 	}
 	if _, err := s.d.Settings.Update(ctx, st.ID, upd); err != nil {
 		return nil, fmt.Errorf("update settings: %w", err)
@@ -385,7 +390,7 @@ func settingsChanges(p SettingsPatch) map[string]interface{} {
 		"remember_me_max_days": p.RememberMeMaxDays, "lockout_threshold": p.LockoutThreshold,
 		"lockout_duration_minutes": p.LockoutDurationMinutes, "mfa_step_up_max_age_minutes": p.MFAStepUpMaxAgeMinutes,
 		"key_rotation_grace_hours": p.KeyRotationGraceHours, "bulk_limit": p.BulkLimit,
-		"expired_data_retention_days": p.ExpiredDataRetentionDays,
+		"expired_data_retention_days": p.ExpiredDataRetentionDays, "audit_log_retention_days": p.AuditLogRetentionDays,
 	}
 	for k, v := range ints {
 		if v != nil {

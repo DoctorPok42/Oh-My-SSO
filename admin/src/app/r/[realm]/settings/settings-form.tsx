@@ -15,11 +15,13 @@ import { useT } from "@/i18n/client";
 import { BULK_LIMIT, MAX_BULK_LIMIT } from "@/lib/bulk";
 import { formatDateTime } from "@/lib/format";
 import {
+  auditRetentionChoices,
   fieldSection,
   MAIL_FIELDS,
   NUMBERS,
   RETENTION_DAYS,
   settingsDiff,
+  shortensAuditRetention,
   type MailForm,
   type NumberKey,
   type SettingsSection,
@@ -27,7 +29,7 @@ import {
 import type { Settings } from "@/lib/types";
 import { sendTestEmail, updateSettings } from "./actions";
 
-// One form across the four sub-pages (?tab=): only the cards change. The page
+// One form across the five sub-pages (?tab=): only the cards change. The page
 // is not remounted when just ?tab= changes, so what was typed on one sub-page
 // is still there on the next, and "Save changes" sends it all.
 /** Duration of the save bar's enter and exit animations (the class names below say duration-200). */
@@ -49,7 +51,7 @@ export function SettingsForm({
   realmCard?: React.ReactNode;
   infrastructure?: React.ReactNode;
 }) {
-  const { t, locale: uiLocale } = useT();
+  const { t, tn, locale: uiLocale } = useT();
   const initial = Object.fromEntries(NUMBERS.map((k) => [k, String(settings[k])])) as Record<NumberKey, string>;
   const [form, setForm] = useState(initial);
   const [allowlist, setAllowlist] = useState((settings.ip_allowlist ?? []).join("\n"));
@@ -110,6 +112,16 @@ export function SettingsForm({
     </Field>
   );
   const logoOk = /^https:\/\/\S+$/.test(mail.mail_logo_url.trim());
+
+  // The audit log retention: a choice among a few periods (0 = forever).
+  const auditPeriod = (days: number) =>
+    days === 0
+      ? t("settings.audit.forever", "Unlimited")
+      : days % 365 === 0
+        ? tn("settings.audit.years", days / 365, "{count} year", "{count} years")
+        : tn("settings.audit.days", days, "{count} day", "{count} days");
+  const auditDays = Number(form.audit_log_retention_days);
+  const auditShortened = shortensAuditRetention(settings.audit_log_retention_days, auditDays);
 
   return (
     <div className="space-y-4">
@@ -176,7 +188,7 @@ export function SettingsForm({
               <CardDescription>
                 {t(
                   "settings.retention.description",
-                  "What has ended is deleted once this time has passed: expired or revoked sessions and tokens, used or expired reset and activation links, sign-in attempts, remembered accounts and trusted devices unused for as long. The audit log is not affected.",
+                  "What has ended is deleted once this time has passed: expired or revoked sessions and tokens, used or expired reset and activation links, sign-in attempts, remembered accounts and trusted devices unused for as long. The audit log has its own retention (Settings, Audit).",
                 )}
               </CardDescription>
               <div className="mt-4 space-y-4">
@@ -460,6 +472,52 @@ export function SettingsForm({
               </form>
             </Card>
           </>
+        )}
+
+        {section === "audit" && (
+          <Card>
+            <CardTitle>{t("settings.audit.title", "Audit log retention")}</CardTitle>
+            <CardDescription>
+              {t(
+                "settings.audit.description",
+                "Entries older than this are deleted automatically, by the hourly purge. Keep them as long as your security and legal obligations require, and no longer: they hold personal data (who did what, from which IP address).",
+              )}
+            </CardDescription>
+            <div className="mt-4 space-y-4">
+              <Field
+                label={t("settings.audit.keep", "Keep entries for")}
+                htmlFor="s-audit_log_retention_days"
+                hint={t(
+                  "settings.audit.keep_hint",
+                  "1 year by default. To keep a copy of what will be deleted, export it first from the Audit Log page.",
+                )}
+                error={error?.field === "audit_log_retention_days" ? error.message : undefined}
+              >
+                <NativeSelect
+                  id="s-audit_log_retention_days"
+                  value={form.audit_log_retention_days}
+                  onChange={(e) => setForm((f) => ({ ...f, audit_log_retention_days: e.target.value }))}
+                  aria-invalid={error?.field === "audit_log_retention_days" || undefined}
+                  wrapperClassName="max-w-xs"
+                >
+                  {auditRetentionChoices(settings.audit_log_retention_days).map((d) => (
+                    <option key={d} value={String(d)}>
+                      {auditPeriod(d)}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+              {auditShortened && (
+                <Banner tone="warning">
+                  {t(
+                    "settings.audit.shorter",
+                    "Once saved, entries older than the new retention ({period}) are deleted for good at the next purge, within the hour.",
+                    { period: auditPeriod(auditDays) },
+                  )}
+                </Banner>
+              )}
+            </div>
+          </Card>
         )}
       </fieldset>
       {/* The save bar floats at the bottom of the window while something is

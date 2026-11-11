@@ -32,4 +32,7 @@ type PurgeRepository interface {
 	// DeleteExpiredTrustedDevices removes the trusted devices whose trust
 	// ended before `before`.
 	DeleteExpiredTrustedDevices(ctx context.Context, realmID string, before time.Time, limit int) (int, error)
+	// DeleteAuditLogs removes the entries of the realm's audit log written
+	// before `before` (its own retention, audit_log_retention_days).
+	DeleteAuditLogs(ctx context.Context, realmID string, before time.Time, limit int) (int, error)
 }

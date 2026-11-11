@@ -252,6 +252,7 @@
   "admin.error.audit_actor": "actor doit être une liste séparée par des virgules parmi user, admin, cli, system, anonymous",
   "admin.error.audit_format": "format doit être csv ou json",
   "admin.error.audit_level": "level doit être une liste séparée par des virgules parmi debug, info, suspicious, warning, error, critical",
+  "admin.error.audit_retention": "audit_log_retention_days doit valoir 0 (conservation illimitée) ou être compris entre {lo} et {hi}",
   "admin.error.audit_status": "le statut doit être success ou failure",
   "admin.error.audit_time": "from / to : heure RFC 3339 ou AAAA-MM-JJ",
   "admin.error.auth_method_unsupported": "la méthode d'authentification « {method} » du endpoint de jeton n'est pas prise en charge",

@@ -248,7 +248,14 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   General > Data retention, 90 days by default): expired or revoked sessions and tokens, used or expired reset and
   activation links, sign-in attempts, remembered accounts and trusted devices unused for that long. Each row is
   deleted by one server (batches of 1000, `FOR UPDATE SKIP LOCKED`); the logs show `purge: expired data deleted` with
-  the counts. The audit log is not purged.
+  the counts.
+- **Audit log retention**: 1 year by default, per realm (Settings > Audit: 30 days to 10 years, or unlimited; any
+  value from 30 to 3650 days through the Admin API, `audit_log_retention_days`, 0 = unlimited). **Upgrading applies the
+  1-year default to every existing realm**: set Unlimited (or a longer period) before the first purge if older entries
+  must stay. The same
+  hourly purge then deletes the older entries of that realm (`purge: audit log entries deleted`). Shortening it deletes
+  entries for good at the next pass: export the audit log first (Audit Log > Export) or rely on the database backups if
+  a copy must be kept. The change itself is in the audit log (`settings.updated`).
 - **Key rotation**: `docker compose run --rm idp keys rotate --realm <realm>`, wait for tokens to expire, then
   `keys retire`. SAML: `keys rotate --purpose saml_signing`, share the new metadata with service providers, then
   `keys activate --purpose saml_signing`.

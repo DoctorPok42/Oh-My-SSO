@@ -72,6 +72,7 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 		SetNillableMailLogoURL(p.MailLogoURL).
 		SetNillableBulkLimit(p.BulkLimit).
 		SetNillableExpiredDataRetentionDays(p.ExpiredDataRetentionDays).
+		SetNillableAuditLogRetentionDays(p.AuditLogRetentionDays).
 		SetNillableUpdatedBy(p.UpdatedBy)
 	if p.IPAllowlist != nil {
 		builder = builder.SetIPAllowlist(p.IPAllowlist)
@@ -119,6 +120,7 @@ func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings 
 		MailLogoURL:                 e.MailLogoURL,
 		BulkLimit:                   e.BulkLimit,
 		ExpiredDataRetentionDays:    e.ExpiredDataRetentionDays,
+		AuditLogRetentionDays:       e.AuditLogRetentionDays,
 		UpdatedAt:                   e.UpdatedAt,
 		UpdatedBy:                   e.UpdatedBy,
 	}

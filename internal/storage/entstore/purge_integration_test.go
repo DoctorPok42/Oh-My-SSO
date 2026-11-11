@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"sso.internal/sso/ent"
+	"sso.internal/sso/ent/auditlog"
 	"sso.internal/sso/ent/knownaccount"
 	"sso.internal/sso/ent/loginattempt"
 	"sso.internal/sso/ent/passwordresettoken"
@@ -167,6 +168,31 @@ func TestPurgeRepository_Integration(t *testing.T) {
 		require.True(t, exists(c.KnownAccount.Query().Where(knownaccount.ID(usedKnown)).Count(f.ctx)))
 		require.False(t, exists(c.TrustedDevice.Query().Where(trusteddevice.ID(endedTrust)).Count(f.ctx)))
 		require.True(t, exists(c.TrustedDevice.Query().Where(trusteddevice.ID(recentTrust)).Count(f.ctx)))
+	})
+
+	t.Run("audit log, in batches", func(t *testing.T) {
+		mk := func(realmID string, at time.Time) string {
+			e, err := c.AuditLog.Create().SetRealmID(realmID).SetAction("auth.login").SetTimestamp(at).Save(f.ctx)
+			require.NoError(t, err)
+			return e.ID
+		}
+		olds := []string{mk(f.realm.ID, old), mk(f.realm.ID, old), mk(f.realm.ID, old)}
+		kept := []string{mk(f.realm.ID, recent), mk(other.realm.ID, old)}
+
+		n, err := purge.DeleteAuditLogs(f.ctx, f.realm.ID, before, 2)
+		require.NoError(t, err)
+		require.Equal(t, 2, n, "at most limit rows per call")
+		n, err = purge.DeleteAuditLogs(f.ctx, f.realm.ID, before, 2)
+		require.NoError(t, err)
+		require.Equal(t, 1, n)
+
+		count := func(id string) bool { return exists(c.AuditLog.Query().Where(auditlog.ID(id)).Count(f.ctx)) }
+		for _, id := range olds {
+			require.False(t, count(id), id)
+		}
+		for _, id := range kept {
+			require.True(t, count(id), "a recent entry, and an old one of another realm, stay: %s", id)
+		}
 	})
 
 	t.Run("rows another server holds are skipped, not waited for", func(t *testing.T) {

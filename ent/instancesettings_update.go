@@ -517,6 +517,27 @@ func (_u *InstanceSettingsUpdate) AddExpiredDataRetentionDays(v int) *InstanceSe
 	return _u
 }
 
+// SetAuditLogRetentionDays sets the "audit_log_retention_days" field.
+func (_u *InstanceSettingsUpdate) SetAuditLogRetentionDays(v int) *InstanceSettingsUpdate {
+	_u.mutation.ResetAuditLogRetentionDays()
+	_u.mutation.SetAuditLogRetentionDays(v)
+	return _u
+}
+
+// SetNillableAuditLogRetentionDays sets the "audit_log_retention_days" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableAuditLogRetentionDays(v *int) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetAuditLogRetentionDays(*v)
+	}
+	return _u
+}
+
+// AddAuditLogRetentionDays adds value to the "audit_log_retention_days" field.
+func (_u *InstanceSettingsUpdate) AddAuditLogRetentionDays(v int) *InstanceSettingsUpdate {
+	_u.mutation.AddAuditLogRetentionDays(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdate) SetUpdatedAt(v time.Time) *InstanceSettingsUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -737,6 +758,12 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.AddedExpiredDataRetentionDays(); ok {
 		_spec.AddField(instancesettings.FieldExpiredDataRetentionDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AuditLogRetentionDays(); ok {
+		_spec.SetField(instancesettings.FieldAuditLogRetentionDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedAuditLogRetentionDays(); ok {
+		_spec.AddField(instancesettings.FieldAuditLogRetentionDays, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)
@@ -1254,6 +1281,27 @@ func (_u *InstanceSettingsUpdateOne) AddExpiredDataRetentionDays(v int) *Instanc
 	return _u
 }
 
+// SetAuditLogRetentionDays sets the "audit_log_retention_days" field.
+func (_u *InstanceSettingsUpdateOne) SetAuditLogRetentionDays(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.ResetAuditLogRetentionDays()
+	_u.mutation.SetAuditLogRetentionDays(v)
+	return _u
+}
+
+// SetNillableAuditLogRetentionDays sets the "audit_log_retention_days" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableAuditLogRetentionDays(v *int) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetAuditLogRetentionDays(*v)
+	}
+	return _u
+}
+
+// AddAuditLogRetentionDays adds value to the "audit_log_retention_days" field.
+func (_u *InstanceSettingsUpdateOne) AddAuditLogRetentionDays(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.AddAuditLogRetentionDays(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InstanceSettingsUpdateOne) SetUpdatedAt(v time.Time) *InstanceSettingsUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -1504,6 +1552,12 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.AddedExpiredDataRetentionDays(); ok {
 		_spec.AddField(instancesettings.FieldExpiredDataRetentionDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AuditLogRetentionDays(); ok {
+		_spec.SetField(instancesettings.FieldAuditLogRetentionDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedAuditLogRetentionDays(); ok {
+		_spec.AddField(instancesettings.FieldAuditLogRetentionDays, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(instancesettings.FieldUpdatedAt, field.TypeTime, value)

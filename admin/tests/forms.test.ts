@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { realmMfaDraft, realmMfaPatch } from "@/lib/mfa-form";
-import { fieldSection, MAIL_FIELDS, NUMBERS, settingsDiff, settingsSection } from "@/lib/settings-form";
+import {
+  auditRetentionChoices,
+  fieldSection,
+  MAIL_FIELDS,
+  NUMBERS,
+  settingsDiff,
+  settingsSection,
+  shortensAuditRetention,
+} from "@/lib/settings-form";
 import type { MfaPolicies, Settings } from "@/lib/types";
 import { profilePatch, sameSet } from "@/lib/user-form";
 
@@ -43,6 +51,7 @@ describe("settings form", () => {
     key_rotation_grace_hours: 24,
     bulk_limit: 100,
     expired_data_retention_days: 90,
+    audit_log_retention_days: 0,
     notification_email_enabled: true,
     suspicious_login_email_enabled: false,
     updated_at: "",
@@ -72,6 +81,7 @@ describe("settings form", () => {
     key_rotation_grace_hours: "24",
     bulk_limit: "100",
     expired_data_retention_days: "90",
+    audit_log_retention_days: "0",
   };
 
   it("sends nothing when nothing changed", () => {
@@ -115,6 +125,32 @@ describe("settings form", () => {
     });
   });
 
+  it("sends the audit log retention when it changed, back to forever included", () => {
+    const toggles = { notif: true, suspicious: false, remember: true };
+    expect(settingsDiff(before, { ...form, audit_log_retention_days: "365" }, "10.0.0.0/8", toggles)).toEqual({
+      audit_log_retention_days: 365,
+    });
+    const year = { ...before, audit_log_retention_days: 365 };
+    expect(settingsDiff(year, form, "10.0.0.0/8", toggles)).toEqual({ audit_log_retention_days: 0 });
+  });
+
+  it("offers the usual audit retentions, and the saved one when it is another", () => {
+    const usual = [30, 90, 180, 365, 730, 1095, 1825, 2555, 3650, 0];
+    expect(auditRetentionChoices(0)).toEqual(usual);
+    expect(auditRetentionChoices(365)).toEqual(usual);
+    expect(auditRetentionChoices(200)).toEqual([30, 90, 180, 200, 365, 730, 1095, 1825, 2555, 3650, 0]);
+  });
+
+  it("warns when a new audit retention deletes entries kept today", () => {
+    expect(shortensAuditRetention(0, 365)).toBe(true);
+    expect(shortensAuditRetention(365, 90)).toBe(true);
+    expect(shortensAuditRetention(90, 365)).toBe(false);
+    expect(shortensAuditRetention(365, 365)).toBe(false);
+    expect(shortensAuditRetention(90, 0)).toBe(false);
+    expect(shortensAuditRetention(0, 0)).toBe(false);
+    expect(shortensAuditRetention(0, Number.NaN)).toBe(false);
+  });
+
   it("sends the default language when it changed", () => {
     const toggles = { notif: true, suspicious: false, remember: true };
     expect(settingsDiff(before, form, "10.0.0.0/8", toggles, "en")).toEqual({});
@@ -142,6 +178,7 @@ describe("settings form", () => {
 describe("settings sub-pages", () => {
   it("reads ?tab=, the first sub-page otherwise", () => {
     expect(settingsSection("email")).toBe("email");
+    expect(settingsSection("audit")).toBe("audit");
     expect(settingsSection(undefined)).toBe("general");
     expect(settingsSection("nope")).toBe("general");
     expect(settingsSection("constructor")).toBe("general");
@@ -153,6 +190,7 @@ describe("settings sub-pages", () => {
     expect(fieldSection("key_rotation_grace_hours")).toBe("security");
     expect(fieldSection("remember_me_max_days")).toBe("sessions");
     expect(fieldSection("mail_reply_to")).toBe("email");
+    expect(fieldSection("audit_log_retention_days")).toBe("audit");
     expect(fieldSection("unknown")).toBeUndefined();
   });
 });

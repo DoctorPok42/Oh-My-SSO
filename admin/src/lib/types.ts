@@ -392,6 +392,8 @@ export type Settings = {
   bulk_limit: number;
   /** How long ended sessions, tokens, links, sign-in attempts… are kept before they are deleted (7 to 3650 days). */
   expired_data_retention_days: number;
+  /** How long audit log entries are kept before they are deleted (30 to 3650 days); 0 keeps them forever. */
+  audit_log_retention_days: number;
   notification_email_enabled: boolean;
   suspicious_login_email_enabled: boolean;
   updated_at: string;

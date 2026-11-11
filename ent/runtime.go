@@ -579,8 +579,12 @@ func init() {
 	instancesettingsDescExpiredDataRetentionDays := instancesettingsFields[28].Descriptor()
 	// instancesettings.DefaultExpiredDataRetentionDays holds the default value on creation for the expired_data_retention_days field.
 	instancesettings.DefaultExpiredDataRetentionDays = instancesettingsDescExpiredDataRetentionDays.Default.(int)
+	// instancesettingsDescAuditLogRetentionDays is the schema descriptor for audit_log_retention_days field.
+	instancesettingsDescAuditLogRetentionDays := instancesettingsFields[29].Descriptor()
+	// instancesettings.DefaultAuditLogRetentionDays holds the default value on creation for the audit_log_retention_days field.
+	instancesettings.DefaultAuditLogRetentionDays = instancesettingsDescAuditLogRetentionDays.Default.(int)
 	// instancesettingsDescUpdatedAt is the schema descriptor for updated_at field.
-	instancesettingsDescUpdatedAt := instancesettingsFields[29].Descriptor()
+	instancesettingsDescUpdatedAt := instancesettingsFields[30].Descriptor()
 	// instancesettings.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	instancesettings.DefaultUpdatedAt = instancesettingsDescUpdatedAt.Default.(func() time.Time)
 	// instancesettings.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
