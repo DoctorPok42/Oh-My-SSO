@@ -325,9 +325,10 @@ func TestAdmin_Integration_UserImportInterrupted(t *testing.T) {
 	e, at := userImportEnv(t)
 	ctx := context.Background()
 
-	release := make(chan struct{})
+	reached, release := make(chan struct{}, 3), make(chan struct{})
 	e.notifier.onNotify = func(ev domain.NotificationEvent) {
 		if ev.Kind == domain.NotificationAccountInvite {
+			reached <- struct{}{}
 			<-release
 		}
 	}
@@ -335,13 +336,19 @@ func TestAdmin_Integration_UserImportInterrupted(t *testing.T) {
 		"csv": "email\na@example.test\nb@example.test\nc@example.test\n", "send_email": true, "notify_when_done": true,
 	})
 	require.Equal(t, http.StatusAccepted, status, "%v", started)
+	select {
+	case <-reached: // the first line reaches the e-mail
+	case <-time.After(10 * time.Second):
+		t.Fatal("the first line never reached the e-mail")
+	}
 
 	stopped := make(chan struct{})
 	stopCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	time.Sleep(50 * time.Millisecond) // the first line reaches the e-mail
 	go func() { e.admin.StopUserImports(stopCtx); close(stopped) }()
-	time.Sleep(50 * time.Millisecond)
+	// Not a sleep: on a slow runner (CI, -race) the stop could come after the
+	// release, and the import would then run the next lines too.
+	e.awaitStopping(t, at, "/api/v1/realms/demo/users/imports", map[string]any{"csv": "email\nd@example.test\n"})
 	close(release) // the line in progress finishes
 	select {
 	case <-stopped:

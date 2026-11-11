@@ -101,7 +101,9 @@ func TestAdmin_Integration_BulkInterrupted(t *testing.T) {
 	stopCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	go func() { e.admin.StopBulkJobs(stopCtx); close(stopped) }()
-	time.Sleep(50 * time.Millisecond)
+	// Not a sleep: on a slow runner (CI, -race) the stop could come after the
+	// release, and the job would then run bob and carol too.
+	e.awaitStopping(t, at, bulkUsers, map[string]any{"action": "suspend", "ids": []string{alice}})
 	close(release) // the item in progress finishes
 	select {
 	case <-stopped:
@@ -136,6 +138,24 @@ func TestAdmin_Integration_BulkInterrupted(t *testing.T) {
 	status, out := e.send(t, at, http.MethodPost, bulkUsers, map[string]any{"action": "suspend", "ids": []string{alice}})
 	require.Equal(t, http.StatusConflict, status, "%v", out)
 	require.Equal(t, "stopping", out["error"])
+}
+
+// awaitStopping waits until the server refuses a new job as "stopping" (POST
+// path with body): from then on, the running jobs see the stop at their next
+// item. Before, the request is refused as busy (a job runs in the realm), so
+// the polling starts nothing.
+func (e *adminTestEnv) awaitStopping(t *testing.T, token, path string, body map[string]any) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		status, out := e.send(t, token, http.MethodPost, path, body)
+		require.Equal(t, http.StatusConflict, status, "%v", out)
+		if out["error"] == "stopping" {
+			return
+		}
+		require.True(t, time.Now().Before(deadline), "the server never refused as stopping: %v", out)
+		time.Sleep(5 * time.Millisecond)
+	}
 }
 
 // A process that died leaves a running row behind: the reaper finds it by its

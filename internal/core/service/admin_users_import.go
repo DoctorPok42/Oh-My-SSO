@@ -102,11 +102,14 @@ func (r *jobRunner) begin() bool {
 
 // stop refuses new goroutines, tells the running ones to stop at their next
 // item, and waits for them until ctx ends. false: ctx ended first.
+//
+// The cancel happens under the lock that refuses new ones: once a request is
+// refused as "stopping", the running jobs see the stop at their next item.
 func (r *jobRunner) stop(ctx context.Context) bool {
 	r.mu.Lock()
 	r.stopped = true
-	r.mu.Unlock()
 	r.cancel()
+	r.mu.Unlock()
 
 	done := make(chan struct{})
 	go func() { r.wg.Wait(); close(done) }()
