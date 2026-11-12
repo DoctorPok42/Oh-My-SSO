@@ -14,6 +14,7 @@ import (
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/health"
 	"sso.internal/sso/internal/httptimeout"
 	"sso.internal/sso/internal/i18n"
 )
@@ -66,6 +67,8 @@ type Deps struct {
 	Keys        PublicKeySource
 	KeyRotation *service.KeyRotationService
 	Health      []HealthCheck
+	// Ready: what GET /readyz checks (the database, Valkey...).
+	Ready []health.Check
 	// TestEmail sends the "test" e-mail; nil when e-mail is off.
 	TestEmail func(ctx context.Context, realmID, to string) error
 	// Rights: when the master realm last changed, shared by every idp-admin
@@ -130,6 +133,7 @@ func New(cfg Config, d Deps) *Server {
 	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
+	r.Method(http.MethodGet, "/readyz", health.Handler(d.Ready...))
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(s.allowlist, requireJSON, s.authenticate)

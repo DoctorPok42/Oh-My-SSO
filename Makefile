@@ -192,10 +192,11 @@ admin-test:
 admin-e2e:
 	admin/e2e/run.sh $(args)
 
-## docker-build: Build the three production images (idp, idp-admin, admin)
+## docker-build: Build the four production images (idp, idp-admin, migrate, admin)
 docker-build:
 	docker build --target idp -t oh-my-sso-idp .
 	docker build --target idp-admin -t oh-my-sso-idp-admin .
+	docker build --target migrate -t oh-my-sso-migrate .
 	docker build -t oh-my-sso-admin ./admin
 
 ##@ Operations: OIDC, keys, SAML (more: go run ./cmd/idp <command> --help)

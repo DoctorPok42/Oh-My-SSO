@@ -82,6 +82,7 @@ const backendLocalDev = app.BackendLocalDev
 //	idp settings . realm settings: e-mails, lockout, passwords (see settings.go)
 //	idp mail test  send a test e-mail with the SMTP_* settings (see mail.go)
 //	idp dev seed   demo realm, user and OIDC client (development only, see dev.go)
+//	idp healthcheck  exit 0 when this server is ready (HEALTHCHECK of the image)
 func main() {
 	if err := guardMasterRealm(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -110,8 +111,10 @@ func main() {
 			os.Exit(runMailCommand(os.Args[2:]))
 		case "dev":
 			os.Exit(runDevCommand(os.Args[2:]))
+		case "healthcheck":
+			os.Exit(runHealthcheck())
 		default:
-			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|activate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n  idp oidc clients <create|list|rotate-secret> [flags]\n  idp saml clients <create|list|add-cert|remove-cert> [flags]\n  idp consents <set-client|list|revoke> [flags]\n  idp users <status|unlock> [flags]\n  idp timeouts <list|create|update|lift> [flags]\n  idp settings <show|set> [flags]\n  			idp mail test --to <address> [--all]\n  idp dev seed [flags]\n", os.Args[1])
+			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|activate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n  idp oidc clients <create|list|rotate-secret> [flags]\n  idp saml clients <create|list|add-cert|remove-cert> [flags]\n  idp consents <set-client|list|revoke> [flags]\n  idp users <status|unlock> [flags]\n  idp timeouts <list|create|update|lift> [flags]\n  idp settings <show|set> [flags]\n  			idp mail test --to <address> [--all]\n  idp dev seed [flags]\n  idp healthcheck\n", os.Args[1])
 			os.Exit(2)
 		}
 	}
@@ -142,6 +145,7 @@ func serve() {
 		httpserver.WithForgotPassword(c.EmailEnabled()),
 		httpserver.WithKnownAccounts(c.KnownAccounts),
 		httpserver.WithI18n(app.Languages()),
+		httpserver.WithReadiness(c.ReadinessChecks()...),
 	}
 	srv := httpserver.New(
 		c.Auth,

@@ -17,3 +17,5 @@ compose.yml
 
 graphify-out
 .claude
+# database backups of scripts/deploy.sh
+backups/

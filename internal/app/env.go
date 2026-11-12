@@ -44,8 +44,8 @@ const (
 	dbConnMaxLifetime = 30 * time.Minute // and every connection is renewed now and then
 )
 
-// EntClient opens the database (DATABASE_URL).
-func EntClient() *ent.Client {
+// OpenDatabase opens the connection pool (DATABASE_URL).
+func OpenDatabase() *sql.DB {
 	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatalf("db: %v", err)
@@ -54,8 +54,16 @@ func EntClient() *ent.Client {
 	db.SetMaxIdleConns(dbMaxIdleConns)
 	db.SetConnMaxIdleTime(dbConnMaxIdleTime)
 	db.SetConnMaxLifetime(dbConnMaxLifetime)
-	drv := entsql.OpenDB(dialect.Postgres, db)
-	return ent.NewClient(ent.Driver(drv))
+	return db
+}
+
+func entClientOn(db *sql.DB) *ent.Client {
+	return ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
+}
+
+// EntClient opens the database (DATABASE_URL).
+func EntClient() *ent.Client {
+	return entClientOn(OpenDatabase())
 }
 
 // KeyManager returns the KeyManager and the backend name stored on each
