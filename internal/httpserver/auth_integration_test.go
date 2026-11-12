@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -218,6 +219,41 @@ func TestAuthLogin_Integration(t *testing.T) {
 		require.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
 		require.Equal(t, "rate_limited", decodeError(t, resp))
 		require.NotEmpty(t, resp.Header.Get("Retry-After"), "the client knows when to come back")
+	})
+
+	t.Run("identifiant saisi dans une autre casse", func(t *testing.T) {
+		realm := env.createRealm(t, "case-realm")
+		env.createUser(t, realm.ID, "Grace", "the-real-password", domain.UserActive)
+
+		for _, identifier := range []string{"grace", "GRACE", " Grace@Example.Test "} {
+			resp := env.doLogin(t, realm.Name, identifier, "the-real-password")
+			resp.Body.Close()
+			require.Equal(t, http.StatusOK, resp.StatusCode, identifier)
+		}
+	})
+
+	t.Run("limite par adresse : seuls les échecs comptent", func(t *testing.T) {
+		realm := env.createRealm(t, "ip-limit-realm")
+		env.createUser(t, realm.ID, "frank", "the-real-password", domain.UserActive)
+		limit := int(httpserver.DefaultProtocolLimits.LoginFailuresPerIP.Max)
+
+		for i := 0; i <= limit; i++ {
+			resp := env.doLogin(t, realm.Name, "frank", "the-real-password")
+			resp.Body.Close()
+			require.Equal(t, http.StatusOK, resp.StatusCode, "sign-in %d", i+1)
+		}
+
+		// One unknown identifier per attempt: none gets locked.
+		for i := 0; i < limit; i++ {
+			resp := env.doLogin(t, realm.Name, fmt.Sprintf("nobody-%d", i), "wrong-password")
+			resp.Body.Close()
+			require.Equal(t, http.StatusUnauthorized, resp.StatusCode, "failure %d", i+1)
+		}
+		resp := env.doLogin(t, realm.Name, "frank", "the-real-password")
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
+		require.Equal(t, "rate_limited", decodeError(t, resp))
+		require.NotEmpty(t, resp.Header.Get("Retry-After"))
 	})
 
 	t.Run("compte verrouillé : même le bon mot de passe est refusé", func(t *testing.T) {

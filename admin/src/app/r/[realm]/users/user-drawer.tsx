@@ -267,6 +267,7 @@ export function UserDrawer({
           <Field label={t("columns.email", "Email")} htmlFor="u-email" error={err("email")}>
             <Input
               id="u-email"
+              autoFocus={mode === "create"}
               type="email"
               autoComplete="off"
               value={draft.email}

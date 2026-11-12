@@ -564,6 +564,13 @@ func TestAdminService_Integration(t *testing.T) {
 		wantAdminError(t, err, service.AdminConflict, "username_taken")
 		_, err = invite(service.InviteUserInput{Email: "bob@example.test", Username: "robert"})
 		wantAdminError(t, err, service.AdminConflict, "email_taken")
+		_, err = invite(service.InviteUserInput{Email: "other@example.test", Username: "BOB"})
+		wantAdminError(t, err, service.AdminConflict, "username_taken")
+		_, err = invite(service.InviteUserInput{Email: "Bob@Example.Test", Username: "robert"})
+		wantAdminError(t, err, service.AdminConflict, "email_taken")
+		// The sign-in form takes both in one field: neither may be the other of another account.
+		_, err = invite(service.InviteUserInput{Email: "other@example.test", Username: "bob@example.test"})
+		wantAdminError(t, err, service.AdminConflict, "username_taken")
 		carol, err := invite(service.InviteUserInput{Email: "carol@example.test", Username: "carol"})
 		require.NoError(t, err)
 

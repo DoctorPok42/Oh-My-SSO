@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"sso.internal/sso/internal/core"
@@ -335,10 +334,10 @@ func (b *unknownLockout) cas(ctx context.Context, old, next domain.LockoutState)
 }
 
 // UnknownIdentifierKey is the lockout key of an identifier without an
-// account: realm + SHA-256 of the identifier (trimmed, lower case), so that
-// "Alice" and "alice " share one counter and Valkey never stores what an
-// attacker typed.
+// account: realm + SHA-256 of the identifier (normalized like the accounts'),
+// so that "Alice" and "alice " share one counter and Valkey never stores what
+// an attacker typed.
 func UnknownIdentifierKey(realmID, identifier string) string {
-	sum := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(identifier))))
+	sum := sha256.Sum256([]byte(domain.NormalizeIdentifier(identifier)))
 	return realmID + ":" + hex.EncodeToString(sum[:])
 }

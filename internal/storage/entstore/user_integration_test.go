@@ -80,3 +80,58 @@ func TestUserCRUD(t *testing.T) {
 		t.Error("GetByID after Delete: attendu une erreur (not found), obtenu nil")
 	}
 }
+
+// A username or an e-mail address is one account, whatever its case.
+func TestUserIdentifiers_IgnoreCase(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	realm := newTestRealm(t, ctx, client)
+	userRepo := entstore.NewUserRepository(client)
+
+	id := uuid.NewString()[:8]
+	username, email := "dana-"+id, "dana-"+id+"@example.com"
+
+	u, err := userRepo.Create(ctx, repository.CreateUserParams{
+		RealmID:  realm.ID,
+		Username: "Dana-" + id,
+		Email:    "Dana-" + id + "@Example.COM",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if u.Username != username || u.Email != email {
+		t.Errorf("Create: stored %q / %q, want %q / %q", u.Username, u.Email, username, email)
+	}
+
+	byUsername, err := userRepo.GetByRealmAndUsername(ctx, realm.ID, " DANA-"+id)
+	if err != nil {
+		t.Fatalf("GetByRealmAndUsername: %v", err)
+	}
+	if byUsername.ID != u.ID {
+		t.Errorf("GetByRealmAndUsername: ID = %q, want %q", byUsername.ID, u.ID)
+	}
+	byEmail, err := userRepo.GetByRealmAndEmail(ctx, realm.ID, "dana-"+id+"@EXAMPLE.com")
+	if err != nil {
+		t.Fatalf("GetByRealmAndEmail: %v", err)
+	}
+	if byEmail.ID != u.ID {
+		t.Errorf("GetByRealmAndEmail: ID = %q, want %q", byEmail.ID, u.ID)
+	}
+
+	if _, err := userRepo.Create(ctx, repository.CreateUserParams{
+		RealmID:  realm.ID,
+		Username: "DANA-" + id,
+		Email:    "other-" + id + "@example.com",
+	}); err == nil {
+		t.Error("Create: a username that differs only by case was accepted")
+	}
+
+	renamed := "Erin-" + id
+	updated, err := userRepo.Update(ctx, u.ID, repository.UpdateUserParams{Username: &renamed})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if want := "erin-" + id; updated.Username != want {
+		t.Errorf("Update: Username = %q, want %q", updated.Username, want)
+	}
+}

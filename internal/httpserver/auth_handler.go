@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -21,7 +22,6 @@ import (
 const (
 	routeAuthLogin = "auth.login"
 
-	loginAttemptsPerIP   = 20
 	loginRateLimitWindow = 15 * time.Minute
 
 	// maxLoginRequestBodySize: a login request is a few hundred bytes. The
@@ -132,15 +132,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	ip := clientIP(r)
 
-	byIP, err := s.rateLimiter.Allow(r.Context(),
-		ratelimit.Key(routeAuthLogin, realm.ID, "ip", ip),
-		loginAttemptsPerIP, loginRateLimitWindow)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error")
-		return
-	}
-	if !byIP {
-		writeError(w, http.StatusTooManyRequests, "rate_limited")
+	attempt, ok := s.reserveLogin(w, r, realm.ID)
+	if !ok {
 		return
 	}
 
@@ -169,8 +162,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, service.ErrTimeoutActive):
 			// Only returned after a correct password: saying so reveals
 			// nothing to someone who does not know it.
+			s.releaseLogin(r, attempt)
 			writeTimeoutError(w, err)
 		case errors.Is(err, service.ErrPasswordChangeRequired):
+			s.releaseLogin(r, attempt)
 			writeError(w, http.StatusForbidden, "password_change_required")
 		case errors.Is(err, service.ErrInvalidCredentials),
 			errors.Is(err, service.ErrAccountNotActive):
@@ -180,6 +175,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	s.releaseLogin(r, attempt)
 
 	resp := loginResponse{Status: string(service.LoginAuthenticated), UserID: user.ID}
 	device := service.DeviceFingerprint(ensureDeviceCookie(w, r, realm.Name))
@@ -239,6 +235,34 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	s.rememberLocale(w, r, user)
 	resp.RememberMe = sess.RememberMe
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// reserveLogin counts a sign-in attempt under its address before it runs (a
+// burst of parallel attempts cannot pass all at once). An attempt that
+// proves who the user is gives its hit back with releaseLogin: only the
+// failures of an address stay counted. A refusal is 429 with Retry-After.
+func (s *Server) reserveLogin(w http.ResponseWriter, r *http.Request, realmID string) (ratelimit.Reservation, bool) {
+	key := ratelimit.Key(routeAuthLogin, realmID, "ip", clientIP(r))
+	res, err := s.rateLimiter.Reserve(r.Context(), s.protocolLimits.LoginFailuresPerIP.on(key))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error")
+		return res, false
+	}
+	if !res.OK {
+		w.Header().Set("Retry-After", strconv.Itoa(ratelimit.RetryAfterSeconds(res.RetryAfter)))
+		writeError(w, http.StatusTooManyRequests, "rate_limited")
+		return res, false
+	}
+	return res, true
+}
+
+// releaseLogin gives back the hit of a sign-in that succeeded. The answer
+// does not depend on it: a hit that cannot be given back is logged.
+func (s *Server) releaseLogin(r *http.Request, attempt ratelimit.Reservation) {
+	ctx := context.WithoutCancel(r.Context())
+	if err := s.rateLimiter.Release(ctx, attempt.Hits...); err != nil {
+		slog.ErrorContext(ctx, "sign-in: rate limit: give back the hit of a successful sign-in", "error", err)
+	}
 }
 
 // endPreviousSession: one signed-in account per browser and realm. When

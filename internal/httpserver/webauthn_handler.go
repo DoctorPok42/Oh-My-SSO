@@ -243,15 +243,8 @@ func (s *Server) handlePasskeySignInVerify(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// The same budget as the passwords of this address.
-	ok, err := s.rateLimiter.Allow(r.Context(),
-		ratelimit.Key(routeAuthLogin, realm.ID, "ip", clientIP(r)),
-		loginAttemptsPerIP, loginRateLimitWindow)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error")
-		return
-	}
+	attempt, ok := s.reserveLogin(w, r, realm.ID)
 	if !ok {
-		writeError(w, http.StatusTooManyRequests, "rate_limited")
 		return
 	}
 	body, ok := readWebAuthnBody(w, r)
@@ -279,6 +272,7 @@ func (s *Server) handlePasskeySignInVerify(w http.ResponseWriter, r *http.Reques
 		s.writeMFAError(w, err)
 		return
 	}
+	s.releaseLogin(r, attempt)
 	if s.accounts != nil {
 		s.accounts.PasskeySignIn(r.Context(), realm.ID, device, res.User.ID)
 	}

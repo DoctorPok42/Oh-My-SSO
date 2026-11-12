@@ -104,11 +104,18 @@ func (r *entSessionRepository) ListRecentByUser(ctx context.Context, userID stri
 }
 
 func (r *entSessionRepository) Touch(ctx context.Context, id string, at time.Time) error {
-	_, err := r.client.Session.
-		UpdateOneID(id).
+	n, err := r.client.Session.
+		Update().
+		Where(session.ID(id), session.Status(activeStatus)).
 		SetLastActivityAt(at).
 		Save(ctx)
-	return mapNotFound(err)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return repository.ErrNotFound
+	}
+	return nil
 }
 
 func (r *entSessionRepository) MarkExpired(ctx context.Context, id string) error {
@@ -169,14 +176,11 @@ func (r *entSessionRepository) RevokeAllByUser(ctx context.Context, userID strin
 		return nil, nil
 	}
 
-	ids := make([]string, 0, len(active))
-	for _, s := range active {
-		ids = append(ids, s.ID)
-	}
-
+	// By user, not by the ids read above: a session created in between is
+	// revoked too.
 	_, err = r.client.Session.
 		Update().
-		Where(session.IDIn(ids...), session.Status(activeStatus)).
+		Where(session.UserID(userID), session.Status(activeStatus)).
 		SetStatus(entschema.SessionStatus(domain.SessionRevoked)).
 		SetRevokedReason(string(reason)).
 		Save(ctx)

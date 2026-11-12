@@ -13,6 +13,8 @@ type SessionRepository interface {
 	GetByTokenHash(ctx context.Context, tokenHash string) (*domain.Session, error)
 	ListActiveByUser(ctx context.Context, userID string) ([]*domain.Session, error)
 	ListRecentByUser(ctx context.Context, userID string, since time.Time, limit int) ([]*domain.Session, error)
+	// Touch records activity on an active session. ErrNotFound if the session
+	// is not active anymore.
 	Touch(ctx context.Context, id string, at time.Time) error
 	MarkExpired(ctx context.Context, id string) error
 	Revoke(ctx context.Context, id string, reason domain.SessionRevokedReason) error

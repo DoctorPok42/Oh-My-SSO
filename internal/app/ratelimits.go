@@ -20,6 +20,8 @@ import (
 //	                                               from one address
 //	RATE_LIMIT_SAML_PER_IP=300/1m                  /saml/sso, /login, /consent, /slo: requests
 //	                                               per address
+//	RATE_LIMIT_LOGIN_FAILURES_PER_IP=20/15m        failed sign-ins (password or passkey) from
+//	                                               one address
 //
 // An unset variable keeps the default of the code
 // (httpserver.DefaultProtocolLimits); an invalid one stops the server.
@@ -32,6 +34,7 @@ func ProtocolRateLimits() httpserver.ProtocolLimits {
 		{"RATE_LIMIT_OIDC_PER_IP", &l.OIDCPerIP},
 		{"RATE_LIMIT_OIDC_CLIENT_FAILURES_PER_IP", &l.ClientFailuresPerIP},
 		{"RATE_LIMIT_SAML_PER_IP", &l.SAMLPerIP},
+		{"RATE_LIMIT_LOGIN_FAILURES_PER_IP", &l.LoginFailuresPerIP},
 	} {
 		raw := os.Getenv(v.name)
 		if raw == "" {
@@ -43,8 +46,8 @@ func ProtocolRateLimits() httpserver.ProtocolLimits {
 		}
 		*v.rule = rule
 	}
-	log.Printf("rate limits: OIDC %s per address, %s client failures per address, SAML %s per address",
-		l.OIDCPerIP, l.ClientFailuresPerIP, l.SAMLPerIP)
+	log.Printf("rate limits: OIDC %s per address, %s client failures per address, SAML %s per address, %s failed sign-ins per address",
+		l.OIDCPerIP, l.ClientFailuresPerIP, l.SAMLPerIP, l.LoginFailuresPerIP)
 	return l
 }
 
