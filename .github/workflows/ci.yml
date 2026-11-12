@@ -135,7 +135,9 @@ jobs:
         run: make check-core-deps check-adapter-deps
 
       - name: Test the deploy script
-        run: scripts/deploy_test.sh
+        run: |
+          chmod +x scripts/deploy.sh scripts/deploy_test.sh
+          scripts/deploy_test.sh
 
       - name: Check that the Ent code is up to date
         run: |
