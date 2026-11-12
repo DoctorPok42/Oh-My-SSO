@@ -102,10 +102,11 @@ The `dev-*` services at the end of the file (profile `dev`) are for local develo
 production, and you may delete them from `compose.yml`.
 
 **Images.** Every push on `main` that passes CI publishes `doctorpok/omsso:<image>-<commit sha>` and
-`doctorpok/omsso:<image>-latest`, for `idp`, `idp-admin` and `admin`. `IMAGE_IDP`, `IMAGE_IDP_ADMIN` and
-`IMAGE_ADMIN` choose the tag of each image. Pin a commit (its full sha, `git rev-parse HEAD`), the same one for `idp`
-and `idp-admin` at least, and keep the checkout on that commit: the `migrate` service reads its migrations from
-`./ent/migrate/migrations`, they must match the code of the images. The console image has no build-time setting:
+`doctorpok/omsso:<image>-latest`, for `idp`, `idp-admin`, `migrate` and `admin`. `IMAGE_IDP`, `IMAGE_IDP_ADMIN`,
+`IMAGE_MIGRATE` and `IMAGE_ADMIN` choose the tag of each image. Pin a commit (its full sha, `git rev-parse HEAD`), the
+same one for `idp`, `idp-admin` and `migrate`: the `migrate` image holds the database migrations of that commit,
+which must match the code of the other two. `idp` and `idp-admin` refuse to start on a database that lacks a
+migration they need. The checkout plays no part in the migrations. The console image has no build-time setting:
 everything comes from its environment.
 
 ## 4. Reverse proxy (nginx on the host)
@@ -132,6 +133,10 @@ server {
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
     client_max_body_size 1m;
+
+    # For the orchestrator (the HEALTHCHECK of the images reaches the container
+    # directly): it tells anyone that the database or Valkey is down.
+    location = /readyz { return 404; }
 
     location / {
         proxy_pass         http://127.0.0.1:8080;
@@ -214,7 +219,8 @@ SAML test service provider in production.
 ## 6. Verify
 
 ```bash
-curl -fsS https://sso.example.com/health
+curl -fsS https://sso.example.com/health                       # the process runs
+docker compose ps                                              # idp, idp-admin, valkey: healthy
 curl -fsS https://sso.example.com/r/master/.well-known/openid-configuration | head
 docker compose run --rm idp keys list --realm master          # a signing key must be listed
 docker compose run --rm idp mail test --to you@example.com    # SMTP works
@@ -225,15 +231,19 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
 
 ## 7. Operate
 
-- **Update**: wait for the CI of the commit to be green (its `docker` job pushes the images), back up the database
-  (migrations are not automatically reversible), then:
+- **Update**: wait for the CI of the commit to be green (its `docker` job pushes the images), then:
   ```bash
   scripts/deploy.sh --package all --version <commit sha>   # or --package idp|idp-admin|admin, --version latest
   ```
-  It runs `git pull --ff-only` (the migrations), pulls the images of that tag (a tag the CI has not pushed yet stops
-  it there, nothing changed), writes the `IMAGE_*` lines of `.env`, then `docker compose up -d`: only the containers
-  whose image or settings changed are recreated, and `migrate` applies the pending migrations before `idp` and
-  `idp-admin` start. Rollback: the previous sha (only if no migration ran in between).
+  It pulls the images of that tag (a tag the CI has not pushed yet stops it there, nothing changed), writes the
+  `IMAGE_*` lines of `.env`, dumps the database to `./backups/` (the last ten are kept; `--no-backup` skips it; the
+  migrations are not automatically reversible), then runs `docker compose up -d`: only the containers whose image or
+  settings changed are recreated, and `migrate` applies the pending migrations before `idp` and `idp-admin` start.
+  `--package idp` or `idp-admin` also moves `migrate` to that tag. `idp` and `idp-admin` then report healthy only
+  once the database and Valkey answer (`GET /readyz`, the `HEALTHCHECK` of the images, not published by the nginx
+  above), and the console waits for them. Rollback: deploy the previous sha. The older version starts on the newer database and logs a warning, which
+  is safe only when the migrations in between did not remove or rename anything; otherwise restore the dump taken
+  by the deploy.
   Recreating `idp-admin` during a bulk action or a CSV import is safe: on `SIGTERM` it finishes the requests in flight
   (15 s at most), then the job stops **at the item it is on** (an item is never left half done), lists the items it did
   not get to as _not processed_ in its report, and writes a `bulk.interrupted` audit entry naming them (an import ends
@@ -285,5 +295,5 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
 - [ ] `ADMIN_API_ALLOWED_CIDRS` = the console only; console restricted (VPN / allow-list)
 - [ ] SMTP with TLS, `mail test` received, alerts enabled on each realm
 - [ ] `WEBAUTHN_RP_ID` final
-- [ ] `IMAGE_*` pinned to a commit sha, the checkout on the same commit
+- [ ] `IMAGE_*` pinned to a commit sha, the same one for `idp`, `idp-admin` and `migrate`
 - [ ] `dev seed`, the test SAML SP, default passwords and `dev-root-token` all gone

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
@@ -23,6 +24,7 @@ import (
 // Core is everything the binaries share: storage, caches, and the core
 // services, wired exactly once.
 type Core struct {
+	DB         *sql.DB
 	Ent        *ent.Client
 	Valkey     vk.Client
 	KeyManager keymanager.KeyManager
@@ -78,7 +80,9 @@ func (c *Core) EmailEnabled() bool { return c.Dispatcher != nil }
 func BuildCore() *Core {
 	ConfigurePasswordHashing()
 	c := &Core{}
-	c.Ent = EntClient()
+	c.DB = OpenDatabase()
+	checkSchemaOrExit(c.DB)
+	c.Ent = entClientOn(c.DB)
 	c.KeyManager, c.KMSBackend = KeyManager()
 	c.PublicURL = PublicURL()
 

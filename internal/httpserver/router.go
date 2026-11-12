@@ -11,6 +11,7 @@ import (
 	"sso.internal/sso/internal/clientip"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/health"
 	"sso.internal/sso/internal/i18n"
 	"sso.internal/sso/internal/ratelimit"
 )
@@ -47,6 +48,8 @@ type Server struct {
 
 	// i18n: the languages of the pages (i18n.go).
 	i18n *i18n.Bundle
+
+	ready []health.Check
 }
 
 // OIDCProvider is the OIDC adapter as the router sees it (implemented by
@@ -76,6 +79,12 @@ type Option func(*Server)
 // always the TCP peer and X-Forwarded-For is ignored.
 func WithClientIP(res clientip.Resolver) Option {
 	return func(s *Server) { s.ipResolver = res }
+}
+
+// WithReadiness sets what GET /readyz checks (the database, Valkey...).
+// GET /health only says that the process runs.
+func WithReadiness(checks ...health.Check) Option {
+	return func(s *Server) { s.ready = checks }
 }
 
 // WithKnownAccounts mounts POST /r/{realm}/auth/accounts/forget, the
@@ -146,6 +155,7 @@ func New(
 	s.router.Use(middleware.Recoverer)
 
 	s.router.Get("/health", s.handleHealth)
+	s.router.Method(http.MethodGet, "/readyz", health.Handler(s.ready...))
 
 	s.router.Route("/r/{realmName}", func(r chi.Router) {
 		r.Use(s.realmMiddleware)

@@ -57,15 +57,22 @@ services:
 
   valkey:
     image: valkey/valkey:8
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     volumes: [valkey-data:/data]
     networks: [data]
     restart: unless-stopped
 
   # One-shot, before idp and idp-admin start: database migrations (Atlas,
-  # versioned files of ent/migrate). They come from this checkout: keep it on
-  # the commit of the images (scripts/deploy.sh pulls it).
+  # versioned files of ent/migrate). They are in the image, at the version of
+  # the code: IMAGE_MIGRATE is deployed with IMAGE_IDP and IMAGE_IDP_ADMIN
+  # (scripts/deploy.sh sets the three), and follows IMAGE_IDP while it is unset.
   migrate:
-    image: arigaio/atlas:1.3.3-community
+    image: doctorpok/omsso:migrate-${IMAGE_MIGRATE:-${IMAGE_IDP:-latest}}
+    # build: { context: ., target: migrate }
     command:
       - migrate
       - apply
@@ -73,7 +80,6 @@ services:
       - file:///migrations
       - --url
       - postgres://sso:${POSTGRES_PASSWORD:?}@postgres:5432/sso?sslmode=disable
-    volumes: [./ent/migrate/migrations:/migrations:ro]
     depends_on:
       postgres: { condition: service_healthy }
     networks: [data]
@@ -88,7 +94,7 @@ services:
     ports: ["127.0.0.1:8080:8080"] # the reverse proxy of the host
     depends_on:
       migrate: { condition: service_completed_successfully }
-      valkey: { condition: service_started }
+      valkey: { condition: service_healthy }
     networks:
       data: {}
       # Default route through edge: egress, and the published port, whose
@@ -111,7 +117,7 @@ services:
       # - ./locales:/locales:ro
     depends_on:
       migrate: { condition: service_completed_successfully }
-      valkey: { condition: service_started }
+      valkey: { condition: service_healthy }
     networks:
       data: {}
       admin: { ipv4_address: 172.30.10.20 } # = ADMIN_API_URL of the console
@@ -147,7 +153,10 @@ services:
     # match exactly): through the reverse proxy of the host, with its valid
     # certificate. EDIT: the host name of PUBLIC_URL.
     extra_hosts: ["sso.example.com:host-gateway"]
-    depends_on: [idp, idp-admin]
+    # Healthy = ready (GET /readyz: database and Valkey), not only started.
+    depends_on:
+      idp: { condition: service_healthy }
+      idp-admin: { condition: service_healthy }
     networks:
       edge: {}
       admin: { ipv4_address: 172.30.10.10 } # = ADMIN_API_ALLOWED_CIDRS

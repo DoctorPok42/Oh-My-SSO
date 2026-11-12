@@ -27,6 +27,7 @@ const usage = `usage:
   idp-admin recover admin --email <address>
   idp-admin recover client-secret
   idp-admin recover timeouts
+  idp-admin healthcheck       exit 0 when the Admin API of this container is ready (HEALTHCHECK of the image)
 
 environment (besides DATABASE_URL, VALKEY_ADDR, KEYMANAGER_BACKEND... shared with idp):
   ADMIN_API_ADDR            listen address of the Admin API (default :8090)
@@ -48,6 +49,8 @@ func main() {
 		os.Exit(runBootstrap(os.Args[2:]))
 	case "recover":
 		os.Exit(runRecover(os.Args[2:]))
+	case "healthcheck":
+		os.Exit(runHealthcheck())
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 	default:
@@ -56,11 +59,16 @@ func main() {
 	}
 }
 
-func serve() {
-	addr := os.Getenv("ADMIN_API_ADDR")
-	if addr == "" {
-		addr = ":8090"
+// adminAddr is the listen address of the Admin API (ADMIN_API_ADDR).
+func adminAddr() string {
+	if addr := os.Getenv("ADMIN_API_ADDR"); addr != "" {
+		return addr
 	}
+	return ":8090"
+}
+
+func serve() {
+	addr := adminAddr()
 	nets, err := allowedNets(os.Getenv("ADMIN_API_ALLOWED_CIDRS"))
 	if err != nil {
 		log.Fatalf("ADMIN_API_ALLOWED_CIDRS: %v", err)
@@ -100,7 +108,7 @@ func serve() {
 		LogRequests: os.Getenv("ADMIN_API_LOG_REQUESTS") == "true"}, adminapi.Deps{
 		Admin: admin, Realms: c.Realms, Users: c.Users, Clients: c.Clients, Tokens: c.Tokens,
 		Sessions: c.Sessions, RBAC: c.RBAC, MFA: c.MFA, Keys: c.IdentityCore, KeyRotation: c.KeyRotation,
-		Health: healthChecks(c), TestEmail: testEmail, Rights: rights,
+		Health: healthChecks(c), Ready: c.ReadinessChecks(), TestEmail: testEmail, Rights: rights,
 	})
 
 	srv := httptimeout.NewServer(addr, api.Router(), httptimeout.Admin)
