@@ -609,14 +609,13 @@ func (c *importChecker) check(ctx context.Context, row *importRow) (*invitedUser
 	}
 	// Before the database: at import time, the first of two equal lines is
 	// already there, and "same as line 12" says more than "already used".
-	email, username := strings.ToLower(p.email), strings.ToLower(p.username)
-	if line, dup := c.seenEmail[email]; dup {
+	if line, dup := c.seenEmail[p.email]; dup {
 		return nil, adminInvalid("email", i18n.M("admin.error.import_same_email", "same e-mail as line {line}", "line", line))
 	}
-	if line, dup := c.seenUsername[username]; dup {
+	if line, dup := c.seenUsername[p.username]; dup {
 		return nil, adminInvalid("username", i18n.M("admin.error.import_same_username", "same username as line {line}", "line", line))
 	}
-	c.seenEmail[email], c.seenUsername[username] = row.line, row.line
+	c.seenEmail[p.email], c.seenUsername[p.username] = row.line, row.line
 	if err := c.s.checkUnique(ctx, c.realm.ID, "", p.username, p.email); err != nil {
 		return nil, err
 	}

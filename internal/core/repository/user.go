@@ -6,6 +6,8 @@ import (
 	"sso.internal/sso/internal/core/domain"
 )
 
+// UserRepository stores and looks up usernames and e-mail addresses in
+// their normalized form (domain.NormalizeIdentifier), whatever it is given.
 type UserRepository interface {
 	Create(ctx context.Context, p CreateUserParams) (*domain.User, error)
 	GetByID(ctx context.Context, id string) (*domain.User, error)

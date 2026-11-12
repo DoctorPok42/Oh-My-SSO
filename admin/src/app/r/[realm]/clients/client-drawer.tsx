@@ -200,7 +200,13 @@ export function ClientDrawer({
 
         <fieldset disabled={locked} className="space-y-5">
           <Field label={t("clients.field.name", "Name")} htmlFor="c-name" error={err("name")}>
-            <Input id="c-name" value={draft.name} onChange={(e) => set("name", e.target.value)} placeholder="Payroll" />
+            <Input
+              id="c-name"
+              autoFocus
+              value={draft.name}
+              onChange={(e) => set("name", e.target.value)}
+              placeholder="Payroll"
+            />
           </Field>
 
           <div className="flex flex-wrap items-end justify-between gap-4">

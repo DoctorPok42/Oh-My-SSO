@@ -1,6 +1,16 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
+
+// NormalizeIdentifier is the form in which usernames and e-mail addresses
+// are stored and looked up: trimmed, in lower case. "Alice@Example.com" and
+// "alice@example.com" are one account, whatever the case typed to sign in.
+func NormalizeIdentifier(s string) string {
+	return strings.ToLower(strings.TrimSpace(s))
+}
 
 type UserStatus string
 

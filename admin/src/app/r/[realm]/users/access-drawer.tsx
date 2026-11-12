@@ -224,6 +224,7 @@ export function AccessDrawer({
         >
           <Input
             id="a-name"
+            autoFocus={mode === "create"}
             value={draft.name}
             onChange={(e) => set("name", e.target.value)}
             placeholder={roles ? "payroll-manager" : "finance"}

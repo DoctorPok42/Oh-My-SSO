@@ -171,6 +171,7 @@ export function ScopeDrawer({
         >
           <Input
             id="s-name"
+            autoFocus
             className="font-mono"
             value={draft.name}
             onChange={(e) => set("name", e.target.value)}

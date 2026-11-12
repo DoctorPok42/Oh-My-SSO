@@ -126,7 +126,11 @@ func (f *fakeSessionRepo) GetByTokenHash(_ context.Context, hash string) (*domai
 func (f *fakeSessionRepo) Touch(_ context.Context, id string, at time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.byID[id].LastActivityAt = at
+	s, ok := f.byID[id]
+	if !ok || s.Status != domain.SessionActive {
+		return repository.ErrNotFound
+	}
+	s.LastActivityAt = at
 	return nil
 }
 

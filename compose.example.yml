@@ -98,6 +98,9 @@ services:
     # extra_hosts: ["mail.example.com:172.22.1.253"] # SMTP_HOST -> its container
     read_only: true
     restart: unless-stopped
+    # The default (10 s) is shorter than the 15 s idp gives the requests in
+    # flight to end, then the queued e-mails to leave.
+    stop_grace_period: 30s
 
   idp-admin:
     image: doctorpok/omsso:idp-admin-${IMAGE_IDP_ADMIN:-latest}

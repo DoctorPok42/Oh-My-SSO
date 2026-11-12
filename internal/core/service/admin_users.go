@@ -33,7 +33,7 @@ func checkEmail(e string) (string, error) {
 	if err != nil || addr.Name != "" || len(addr.Address) > 320 {
 		return "", adminText(AdminInvalid, "invalid_request", "email", i18n.M("admin.error.email_plain", "a plain e-mail address is required"))
 	}
-	return addr.Address, nil
+	return domain.NormalizeIdentifier(addr.Address), nil
 }
 
 // UserSummary is a row of the user list.
@@ -362,7 +362,7 @@ type invitedUser struct {
 // normalizeInvite checks an invitation without writing anything. It is what
 // the "+ Invite user" drawer and each line of an import have in common.
 func (s *AdminService) normalizeInvite(ctx context.Context, realm *domain.Realm, in InviteUserInput) (*invitedUser, error) {
-	username := strings.TrimSpace(in.Username)
+	username := domain.NormalizeIdentifier(in.Username)
 	email, err := checkEmail(in.Email)
 	if err != nil {
 		return nil, err
@@ -505,15 +505,15 @@ func (s *AdminService) UpdateUser(ctx context.Context, actor AdminActor, realm *
 	}
 	params := repository.UpdateUserParams{}
 	changes := map[string]interface{}{}
-	if in.Username != nil && *in.Username != u.Username {
-		name := strings.TrimSpace(*in.Username)
+	if in.Username != nil && domain.NormalizeIdentifier(*in.Username) != u.Username {
+		name := domain.NormalizeIdentifier(*in.Username)
 		if err := checkUsername(name); err != nil {
 			return nil, err
 		}
 		params.Username = &name
 		changes["username"] = name
 	}
-	if in.Email != nil && *in.Email != u.Email {
+	if in.Email != nil && domain.NormalizeIdentifier(*in.Email) != u.Email {
 		email, err := checkEmail(*in.Email)
 		if err != nil {
 			return nil, err
@@ -722,20 +722,43 @@ func (s *AdminService) guardAdminRemoval(ctx context.Context, actor AdminActor, 
 // a clear error is better than a constraint violation.
 func (s *AdminService) checkUnique(ctx context.Context, realmID, selfID, username, email string) error {
 	if username != "" {
-		if u, err := s.d.Users.GetByRealmAndUsername(ctx, realmID, username); err == nil && u.ID != selfID {
-			return adminText(AdminConflict, "username_taken", "", i18n.M("admin.error.username_taken", "username \"{username}\" is already used in this realm", "username", username))
-		} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		taken, err := s.identifierTaken(ctx, realmID, selfID, username)
+		if err != nil {
 			return err
+		}
+		if taken {
+			return adminText(AdminConflict, "username_taken", "", i18n.M("admin.error.username_taken", "username \"{username}\" is already used in this realm", "username", username))
 		}
 	}
 	if email != "" {
-		if u, err := s.d.Users.GetByRealmAndEmail(ctx, realmID, email); err == nil && u.ID != selfID {
-			return adminText(AdminConflict, "email_taken", "", i18n.M("admin.error.email_taken", "e-mail \"{email}\" is already used in this realm", "email", email))
-		} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		taken, err := s.identifierTaken(ctx, realmID, selfID, email)
+		if err != nil {
 			return err
+		}
+		if taken {
+			return adminText(AdminConflict, "email_taken", "", i18n.M("admin.error.email_taken", "e-mail \"{email}\" is already used in this realm", "email", email))
 		}
 	}
 	return nil
+}
+
+// identifierTaken: another account of the realm has identifier as its
+// username or as its e-mail address. Both are checked for each: the sign-in
+// form takes either in one field, so a username equal to somebody else's
+// address would sign in, or reset the password, in their place.
+func (s *AdminService) identifierTaken(ctx context.Context, realmID, selfID, identifier string) (bool, error) {
+	for _, lookup := range []func(context.Context, string, string) (*domain.User, error){
+		s.d.Users.GetByRealmAndUsername, s.d.Users.GetByRealmAndEmail,
+	} {
+		u, err := lookup(ctx, realmID, identifier)
+		if err == nil && u.ID != selfID {
+			return true, nil
+		}
+		if err != nil && !errors.Is(err, repository.ErrNotFound) {
+			return false, err
+		}
+	}
+	return false, nil
 }
 
 // cleanProfile merges patch into current. Only flat values (text, number,

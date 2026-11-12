@@ -178,8 +178,10 @@ Then:
 - **Rate limits** (per client address, so `TRUSTED_PROXIES` must be right): `/token`, `/introspect` and `/revoke`
   count the requests that authenticate no client (600/min per address) and the failed secrets of a client_id
   (10/15 min per address); a client that proves its secret is never limited. The SAML endpoints allow 300 requests per
-  minute per address. A refusal is `429` with `Retry-After`: applications should wait that long before retrying. The
-  `RATE_LIMIT_*` variables of `.env.example` change these values.
+  minute per address. The sign-in page allows 20 failed sign-ins per 15 minutes per address; a sign-in that succeeds is
+  not counted, so the users of an office behind one address do not block each other. A refusal is `429` with
+  `Retry-After`: applications should wait that long before retrying. The `RATE_LIMIT_*` variables of `.env.example`
+  change these values.
 - **The console reaches the IdP through nginx**: its `extra_hosts` sends the host name of `PUBLIC_URL` to the host.
   nginx must listen on every address (`listen 443`, as above), and the firewall must accept connections from the
   Docker networks to the host's port 443.
@@ -239,6 +241,10 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   you write your own compose file; Docker's default of 10 s is too short). Start the action again on the items left. A
   process that is killed anyway leaves a job that another `idp-admin` marks as interrupted once it has been silent for
   2 minutes (a bulk action) or 10 minutes (an import); the realm takes no new one before.
+  `idp` is given the same 30 s: it finishes the requests in flight (15 s at most) before it closes the database.
+  Usernames and e-mail addresses are stored in lower case: signing in does not depend on the case typed. The migration
+  that converts them (`normalize_user_identifiers`) stops, changing nothing, when two accounts of a realm differ only
+  by case, and names them: rename or delete one, then deploy again.
 - **Settings**: after a change of `.env`, `docker compose up -d` recreates the containers that use it.
 - **Backups**: PostgreSQL (users, clients, audit log), e.g.
   `docker compose exec -T postgres pg_dump -U sso sso | gzip > sso-$(date +%F).sql.gz`, **and** the key manager:

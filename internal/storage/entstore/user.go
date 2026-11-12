@@ -24,8 +24,8 @@ func (r *entUserRepository) Create(ctx context.Context, p repository.CreateUserP
 	builder := r.client.User.
 		Create().
 		SetRealmID(p.RealmID).
-		SetUsername(p.Username).
-		SetEmail(p.Email).
+		SetUsername(domain.NormalizeIdentifier(p.Username)).
+		SetEmail(domain.NormalizeIdentifier(p.Email)).
 		SetPasswordHash(p.PasswordHash)
 
 	if p.Status != "" {
@@ -53,7 +53,7 @@ func (r *entUserRepository) GetByID(ctx context.Context, id string) (*domain.Use
 func (r *entUserRepository) GetByRealmAndEmail(ctx context.Context, realmID, email string) (*domain.User, error) {
 	e, err := r.client.User.
 		Query().
-		Where(user.RealmID(realmID), user.EmailEQ(email)).
+		Where(user.RealmID(realmID), user.EmailEQ(domain.NormalizeIdentifier(email))).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -67,7 +67,7 @@ func (r *entUserRepository) GetByRealmAndEmail(ctx context.Context, realmID, ema
 func (r *entUserRepository) GetByRealmAndUsername(ctx context.Context, realmID, username string) (*domain.User, error) {
 	e, err := r.client.User.
 		Query().
-		Where(user.RealmID(realmID), user.UsernameEQ(username)).
+		Where(user.RealmID(realmID), user.UsernameEQ(domain.NormalizeIdentifier(username))).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -82,10 +82,10 @@ func (r *entUserRepository) Update(ctx context.Context, id string, p repository.
 	builder := r.client.User.UpdateOneID(id)
 
 	if p.Username != nil {
-		builder = builder.SetUsername(*p.Username)
+		builder = builder.SetUsername(domain.NormalizeIdentifier(*p.Username))
 	}
 	if p.Email != nil {
-		builder = builder.SetEmail(*p.Email)
+		builder = builder.SetEmail(domain.NormalizeIdentifier(*p.Email))
 	}
 	if p.PasswordHash != nil {
 		builder = builder.SetPasswordHash(*p.PasswordHash)

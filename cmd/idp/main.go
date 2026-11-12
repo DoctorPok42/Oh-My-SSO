@@ -156,7 +156,9 @@ func serve() {
 	httpSrv := httptimeout.NewServer(":"+port, srv.Router(), httptimeout.Public)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	drained := make(chan struct{})
 	go func() {
+		defer close(drained)
 		<-stop
 		log.Printf("shutting down...")
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -168,4 +170,7 @@ func serve() {
 	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
+	// ListenAndServe returns as soon as Shutdown starts: wait for the requests
+	// in flight to end before c.Close takes the database from under them.
+	<-drained
 }

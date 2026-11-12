@@ -58,6 +58,10 @@ type ProtocolLimits struct {
 	// one address: each one parses XML, most check a signature. A sign-in
 	// takes three of them.
 	SAMLPerIP RateRule
+	// LoginFailuresPerIP: failed sign-ins (password or passkey) from one
+	// address. A sign-in that succeeds gives its hit back, so the users behind
+	// one address (an office, a VPN) do not use up each other's budget.
+	LoginFailuresPerIP RateRule
 }
 
 // DefaultProtocolLimits apply without configuration (cmd/idp reads the
@@ -66,6 +70,7 @@ var DefaultProtocolLimits = ProtocolLimits{
 	OIDCPerIP:           RateRule{Max: 600, Window: time.Minute},
 	ClientFailuresPerIP: RateRule{Max: 10, Window: 15 * time.Minute},
 	SAMLPerIP:           RateRule{Max: 300, Window: time.Minute},
+	LoginFailuresPerIP:  RateRule{Max: 20, Window: 15 * time.Minute},
 }
 
 // WithProtocolLimits replaces DefaultProtocolLimits.

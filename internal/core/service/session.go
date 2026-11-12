@@ -263,8 +263,8 @@ func (s *SessionService) validate(ctx context.Context, realmID, rawToken string,
 		return nil, ErrReauthRequired
 	}
 
-	if now.Sub(sess.LastActivityAt) >= touchInterval {
-		s.touch(ctx, sess, now)
+	if now.Sub(sess.LastActivityAt) >= touchInterval && !s.touch(ctx, sess, now) {
+		return nil, ErrSessionInvalid
 	}
 
 	if !fromCache {
@@ -395,10 +395,7 @@ func (s *SessionService) Revoke(ctx context.Context, sessionID string, reason do
 	if err := s.sessions.Revoke(ctx, sess.ID, reason); err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return fmt.Errorf("revoke session: %w", err)
 	}
-	if err := s.markRevoked(ctx, sess); err != nil {
-		return err
-	}
-	return s.revokeSessionTokens(ctx, sess.ID)
+	return s.cascadeRevocation(ctx, sess)
 }
 
 // LogoutEvent says how a user signed out, for the audit log.
@@ -434,10 +431,7 @@ func (s *SessionService) EndSession(ctx context.Context, sess *domain.Session, r
 	if err := s.sessions.Revoke(ctx, sess.ID, reason); err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return fmt.Errorf("end session: %w", err)
 	}
-	if err := s.markRevoked(ctx, sess); err != nil {
-		return err
-	}
-	if err := s.revokeSessionTokens(ctx, sess.ID); err != nil {
+	if err := s.cascadeRevocation(ctx, sess); err != nil {
 		return err
 	}
 	if wasActive {
@@ -485,18 +479,16 @@ func (s *SessionService) RevokeUserSessions(ctx context.Context, userID string, 
 	if err != nil {
 		return 0, fmt.Errorf("revoke all sessions: %w", err)
 	}
+	// They are all revoked in the database, and a second call would not find
+	// them again: a failure on one must not spare the others.
+	var errs []error
 	for _, sess := range revoked {
-		if err := s.markRevoked(ctx, sess); err != nil {
-			return 0, err
-		}
-		if err := s.revokeSessionTokens(ctx, sess.ID); err != nil {
-			return 0, err
-		}
+		errs = append(errs, s.cascadeRevocation(ctx, sess))
 	}
 	for _, o := range s.revokers {
 		o.AllSessionsRevoked(ctx, userID, reason)
 	}
-	return len(revoked), nil
+	return len(revoked), errors.Join(errs...)
 }
 
 // RevokeOthers ends every active session of a user except keepID (the one
@@ -508,22 +500,26 @@ func (s *SessionService) RevokeOthers(ctx context.Context, userID, keepID string
 		return 0, fmt.Errorf("revoke other sessions: %w", err)
 	}
 	n := 0
+	var errs []error
 	for _, sess := range active {
 		if sess.ID == keepID {
 			continue
 		}
 		if err := s.sessions.Revoke(ctx, sess.ID, reason); err != nil && !errors.Is(err, repository.ErrNotFound) {
-			return n, fmt.Errorf("revoke other sessions: %w", err)
+			errs = append(errs, fmt.Errorf("revoke other sessions: %w", err))
+			continue
 		}
-		if err := s.markRevoked(ctx, sess); err != nil {
-			return n, err
-		}
-		if err := s.revokeSessionTokens(ctx, sess.ID); err != nil {
-			return n, err
-		}
+		errs = append(errs, s.cascadeRevocation(ctx, sess))
 		n++
 	}
-	return n, nil
+	return n, errors.Join(errs...)
+}
+
+// cascadeRevocation finishes the revocation of a session already revoked in
+// the database: its tokens, then its cache entry. Both are tried whatever
+// the other does: a cache that does not answer must not leave tokens alive.
+func (s *SessionService) cascadeRevocation(ctx context.Context, sess *domain.Session) error {
+	return errors.Join(s.revokeSessionTokens(ctx, sess.ID), s.markRevoked(ctx, sess))
 }
 
 // revokeSessionTokens revokes every token issued for a session. A token must
@@ -686,15 +682,27 @@ func (s *SessionService) lookup(ctx context.Context, tokenHash string) (*domain.
 	return sess, false, nil
 }
 
-func (s *SessionService) touch(ctx context.Context, sess *domain.Session, now time.Time) {
-	if err := s.sessions.Touch(ctx, sess.ID, now); err != nil {
+// touch records activity on sess. It returns false when the session is not
+// active in the database anymore: its cache entry outlived a revocation (the
+// tombstone could not be written, or Valkey came back with older data). The
+// database decides, so such an entry lives one touchInterval at most.
+func (s *SessionService) touch(ctx context.Context, sess *domain.Session, now time.Time) bool {
+	err := s.sessions.Touch(ctx, sess.ID, now)
+	if errors.Is(err, repository.ErrNotFound) {
+		if err := s.markRevoked(ctx, sess); err != nil {
+			s.logger.WarnContext(ctx, "session cache tombstone failed", "session_id", sess.ID, "error", err)
+		}
+		return false
+	}
+	if err != nil {
 		s.logger.WarnContext(ctx, "session touch failed", "session_id", sess.ID, "error", err)
-		return
+		return true
 	}
 	sess.LastActivityAt = now
 	if err := s.cache.Refresh(ctx, sess.TokenHash, sessioncache.EntryFromSession(sess), s.ttl(sess)); err != nil {
 		s.logger.WarnContext(ctx, "session cache refresh failed", "session_id", sess.ID, "error", err)
 	}
+	return true
 }
 
 func (s *SessionService) fillCache(ctx context.Context, sess *domain.Session) {
