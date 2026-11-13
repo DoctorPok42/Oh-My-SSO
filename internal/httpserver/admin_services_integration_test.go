@@ -129,7 +129,7 @@ func TestAdminService_Integration(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "en", before.DefaultLocale)
 		require.Equal(t, service.DefaultAuditLogRetentionDays, before.AuditLogRetentionDays, "one year until the realm changes it")
-		require.Zero(t, before.PasswordExpiryDays, "not enforced: never expires (audit B-05)")
+		require.Zero(t, before.PasswordExpiryDays, "not enforced: never expires")
 		require.NotEmpty(t, svc.Languages())
 
 		for name, patch := range map[string]service.SettingsPatch{
@@ -143,7 +143,7 @@ func TestAdminService_Integration(t *testing.T) {
 			"idle<step-up":         {RememberMeEnabled: ptr(false), SessionIdleMinutes: ptr(2), MFAStepUpMaxAgeMinutes: nil},
 			"audit retention":      {AuditLogRetentionDays: ptr(7)},
 			"audit retention < 0":  {AuditLogRetentionDays: ptr(-1)},
-			// Not enforced yet (audit B-05): only 0 (never).
+			// Not enforced yet: only 0 (never).
 			"password expiry": {PasswordExpiryDays: ptr(30)},
 		} {
 			_, err := svc.UpdateSettings(ctx, root, demo, patch)

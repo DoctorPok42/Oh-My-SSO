@@ -302,8 +302,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 			return nil, err
 		}
 	}
-	// Password expiry is not enforced yet (todo 3.1): a value would be a
-	// promise nothing keeps (audit B-05). 0 (never) stays accepted.
+	// Not enforced yet: only 0 (never) is accepted.
 	if v := p.PasswordExpiryDays; v != nil && *v != 0 {
 		return nil, adminInvalid("password_expiry_days", i18n.M("admin.error.password_expiry_unavailable", "password expiry is not available yet: only 0 (never) is accepted"))
 	}

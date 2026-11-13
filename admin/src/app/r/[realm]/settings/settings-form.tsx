@@ -226,7 +226,7 @@ export function SettingsForm({
                     "8 at least. Length beats complexity rules (NIST SP 800-63B).",
                   ),
                 )}
-                {/* No password expiry here: it is not enforced yet (todo 3.1, audit B-05). */}
+                {/* Not enforced yet: no expiry field. */}
                 {num(
                   "password_reset_ttl_minutes",
                   t("settings.password.reset_ttl", "Reset link validity (minutes)"),
