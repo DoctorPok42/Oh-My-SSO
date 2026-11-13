@@ -269,9 +269,12 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   value from 30 to 3650 days through the Admin API, `audit_log_retention_days`, 0 = unlimited). **Upgrading applies the
   1-year default to every existing realm**: set Unlimited (or a longer period) before the first purge if older entries
   must stay. The same
-  hourly purge then deletes the older entries of that realm (`purge: audit log entries deleted`). Shortening it deletes
-  entries for good at the next pass: export the audit log first (Audit Log > Export) or rely on the database backups if
-  a copy must be kept. The change itself is in the audit log (`settings.updated`).
+  purge then deletes the older entries of that realm once a day (`purge: audit log entries deleted`). Shortening it
+  deletes entries for good within a day: export the audit log first (Audit Log > Export) or rely on the database
+  backups if a copy must be kept. The change itself is in the audit log (`settings.updated`), and so is what each daily
+  purge deletes: one `audit_log.purged` entry per realm and day that deleted something (count, date limit, retention).
+  A purge that did not finish (server stopping, database error) still records what it deleted, with the status
+  failure and `interrupted`; the next hourly pass finishes it, with an entry of its own.
 - **Key rotation**: `docker compose run --rm idp keys rotate --realm <realm>`, wait for tokens to expire, then
   `keys retire`. SAML: `keys rotate --purpose saml_signing`, share the new metadata with service providers, then
   `keys activate --purpose saml_signing`.

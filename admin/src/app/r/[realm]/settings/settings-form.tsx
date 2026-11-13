@@ -480,7 +480,7 @@ export function SettingsForm({
             <CardDescription>
               {t(
                 "settings.audit.description",
-                "Entries older than this are deleted automatically, by the hourly purge. Keep them as long as your security and legal obligations require, and no longer: they hold personal data (who did what, from which IP address).",
+                "Entries older than this are deleted automatically, by the daily purge. Keep them as long as your security and legal obligations require, and no longer: they hold personal data (who did what, from which IP address).",
               )}
             </CardDescription>
             <div className="mt-4 space-y-4">
@@ -511,7 +511,7 @@ export function SettingsForm({
                 <Banner tone="warning">
                   {t(
                     "settings.audit.shorter",
-                    "Once saved, entries older than the new retention ({period}) are deleted for good at the next purge, within the hour.",
+                    "Once saved, entries older than the new retention ({period}) are deleted for good at the next daily purge, within a day.",
                     { period: auditPeriod(auditDays) },
                   )}
                 </Banner>

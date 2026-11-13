@@ -22,7 +22,7 @@ import (
 // cliAdmin builds the admin service for the command line: database and
 // KeyManager only (no Valkey: bootstrap and recovery need no session cache).
 func cliAdmin(notifier service.Notifier) (*service.AdminService, *ent.Client) {
-	client := app.EntClient()
+	client, tx := app.EntClientTx()
 	km, backend := app.KeyManager()
 	settings := entstore.NewInstanceSettingsRepository(client)
 	signingKeys := entstore.NewSigningKeyRepository(client)
@@ -33,13 +33,14 @@ func cliAdmin(notifier service.Notifier) (*service.AdminService, *ent.Client) {
 	users := entstore.NewUserRepository(client)
 	audit := entstore.NewAuditLogRepository(client)
 	return service.NewAdminService(service.AdminDeps{
+		Tx:     tx,
 		Realms: entstore.NewRealmRepository(client), Users: users, Clients: clients, Scopes: scopes,
 		Roles: roles, Groups: groups, Permissions: entstore.NewPermissionRepository(client),
 		Settings: settings, Audit: audit, Admin: entstore.NewAdminRepository(client),
 		KeyRotation: service.NewKeyRotationService(signingKeys, entstore.NewKeyRotationLogRepository(client), settings, km, backend,
 			service.WithKeyRotationAudit(entstore.NewAuditLogRepository(client))),
 		PasswordReset: service.NewPasswordResetService(service.PasswordResetDeps{
-			Users: users, Tokens: entstore.NewPasswordResetTokenRepository(client), Settings: settings, Audit: audit,
+			Tx: tx, Users: users, Tokens: entstore.NewPasswordResetTokenRepository(client), Settings: settings, Audit: audit,
 		}),
 		OIDCClients: service.NewOIDCClientService(clients, scopes, roles, groups),
 		// Lifting only (recover timeouts): no sign-out, no session cache.

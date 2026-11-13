@@ -23,6 +23,18 @@ type purgeRepo struct {
 	failOn      string // "<realm>/sessions" fails
 	cancel      func() // called by the first call, when set
 	kinds       map[string][]string
+	lastPurge   map[string]time.Time // realm → its last complete audit log purge
+	lastFails   string               // realm whose last purge cannot be read
+}
+
+func (r *purgeRepo) LastSuccessfulAuditEntry(_ context.Context, realmID, action string) (time.Time, error) {
+	if action != "audit_log.purged" {
+		return time.Time{}, errors.New("unexpected action " + action)
+	}
+	if realmID == r.lastFails {
+		return time.Time{}, errors.New("database down")
+	}
+	return r.lastPurge[realmID], nil
 }
 
 func (r *purgeRepo) del(kind string) func(context.Context, string, time.Time, int) (int, error) {
@@ -213,4 +225,110 @@ func TestEffectiveRetentionDays(t *testing.T) {
 		require.Equal(t, service.DefaultRetentionDays, service.EffectiveRetentionDays(&domain.InstanceSettings{ExpiredDataRetentionDays: bad}))
 	}
 	require.Equal(t, 365, service.EffectiveRetentionDays(&domain.InstanceSettings{ExpiredDataRetentionDays: 365}))
+}
+
+// B-17: what a pass deletes from a realm's audit log leaves a trace in it.
+func TestPurgeAll_RecordsWhatItDeletedFromTheAuditLog(t *testing.T) {
+	repo := &purgeRepo{stock: map[string]int{"busy/audit": 1500, "quiet/audit": 0}, before: map[string]time.Time{}, failOn: "broken-audit/audit"}
+	now := time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
+	settings := map[string]*domain.InstanceSettings{
+		"busy": {AuditLogRetentionDays: 90}, "quiet": {AuditLogRetentionDays: 90}, "broken-audit": {AuditLogRetentionDays: 90},
+	}
+	var realms []*domain.Realm
+	for _, id := range []string{"busy", "quiet", "broken-audit"} {
+		realms = append(realms, &domain.Realm{ID: id})
+	}
+	auditLog := &fakeAuditRepo{}
+	svc := service.NewPurgeService(service.PurgeDeps{
+		Purge: repo, Settings: purgeSettings{byRealm: settings}, Audit: auditLog,
+		Realms: func(context.Context) ([]*domain.Realm, error) { return realms, nil },
+		Now:    func() time.Time { return now },
+	})
+
+	_, err := svc.PurgeAll(context.Background())
+	require.ErrorContains(t, err, "realm broken-audit: audit log")
+	require.Len(t, auditLog.entries, 1, "one entry per realm and pass that deleted something")
+	e := auditLog.entries[0]
+	require.Equal(t, "busy", e.RealmID)
+	require.Equal(t, "audit_log.purged", e.Action)
+	require.Equal(t, domain.AuditActorSystem, e.ActorType)
+	require.Empty(t, e.UserID)
+	require.Equal(t, domain.AuditLogSuccess, e.Status)
+	require.Equal(t, 1500, e.Details["deleted"])
+	require.Equal(t, 90, e.Details["retention_days"])
+	require.Equal(t, now.AddDate(0, 0, -90).Format(time.RFC3339), e.Details["before"])
+}
+
+// A pass stopped half-way (server shutting down) still says what it deleted.
+func TestPurgeAll_RecordsAnInterruptedAuditLogPurge(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	repo := &purgeRepo{stock: map[string]int{"a/audit": 2500}, before: map[string]time.Time{}}
+	auditLog := &fakeAuditRepo{}
+	svc := service.NewPurgeService(service.PurgeDeps{
+		Purge: cancelAfterFirstAuditBatch{repo, cancel}, Settings: purgeSettings{byRealm: map[string]*domain.InstanceSettings{"a": {AuditLogRetentionDays: 30}}},
+		Audit:  auditLog,
+		Realms: func(context.Context) ([]*domain.Realm, error) { return []*domain.Realm{{ID: "a"}}, nil },
+	})
+
+	_, err := svc.PurgeAll(ctx)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Len(t, auditLog.entries, 1)
+	e := auditLog.entries[0]
+	require.Equal(t, 1000, e.Details["deleted"], "the first batch")
+	require.Equal(t, true, e.Details["interrupted"])
+	require.Equal(t, domain.AuditLogFailure, e.Status)
+}
+
+// cancelAfterFirstAuditBatch stops the server once one batch of the audit
+// log is deleted.
+type cancelAfterFirstAuditBatch struct {
+	*purgeRepo
+	cancel func()
+}
+
+func (r cancelAfterFirstAuditBatch) DeleteAuditLogs(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
+	n, err := r.purgeRepo.DeleteAuditLogs(ctx, realmID, before, limit)
+	r.cancel()
+	return n, err
+}
+
+// R-01 (lot B): the audit log of a realm is purged once a day, so that its
+// trace is one entry a day and not one an hour.
+func TestPurgeAll_PurgesTheAuditLogOnceADay(t *testing.T) {
+	now := time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
+	repo := &purgeRepo{
+		stock:  map[string]int{"recent/audit": 5, "yesterday/audit": 5, "never/audit": 5, "unknown/audit": 5},
+		before: map[string]time.Time{},
+		lastPurge: map[string]time.Time{
+			"recent":    now.Add(-23 * time.Hour),                // within the day: not again
+			"yesterday": now.Add(-23*time.Hour - 31*time.Minute), // a day ago, give or take half a pass
+		},
+		lastFails: "unknown",
+	}
+	ids := []string{"recent", "yesterday", "never", "unknown"}
+	settings := map[string]*domain.InstanceSettings{}
+	realms := make([]*domain.Realm, 0, len(ids))
+	for _, id := range ids {
+		settings[id] = &domain.InstanceSettings{AuditLogRetentionDays: 90}
+		realms = append(realms, &domain.Realm{ID: id})
+	}
+	auditLog := &fakeAuditRepo{}
+	svc := service.NewPurgeService(service.PurgeDeps{
+		Purge: repo, Settings: purgeSettings{byRealm: settings}, Audit: auditLog,
+		Realms: func(context.Context) ([]*domain.Realm, error) { return realms, nil },
+		Now:    func() time.Time { return now },
+	})
+
+	got, err := svc.PurgeAll(context.Background())
+	require.ErrorContains(t, err, "realm unknown: audit log: last purge: database down")
+	require.Equal(t, 10, got.AuditLogs, "yesterday and never")
+	require.NotContains(t, repo.kinds["recent"], "audit", "purged less than a day ago")
+	require.NotContains(t, repo.kinds["unknown"], "audit", "not without knowing the last purge")
+	require.Equal(t, 5, repo.stock["recent/audit"])
+	require.Equal(t, 5, repo.stock["unknown/audit"])
+	traced := map[string]bool{}
+	for _, e := range auditLog.entries {
+		traced[e.RealmID] = true
+	}
+	require.Equal(t, map[string]bool{"yesterday": true, "never": true}, traced)
 }

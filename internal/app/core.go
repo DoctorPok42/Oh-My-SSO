@@ -26,6 +26,7 @@ import (
 type Core struct {
 	DB         *sql.DB
 	Ent        *ent.Client
+	Tx         repository.Transactor // several repository calls of Ent as one transaction
 	Valkey     vk.Client
 	KeyManager keymanager.KeyManager
 	KMSBackend string
@@ -82,7 +83,7 @@ func BuildCore() *Core {
 	c := &Core{}
 	c.DB = OpenDatabase()
 	checkSchemaOrExit(c.DB)
-	c.Ent = entClientOn(c.DB)
+	c.Ent, c.Tx = entClientOn(c.DB)
 	c.KeyManager, c.KMSBackend = KeyManager()
 	c.PublicURL = PublicURL()
 
@@ -165,6 +166,7 @@ func BuildCore() *Core {
 		Purge:    entstore.NewPurgeRepository(client),
 		Settings: c.Settings,
 		Realms:   c.Admin.ListRealms,
+		Audit:    c.Audit, // audit_log.purged
 	})
 
 	c.Timeouts = service.NewTimeoutService(service.TimeoutDeps{
@@ -237,6 +239,7 @@ func BuildCore() *Core {
 
 	passwordPolicy := service.NewPasswordPolicyService(c.Settings)
 	c.PasswordReset = service.NewPasswordResetService(service.PasswordResetDeps{
+		Tx:       c.Tx,
 		Users:    c.Users,
 		Tokens:   entstore.NewPasswordResetTokenRepository(client),
 		Sessions: c.Sessions,
@@ -383,6 +386,7 @@ func (n SyncNotifier) Notify(ctx context.Context, e domain.NotificationEvent) {
 
 func (c *Core) AdminService() *service.AdminService {
 	return service.NewAdminService(service.AdminDeps{
+		Tx:     c.Tx,
 		Realms: c.Realms, Users: c.Users, Clients: c.Clients, Scopes: c.Scopes, Roles: c.Roles, Groups: c.Groups,
 		Permissions: c.Permissions, Settings: c.Settings, Audit: c.Audit,
 		Access: entstore.NewAccessRepository(c.Ent), MfaMethods: entstore.NewMfaMethodRepository(c.Ent), Admin: c.Admin,

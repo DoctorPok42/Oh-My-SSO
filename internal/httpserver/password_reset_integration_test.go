@@ -13,8 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 	"github.com/stretchr/testify/require"
 
 	"sso.internal/sso/ent"
@@ -91,7 +89,8 @@ func setupResetEnv(t *testing.T) *resetEnv {
 
 	db, err := sql.Open("pgx", startTestPostgres(t, ctx))
 	require.NoError(t, err)
-	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
+	tx := entstore.NewDriver(db) // as in app.BuildCore: a reset is one transaction
+	client := ent.NewClient(ent.Driver(tx))
 	t.Cleanup(func() { _ = client.Close() })
 	require.NoError(t, client.Schema.Create(ctx))
 
@@ -119,7 +118,7 @@ func setupResetEnv(t *testing.T) *resetEnv {
 	sessions := service.NewSessionService(entstore.NewSessionRepository(client), settings,
 		entstore.NewTokenRepository(client), valkeycache.NewSessionCache(valkeyClient), service.WithClock(clock.Now))
 	reset := service.NewPasswordResetService(service.PasswordResetDeps{
-		Users: users, Tokens: entstore.NewPasswordResetTokenRepository(client), Sessions: sessions,
+		Tx: tx, Users: users, Tokens: entstore.NewPasswordResetTokenRepository(client), Sessions: sessions,
 		Settings: settings, Lockout: lockout, Notifier: dispatcher, Audit: audit, Now: clock.Now,
 	})
 	srv := httpserver.New(auth, sessions,
