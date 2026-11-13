@@ -32,6 +32,9 @@ func (s *Server) realmMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// The realm's __Host- cookies under their names (https), first.
+		s.cookiesOfRealm(w, r, realm)
+
 		ctx := context.WithValue(r.Context(), realmContextKey{}, realm)
 		ctx = s.withLangPrefs(r.WithContext(ctx), realm)
 		next.ServeHTTP(w, r.WithContext(ctx))

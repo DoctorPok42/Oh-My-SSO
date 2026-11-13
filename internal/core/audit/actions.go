@@ -111,6 +111,9 @@ const (
 	RecoveryClientSecret  = "recovery.client_secret"
 	RecoveryTimeoutLifted = "recovery.timeout_lifted"
 
+	// RecoveryIPAllowlistCleared: `idp-admin recover ip-allowlist`.
+	RecoveryIPAllowlistCleared = "recovery.ip_allowlist_cleared"
+
 	// E-mails.
 	NotificationSent = "notification.sent"
 
@@ -213,6 +216,7 @@ var Catalog = []ActionInfo{
 	{RecoveryAdmin, "Realm", "Administrator access recovered"},
 	{RecoveryClientSecret, "Realm", "Console client secret recovered"},
 	{RecoveryTimeoutLifted, "Realm", "Timeout lifted (recovery)"},
+	{RecoveryIPAllowlistCleared, "Realm", "IP allowlist emptied (recovery)"},
 
 	{NotificationSent, "E-mails", "E-mail sent"},
 

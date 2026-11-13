@@ -83,7 +83,8 @@ func (s *Server) mountAuth(r chi.Router) {
 		// requireJSON stops "login CSRF": without it, a foreign page could
 		// submit a hidden form (enctype="text/plain" whose body looks like
 		// JSON) and sign the visitor's browser in to the attacker's account.
-		r.With(requireJSON).Post("/login", s.handleLogin)
+		// requireSignInNetwork: the realm's IP allowlist, first of all.
+		r.With(requireJSON, s.requireSignInNetwork).Post("/login", s.handleLogin)
 		// Logout needs no such check: the SameSite=Lax session cookie is
 		// not sent with a cross-site POST, so a foreign page cannot end
 		// someone's session.
@@ -153,6 +154,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		IPAddress:  ip,
 		UserAgent:  r.UserAgent(),
 		ClientRef:  clientRef,
+		// A device the user signed in from before is not held by a lock
+		// others caused (audit B-14).
+		DeviceFingerprint: service.DeviceFingerprint(deviceIDFromRequest(r)),
 	})
 	if err != nil {
 		var locked *service.AccountLockedError
@@ -178,7 +182,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	s.releaseLogin(r, attempt)
 
 	resp := loginResponse{Status: string(service.LoginAuthenticated), UserID: user.ID}
-	device := service.DeviceFingerprint(ensureDeviceCookie(w, r, realm.Name))
+	device := service.DeviceFingerprint(s.ensureDeviceCookie(w, r, realm.Name))
 	s.rememberPasswordChoice(r, realm.ID, user, client, req.AccountID)
 
 	if s.mfa != nil {
@@ -199,7 +203,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		switch dec.Outcome {
 		case service.LoginMFARequired:
-			setMFAChallengeCookie(w, realm.Name, dec.ChallengeToken, dec.ChallengeExpiresAt)
+			s.setMFAChallengeCookie(w, realm.Name, dec.ChallengeToken, dec.ChallengeExpiresAt)
 			writeJSON(w, http.StatusOK, loginResponse{
 				Status:          string(dec.Outcome),
 				Methods:         methodStrings(dec.Methods),
@@ -230,7 +234,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.endPreviousSession(r, sess)
-	setSessionCookie(w, realm.Name, rawToken, sess)
+	s.setSessionCookie(w, realm.Name, rawToken, sess)
 	rememberRealm(w, r, realm.Name) // the account console's organization menu
 	s.rememberLocale(w, r, user)
 	resp.RememberMe = sess.RememberMe
@@ -320,7 +324,7 @@ func (s *Server) handleForgetAccount(w http.ResponseWriter, r *http.Request) {
 				writeError(w, http.StatusInternalServerError, "internal_error")
 				return
 			}
-			clearSessionCookie(w, realm.Name)
+			s.clearSessionCookie(w, realm.Name)
 			forgetRealm(w, r, realm.Name)
 		}
 	}
@@ -336,7 +340,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal_error")
 		return
 	}
-	clearSessionCookie(w, realm.Name)
+	s.clearSessionCookie(w, realm.Name)
 	forgetRealm(w, r, realm.Name)
 	w.WriteHeader(http.StatusNoContent)
 }

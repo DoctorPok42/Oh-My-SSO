@@ -66,6 +66,9 @@ type settingsCache struct {
 type cachedSettings struct {
 	s         *domain.InstanceSettings
 	fetchedAt time.Time
+	// fallback: the defaults, put there because the database did not answer.
+	// getStrict does not trust them.
+	fallback bool
 }
 
 func newSettingsCache(repo repository.InstanceSettingsRepository, logger *slog.Logger) *settingsCache {
@@ -89,15 +92,47 @@ func (c *settingsCache) get(ctx context.Context, realmID string) *domain.Instanc
 		return e.s
 	}
 
-	s, err := c.repo.GetByRealmID(ctx, realmID)
+	s, err := c.fetch(ctx, realmID, now)
 	if err != nil {
-		if !errors.Is(err, repository.ErrNotFound) {
-			c.logger.WarnContext(ctx, "cannot read instance settings, using defaults", "realm_id", realmID, "error", err)
-		}
+		c.logger.WarnContext(ctx, "cannot read instance settings, using defaults", "realm_id", realmID, "error", err)
 		s = DefaultInstanceSettings(realmID)
+		c.mu.Lock()
+		c.m[realmID] = cachedSettings{s: s, fetchedAt: now, fallback: true}
+		c.mu.Unlock()
+	}
+	return s
+}
+
+// getStrict is get for a decision that must not fall back to the defaults
+// (the IP allowlist: the defaults have none, so they would let everyone in).
+// A database error is returned, and not cached; a realm without a settings
+// row has the defaults.
+func (c *settingsCache) getStrict(ctx context.Context, realmID string) (*domain.InstanceSettings, error) {
+	if c == nil || c.repo == nil {
+		return DefaultInstanceSettings(realmID), nil
+	}
+	now := c.now()
+	c.mu.Lock()
+	e, ok := c.m[realmID]
+	c.mu.Unlock()
+	if ok && !e.fallback && now.Sub(e.fetchedAt) < settingsCacheTTL {
+		return e.s, nil
+	}
+	return c.fetch(ctx, realmID, now)
+}
+
+// fetch reads the settings of a realm and caches them. A missing row is the
+// defaults (cached too); any other error is returned.
+func (c *settingsCache) fetch(ctx context.Context, realmID string, now time.Time) (*domain.InstanceSettings, error) {
+	s, err := c.repo.GetByRealmID(ctx, realmID)
+	if errors.Is(err, repository.ErrNotFound) {
+		s, err = DefaultInstanceSettings(realmID), nil
+	}
+	if err != nil {
+		return nil, err
 	}
 	c.mu.Lock()
 	c.m[realmID] = cachedSettings{s: s, fetchedAt: now}
 	c.mu.Unlock()
-	return s
+	return s, nil
 }

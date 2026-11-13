@@ -129,6 +129,7 @@ func TestAdminService_Integration(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "en", before.DefaultLocale)
 		require.Equal(t, service.DefaultAuditLogRetentionDays, before.AuditLogRetentionDays, "one year until the realm changes it")
+		require.Zero(t, before.PasswordExpiryDays, "not enforced: never expires (audit B-05)")
 		require.NotEmpty(t, svc.Languages())
 
 		for name, patch := range map[string]service.SettingsPatch{
@@ -142,6 +143,8 @@ func TestAdminService_Integration(t *testing.T) {
 			"idle<step-up":         {RememberMeEnabled: ptr(false), SessionIdleMinutes: ptr(2), MFAStepUpMaxAgeMinutes: nil},
 			"audit retention":      {AuditLogRetentionDays: ptr(7)},
 			"audit retention < 0":  {AuditLogRetentionDays: ptr(-1)},
+			// Not enforced yet (audit B-05): only 0 (never).
+			"password expiry": {PasswordExpiryDays: ptr(30)},
 		} {
 			_, err := svc.UpdateSettings(ctx, root, demo, patch)
 			require.Error(t, err, name)
@@ -153,7 +156,7 @@ func TestAdminService_Integration(t *testing.T) {
 		wantAdminError(t, err, service.AdminRefused, "system_realm")
 
 		after, err := svc.UpdateSettings(ctx, root, demo, service.SettingsPatch{
-			MinPasswordLength: ptr(14), PasswordExpiryDays: ptr(30), PasswordResetTTLMinutes: ptr(20), InviteTTLHours: ptr(48),
+			MinPasswordLength: ptr(14), PasswordExpiryDays: ptr(0), PasswordResetTTLMinutes: ptr(20), InviteTTLHours: ptr(48),
 			SessionIdleMinutes: ptr(45), SessionMaxHours: ptr(12), RememberMeEnabled: ptr(true), RememberMeIdleDays: ptr(3),
 			RememberMeMaxDays: ptr(20), LockoutThreshold: ptr(4), LockoutDurationMinutes: ptr(15),
 			IPAllowlist: ptr([]string{"10.0.0.0/8", " ", "192.0.2.7"}), MFARequiredGlobally: ptr(true), MFAStepUpMaxAgeMinutes: ptr(15),
@@ -810,6 +813,22 @@ func TestAdminService_Integration(t *testing.T) {
 		lifted, _, err := svc.RecoverTimeouts(ctx, "cli:test@host")
 		require.NoError(t, err)
 		require.Empty(t, lifted)
+
+		// A master IP allowlist that leaves the administrators out (B-14):
+		// `recover ip-allowlist` empties it.
+		_, err = svc.UpdateSettings(ctx, root, master, service.SettingsPatch{IPAllowlist: ptr([]string{"203.0.113.0/24"})})
+		require.NoError(t, err)
+		removed, alerted, err := svc.RecoverIPAllowlist(ctx, "cli:test@host")
+		require.NoError(t, err)
+		require.Equal(t, []string{"203.0.113.0/24"}, removed)
+		require.Positive(t, alerted)
+		st, err := svc.GetSettings(ctx, master)
+		require.NoError(t, err)
+		require.Empty(t, st.IPAllowlist)
+		removed, alerted, err = svc.RecoverIPAllowlist(ctx, "cli:test@host")
+		require.NoError(t, err)
+		require.Empty(t, removed, "nothing left to empty")
+		require.Zero(t, alerted, "and nobody alerted")
 
 		_, err = svc.Bootstrap(ctx, service.BootstrapInput{AdminEmail: "bad", AdminConsoleURL: adminConsoleURL, Actor: "cli:test@host"})
 		require.Error(t, err)

@@ -102,7 +102,7 @@ func (s *Server) handleAccountSignOut(w http.ResponseWriter, r *http.Request) {
 		s.accountFailure(w, r, err)
 		return
 	}
-	clearSessionCookie(w, a.realm.Name)
+	s.clearSessionCookie(w, a.realm.Name)
 	forgetRealm(w, r, a.realm.Name)
 	s.accountRedirect(w, r, accountBase(a.realm.Name))
 }

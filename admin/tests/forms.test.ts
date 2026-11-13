@@ -69,7 +69,6 @@ describe("settings form", () => {
   } satisfies Settings;
   const form = {
     min_password_length: "12",
-    password_expiry_days: "0",
     password_reset_ttl_minutes: "30",
     invite_ttl_hours: "4",
     session_idle_minutes: "30",

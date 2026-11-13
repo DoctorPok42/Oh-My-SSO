@@ -144,6 +144,8 @@ func serve() {
 		httpserver.WithPasswordReset(c.PasswordReset),
 		httpserver.WithForgotPassword(c.EmailEnabled()),
 		httpserver.WithKnownAccounts(c.KnownAccounts),
+		httpserver.WithSignInNetworks(c.SignInNetworks), // the realms' IP allowlists
+		httpserver.WithPublicURL(c.PublicURL),           // https: __Host- cookies
 		httpserver.WithI18n(app.Languages()),
 		httpserver.WithReadiness(c.ReadinessChecks()...),
 	}

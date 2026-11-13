@@ -60,6 +60,10 @@ type AuthenticateLocalParams struct {
 	IPAddress  string
 	UserAgent  string
 	ClientRef  string // optional: ClientApp.ID the login is for (timeout check)
+	// DeviceFingerprint: the browser's sso_device cookie, hashed
+	// (DeviceFingerprint); "" without one. A lock of the account does not
+	// hold a device the user already signed in from (LockoutService.Check).
+	DeviceFingerprint string
 }
 
 func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocalParams) (*domain.User, error) {
@@ -67,7 +71,8 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return nil, fmt.Errorf("authenticate local: lookup user: %w", err)
 	}
-	subj := LockoutSubject{RealmID: p.RealmID, User: user, Identifier: p.Identifier, IPAddress: p.IPAddress, UserAgent: p.UserAgent}
+	subj := LockoutSubject{RealmID: p.RealmID, User: user, Identifier: p.Identifier, IPAddress: p.IPAddress, UserAgent: p.UserAgent,
+		DeviceFingerprint: p.DeviceFingerprint}
 
 	if s.lockout != nil {
 		until, err := s.lockout.Check(ctx, subj)
@@ -108,9 +113,10 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 	}
 
 	// The password is right: whatever happens next, earlier failures were
-	// not an attack that succeeded, forget them.
+	// not an attack that succeeded, forget them (a lock in force stays: the
+	// sign-in came from a known device, see LockoutService.Check).
 	if s.lockout != nil {
-		if err := s.lockout.RecordSuccess(ctx, user); err != nil {
+		if err := s.lockout.RecordSuccess(ctx, subj); err != nil {
 			s.logger.WarnContext(ctx, "lockout: cannot clear failed sign-ins", "user_id", user.ID, "error", err)
 		}
 	}

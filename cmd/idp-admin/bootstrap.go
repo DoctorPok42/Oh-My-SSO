@@ -145,6 +145,8 @@ const recoverUsage = `usage:
   idp-admin recover admin --email <address>     create a NEW administrator account
   idp-admin recover client-secret               new secret for the admin console client
   idp-admin recover timeouts                    lift every timeout of the master realm
+  idp-admin recover ip-allowlist                empty the IP allowlist of the master realm
+                                                (sign-in from any address again)
 
 Break-glass only: every administrator receives an e-mail, the audit log
 records who ran it (OS user and host). It needs an interactive terminal.
@@ -177,7 +179,7 @@ func recoverCmd(args []string, in io.Reader, out io.Writer, interactive bool) in
 			fmt.Fprintf(out, "error: --email is required\n\n%s", recoverUsage)
 			return 2
 		}
-	case "client-secret", "timeouts":
+	case "client-secret", "timeouts", "ip-allowlist":
 	default:
 		fmt.Fprintf(out, "unknown recover command %q\n\n%s", what, recoverUsage)
 		return 2
@@ -239,6 +241,22 @@ func recoverCmd(args []string, in io.Reader, out io.Writer, interactive bool) in
 		}
 		fmt.Fprintf(out, "\n%d timeout(s) of the master realm lifted (%d administrator(s) alerted by e-mail).\n", len(lifted), alerted)
 		fmt.Fprintln(out, "Sessions revoked when they started stay revoked: sign in again.")
+	case "ip-allowlist":
+		removed, alerted, err := admin.RecoverIPAllowlist(ctx, cliActor())
+		if err != nil {
+			fmt.Fprintf(out, "error: %v\n", err)
+			return 1
+		}
+		if len(removed) == 0 {
+			fmt.Fprintln(out, "\nThe master realm has no IP allowlist: nothing to empty.")
+			return 0
+		}
+		fmt.Fprintf(out, "\nIP allowlist of the master realm emptied (%d administrator(s) alerted by e-mail). It was:\n", alerted)
+		for _, entry := range removed {
+			fmt.Fprintf(out, "  %s\n", entry)
+		}
+		fmt.Fprintln(out, "Sign-in to the console works from any address within a minute. Set a list that holds your")
+		fmt.Fprintln(out, "own address again (Settings > Security), or leave it empty.")
 	}
 	return 0
 }

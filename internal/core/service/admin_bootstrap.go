@@ -322,6 +322,44 @@ func (s *AdminService) RecoverClientSecret(ctx context.Context, actor string) (s
 	return secret, len(current), nil
 }
 
+// RecoverIPAllowlist empties the IP allowlist of the master realm
+// (`idp-admin recover ip-allowlist`): the way back when the list saved in the
+// console leaves out the administrators' own addresses, so that nobody can
+// sign in to the console any more (SignInNetworkService). Every
+// administrator is alerted. It returns the list removed (empty: there was
+// none, nothing changed, nobody alerted).
+func (s *AdminService) RecoverIPAllowlist(ctx context.Context, actor string) ([]string, int, error) {
+	realm, admins, err := s.bootstrappedMaster(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	st, err := s.d.Settings.GetByRealmID(ctx, realm.ID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, 0, nil // no settings row: no list
+	}
+	if err != nil {
+		return nil, 0, fmt.Errorf("recover: %w", err)
+	}
+	removed := st.IPAllowlist
+	if len(removed) == 0 {
+		return nil, 0, nil
+	}
+	// Also when the settings are managed by a configuration file: this is the
+	// way back, the file is fixed afterwards.
+	by := actor
+	if _, err := s.d.Settings.Update(ctx, st.ID, repository.UpdateInstanceSettingsParams{IPAllowlist: []string{}, UpdatedBy: &by}); err != nil {
+		return nil, 0, fmt.Errorf("recover: %w", err)
+	}
+	s.writeCLIAudit(ctx, realm.ID, audit.RecoveryIPAllowlistCleared, "InstanceSettings", st.ID, actor,
+		map[string]interface{}{"ip_allowlist": removed})
+	current, err := s.d.Admin.ActiveGroupMemberIDs(ctx, admins.ID)
+	if err != nil {
+		return removed, 0, nil // the list is emptied: do not hide it because of the alert
+	}
+	s.alertAdmins(ctx, realm.ID, current, "the IP allowlist of the master realm emptied", actor, "")
+	return removed, len(current), nil
+}
+
 
 func checkBootstrapAccount(email, username string) (string, string, error) {
 	addr, err := mail.ParseAddress(strings.TrimSpace(email))

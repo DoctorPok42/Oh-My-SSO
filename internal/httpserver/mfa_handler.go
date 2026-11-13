@@ -147,7 +147,7 @@ func (s *Server) handleMFAVerify(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, service.ErrMFAChallengeInvalid) {
-			clearMFAChallengeCookie(w, realm.Name)
+			s.clearMFAChallengeCookie(w, realm.Name)
 		}
 		s.writeMFAError(w, err)
 		return
@@ -159,9 +159,9 @@ func (s *Server) handleMFAVerify(w http.ResponseWriter, r *http.Request) {
 // writeVerifiedLogin ends the second step of a login (code or passkey).
 func (s *Server) writeVerifiedLogin(w http.ResponseWriter, r *http.Request, res *service.VerifiedLogin) {
 	realmName := realmFromContext(r).Name
-	clearMFAChallengeCookie(w, realmName)
+	s.clearMFAChallengeCookie(w, realmName)
 	s.endPreviousSession(r, res.Session)
-	setSessionCookie(w, realmName, res.RawToken, res.Session)
+	s.setSessionCookie(w, realmName, res.RawToken, res.Session)
 	rememberRealm(w, r, realmName) // the account console's organization menu
 	s.rememberLocale(w, r, res.User)
 	out := mfaVerifyResponse{
