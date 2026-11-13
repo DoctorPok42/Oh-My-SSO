@@ -25,7 +25,7 @@ func (s *Server) requireSession(next http.Handler) http.Handler {
 		sess, err := s.sessions.Validate(r.Context(), realm.ID, rawToken)
 		if err != nil {
 			if errors.Is(err, service.ErrSessionInvalid) {
-				clearSessionCookie(w, realm.Name)
+				s.clearSessionCookie(w, realm.Name)
 				writeError(w, http.StatusUnauthorized, "unauthenticated")
 				return
 			}

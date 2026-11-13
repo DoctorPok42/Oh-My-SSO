@@ -35,6 +35,13 @@ func TestRecover_Guardrails(t *testing.T) {
 	out.Reset()
 	require.Equal(t, 5, recoverCmd([]string{"timeouts"}, strings.NewReader("WRONG1\n"), &out, true))
 	require.Contains(t, out.String(), "BREAK-GLASS PROCEDURE (timeouts)")
+
+	// recover ip-allowlist too.
+	out.Reset()
+	require.Equal(t, 4, recoverCmd([]string{"ip-allowlist"}, strings.NewReader(""), &out, false))
+	out.Reset()
+	require.Equal(t, 5, recoverCmd([]string{"ip-allowlist"}, strings.NewReader("WRONG1\n"), &out, true))
+	require.Contains(t, out.String(), "BREAK-GLASS PROCEDURE (ip-allowlist)")
 }
 
 func TestAllowedNets(t *testing.T) {

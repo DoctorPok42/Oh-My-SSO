@@ -28,7 +28,8 @@ func (s *Server) mountWebAuthn(r chi.Router) {
 	})
 	// user verification replaces the password and the second factor.
 	r.Route("/auth/passkey", func(r chi.Router) {
-		r.Use(requireJSON)
+		// A sign-in without password: the realm's IP allowlist applies.
+		r.Use(requireJSON, s.requireSignInNetwork)
 		r.Post("/options", s.handlePasskeySignInOptions)
 		r.Post("/verify", s.handlePasskeySignInVerify)
 	})
@@ -81,7 +82,7 @@ func (s *Server) handlePasskeyLoginVerify(w http.ResponseWriter, r *http.Request
 	})
 	if err != nil {
 		if err == service.ErrMFAChallengeInvalid {
-			clearMFAChallengeCookie(w, realm.Name)
+			s.clearMFAChallengeCookie(w, realm.Name)
 		}
 		s.writeMFAError(w, err)
 		return
@@ -229,7 +230,7 @@ func (s *Server) handlePasskeySignInOptions(w http.ResponseWriter, r *http.Reque
 		s.writeMFAError(w, err)
 		return
 	}
-	setPasskeyCeremonyCookie(w, realm.Name, c.Token, c.ExpiresAt)
+	s.setPasskeyCeremonyCookie(w, realm.Name, c.Token, c.ExpiresAt)
 	writeRawJSON(w, c.Options)
 }
 
@@ -257,8 +258,8 @@ func (s *Server) handlePasskeySignInVerify(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	token := passkeyCeremonyTokenFromRequest(r)
-	clearPasskeyCeremonyCookie(w, realm.Name) // single use, whatever happens
-	device := service.DeviceFingerprint(ensureDeviceCookie(w, r, realm.Name))
+	s.clearPasskeyCeremonyCookie(w, realm.Name) // single use, whatever happens
+	device := service.DeviceFingerprint(s.ensureDeviceCookie(w, r, realm.Name))
 	res, err := s.mfa.FinishPasswordlessLogin(r.Context(), service.FinishPasswordlessInput{
 		RealmID:           realm.ID,
 		Token:             token,

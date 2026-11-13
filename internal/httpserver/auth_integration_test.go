@@ -59,7 +59,8 @@ func (c *fakeClock) Reset() {
 	c.offset = 0
 }
 
-func setupTestEnv(t *testing.T) *testEnv {
+// setupTestEnv: opts are added to the server's (WithPublicURL...).
+func setupTestEnv(t *testing.T, opts ...httpserver.Option) *testEnv {
 	t.Helper()
 	if testing.Short() {
 		t.Skip("integration test skipped in -short mode")
@@ -83,6 +84,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	lockout := service.NewLockoutService(service.LockoutDeps{
 		Users:    users,
 		Unknown:  valkeycache.NewLockoutStore(valkeyClient),
+		History:  entstore.NewSessionRepository(client), // known devices go past a lock (B-14)
 		Settings: entstore.NewInstanceSettingsRepository(client),
 	})
 	authService := service.NewAuthService(users, entstore.NewLoginAttemptRepository(client), service.WithLockout(lockout))
@@ -108,6 +110,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 		realms,
 		entstore.NewClientRepository(client),
 		valkeycache.NewRateLimiter(valkeyClient),
+		opts...,
 	)
 	ts := httptest.NewServer(srv.Router())
 	t.Cleanup(ts.Close)
@@ -270,6 +273,56 @@ func TestAuthLogin_Integration(t *testing.T) {
 		u, err := env.users.GetByRealmAndUsername(context.Background(), realm.ID, "erin")
 		require.NoError(t, err)
 		require.True(t, u.Lockout.LockedAt(time.Now()), "the lock is stored on the user row")
+	})
+
+	// Audit B-14: whoever knows the identifier can lock the account, but not
+	// on the devices its owner signed in from.
+	t.Run("compte verrouillé par un tiers : un appareil connu passe", func(t *testing.T) {
+		realm := env.createRealm(t, "known-device-realm")
+		env.createUser(t, realm.ID, "fred", "the-real-password", domain.UserActive)
+		login := func(device *http.Cookie, password string) *http.Response {
+			t.Helper()
+			body, err := json.Marshal(map[string]string{"identifier": "fred", "password": password})
+			require.NoError(t, err)
+			req, err := http.NewRequest(http.MethodPost, env.ts.URL+"/r/"+realm.Name+"/auth/login", bytes.NewReader(body))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+			if device != nil {
+				req.AddCookie(device)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			return resp
+		}
+
+		// Fred signs in once on his laptop: it gets its device cookie.
+		resp := login(nil, "the-real-password")
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		resp.Body.Close()
+		var laptop *http.Cookie
+		for _, c := range resp.Cookies() {
+			if c.Name == httpserver.DeviceCookieName {
+				laptop = c
+			}
+		}
+		require.NotNil(t, laptop, "a sign-in sets the device cookie")
+
+		// Someone else locks the account.
+		for i := 0; i < 5; i++ {
+			resp := login(nil, "wrong-password")
+			resp.Body.Close()
+		}
+		resp = login(nil, "the-real-password")
+		resp.Body.Close()
+		require.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
+
+		// Fred, on his laptop: signed in. Elsewhere: still locked.
+		resp = login(&http.Cookie{Name: laptop.Name, Value: laptop.Value}, "the-real-password")
+		resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		resp = login(&http.Cookie{Name: laptop.Name, Value: "UNKNOWNAAAAAAAAAAAAAAAAAAA"}, "the-real-password")
+		resp.Body.Close()
+		require.Equal(t, http.StatusTooManyRequests, resp.StatusCode, "another device cookie: locked")
 	})
 
 	t.Run("compte inexistant : même réponse qu'un vrai compte", func(t *testing.T) {

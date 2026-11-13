@@ -458,6 +458,7 @@ var (
 		i18n.M("email.recovery.kind.new_admin", "a new administrator account"),
 		i18n.M("email.recovery.kind.new_secret", "a new secret for the admin console"),
 		i18n.M("email.recovery.kind.timeouts_lifted", "every timeout of the master realm lifted"),
+		i18n.M("email.recovery.kind.ip_allowlist_cleared", "the IP allowlist of the master realm emptied"),
 	}
 )
 

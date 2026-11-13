@@ -255,6 +255,12 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   Usernames and e-mail addresses are stored in lower case: signing in does not depend on the case typed. The migration
   that converts them (`normalize_user_identifiers`) stops, changing nothing, when two accounts of a realm differ only
   by case, and names them: rename or delete one, then deploy again.
+  Over https, the IdP's security cookies (session, sign-in steps, device, OIDC/SAML binding) are named
+  `__Host-<name>-<realm>`, with `Path=/` and no `Domain`: a neighbouring subdomain can no longer plant a session of
+  its choice. Upgrading signs nobody out: the former cookies (`sso_session`, `sso_device`...) are still read by this
+  version and replaced at the browser's next visit; the next version stops reading them. Password expiry is not
+  available yet: the console no longer shows it, the Admin API accepts only `password_expiry_days: 0`, and the
+  upgrade sets the former default (90 days, never applied) back to 0.
 - **Settings**: after a change of `.env`, `docker compose up -d` recreates the containers that use it.
 - **Backups**: PostgreSQL (users, clients, audit log), e.g.
   `docker compose exec -T postgres pg_dump -U sso sso | gzip > sso-$(date +%F).sql.gz`, **and** the key manager:
@@ -275,12 +281,26 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   purge deletes: one `audit_log.purged` entry per realm and day that deleted something (count, date limit, retention).
   A purge that did not finish (server stopping, database error) still records what it deleted, with the status
   failure and `interrupted`; the next hourly pass finishes it, with an entry of its own.
+- **Sign-in networks** (Settings > Security > IP allowlist, per realm): when the list is set, signing in (password
+  or passkey) is only possible from its addresses; elsewhere the sign-in page says so (403 `network_not_allowed`)
+  before any password is checked, so those attempts do not count towards the lockout. Sessions already open and the
+  applications' servers (token, userinfo, JWKS, metadata) are not filtered. Set it on the **master** realm to the
+  administrators' office or VPN addresses: nobody elsewhere can then lock an administrator out. The address checked is
+  the one `TRUSTED_PROXIES` gives (the audit log shows it). Changes apply within a minute. Locked out of the console
+  by a list that leaves you out: `docker compose exec idp-admin /usr/local/bin/idp-admin recover ip-allowlist`
+  empties the master realm's list (break-glass, every administrator alerted).
+- **Account lockout** (Settings > Security > Brute-force protection): after that many wrong passwords, an account is
+  locked for every device, except the devices its owner signed in from in the last 90 days (the `sso_device`
+  cookie of a past session): someone who only knows the identifier can no longer keep its owner out. A known device
+  that typed the wrong passwords itself has its own counter and stays locked too. The "account locked" e-mail, the
+  console status and **Unlock** are unchanged; unlocking lifts the lock everywhere.
 - **Key rotation**: `docker compose run --rm idp keys rotate --realm <realm>`, wait for tokens to expire, then
   `keys retire`. SAML: `keys rotate --purpose saml_signing`, share the new metadata with service providers, then
   `keys activate --purpose saml_signing`.
 - **Break-glass** (lost admin access or console secret):
   `docker compose exec idp-admin /usr/local/bin/idp-admin recover admin --email ...` or `recover client-secret` (then
-  the new secret in `ADMIN_OIDC_CLIENT_SECRET` and `docker compose up -d admin`). Every admin is alerted by e-mail.
+  the new secret in `ADMIN_OIDC_CLIENT_SECRET` and `docker compose up -d admin`), `recover timeouts`, `recover
+  ip-allowlist` (the master realm's IP allowlist left everyone out). Every admin is alerted by e-mail.
 - **Logs**: `docker compose logs -f idp idp-admin`. `ADMIN_API_LOG_REQUESTS=true` logs each Admin API call with its
   duration.
 - **Sizing**: Argon2id uses 64 MiB of RAM per password hash; `PASSWORD_HASH_CONCURRENCY` (default 4) caps parallel
@@ -296,6 +316,7 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
 - [ ] PostgreSQL backed up, restore tested; PostgreSQL, Valkey and the Admin API unreachable from the internet
 - [ ] `TRUSTED_PROXIES` set, the audit log shows the clients' addresses; the proxy overwrites `X-Forwarded-For`
 - [ ] `ADMIN_API_ALLOWED_CIDRS` = the console only; console restricted (VPN / allow-list)
+- [ ] Master realm: IP allowlist set to the administrators' networks (Settings > Security), your own address in it
 - [ ] SMTP with TLS, `mail test` received, alerts enabled on each realm
 - [ ] `WEBAUTHN_RP_ID` final
 - [ ] `IMAGE_*` pinned to a commit sha, the same one for `idp`, `idp-admin` and `migrate`

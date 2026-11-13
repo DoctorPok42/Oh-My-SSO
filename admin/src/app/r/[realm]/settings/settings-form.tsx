@@ -226,14 +226,7 @@ export function SettingsForm({
                     "8 at least. Length beats complexity rules (NIST SP 800-63B).",
                   ),
                 )}
-                {num(
-                  "password_expiry_days",
-                  t("settings.password.expiry", "Expiry (days, 0 = never)"),
-                  t(
-                    "settings.password.expiry_hint",
-                    "NIST advises against periodic changes: keep 0 unless a rule requires it.",
-                  ),
-                )}
+                {/* Not enforced yet: no expiry field. */}
                 {num(
                   "password_reset_ttl_minutes",
                   t("settings.password.reset_ttl", "Reset link validity (minutes)"),
@@ -265,10 +258,17 @@ export function SettingsForm({
                     label={t("settings.lockout.allowlist", "IP allowlist")}
                     htmlFor="s-ips"
                     optional
-                    hint={t(
-                      "settings.lockout.allowlist_hint",
-                      "One IP or CIDR per line. Stored for a later version: not enforced yet.",
-                    )}
+                    hint={
+                      realm === "master"
+                        ? t(
+                            "settings.lockout.allowlist_hint_master",
+                            "One IP or CIDR per line. When set, administrators can only sign in from these addresses, and nobody elsewhere can lock their accounts. Include your own address: if nobody can sign in any more, `idp-admin recover ip-allowlist` empties the list.",
+                          )
+                        : t(
+                            "settings.lockout.allowlist_hint",
+                            "One IP or CIDR per line. When set, users can only sign in from these addresses (password or passkey), and attempts from elsewhere do not count towards the lockout. Sessions already open are not affected.",
+                          )
+                    }
                     error={error?.field === "ip_allowlist" ? error.message : undefined}
                   >
                     <Textarea

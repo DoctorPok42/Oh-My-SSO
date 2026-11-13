@@ -46,6 +46,13 @@ type Server struct {
 
 	accounts *service.KnownAccountService
 
+	// networks: the IP allowlist of each realm, on sign-in (signin_network.go).
+	networks SignInNetworks
+
+	// secureCookies: the public URL is https, the security cookies are
+	// __Host- ones (session_cookie.go, WithPublicURL).
+	secureCookies bool
+
 	// i18n: the languages of the pages (i18n.go).
 	i18n *i18n.Bundle
 

@@ -20,13 +20,15 @@ import (
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/i18n"
+	"sso.internal/sso/internal/ssocookie"
 )
 
 
 const (
 	// browserCookieName binds a login to the browser that started it (see
-	// bindBrowser).
-	browserCookieName = "sso_oidc_browser"
+	// bindBrowser). Over https it is a __Host- cookie (internal/ssocookie),
+	// read under this name.
+	browserCookieName = ssocookie.OIDCBrowser
 	browserCookieTTL  = 24 * time.Hour
 )
 
@@ -52,7 +54,7 @@ func (a *Adapter) bindBrowser(next http.Handler) http.Handler {
 			v = rand.Text()
 		}
 		// Set before the library writes its redirect: headers are still open.
-		http.SetCookie(w, &http.Cookie{
+		ssocookie.Set(w, &http.Cookie{
 			Name:     browserCookieName,
 			Value:    v,
 			Path:     "/r/" + realm.Name + "/oidc",
@@ -62,7 +64,7 @@ func (a *Adapter) bindBrowser(next http.Handler) http.Handler {
 			// Lax: the cookie must come along on the top-level navigation
 			// from the application to /authorize (cross-site).
 			SameSite: http.SameSiteLaxMode,
-		})
+		}, realm.Name, a.secureCookies)
 		ctx := context.WithValue(r.Context(), browserKey{}, sha256Hex(v))
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

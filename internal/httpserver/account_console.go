@@ -165,7 +165,7 @@ func (s *Server) accountSession(next http.Handler) http.Handler {
 			case err == nil:
 				sess = se
 			case errors.Is(err, service.ErrSessionInvalid):
-				clearSessionCookie(w, realm.Name)
+				s.clearSessionCookie(w, realm.Name)
 			default:
 				s.accountFailure(w, r, err)
 				return

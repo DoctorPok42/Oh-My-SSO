@@ -374,6 +374,7 @@ export type MfaPolicies = {
 export type Settings = {
   managed_by: ManagedBy;
   min_password_length: number;
+  /** Not enforced yet: only 0 (never). */
   password_expiry_days: number;
   password_reset_ttl_minutes: number;
   invite_ttl_hours: number;

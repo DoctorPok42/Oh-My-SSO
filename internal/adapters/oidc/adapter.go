@@ -20,6 +20,7 @@ import (
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/i18n"
 	"sso.internal/sso/internal/oidcstore"
+	"sso.internal/sso/internal/ssocookie"
 )
 
 // Config of the adapter. Everything comes from the server's environment.
@@ -33,6 +34,8 @@ type Config struct {
 	// issuers: development on localhost only.
 	AllowInsecureHTTP bool
 	// SessionCookieName is the SSO session cookie (httpserver.SessionCookieName).
+	// Like DeviceCookieName, it is the base name: over https the cookie is
+	// a __Host- one, which the server puts under this name (internal/ssocookie).
 	SessionCookieName string
 	// DeviceCookieName identifies the browser (httpserver.DeviceCookieName):
 	// the accounts of "Pick an account" are remembered per device.
@@ -65,6 +68,8 @@ type Adapter struct {
 	provider *op.Provider
 	handler  http.Handler
 	pages    *loginui.Pages
+	// secureCookies: PublicURL is https, the binding cookie is a __Host- one.
+	secureCookies bool
 }
 
 // Scopes and claims announced by discovery.
@@ -85,12 +90,13 @@ func New(cfg Config, idp core.IdentityCore, store oidcstore.Store) (*Adapter, er
 		return nil, err
 	}
 	if cfg.SessionCookieName == "" {
-		cfg.SessionCookieName = "sso_session"
+		cfg.SessionCookieName = ssocookie.Session
 	}
 	if cfg.DeviceCookieName == "" {
-		cfg.DeviceCookieName = "sso_device"
+		cfg.DeviceCookieName = ssocookie.Device
 	}
-	a := &Adapter{cfg: cfg, base: base, core: idp, store: store, logger: cfg.Logger, now: cfg.Now}
+	a := &Adapter{cfg: cfg, base: base, core: idp, store: store, logger: cfg.Logger, now: cfg.Now,
+		secureCookies: ssocookie.Secure(base)}
 	if a.logger == nil {
 		a.logger = slog.Default()
 	}

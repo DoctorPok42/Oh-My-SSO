@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/ssocookie"
 )
 
 // Short-lived state of the SAML flows, in oidcstore.Store (Valkey in
@@ -28,8 +29,9 @@ const (
 	logoutTTL = 10 * time.Minute
 
 	// browserCookieName binds a sign-in to the browser that started it, as
-	// the OIDC adapter does (see bindBrowser).
-	browserCookieName = "sso_saml_browser"
+	// the OIDC adapter does (see bindBrowser). Over https it is a __Host-
+	// cookie (internal/ssocookie), read under this name.
+	browserCookieName = ssocookie.SAMLBrowser
 	browserCookieTTL  = 24 * time.Hour
 )
 
@@ -131,7 +133,7 @@ func (a *Adapter) bindBrowser(w http.ResponseWriter, r *http.Request, realm Real
 	if v == "" {
 		v = rand.Text()
 	}
-	http.SetCookie(w, &http.Cookie{
+	ssocookie.Set(w, &http.Cookie{
 		Name:     browserCookieName,
 		Value:    v,
 		Path:     "/r/" + realm.Name + "/saml",
@@ -141,7 +143,7 @@ func (a *Adapter) bindBrowser(w http.ResponseWriter, r *http.Request, realm Real
 		// Lax: the cookie must come along on the top-level navigation from
 		// the service provider (cross-site).
 		SameSite: http.SameSiteLaxMode,
-	})
+	}, realm.Name, a.secureCookies)
 	return sha256Hex(v)
 }
 

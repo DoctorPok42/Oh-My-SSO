@@ -30,7 +30,8 @@ func (InstanceSettings) Fields() []ent.Field {
 		field.String("realm_id").NotEmpty().Immutable(),
 		field.String("managed_by").GoType(InstanceSettingsManagedBy("")).Default(string(InstanceSettingsManagedByUI)),
 		field.Int("min_password_length").Default(12),
-		field.Int("password_expiry_days").Default(90),
+		// Not enforced yet: only 0 (never) is accepted.
+		field.Int("password_expiry_days").Default(0),
 		field.Int("session_idle_minutes").Default(10),
 		field.Int("session_max_hours").Default(8),
 		// "Keep me signed in" on the sign-in page. A remembered session

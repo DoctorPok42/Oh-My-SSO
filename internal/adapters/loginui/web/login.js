@@ -51,6 +51,7 @@
     access_suspended: t("login.js.error.access_suspended", "Your access is temporarily suspended. Contact your administrator."),
     password_change_required: t("login.js.error.password_change_required", "Your administrator requires a new password. Use the link sent by e-mail, or \"Forgot password\"."),
     client_unavailable: t("login.js.error.client_unavailable", "This application is temporarily unavailable. Try again later."),
+    network_not_allowed: t("login.js.error.network_not_allowed", "Your organization does not allow signing in from this network. Connect from an authorized network (office, VPN), or contact your administrator."),
   };
 
   // What "Try another way" offers, in the server's order (best first).

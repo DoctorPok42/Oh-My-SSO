@@ -210,7 +210,6 @@ func (s *AdminService) settingsOf(ctx context.Context, realmID string) (*domain.
 	if errors.Is(err, repository.ErrNotFound) {
 		st = DefaultInstanceSettings(realmID)
 		st.ManagedBy = domain.InstanceSettingsManagedByUI
-		st.PasswordExpiryDays = 90
 		st.KeyRotationGraceHours = 24
 		st.MFAStepUpMaxAgeMinutes = 10
 		st.InviteTTLHours = defaultInviteTTLHours
@@ -286,7 +285,6 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		lo, hi int
 	}{
 		{"min_password_length", p.MinPasswordLength, 8, MaxPasswordLength},
-		{"password_expiry_days", p.PasswordExpiryDays, 0, 3650},
 		{"password_reset_ttl_minutes", p.PasswordResetTTLMinutes, 5, 24 * 60},
 		{"invite_ttl_hours", p.InviteTTLHours, 1, 30 * 24},
 		{"session_idle_minutes", p.SessionIdleMinutes, 1, 7 * 24 * 60},
@@ -303,6 +301,10 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		if err := rangeCheck(c.field, c.v, c.lo, c.hi); err != nil {
 			return nil, err
 		}
+	}
+	// Not enforced yet: only 0 (never) is accepted.
+	if v := p.PasswordExpiryDays; v != nil && *v != 0 {
+		return nil, adminInvalid("password_expiry_days", i18n.M("admin.error.password_expiry_unavailable", "password expiry is not available yet: only 0 (never) is accepted"))
 	}
 	if v := p.AuditLogRetentionDays; v != nil && !validAuditLogRetention(*v) {
 		return nil, adminInvalid("audit_log_retention_days", i18n.M("admin.error.audit_retention", "audit_log_retention_days must be 0 (keep forever) or between {lo} and {hi}", "lo", MinAuditLogRetentionDays, "hi", MaxAuditLogRetentionDays))

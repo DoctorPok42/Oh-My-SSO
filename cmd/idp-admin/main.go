@@ -27,6 +27,7 @@ const usage = `usage:
   idp-admin recover admin --email <address>
   idp-admin recover client-secret
   idp-admin recover timeouts
+  idp-admin recover ip-allowlist
   idp-admin healthcheck       exit 0 when the Admin API of this container is ready (HEALTHCHECK of the image)
 
 environment (besides DATABASE_URL, VALKEY_ADDR, KEYMANAGER_BACKEND... shared with idp):

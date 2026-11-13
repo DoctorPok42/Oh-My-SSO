@@ -54,6 +54,16 @@ type LockoutSubject struct {
 	Identifier string       // what was typed (used only when User is nil)
 	IPAddress  string
 	UserAgent  string
+	// DeviceFingerprint: the browser's sso_device cookie, hashed as on the
+	// sessions (DeviceFingerprint); "" without one. A device the user already
+	// signed in from is not held by a lock that others caused (see Check).
+	DeviceFingerprint string
+}
+
+// SignInHistory lists the sessions of a user, the devices they signed in
+// from (repository.SessionRepository implements it).
+type SignInHistory interface {
+	ListRecentByUser(ctx context.Context, userID string, since time.Time, limit int) ([]*domain.Session, error)
 }
 
 // FailureResult says what a wrong password did.
@@ -67,6 +77,7 @@ type FailureResult struct {
 type LockoutService struct {
 	users    repository.UserRepository
 	unknown  lockoutstore.Store
+	history  SignInHistory
 	settings *settingsCache
 	notifier Notifier
 	audit    repository.AuditLogRepository
@@ -76,8 +87,11 @@ type LockoutService struct {
 
 // LockoutDeps groups the dependencies of NewLockoutService.
 type LockoutDeps struct {
-	Users    repository.UserRepository
-	Unknown  lockoutstore.Store                    // state of identifiers without an account
+	Users repository.UserRepository
+	// Unknown: state of identifiers without an account, and of the known
+	// devices of an account.
+	Unknown  lockoutstore.Store
+	History  SignInHistory                         // optional: no known device without it
 	Settings repository.InstanceSettingsRepository // nil: defaults (5 tries, 15 min)
 	Notifier Notifier                              // optional: "account locked" e-mail
 	Audit    repository.AuditLogRepository         // optional: "user.locked" entry
@@ -89,6 +103,7 @@ func NewLockoutService(d LockoutDeps) *LockoutService {
 	s := &LockoutService{
 		users:    d.Users,
 		unknown:  d.Unknown,
+		history:  d.History,
 		notifier: d.Notifier,
 		audit:    d.Audit,
 		now:      d.Now,
@@ -122,6 +137,14 @@ func (s *LockoutService) Policy(ctx context.Context, realmID string) LockoutPoli
 
 // Check returns when the current lock of subj ends, or the zero time when
 // sign-in is allowed.
+//
+// A locked account is not locked for a device the user already signed in
+// from (a session from it in the last 90 days, the history of the new
+// device alerts), unless that device made the failures itself: its own
+// counter, kept apart, is locked then. Someone who only knows the
+// identifier of an account, an administrator's say, can lock it everywhere
+// else but not on its owner's devices (audit B-14). The lock, its e-mail and
+// the console stay as they were.
 func (s *LockoutService) Check(ctx context.Context, subj LockoutSubject) (time.Time, error) {
 	if s.Policy(ctx, subj.RealmID).Threshold <= 0 {
 		return time.Time{}, nil
@@ -130,21 +153,74 @@ func (s *LockoutService) Check(ctx context.Context, subj LockoutSubject) (time.T
 	if err != nil {
 		return time.Time{}, fmt.Errorf("lockout check: %w", err)
 	}
-	if st.LockedAt(s.now()) {
-		return st.LockedUntil, nil
+	now := s.now()
+	if !st.LockedAt(now) {
+		return time.Time{}, nil
 	}
-	return time.Time{}, nil
+	if s.knownDeviceGoesOn(ctx, subj, now) {
+		s.logger.InfoContext(ctx, "account locked: sign-in allowed from a device the user signed in from before",
+			"realm_id", subj.RealmID, "user_id", subj.User.ID, "locked_until", st.LockedUntil)
+		return time.Time{}, nil
+	}
+	return st.LockedUntil, nil
+}
+
+// knownDeviceGoesOn: subj comes from a device of the user's that did not
+// lock itself. Any error keeps the lock (logged).
+func (s *LockoutService) knownDeviceGoesOn(ctx context.Context, subj LockoutSubject, now time.Time) bool {
+	if subj.User == nil || subj.DeviceFingerprint == "" || s.history == nil {
+		return false
+	}
+	dev, err := s.device(subj).load(ctx, nil)
+	if err != nil {
+		s.logger.WarnContext(ctx, "lockout: cannot read the device's counter, the lock applies", "user_id", subj.User.ID, "error", err)
+		return false
+	}
+	if dev.LockedAt(now) {
+		return false
+	}
+	known, err := s.knownDevice(ctx, subj, now)
+	if err != nil {
+		s.logger.WarnContext(ctx, "lockout: cannot read the sign-in history, the lock applies", "user_id", subj.User.ID, "error", err)
+		return false
+	}
+	return known
+}
+
+// knownDevice: the user has a session from subj's device in the history that
+// the new device alerts use (LoginSecurityService): a device that would not
+// be "new" there is known here. A session exists only after a complete
+// sign-in (password and second factor), and the cookie is a random value
+// set by this server, HttpOnly: having it means having used that browser.
+func (s *LockoutService) knownDevice(ctx context.Context, subj LockoutSubject, now time.Time) (bool, error) {
+	if subj.User == nil || subj.DeviceFingerprint == "" || s.history == nil {
+		return false, nil
+	}
+	sessions, err := s.history.ListRecentByUser(ctx, subj.User.ID, now.Add(-loginHistoryWindow), loginHistoryLimit)
+	if err != nil {
+		return false, err
+	}
+	for _, sess := range sessions {
+		if sess.DeviceFingerprint == subj.DeviceFingerprint {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // RecordFailure counts a wrong password. When it starts a lock on a real
 // account, the AuditLog entry and the e-mail are taken care of here.
+//
+// Every failure counts towards the account, as always. A failure from a
+// known device also counts towards that device's own counter: past the
+// threshold, the device no longer goes past a lock of the account (Check).
 func (s *LockoutService) RecordFailure(ctx context.Context, subj LockoutSubject) (FailureResult, error) {
 	policy := s.Policy(ctx, subj.RealmID)
 	if policy.Threshold <= 0 {
 		return FailureResult{}, nil
 	}
 	var res FailureResult
-	err := s.update(ctx, subj, func(st domain.LockoutState, now time.Time) domain.LockoutState {
+	err := s.update(ctx, s.backend(subj), subj.User, func(st domain.LockoutState, now time.Time) domain.LockoutState {
 		next, r := applyFailure(st, now, policy)
 		res = r
 		return next
@@ -155,22 +231,80 @@ func (s *LockoutService) RecordFailure(ctx context.Context, subj LockoutSubject)
 	if res.JustLocked && subj.User != nil {
 		s.onLocked(ctx, subj, res)
 	}
+	s.recordDeviceFailure(ctx, subj, policy)
 	return res, nil
 }
 
-// RecordSuccess forgets the failures of a user after a correct password.
-func (s *LockoutService) RecordSuccess(ctx context.Context, user *domain.User) error {
-	if user == nil || user.Lockout.IsZero() {
+// recordDeviceFailure counts a failure on the device's own counter, when the
+// device is known (an unknown one never goes past a lock: no counter to
+// keep). Best effort: an error is logged, the device then simply keeps
+// going past a lock a little longer.
+func (s *LockoutService) recordDeviceFailure(ctx context.Context, subj LockoutSubject, policy LockoutPolicy) {
+	known, err := s.knownDevice(ctx, subj, s.now())
+	if err != nil {
+		s.logger.WarnContext(ctx, "lockout: cannot read the sign-in history", "user_id", subj.User.ID, "error", err)
+		return
+	}
+	if !known {
+		return
+	}
+	var res FailureResult
+	err = s.update(ctx, s.device(subj), nil, func(st domain.LockoutState, now time.Time) domain.LockoutState {
+		next, r := applyFailure(st, now, policy)
+		res = r
+		return next
+	})
+	if err != nil {
+		s.logger.WarnContext(ctx, "lockout: cannot count the failure of a known device", "user_id", subj.User.ID, "error", err)
+		return
+	}
+	if res.JustLocked {
+		s.logger.WarnContext(ctx, "known device locked after failed sign-ins: it no longer goes past a lock of the account",
+			"realm_id", subj.RealmID, "user_id", subj.User.ID, "until", res.LockedUntil, "failed_attempts", res.FailedAttempts)
+	}
+}
+
+// RecordSuccess forgets the failures of a user after a correct password: the
+// device's own, and the account's. The account's lock stays when there is
+// one: the sign-in then came from a known device (Check), and the others
+// stay locked out.
+func (s *LockoutService) RecordSuccess(ctx context.Context, subj LockoutSubject) error {
+	user := subj.User
+	if user == nil {
+		return nil
+	}
+	if subj.DeviceFingerprint != "" && s.history != nil {
+		// Only known devices have a counter: a read, and a write when it
+		// holds failures. The password was right on this device: its
+		// failures were its owner's, its own lock goes too.
+		forgetAll := func(domain.LockoutState, time.Time) domain.LockoutState { return domain.LockoutState{} }
+		if err := s.update(ctx, s.device(subj), nil, forgetAll); err != nil {
+			s.logger.WarnContext(ctx, "lockout: cannot clear the failures of the device", "user_id", user.ID, "error", err)
+		}
+	}
+	if user.Lockout.IsZero() {
 		return nil // nothing to clear: no write on the usual login
 	}
-	return s.Unlock(ctx, user)
+	if err := s.update(ctx, s.backend(subj), user, forgetFailures); err != nil {
+		return fmt.Errorf("lockout success: %w", err)
+	}
+	return nil
+}
+
+// forgetFailures: the state after a correct password. A lock in force stays
+// (see RecordSuccess); otherwise everything is forgotten.
+func forgetFailures(st domain.LockoutState, now time.Time) domain.LockoutState {
+	if st.LockedAt(now) {
+		return st
+	}
+	return domain.LockoutState{}
 }
 
 // Unlock clears the counters and any lock of a user (admin action, password
 // reset, successful login).
 func (s *LockoutService) Unlock(ctx context.Context, user *domain.User) error {
 	subj := LockoutSubject{RealmID: user.RealmID, User: user}
-	err := s.update(ctx, subj, func(domain.LockoutState, time.Time) domain.LockoutState {
+	err := s.update(ctx, s.backend(subj), user, func(domain.LockoutState, time.Time) domain.LockoutState {
 		return domain.LockoutState{}
 	})
 	if err != nil {
@@ -179,11 +313,10 @@ func (s *LockoutService) Unlock(ctx context.Context, user *domain.User) error {
 	return nil
 }
 
-// update applies change with compare-and-swap, retrying when a concurrent
-// request changed the state in between.
-func (s *LockoutService) update(ctx context.Context, subj LockoutSubject, change func(domain.LockoutState, time.Time) domain.LockoutState) error {
-	b := s.backend(subj)
-	user := subj.User
+// update applies change to the state of b with compare-and-swap, retrying
+// when a concurrent request changed it in between. user, when not nil, is
+// the account just read (its state saves a query on the first round).
+func (s *LockoutService) update(ctx context.Context, b lockoutBackend, user *domain.User, change func(domain.LockoutState, time.Time) domain.LockoutState) error {
 	for i := 0; i < maxCASAttempts; i++ {
 		st, err := b.load(ctx, user)
 		if err != nil {
@@ -298,6 +431,19 @@ func (s *LockoutService) backend(subj LockoutSubject) lockoutBackend {
 		return &userLockout{users: s.users, id: subj.User.ID}
 	}
 	return &unknownLockout{store: s.unknown, key: UnknownIdentifierKey(subj.RealmID, subj.Identifier)}
+}
+
+// device is the own counter of subj's device for subj's account, kept with
+// the identifiers without an account (Valkey, forgotten 48 h after the last
+// change). Call it only with a user and a device.
+func (s *LockoutService) device(subj LockoutSubject) lockoutBackend {
+	return &unknownLockout{store: s.unknown, key: DeviceLockoutKey(subj.RealmID, subj.User.ID, subj.DeviceFingerprint)}
+}
+
+// DeviceLockoutKey is the key of the counter of a device for an account:
+// apart from the identifiers' (realm:<64 hex>) by its "device:" part.
+func DeviceLockoutKey(realmID, userID, deviceFingerprint string) string {
+	return realmID + ":device:" + userID + ":" + deviceFingerprint
 }
 
 type userLockout struct {

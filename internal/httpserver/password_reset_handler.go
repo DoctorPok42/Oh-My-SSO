@@ -147,7 +147,7 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 		// The user's sessions are all revoked, this browser's included.
-		clearSessionCookie(w, realm.Name)
+		s.clearSessionCookie(w, realm.Name)
 		writeJSON(w, http.StatusOK, map[string]string{"status": "password_changed"})
 	case errors.Is(err, service.ErrResetTokenInvalid):
 		writeError(w, http.StatusBadRequest, "invalid_or_expired_token")

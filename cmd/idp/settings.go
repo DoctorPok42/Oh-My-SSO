@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"sso.internal/sso/internal/core/domain"
@@ -91,6 +92,11 @@ func printSettings(out io.Writer, s *domain.InstanceSettings) {
 	fmt.Fprintf(out, "min password length:         %d\n", s.MinPasswordLength)
 	fmt.Fprintf(out, "lockout threshold:           %d (0 = off)\n", s.LockoutThreshold)
 	fmt.Fprintf(out, "lockout duration:            %d min (doubles on repeat, max 24 h)\n", s.LockoutDurationMinutes)
+	allow := "(none: sign-in from any address)"
+	if len(s.IPAllowlist) > 0 {
+		allow = strings.Join(s.IPAllowlist, ", ")
+	}
+	fmt.Fprintf(out, "sign-in IP allowlist:        %s\n", allow)
 	fmt.Fprintf(out, "password reset link valid:   %d min\n", s.PasswordResetTTLMinutes)
 	fmt.Fprintf(out, "session:                     %d min idle, %d h max\n", s.SessionIdleMinutes, s.SessionMaxHours)
 	fmt.Fprintf(out, "keep me signed in:           %t (%d days idle, %d days max)\n",

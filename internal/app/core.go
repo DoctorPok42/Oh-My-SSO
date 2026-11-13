@@ -55,6 +55,8 @@ type Core struct {
 	RBAC          *service.RBACService
 	KeyRotation   *service.KeyRotationService
 	Lockout       *service.LockoutService
+	// SignInNetworks applies the realms' IP allowlists to sign-in.
+	SignInNetworks *service.SignInNetworkService
 	MFAPolicy     *service.MFAPolicyService
 	MFA           *service.MFAService
 	PasswordReset *service.PasswordResetService
@@ -118,12 +120,16 @@ func BuildCore() *Core {
 	}
 
 	c.Lockout = service.NewLockoutService(service.LockoutDeps{
-		Users:    c.Users,
-		Unknown:  valkeycache.NewLockoutStore(c.Valkey),
+		Users:   c.Users,
+		Unknown: valkeycache.NewLockoutStore(c.Valkey),
+		// The devices a user signed in from: a lock does not hold them.
+		History:  sessionRepo,
 		Settings: c.Settings,
 		Notifier: c.Notifier,
 		Audit:    c.Audit,
 	})
+
+	c.SignInNetworks = service.NewSignInNetworkService(c.Settings, nil)
 
 	mfaMethods := entstore.NewMfaMethodRepository(client)
 	geo := GeoIP()
