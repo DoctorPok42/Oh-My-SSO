@@ -35,4 +35,8 @@ type PurgeRepository interface {
 	// DeleteAuditLogs removes the entries of the realm's audit log written
 	// before `before` (its own retention, audit_log_retention_days).
 	DeleteAuditLogs(ctx context.Context, realmID string, before time.Time, limit int) (int, error)
+	// LastSuccessfulAuditEntry is when the realm's audit log last recorded
+	// action with the status success; zero when it never did. The audit log
+	// is purged once a day: its last audit_log.purged entry tells when.
+	LastSuccessfulAuditEntry(ctx context.Context, realmID, action string) (time.Time, error)
 }

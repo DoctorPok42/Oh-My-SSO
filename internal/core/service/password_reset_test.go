@@ -47,6 +47,7 @@ func newResetFixture(t *testing.T) *resetFixture {
 		Users: f.users, Unknown: lockoutstore.NewMemory(f.clock.Now), Now: f.clock.Now,
 	})
 	f.svc = service.NewPasswordResetService(service.PasswordResetDeps{
+		Tx:       repository.NoTransaction{},
 		Users:    f.users,
 		Tokens:   f.tokens,
 		Sessions: f.sessSvc,
@@ -222,7 +223,7 @@ func TestPasswordReset_Rules(t *testing.T) {
 		f := newResetFixture(t)
 		settings := &memSettings{s: &domain.InstanceSettings{PasswordResetTTLMinutes: 5, MinPasswordLength: 12}}
 		svc := service.NewPasswordResetService(service.PasswordResetDeps{
-			Users: f.users, Tokens: f.tokens, Sessions: f.sessSvc, Settings: settings,
+			Tx: repository.NoTransaction{}, Users: f.users, Tokens: f.tokens, Sessions: f.sessSvc, Settings: settings,
 			Notifier: f.notifier, Now: f.clock.Now,
 		})
 		require.NoError(t, svc.RequestReset(context.Background(), service.RequestResetInput{RealmID: resetRealm, Identifier: "carol"}))

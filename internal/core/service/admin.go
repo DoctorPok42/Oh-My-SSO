@@ -130,6 +130,9 @@ func asAdminError(err error) error {
 
 // AdminDeps groups what the admin service needs.
 type AdminDeps struct {
+	// Tx makes the creation and the change of an account one transaction
+	// each. Required: repository.NoTransaction{} for in-memory stores.
+	Tx          repository.Transactor
 	Realms      repository.RealmRepository
 	Users       repository.UserRepository
 	Clients     repository.ClientRepository
@@ -187,6 +190,10 @@ type AdminService struct {
 }
 
 func NewAdminService(d AdminDeps) *AdminService {
+	if d.Tx == nil {
+		// Never quietly without: an account half created or half changed is B-15.
+		panic("service: AdminDeps.Tx is required (repository.NoTransaction{} for in-memory stores)")
+	}
 	if d.Now == nil {
 		d.Now = time.Now
 	}

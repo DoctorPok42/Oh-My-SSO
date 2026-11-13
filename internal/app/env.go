@@ -10,13 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL driver for database/sql
 
 	"sso.internal/sso/ent"
 	"sso.internal/sso/internal/clientip"
+	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/geoip"
 	"sso.internal/sso/internal/keymanager"
@@ -25,6 +24,7 @@ import (
 	"sso.internal/sso/internal/keymanager/vault"
 	"sso.internal/sso/internal/notify"
 	"sso.internal/sso/internal/passkey"
+	"sso.internal/sso/internal/storage/entstore"
 )
 
 // BackendLocalDev is the in-memory KeyManager (development only).
@@ -57,12 +57,21 @@ func OpenDatabase() *sql.DB {
 	return db
 }
 
-func entClientOn(db *sql.DB) *ent.Client {
-	return ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
+// entClientOn is the ent client on db, and the transactions its
+// repositories join (service.*Deps.Tx).
+func entClientOn(db *sql.DB) (*ent.Client, repository.Transactor) {
+	drv := entstore.NewDriver(db)
+	return ent.NewClient(ent.Driver(drv)), drv
 }
 
 // EntClient opens the database (DATABASE_URL).
 func EntClient() *ent.Client {
+	client, _ := entClientOn(OpenDatabase())
+	return client
+}
+
+// EntClientTx is EntClient, with the transactions its repositories join.
+func EntClientTx() (*ent.Client, repository.Transactor) {
 	return entClientOn(OpenDatabase())
 }
 

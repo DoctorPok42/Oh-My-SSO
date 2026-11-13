@@ -15,8 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 	jose "github.com/go-jose/go-jose/v4"
 	"github.com/stretchr/testify/require"
 	vk "github.com/valkey-io/valkey-go"
@@ -93,7 +91,8 @@ func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *admin
 	ctx := context.Background()
 	db, err := sql.Open("pgx", startTestPostgres(t, ctx))
 	require.NoError(t, err)
-	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
+	tx := entstore.NewDriver(db) // as in app.BuildCore: resets and account changes are transactions
+	client := ent.NewClient(ent.Driver(tx))
 	t.Cleanup(func() { _ = client.Close() })
 	require.NoError(t, client.Schema.Create(ctx))
 	valkeyClient, err := valkeycache.New(startTestValkey(t, ctx))
@@ -139,7 +138,7 @@ func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *admin
 		Clients: clients, Realms: realms, Tokens: tokens, SigningKeys: signingKeys, KeyManager: km, MFA: mfa,
 		Consent: consent, Audit: audit, Timeouts: timeouts}, service.WithIdentityCoreClock(clock.Now))
 	rotation := service.NewKeyRotationService(signingKeys, entstore.NewKeyRotationLogRepository(client), settings, km, "local_dev")
-	reset := service.NewPasswordResetService(service.PasswordResetDeps{Users: users,
+	reset := service.NewPasswordResetService(service.PasswordResetDeps{Tx: tx, Users: users,
 		Tokens: entstore.NewPasswordResetTokenRepository(client), Sessions: sessions, Settings: settings, Audit: audit, Now: clock.Now, Notifier: notifier})
 
 	var router http.Handler
@@ -152,6 +151,7 @@ func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *admin
 		httpserver.WithMFA(mfa), httpserver.WithJWKS(idp), httpserver.WithOIDC(adapter), httpserver.WithPasswordReset(reset)).Router()
 
 	deps := service.AdminDeps{
+		Tx:     tx,
 		Realms: realms, Users: users, Clients: clients, Scopes: scopes, Roles: roles, Groups: groups,
 		Permissions: entstore.NewPermissionRepository(client), Settings: settings, Audit: audit, Access: access,
 		MfaMethods: entstore.NewMfaMethodRepository(client), Admin: entstore.NewAdminRepository(client),

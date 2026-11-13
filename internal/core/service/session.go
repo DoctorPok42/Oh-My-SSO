@@ -491,6 +491,49 @@ func (s *SessionService) RevokeUserSessions(ctx context.Context, userID string, 
 	return len(revoked), errors.Join(errs...)
 }
 
+// StoredRevocation is a revocation of every session of a user written to
+// the database, inside a transaction, whose cache entries and observers
+// are told by Finish once the transaction is committed.
+type StoredRevocation struct {
+	s        *SessionService
+	userID   string
+	reason   domain.SessionRevokedReason
+	sessions []*domain.Session
+}
+
+// RevokeUserSessionsInStore is the database half of RevokeUserSessions: the
+// active sessions of the user and their tokens. It is meant to run in a
+// transaction (repository.Transactor) with other writes, so it stops at the
+// first error: the transaction is rolled back anyway. Call Finish after the
+// commit, never after a rollback (the sessions would be refused by the
+// cache while still active in the database).
+func (s *SessionService) RevokeUserSessionsInStore(ctx context.Context, userID string, reason domain.SessionRevokedReason) (*StoredRevocation, error) {
+	revoked, err := s.sessions.RevokeAllByUser(ctx, userID, reason)
+	if err != nil {
+		return nil, fmt.Errorf("revoke all sessions: %w", err)
+	}
+	for _, sess := range revoked {
+		if err := s.revokeSessionTokens(ctx, sess.ID); err != nil {
+			return nil, err
+		}
+	}
+	return &StoredRevocation{s: s, userID: userID, reason: reason, sessions: revoked}, nil
+}
+
+// Finish tells the session cache and the observers (trusted devices) about
+// a committed revocation. Every session is tried whatever the others do; an
+// error leaves a cache entry that the next activity check refuses.
+func (r *StoredRevocation) Finish(ctx context.Context) error {
+	var errs []error
+	for _, sess := range r.sessions {
+		errs = append(errs, r.s.markRevoked(ctx, sess))
+	}
+	for _, o := range r.s.revokers {
+		o.AllSessionsRevoked(ctx, r.userID, r.reason)
+	}
+	return errors.Join(errs...)
+}
+
 // RevokeOthers ends every active session of a user except keepID (the one
 // the user is using), with their tokens, and tells how many it ended. The
 // trusted devices stay: this is not "every session revoked".

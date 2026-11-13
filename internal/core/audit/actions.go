@@ -116,6 +116,7 @@ const (
 
 	// The audit log itself.
 	AuditLogExported = "audit_log.exported"
+	AuditLogPurged   = "audit_log.purged" // entries older than the realm's retention deleted (by the server, at each purge pass)
 )
 
 // ActionInfo describes one action for the admin console (filter, labels).
@@ -216,6 +217,7 @@ var Catalog = []ActionInfo{
 	{NotificationSent, "E-mails", "E-mail sent"},
 
 	{AuditLogExported, "Audit log", "Audit log exported"},
+	{AuditLogPurged, "Audit log", "Old audit log entries deleted"},
 }
 
 // Known reports whether name is in Catalog.

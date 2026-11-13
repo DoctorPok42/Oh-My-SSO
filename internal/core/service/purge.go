@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
@@ -33,7 +34,8 @@ const (
 // Audit): DefaultAuditLogRetentionDays until the realm changes it, 0 = kept
 // forever. It is evidence of who did what, not data that has ended: the
 // retention of expired data never touches it, and a shorter one deletes
-// entries for good at the next pass.
+// entries for good within a day (the audit log is purged once a day,
+// auditLogPurgeGap).
 const (
 	DefaultAuditLogRetentionDays = 365
 	MinAuditLogRetentionDays     = 30
@@ -73,6 +75,10 @@ type PurgeDeps struct {
 	Settings repository.InstanceSettingsRepository
 	// Realms lists every realm (AdminRepository.ListRealms).
 	Realms func(context.Context) ([]*domain.Realm, error)
+	// Audit receives the audit_log.purged entries: one per realm and day
+	// that deleted audit log entries. Optional; without it the audit log is
+	// purged at every pass.
+	Audit  repository.AuditLogRepository
 	Logger *slog.Logger
 	Now    func() time.Time
 }
@@ -165,7 +171,7 @@ func (s *PurgeService) PurgeAll(ctx context.Context) (PurgeCounts, error) {
 			errs = append(errs, fmt.Errorf("realm %s: %w", r.ID, err))
 		}
 		if auditDays > 0 && ctx.Err() == nil {
-			c.AuditLogs, err = s.PurgeAuditLogs(ctx, r.ID, now.AddDate(0, 0, -auditDays))
+			c.AuditLogs, err = s.purgeAuditLogDaily(ctx, r.ID, now, auditDays)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("realm %s: audit log: %w", r.ID, err))
 			}
@@ -201,6 +207,70 @@ func (s *PurgeService) settings(ctx context.Context, realmID string) (*domain.In
 		return nil, nil
 	}
 	return st, err
+}
+
+// auditLogPurgeGap: a realm's audit log is purged once a day, not at every
+// pass, so that its trace (audit_log.purged) is one entry a day and not one
+// an hour. The gap is half a pass short of a day, so that the hourly passes
+// do not drift an hour later every day. The retention is kept within a day.
+const auditLogPurgeGap = 24*time.Hour - PurgeInterval/2
+
+// purgeAuditLogDaily deletes the entries of the realm's audit log older
+// than its retention, unless its last complete purge is less than
+// auditLogPurgeGap old, and leaves the trace of what it deleted. The last
+// purge is read from the audit log itself (its last audit_log.purged entry
+// with the status success): every server sees it, and a pass that stopped
+// half-way does not count, the next one finishes the day. Two servers
+// starting the same day's purge at the same moment write one trace each,
+// for different entries (SKIP LOCKED): the counts add up.
+func (s *PurgeService) purgeAuditLogDaily(ctx context.Context, realmID string, now time.Time, days int) (int, error) {
+	last, err := s.d.Purge.LastSuccessfulAuditEntry(ctx, realmID, audit.AuditLogPurged)
+	if err != nil {
+		// Not without it: the realm would get a trace every hour.
+		return 0, fmt.Errorf("last purge: %w", err)
+	}
+	if !last.IsZero() && now.Sub(last) < auditLogPurgeGap {
+		return 0, nil
+	}
+	before := now.AddDate(0, 0, -days)
+	n, err := s.PurgeAuditLogs(ctx, realmID, before)
+	s.auditPurged(ctx, realmID, n, before, days, err)
+	return n, err
+}
+
+// auditPurged leaves in the realm's audit log the trace of what a purge
+// deleted from it: how many entries, written before when. Nothing when it
+// deleted none: the next pass tries again, an hour later. A purge that did
+// not finish (server stopping, database error) still says what it deleted,
+// with the status failure and "interrupted".
+func (s *PurgeService) auditPurged(ctx context.Context, realmID string, deleted int, before time.Time, retentionDays int, purgeErr error) {
+	if s.d.Audit == nil || deleted == 0 {
+		return
+	}
+	details := map[string]interface{}{
+		"deleted":        deleted,
+		"before":         before.UTC().Format(time.RFC3339),
+		"retention_days": retentionDays,
+	}
+	status := domain.AuditLogSuccess
+	if purgeErr != nil {
+		status, details["interrupted"] = domain.AuditLogFailure, true
+	}
+	// Even when the pass was stopped (server shutting down): the rows are
+	// gone, their trace must not be.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	if _, err := s.d.Audit.Create(ctx, repository.CreateAuditLogParams{
+		RealmID:      realmID,
+		ActorType:    domain.AuditActorSystem, // the retention policy, not a person
+		Action:       audit.AuditLogPurged,
+		ResourceType: "AuditLog",
+		Level:        domain.AuditLogInfo,
+		Status:       status,
+		Details:      details,
+	}); err != nil {
+		s.d.Logger.WarnContext(ctx, "purge: audit_log.purged not written", "realm_id", realmID, "deleted", deleted, "error", err)
+	}
 }
 
 // PurgeAuditLogs deletes the entries of a realm's audit log written before

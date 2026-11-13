@@ -402,24 +402,34 @@ func (s *AdminService) createInvited(ctx context.Context, actor AdminActor, real
 }
 
 // createAccount creates an account without password: nobody can use it
-// before an activation link is issued. No audit entry: an invitation writes
-// its own, an import one for the whole file.
+// before an activation link is issued. One transaction: the account with
+// its profile, groups and roles, or nothing (a retry does not stumble on
+// its own username). No audit entry: an invitation writes its own, an
+// import one for the whole file.
 func (s *AdminService) createAccount(ctx context.Context, realm *domain.Realm, p *invitedUser) (*domain.User, error) {
-	u, err := s.d.Users.Create(ctx, repository.CreateUserParams{
-		RealmID: realm.ID, Username: p.username, Email: p.email, Status: domain.UserActive,
+	var u *domain.User
+	err := s.d.Tx.InTx(ctx, func(ctx context.Context) error {
+		var err error
+		u, err = s.d.Users.Create(ctx, repository.CreateUserParams{
+			RealmID: realm.ID, Username: p.username, Email: p.email, Status: domain.UserActive,
+		})
+		if err != nil {
+			return fmt.Errorf("invite user: %w", err)
+		}
+		if len(p.profile) > 0 {
+			if err := s.d.Admin.SetUserProfile(ctx, u.ID, p.profile); err != nil {
+				return fmt.Errorf("invite user: profile: %w", err)
+			}
+		}
+		if err := s.d.Admin.SetUserGroups(ctx, u.ID, p.groups); err != nil {
+			return fmt.Errorf("invite user: groups: %w", err)
+		}
+		if err := s.d.Admin.SetUserRoles(ctx, u.ID, p.roles); err != nil {
+			return fmt.Errorf("invite user: roles: %w", err)
+		}
+		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("invite user: %w", err)
-	}
-	if len(p.profile) > 0 {
-		if err := s.d.Admin.SetUserProfile(ctx, u.ID, p.profile); err != nil {
-			return nil, err
-		}
-	}
-	if err := s.d.Admin.SetUserGroups(ctx, u.ID, p.groups); err != nil {
-		return nil, err
-	}
-	if err := s.d.Admin.SetUserRoles(ctx, u.ID, p.roles); err != nil {
 		return nil, err
 	}
 	return u, nil
@@ -549,24 +559,44 @@ func (s *AdminService) UpdateUser(ctx context.Context, actor AdminActor, realm *
 		params.Status = in.Status
 		changes["status"] = string(*in.Status)
 	}
-	if params.Username != nil || params.Email != nil || params.Status != nil {
-		if _, err := s.d.Users.Update(ctx, u.ID, params); err != nil {
-			return nil, fmt.Errorf("update user: %w", err)
-		}
-	}
+	var profile map[string]interface{}
 	if in.Profile != nil {
-		profile, err := cleanProfile(u.Profile, in.Profile)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.d.Admin.SetUserProfile(ctx, u.ID, profile); err != nil {
+		// Checked before anything is written.
+		if profile, err = cleanProfile(u.Profile, in.Profile); err != nil {
 			return nil, err
 		}
 		changes["profile_keys"] = slices.Sorted(maps.Keys(in.Profile))
 	}
-	if deactivate {
-		if err := s.d.Sessions.RevokeAllForUser(ctx, u.ID, domain.SessionRevokedAdminRevoked); err != nil {
-			return nil, fmt.Errorf("update user: sign out: %w", err)
+	// One transaction: a user who is no longer active is never left with
+	// sessions, and a failure changes nothing.
+	var revocation *StoredRevocation
+	err = s.d.Tx.InTx(ctx, func(ctx context.Context) error {
+		if params.Username != nil || params.Email != nil || params.Status != nil {
+			if _, err := s.d.Users.Update(ctx, u.ID, params); err != nil {
+				return fmt.Errorf("update user: %w", err)
+			}
+		}
+		if profile != nil {
+			if err := s.d.Admin.SetUserProfile(ctx, u.ID, profile); err != nil {
+				return fmt.Errorf("update user: profile: %w", err)
+			}
+		}
+		if deactivate {
+			var err error
+			if revocation, err = s.d.Sessions.RevokeUserSessionsInStore(ctx, u.ID, domain.SessionRevokedAdminRevoked); err != nil {
+				return fmt.Errorf("update user: sign out: %w", err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if revocation != nil {
+		// Committed: the cache is told at best (the next activity check
+		// refuses a session it missed).
+		if err := revocation.Finish(ctx); err != nil {
+			s.d.Logger.WarnContext(ctx, "update user: session cache not updated", "user_id", u.ID, "error", err)
 		}
 	}
 	if len(changes) > 0 {

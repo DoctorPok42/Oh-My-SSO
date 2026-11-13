@@ -27,6 +27,7 @@ const resetTokenBytes = 32 // 256 bits, the same strength as a session token
 
 // PasswordResetService runs both halves of the flow.
 type PasswordResetService struct {
+	tx       repository.Transactor
 	users    repository.UserRepository
 	tokens   repository.PasswordResetTokenRepository
 	sessions *SessionService
@@ -44,6 +45,9 @@ type PasswordResetService struct {
 
 // PasswordResetDeps groups the dependencies of NewPasswordResetService.
 type PasswordResetDeps struct {
+	// Tx makes a reset one transaction (link, password, sessions).
+	// Required: repository.NoTransaction{} for in-memory stores.
+	Tx       repository.Transactor
 	Users    repository.UserRepository
 	Tokens   repository.PasswordResetTokenRepository
 	Sessions *SessionService
@@ -58,6 +62,7 @@ type PasswordResetDeps struct {
 
 func NewPasswordResetService(d PasswordResetDeps) *PasswordResetService {
 	s := &PasswordResetService{
+		tx:       d.Tx,
 		users:    d.Users,
 		tokens:   d.Tokens,
 		sessions: d.Sessions,
@@ -68,6 +73,10 @@ func NewPasswordResetService(d PasswordResetDeps) *PasswordResetService {
 		now:      d.Now,
 		logger:   d.Logger,
 		async:    make(chan struct{}, 32),
+	}
+	if s.tx == nil {
+		// Never quietly without: a reset half written is B-06.
+		panic("service: PasswordResetDeps.Tx is required (repository.NoTransaction{} for in-memory stores)")
 	}
 	if s.now == nil {
 		s.now = time.Now
@@ -286,24 +295,36 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 		return fmt.Errorf("password reset: %w", err)
 	}
 
-	consumed, err := s.tokens.ConsumeIfUnused(ctx, tok.ID, now)
+	// One transaction: the link is used up, the password changed and every
+	// session revoked, or nothing is (the link still works). Changing the
+	// password is a strong signal: whoever had a session (maybe the person
+	// who stole the old password) is signed out everywhere, and the tokens
+	// issued to applications for those sessions die with them.
+	var revocation *StoredRevocation
+	err = s.tx.InTx(ctx, func(ctx context.Context) error {
+		consumed, err := s.tokens.ConsumeIfUnused(ctx, tok.ID, now)
+		if err != nil {
+			return fmt.Errorf("password reset: use token: %w", err)
+		}
+		if !consumed {
+			return ErrResetTokenInvalid // another request used it a moment ago
+		}
+		changeDone := false // a forced reset ends here, in the same write as the password
+		if _, err := s.users.Update(ctx, user.ID, repository.UpdateUserParams{PasswordHash: &hash, MustChangePassword: &changeDone}); err != nil {
+			return fmt.Errorf("password reset: update password: %w", err)
+		}
+		if revocation, err = s.sessions.RevokeUserSessionsInStore(ctx, user.ID, domain.SessionRevokedPasswordReset); err != nil {
+			return fmt.Errorf("password reset: revoke sessions: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("password reset: use token: %w", err)
-	}
-	if !consumed {
-		return ErrResetTokenInvalid // another request used it a moment ago
+		return err
 	}
 
-	changeDone := false // a forced reset ends here, in the same write as the password
-	if _, err := s.users.Update(ctx, user.ID, repository.UpdateUserParams{PasswordHash: &hash, MustChangePassword: &changeDone}); err != nil {
-		return fmt.Errorf("password reset: update password: %w", err)
-	}
-
-	// Changing the password is a strong signal: whoever had a session (maybe
-	// the person who stole the old password) is signed out everywhere, and
-	// the tokens issued to applications for those sessions die with them.
-	if err := s.sessions.RevokeAllForUser(ctx, user.ID, domain.SessionRevokedPasswordReset); err != nil {
-		return fmt.Errorf("password reset: revoke sessions: %w", err)
+	// The password has changed: from here on nothing fails the request.
+	if err := revocation.Finish(ctx); err != nil {
+		s.logger.WarnContext(ctx, "password reset: session cache not updated", "user_id", user.ID, "error", err)
 	}
 	if _, err := s.tokens.DeleteUnusedByUser(ctx, user.ID); err != nil {
 		s.logger.WarnContext(ctx, "password reset: cannot cancel other links", "user_id", user.ID, "error", err)

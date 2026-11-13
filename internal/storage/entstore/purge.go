@@ -18,6 +18,7 @@ import (
 	"sso.internal/sso/ent/token"
 	"sso.internal/sso/ent/trusteddevice"
 	"sso.internal/sso/ent/user"
+	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
 
@@ -123,6 +124,22 @@ func (r *entPurgeRepository) DeleteExpiredTrustedDevices(ctx context.Context, re
 			sql.LT(t.C(trusteddevice.FieldExpiresAt), before),
 		))
 	}))).Exec(ctx)
+}
+
+// LastSuccessfulAuditEntry walks the index (realm_id, action, timestamp).
+func (r *entPurgeRepository) LastSuccessfulAuditEntry(ctx context.Context, realmID, action string) (time.Time, error) {
+	e, err := r.client.AuditLog.Query().
+		Where(auditlog.RealmID(realmID), auditlog.Action(action),
+			auditlog.StatusEQ(entschema.AuditLogStatus(domain.AuditLogSuccess))).
+		Order(ent.Desc(auditlog.FieldTimestamp)).
+		First(ctx)
+	if ent.IsNotFound(err) {
+		return time.Time{}, nil
+	}
+	if err != nil {
+		return time.Time{}, err
+	}
+	return e.Timestamp, nil
 }
 
 // DeleteAuditLogs walks the index (realm_id, timestamp).
