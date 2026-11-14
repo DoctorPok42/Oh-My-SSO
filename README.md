@@ -9,3 +9,7 @@ Oh My SSO - OMSO (Pronouncing "Home So") is a simple, self-hosted, and customiza
 - [Languages](docs/I18N.md): how the language is chosen, adding a language.
 - [Admin console](admin/README.md)
 - `make help`: every command, grouped.
+
+## Licence
+
+[Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for third-party components.
