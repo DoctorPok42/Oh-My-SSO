@@ -31,9 +31,13 @@ Two files, in the checkout and never committed (both are in `.gitignore`), hold 
 - nginx on the host (or as a service of `compose.yml`, section 4).
 - **OVH KMS**: an OKMS domain and an access certificate (other key managers: section 2).
 - An **SMTP server** with a mailbox for the IdP. `SMTP_SECURITY=none` is refused in production except to localhost.
-- PostgreSQL and Valkey run in `compose.yml` (volumes `db-data`, `valkey-data`). Valkey has no password or TLS
-  option: the internal `data` network is its isolation. An external PostgreSQL works too: its URL in `DATABASE_URL`,
-  with `sslmode=require` or stricter.
+- PostgreSQL and Valkey run in `compose.yml` (volumes `db-data`, `valkey-data`), on the internal `data` network.
+  Valkey requires `VALKEY_PASSWORD` (`idp` and `idp-admin` refuse to start in production without it). An external
+  PostgreSQL works too: its URL in `DATABASE_URL`, with `sslmode=require` or stricter. So does an external Valkey
+  (managed or shared): an ACL user (`VALKEY_USERNAME`), TLS (`VALKEY_TLS`, `VALKEY_TLS_CA_FILE`), a logical database
+  of its own (`VALKEY_DB`), or Sentinel (`VALKEY_ADDR` lists the sentinels, `VALKEY_SENTINEL_MASTER`); see
+  `.env.example`. A cluster is detected from its nodes in `VALKEY_ADDR`. Sentinel and cluster are not covered by the
+  tests of this repository.
 
 ## 2. Key manager
 
@@ -78,7 +82,7 @@ cp .env.example .env && chmod 600 .env
 | `PUBLIC_URL` | `https://sso.example.com`. The console's issuer is `PUBLIC_URL/r/master` |
 | `WEBAUTHN_RP_ID`, `WEBAUTHN_RP_ORIGINS` | `sso.example.com`, `https://sso.example.com`. Changing the RP ID later invalidates every registered passkey: choose it once |
 | `POSTGRES_PASSWORD`, `POSTGRES_HOST` | `openssl rand -hex 32`, `postgres`. `DATABASE_URL` is built from them |
-| `VALKEY_ADDR` | `valkey:6379` |
+| `VALKEY_ADDR`, `VALKEY_PASSWORD` | `valkey:6379`, `openssl rand -hex 32`. The `valkey` service of `compose.yml` takes the same password |
 | `KEYMANAGER_BACKEND`, `OVHKMS_*` | `ovhkms` and the KMS access (section 2); delete the `VAULT_*` lines |
 | `TRUSTED_PROXIES` | `172.30.20.1` (section 4) |
 | `SMTP_*` | your mail server |
@@ -261,7 +265,28 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   version and replaced at the browser's next visit; the next version stops reading them. Password expiry is not
   available yet: the console no longer shows it, the Admin API accepts only `password_expiry_days: 0`, and the
   upgrade sets the former default (90 days, never applied) back to 0.
+  **Valkey password**: from this version, `idp` and `idp-admin` refuse to start in production without
+  `VALKEY_PASSWORD`. Before deploying it, set `VALKEY_PASSWORD=<openssl rand -hex 32>` in `.env` and copy the
+  `command`, `environment` and `healthcheck` of the `valkey` service of `compose.example.yml` into `compose.yml`;
+  `deploy.sh` stops, changing nothing, while either is missing. The deploy then restarts Valkey with the password
+  (its data are kept in `valkey-data`). Rolling back to an older version afterwards: remove `--requirepass` from
+  `compose.yml` first, older versions send no password.
 - **Settings**: after a change of `.env`, `docker compose up -d` recreates the containers that use it.
+- **Realms**: the public server keeps each realm it serves for a minute: disabling a realm, or enabling it again,
+  takes effect there within a minute (as the realm settings do).
+- **Valkey outage**: the servers go on in a degraded mode. While Valkey does not answer, each server keeps the
+  short-lived state of sign-ins in its own memory: rate limits, lockout counters of unknown identifiers and of
+  devices, second-factor challenges, OIDC and SAML flows. Sessions and tokens are in PostgreSQL and keep working (the
+  lockout of accounts too). The sign-ins in progress when Valkey stopped must start again; new ones work, and those
+  started during the outage finish after it. `GET /readyz` answers 200 `{"status":"degraded"}` (the containers stay
+  healthy), the dashboard shows Valkey down, and the logs say `valkey: unreachable, degraded mode` (an error, repeated
+  every 5 minutes), then `valkey: reachable again` with the duration: alert on the first. With several servers, the
+  degraded mode is per server: limits and counters apply per server, and a sign-in started on one server fails on
+  another unless the load balancer keeps each browser, and each application's code exchange, on the same server.
+  Replay protection (SAML requests, authorization codes) then covers what a server saw itself during the outage
+  only. In the console, administrators' rights are checked in the database, and changes to the master realm are
+  refused until Valkey answers (the other admins' tokens could otherwise keep a right just withdrawn). Valkey must
+  answer when a server starts.
 - **Backups**: PostgreSQL (users, clients, audit log), e.g.
   `docker compose exec -T postgres pg_dump -U sso sso | gzip > sso-$(date +%F).sql.gz`, **and** the key manager:
   Vault's Transit keys, or the OKMS domain and its access certificate. Without the keys, encrypted secrets and signing
@@ -314,6 +339,7 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
 - [ ] `.env` is `chmod 600` and the only file with secrets: none in `compose.yml`
 - [ ] `KEYMANAGER_BACKEND=ovhkms`, the OKMS domain and its access certificate backed up
 - [ ] PostgreSQL backed up, restore tested; PostgreSQL, Valkey and the Admin API unreachable from the internet
+- [ ] `VALKEY_PASSWORD` set, and required by the `valkey` service of `compose.yml` (`--requirepass`)
 - [ ] `TRUSTED_PROXIES` set, the audit log shows the clients' addresses; the proxy overwrites `X-Forwarded-For`
 - [ ] `ADMIN_API_ALLOWED_CIDRS` = the console only; console restricted (VPN / allow-list)
 - [ ] Master realm: IP allowlist set to the administrators' networks (Settings > Security), your own address in it

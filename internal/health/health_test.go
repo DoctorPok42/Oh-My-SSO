@@ -41,6 +41,22 @@ func TestHandler(t *testing.T) {
 		require.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
 	})
 
+	t.Run("a dependency the server can do without: 200, degraded", func(t *testing.T) {
+		valkey := health.Check{Name: "Valkey", Degrades: true, Check: func(context.Context) error {
+			return errors.New("connection refused")
+		}}
+		rec := get(health.Handler(up, valkey))
+		require.Equal(t, http.StatusOK, rec.Code, "an orchestrator must keep a server that still serves")
+		require.JSONEq(t, `{"status":"degraded"}`, rec.Body.String())
+
+		rec = get(health.Handler(down, valkey))
+		require.Equal(t, http.StatusServiceUnavailable, rec.Code, "a critical failure wins")
+		require.JSONEq(t, `{"status":"unavailable"}`, rec.Body.String())
+
+		ok := health.Check{Name: "Valkey", Degrades: true, Check: func(context.Context) error { return nil }}
+		require.JSONEq(t, `{"status":"ok"}`, get(health.Handler(up, ok)).Body.String())
+	})
+
 	t.Run("a check that does not answer is down", func(t *testing.T) {
 		hang := health.Check{Name: "valkey", Check: func(ctx context.Context) error {
 			<-ctx.Done()

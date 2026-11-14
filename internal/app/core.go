@@ -11,6 +11,7 @@ import (
 	vk "github.com/valkey-io/valkey-go"
 
 	"sso.internal/sso/ent"
+	"sso.internal/sso/internal/cache/fallback"
 	valkeycache "sso.internal/sso/internal/cache/valkey"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
@@ -31,6 +32,9 @@ type Core struct {
 	KeyManager keymanager.KeyManager
 	KMSBackend string
 	PublicURL  string
+
+	// ValkeyGuard: whether Valkey answers (degraded mode otherwise); Valkey goes through it.
+	ValkeyGuard *valkeycache.Guard
 
 	// Dispatcher sends e-mails in the background; nil when e-mail is off.
 	Dispatcher *notify.Dispatcher
@@ -89,11 +93,10 @@ func BuildCore() *Core {
 	c.KeyManager, c.KMSBackend = KeyManager()
 	c.PublicURL = PublicURL()
 
-	var err error
-	c.Valkey, err = valkeycache.New(os.Getenv("VALKEY_ADDR"))
-	if err != nil {
-		log.Fatalf("valkey: %v", err)
-	}
+	// Valkey must answer at startup. Later, an outage is a degraded mode:
+	// its commands fail at once (Guard) and the short-lived state of
+	// sign-ins goes to memory (internal/cache/fallback).
+	c.Valkey, c.ValkeyGuard = valkeycache.Guarded(mustOpenValkey())
 
 	client := c.Ent
 	c.Users = entstore.NewUserRepository(client)
@@ -110,7 +113,7 @@ func BuildCore() *Core {
 	c.Permissions = entstore.NewPermissionRepository(client)
 	c.Admin = entstore.NewAdminRepository(client)
 	sessionRepo := entstore.NewSessionRepository(client)
-	c.RateLimiter = valkeycache.NewRateLimiter(c.Valkey)
+	c.RateLimiter = fallback.NewLimiter(valkeycache.NewRateLimiter(c.Valkey), nil)
 
 	c.Notifier = service.NopNotifier{}
 	if sender := EmailSender(Templates()); sender != nil {
@@ -121,7 +124,7 @@ func BuildCore() *Core {
 
 	c.Lockout = service.NewLockoutService(service.LockoutDeps{
 		Users:   c.Users,
-		Unknown: valkeycache.NewLockoutStore(c.Valkey),
+		Unknown: fallback.NewLockoutStore(valkeycache.NewLockoutStore(c.Valkey), nil),
 		// The devices a user signed in from: a lock does not hold them.
 		History:  sessionRepo,
 		Settings: c.Settings,
@@ -225,8 +228,8 @@ func BuildCore() *Core {
 		Sessions:      c.Sessions,
 		Policy:        c.MFAPolicy,
 		Envelope:      service.NewEnvelopeService(c.SigningKeys, encrypter, c.KMSBackend),
-		Store:         valkeycache.NewMFAStore(c.Valkey),
-		Limiter:       valkeycache.NewRateLimiter(c.Valkey),
+		Store:         fallback.NewMFAStore(valkeycache.NewMFAStore(c.Valkey), nil),
+		Limiter:       c.RateLimiter,
 		LoginAttempts: loginAttempts,
 		Audit:         c.Audit,
 		Realms:        c.Realms,

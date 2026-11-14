@@ -22,8 +22,13 @@ func TestReadyz(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, get(newLoginGuardServer(&denyingLimiter{})).Code, "no check configured")
 	require.Equal(t, http.StatusServiceUnavailable, get(newLoginGuardServer(&denyingLimiter{}, WithReadiness(down))).Code)
+	degraded := down
+	degraded.Degrades = true
+	rec := get(newLoginGuardServer(&denyingLimiter{}, WithReadiness(degraded)))
+	require.Equal(t, http.StatusOK, rec.Code, "without Valkey the server serves, degraded")
+	require.JSONEq(t, `{"status":"degraded"}`, rec.Body.String())
 
-	rec := httptest.NewRecorder()
+	rec = httptest.NewRecorder()
 	newLoginGuardServer(&denyingLimiter{}).Router().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/health", nil))
 	require.Equal(t, http.StatusOK, rec.Code, "/health only says the process runs")
 }

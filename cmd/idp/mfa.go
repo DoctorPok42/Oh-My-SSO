@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"sso.internal/sso/ent"
+	"sso.internal/sso/internal/app"
 	valkeycache "sso.internal/sso/internal/cache/valkey"
 	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
@@ -129,11 +130,10 @@ func (e *mfaEnv) mfaService(needSessions bool) (*service.MFAService, error) {
 		Audit:       entstore.NewAuditLogRepository(e.client),
 	}
 	if needSessions {
-		addr := os.Getenv("VALKEY_ADDR")
-		if addr == "" {
+		if os.Getenv("VALKEY_ADDR") == "" {
 			return nil, errors.New("VALKEY_ADDR is not set: revoking sessions needs the session cache")
 		}
-		vc, err := valkeycache.New(addr)
+		vc, err := app.OpenValkey() // VALKEY_PASSWORD, VALKEY_TLS... as the servers
 		if err != nil {
 			return nil, fmt.Errorf("valkey: %w", err)
 		}

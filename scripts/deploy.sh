@@ -58,6 +58,23 @@ backup_database() {
   ls -1t "$dir"/sso-*.sql.gz | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm --
 }
 
+# In production, idp and idp-admin refuse to start without VALKEY_PASSWORD,
+# and the valkey service of compose.yml must require it (compose.example.yml).
+# Checked before anything changes: otherwise the new containers would not
+# start, and the old ones would be gone.
+check_valkey_password() {
+  grep -q '^APP_ENV=production[[:space:]]*$' .env || return 0
+  if ! grep -q '^VALKEY_PASSWORD=[^[:space:]]' .env; then
+    echo "VALKEY_PASSWORD is not set in .env: idp and idp-admin refuse to start without it in production." >&2
+    echo "Set it (openssl rand -hex 32) and pass it to the valkey service of compose.yml: docs/PRODUCTION.md, Update." >&2
+    exit 1
+  fi
+  if grep -q '^  valkey:' compose.yml && ! grep -q 'requirepass' compose.yml; then
+    echo "The valkey service of compose.yml does not require VALKEY_PASSWORD (--requirepass): see compose.example.yml." >&2
+    exit 1
+  fi
+}
+
 main() {
   local package="" version="" backup=1
   while [[ $# -gt 0 ]]; do
@@ -95,6 +112,9 @@ main() {
   if [[ ! -f .env || ! -f compose.yml ]]; then
     echo "No .env or compose.yml in $PWD: see docs/PRODUCTION.md" >&2
     exit 1
+  fi
+  if [[ " ${targets[*]} " == *" idp "* || " ${targets[*]} " == *" idp-admin "* ]]; then
+    check_valkey_password
   fi
 
   # Pull with the new tags given to compose only (the environment wins over

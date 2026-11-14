@@ -16,6 +16,7 @@ import (
 	oidcadapter "sso.internal/sso/internal/adapters/oidc"
 	samladapter "sso.internal/sso/internal/adapters/saml"
 	"sso.internal/sso/internal/app"
+	"sso.internal/sso/internal/cache/fallback"
 	valkeycache "sso.internal/sso/internal/cache/valkey"
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/httpserver"
@@ -129,7 +130,8 @@ func serve() {
 	// Scheduled timeouts: their targets are signed out when they start.
 	c.StartTimeoutEnforcer()
 
-	flowStore := valkeycache.NewOIDCStore(c.Valkey)
+	// OIDC and SAML flows: in memory too while Valkey is down.
+	flowStore := fallback.NewFlowStore(valkeycache.NewOIDCStore(c.Valkey), nil)
 	oidcProvider := buildOIDC(c.PublicURL, c.IdentityCore, flowStore, c.MFA.PasskeysEnabled(), c.EmailEnabled())
 	samlProvider := buildSAML(c.PublicURL, c.IdentityCore, flowStore, c.MFA.PasskeysEnabled(), c.EmailEnabled())
 
