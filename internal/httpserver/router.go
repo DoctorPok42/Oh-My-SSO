@@ -28,6 +28,9 @@ type Server struct {
 	// protocolLimits: of the OIDC client endpoints and SAML (protocol_limits.go).
 	protocolLimits ProtocolLimits
 
+	// realmCache: the realms found by name, for a minute (realm_cache.go).
+	realmCache realmCache
+
 	publicKeys PublicKeySource
 
 	mfa *service.MFAService

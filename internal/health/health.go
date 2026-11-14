@@ -24,32 +24,57 @@ const (
 type Check struct {
 	Name  string
 	Check func(ctx context.Context) error
+	// Degrades: the server still serves without it, in a degraded mode
+	// (Valkey: internal/cache/fallback). Its failure answers 200 with
+	// {"status":"degraded"}, not 503: an orchestrator or a load balancer
+	// must not take out a server that can serve, all of them at once when
+	// the dependency is shared.
+	Degrades bool
 }
 
-// Handler answers 200 when every check passes, 503 otherwise. It does not
-// say which one failed (the endpoint is public): that goes to the log. The
-// checks run together, and their result is kept for cacheTTL.
+// Handler answers 200 {"status":"ok"} when every check passes, 200
+// {"status":"degraded"} when only checks that Degrades fail, 503 otherwise.
+// It does not say which one failed (the endpoint is public): that goes to
+// the log. The checks run together, and their result is kept for cacheTTL.
 func Handler(checks ...Check) http.Handler {
 	var (
-		mu     sync.Mutex
-		at     time.Time
-		failed []string
+		mu                 sync.Mutex
+		at                 time.Time
+		failed             []string
+		degraded, critical bool
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		if at.IsZero() || time.Since(at) >= cacheTTL {
-			failed = run(r.Context(), checks)
+			var errs []error
+			failed, errs = run(r.Context(), checks)
 			at = time.Now()
-			if len(failed) > 0 {
+			degraded, critical = false, false
+			for i, err := range errs {
+				switch {
+				case err == nil:
+				case checks[i].Degrades:
+					degraded = true
+				default:
+					critical = true
+				}
+			}
+			switch {
+			case critical:
 				slog.WarnContext(r.Context(), "not ready", "failed", failed)
+			case degraded:
+				slog.WarnContext(r.Context(), "ready, degraded", "failed", failed)
 			}
 		}
-		ok := len(failed) == 0
+		notReady, isDegraded := critical, degraded
 		mu.Unlock()
 
 		status, body := http.StatusOK, `{"status":"ok"}`
-		if !ok {
+		switch {
+		case notReady:
 			status, body = http.StatusServiceUnavailable, `{"status":"unavailable"}`
+		case isDegraded:
+			body = `{"status":"degraded"}`
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
@@ -58,8 +83,9 @@ func Handler(checks ...Check) http.Handler {
 	})
 }
 
-// run returns the names of the checks that failed.
-func run(ctx context.Context, checks []Check) []string {
+// run returns the names and errors of the checks that failed, and the
+// error of each check (nil when it passed).
+func run(ctx context.Context, checks []Check) ([]string, []error) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), checkTimeout)
 	defer cancel()
 
@@ -80,7 +106,7 @@ func run(ctx context.Context, checks []Check) []string {
 			failed = append(failed, fmt.Sprintf("%s: %v", checks[i].Name, err))
 		}
 	}
-	return failed
+	return failed, results
 }
 
 // Probe is the healthcheck command: it asks url and fails unless it answers

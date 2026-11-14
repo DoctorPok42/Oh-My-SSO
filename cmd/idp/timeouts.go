@@ -12,6 +12,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"sso.internal/sso/internal/app"
 	valkeycache "sso.internal/sso/internal/cache/valkey"
 	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
@@ -96,7 +97,7 @@ func openTimeoutsEnv(ctx context.Context, realmName string, withSignOut bool) (*
 		Audit:    entstore.NewAuditLogRepository(env.client),
 	}
 	if addr := os.Getenv("VALKEY_ADDR"); withSignOut && addr != "" {
-		vc, err := valkeycache.New(addr)
+		vc, err := app.OpenValkey() // VALKEY_PASSWORD, VALKEY_TLS... as the servers
 		if err != nil {
 			env.close()
 			return nil, nil, fmt.Errorf("valkey: %w", err)

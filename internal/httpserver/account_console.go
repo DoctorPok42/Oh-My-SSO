@@ -562,7 +562,7 @@ func (s *Server) accountOrgs(r *http.Request, current *domain.Realm) []accountui
 		if name == current.Name {
 			continue
 		}
-		realm, err := s.realms.GetByName(r.Context(), name)
+		realm, err := s.realmByName(r.Context(), name)
 		if err != nil || realm.Status != domain.RealmActive {
 			continue
 		}

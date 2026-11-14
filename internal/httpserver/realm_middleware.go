@@ -17,7 +17,7 @@ func (s *Server) realmMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		name := chi.URLParam(r, "realmName")
 
-		realm, err := s.realms.GetByName(r.Context(), name)
+		realm, err := s.realmByName(r.Context(), name)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				writeError(w, http.StatusNotFound, "realm_not_found")

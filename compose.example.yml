@@ -57,8 +57,14 @@ services:
 
   valkey:
     image: valkey/valkey:8
+    # VALKEY_PASSWORD of .env, which idp and idp-admin use too (required when
+    # APP_ENV=production: they refuse to start without it). Empty: no password.
+    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD:-}"]
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD:-} # for the healthcheck
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      # valkey-cli exits 0 even when refused (NOAUTH): look for the answer.
+      test: ["CMD-SHELL", "[ -z \"$$VALKEY_PASSWORD\" ] || export REDISCLI_AUTH=\"$$VALKEY_PASSWORD\"; valkey-cli ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 10

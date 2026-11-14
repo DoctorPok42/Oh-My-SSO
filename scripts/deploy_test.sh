@@ -35,8 +35,13 @@ check() {
 }
 
 # deploy <args...>: a fresh .env each time; the exit status in $status.
+# EXTRA_ENV: more lines for .env; COMPOSE: the content of compose.yml.
 deploy() {
   printf 'IMAGE_IDP=old\nIMAGE_IDP_ADMIN=old\nIMAGE_MIGRATE=old\nIMAGE_ADMIN=old\n' >"$work/repo/.env"
+  if [[ -n ${EXTRA_ENV:-} ]]; then
+    printf '%s\n' "$EXTRA_ENV" >>"$work/repo/.env"
+  fi
+  printf '%s' "${COMPOSE:-}" >"$work/repo/compose.yml"
   rm -rf "$work/repo/backups"
   : >"$work/log"
   status=0
@@ -72,6 +77,33 @@ check "--no-backup: deployed" "$(calls 'compose up')" 1
 
 FAKE_POSTGRES=down deploy --package all --version new
 check "postgres not running: deployed without a dump" "$status:$(calls pg_dump):$(calls 'compose up')" "0:0:1"
+
+# Production requires VALKEY_PASSWORD (audit B-09): checked before anything changes.
+with_requirepass=$'services:\n  valkey:\n    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD:-}"]\n'
+without_requirepass=$'services:\n  valkey:\n    image: valkey/valkey:8\n'
+
+EXTRA_ENV="APP_ENV=production" COMPOSE="$with_requirepass" deploy --package all --version new
+check "production, no VALKEY_PASSWORD: refused" "$status" 1
+check "production, no VALKEY_PASSWORD: nothing pulled" "$(calls 'compose pull')" 0
+check "production, no VALKEY_PASSWORD: .env untouched" "$(grep -c '=old$' "$work/repo/.env")" 4
+
+EXTRA_ENV=$'APP_ENV=production\nVALKEY_PASSWORD=' COMPOSE="$with_requirepass" deploy --package idp-admin --version new
+check "production, empty VALKEY_PASSWORD: refused" "$status" 1
+
+EXTRA_ENV=$'APP_ENV=production\nVALKEY_PASSWORD=s3cret' COMPOSE="$without_requirepass" deploy --package idp --version new
+check "production, valkey without --requirepass: refused" "$status:$(calls 'compose pull')" "1:0"
+
+EXTRA_ENV=$'APP_ENV=production\nVALKEY_PASSWORD=s3cret' COMPOSE="$with_requirepass" deploy --package all --version new
+check "production with a password: deployed" "$status:$(calls 'compose up')" "0:1"
+
+EXTRA_ENV=$'APP_ENV=production\nVALKEY_PASSWORD=s3cret' COMPOSE=$'services:\n  idp:\n    image: x\n' deploy --package idp --version new
+check "production, Valkey outside compose.yml: deployed" "$status" 0
+
+EXTRA_ENV="APP_ENV=production" COMPOSE="$with_requirepass" deploy --package admin --version new
+check "production, console only: not concerned" "$status" 0
+
+EXTRA_ENV="APP_ENV=development" COMPOSE="$without_requirepass" deploy --package all --version new
+check "development: no password needed" "$status" 0
 
 if ((failures > 0)); then
   echo "$failures failure(s)"

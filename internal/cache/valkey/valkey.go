@@ -3,20 +3,100 @@ package valkey
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"strconv"
 	"time"
 
 	"github.com/valkey-io/valkey-go"
 
+	"sso.internal/sso/internal/cache/fallback"
 	"sso.internal/sso/internal/httpcache"
 	"sso.internal/sso/internal/ratelimit"
 )
 
+// Options tell how to reach Valkey (app.ValkeyOptions reads them from the
+// environment).
+type Options struct {
+	// Addresses: host:port of the server, of nodes of a cluster (any of
+	// them: the client finds the others), or of the sentinels when
+	// SentinelMaster is set.
+	Addresses []string
+	// Username: an ACL user; empty is "default", the user of requirepass.
+	Username string
+	Password string
+	// TLS, when not nil: every connection is TLS, to the sentinels too. The
+	// server's certificate must match the host name of its address.
+	TLS *tls.Config
+	// SentinelMaster: the name of the master the sentinels watch. The
+	// client asks them where the master is, and follows a failover.
+	SentinelMaster string
+	// SentinelPassword: the sentinels' own password, when they have one.
+	SentinelPassword string
+	// DB: the logical database (SELECT), to share a server with other
+	// applications. A cluster only has 0.
+	DB int
+}
+
+// Open connects to Valkey: it fails when no address answers or the server
+// refuses the credentials.
+func Open(o Options) (valkey.Client, error) {
+	opt := valkey.ClientOption{
+		InitAddress: o.Addresses,
+		Username:    o.Username,
+		Password:    o.Password,
+		TLSConfig:   o.TLS,
+		SelectDB:    o.DB,
+		// Nothing here uses client-side caching (DoCache). Without this, every
+		// connection sends CLIENT TRACKING, which a restricted ACL user of a
+		// managed Valkey may not be allowed, and which RESP2 servers lack.
+		DisableCache: true,
+		// A few retries of a read cut by a network error (a reconnection),
+		// then the error. valkey-go's default retries until the context ends,
+		// and a request's context has no deadline: during an outage, every
+		// read would hang until the browser gave up, and the degraded mode
+		// (Guard) would never see the error.
+		RetryDelay: retryDelay,
+		// Unreachable host (packets dropped): give up a connection after this,
+		// not the default 5 s.
+		Dialer: net.Dialer{Timeout: dialTimeout},
+	}
+	if o.SentinelMaster != "" {
+		opt.Sentinel = valkey.SentinelOption{
+			MasterSet: o.SentinelMaster,
+			Password:  o.SentinelPassword,
+			TLSConfig: o.TLS,
+			// A +switch-master event missed (network blip) would bind the
+			// client to the former master until a restart: ask the sentinels
+			// now and then as well.
+			TopologyRefreshInterval: 5 * time.Second,
+		}
+	}
+	return valkey.NewClient(opt)
+}
+
+const (
+	// maxRetries: how many times a retryable command (a read) is sent again
+	// after a network error, before the error is returned.
+	maxRetries  = 2
+	dialTimeout = 2 * time.Second
+)
+
+// retryDelay: 50 ms, then 100 ms, then no more retry (a negative delay).
+func retryDelay(attempts int, _ valkey.Completed, _ error) time.Duration {
+	if attempts > maxRetries {
+		return -1
+	}
+	return time.Duration(attempts) * 50 * time.Millisecond
+}
+
+// New connects to one server without credentials (tests, development).
 func New(addr string) (valkey.Client, error) {
-	return valkey.NewClient(valkey.ClientOption{InitAddress: []string{addr}})
+	return Open(Options{Addresses: []string{addr}})
 }
 
 // rateLimiter: one sorted set of hit times per key.
@@ -105,6 +185,11 @@ func (l *rateLimiter) Reserve(ctx context.Context, rules ...ratelimit.Rule) (rat
 
 	// All or none. Removing a member that was not added is harmless, so
 	// every hit is released: on an error, which ones counted is unknown.
+	// Not when Valkey is unreachable: the release would fail as well (a
+	// warning per request during an outage), and the hits leave the window.
+	if errors.Is(failed, fallback.ErrUnavailable) {
+		return ratelimit.Reservation{}, failed
+	}
 	if err := l.Release(context.WithoutCancel(ctx), hits...); err != nil {
 		slog.WarnContext(ctx, "ratelimit: give back the hits of a refused reservation", "error", err)
 	}
