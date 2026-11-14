@@ -356,11 +356,13 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		Email    *string                `json:"email"`
 		Status   *string                `json:"status"`
 		Profile  map[string]interface{} `json:"profile"`
+		// EmailVerified: mark the address verified or not (B-13).
+		EmailVerified *bool `json:"email_verified"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
-	upd := service.UpdateUserInput{Username: in.Username, Email: in.Email, Profile: in.Profile}
+	upd := service.UpdateUserInput{Username: in.Username, Email: in.Email, Profile: in.Profile, EmailVerified: in.EmailVerified}
 	if in.Status != nil {
 		st := domain.UserStatus(*in.Status)
 		upd.Status = &st
@@ -447,6 +449,27 @@ func (s *Server) handleActivationLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
+}
+
+// handleSendEmailVerification e-mails the user a link that confirms their
+// address.
+func (s *Server) handleSendEmailVerification(w http.ResponseWriter, r *http.Request) {
+	v, err := s.d.Admin.SendEmailVerification(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id"))
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
+
+// handleResendEmail sends a failed (or waiting) e-mail of the user again.
+func (s *Server) handleResendEmail(w http.ResponseWriter, r *http.Request) {
+	v, err := s.d.Admin.ResendEmail(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id"), chi.URLParam(r, "emailID"))
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
 }
 
 func (s *Server) handleRevokeUserSessions(w http.ResponseWriter, r *http.Request) {

@@ -25,6 +25,8 @@ const (
 	FieldMustChangePassword = "must_change_password"
 	// FieldEmail holds the string denoting the email field in the database.
 	FieldEmail = "email"
+	// FieldEmailVerifiedAt holds the string denoting the email_verified_at field in the database.
+	FieldEmailVerifiedAt = "email_verified_at"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -69,6 +71,10 @@ const (
 	EdgeConsents = "consents"
 	// EdgeFederatedIdentities holds the string denoting the federated_identities edge name in mutations.
 	EdgeFederatedIdentities = "federated_identities"
+	// EdgeEmailOutbox holds the string denoting the email_outbox edge name in mutations.
+	EdgeEmailOutbox = "email_outbox"
+	// EdgeEmailVerificationTokens holds the string denoting the email_verification_tokens edge name in mutations.
+	EdgeEmailVerificationTokens = "email_verification_tokens"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// RealmTable is the table that holds the realm relation/edge.
@@ -144,6 +150,20 @@ const (
 	FederatedIdentitiesInverseTable = "federated_identities"
 	// FederatedIdentitiesColumn is the table column denoting the federated_identities relation/edge.
 	FederatedIdentitiesColumn = "user_id"
+	// EmailOutboxTable is the table that holds the email_outbox relation/edge.
+	EmailOutboxTable = "email_outbox"
+	// EmailOutboxInverseTable is the table name for the EmailOutbox entity.
+	// It exists in this package in order to avoid circular dependency with the "emailoutbox" package.
+	EmailOutboxInverseTable = "email_outbox"
+	// EmailOutboxColumn is the table column denoting the email_outbox relation/edge.
+	EmailOutboxColumn = "user_id"
+	// EmailVerificationTokensTable is the table that holds the email_verification_tokens relation/edge.
+	EmailVerificationTokensTable = "email_verification_tokens"
+	// EmailVerificationTokensInverseTable is the table name for the EmailVerificationToken entity.
+	// It exists in this package in order to avoid circular dependency with the "emailverificationtoken" package.
+	EmailVerificationTokensInverseTable = "email_verification_tokens"
+	// EmailVerificationTokensColumn is the table column denoting the email_verification_tokens relation/edge.
+	EmailVerificationTokensColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -154,6 +174,7 @@ var Columns = []string{
 	FieldPasswordHash,
 	FieldMustChangePassword,
 	FieldEmail,
+	FieldEmailVerifiedAt,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldDeletedAt,
@@ -244,6 +265,11 @@ func ByMustChangePassword(opts ...sql.OrderTermOption) OrderOption {
 // ByEmail orders the results by the email field.
 func ByEmail(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEmail, opts...).ToFunc()
+}
+
+// ByEmailVerifiedAt orders the results by the email_verified_at field.
+func ByEmailVerifiedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEmailVerifiedAt, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.
@@ -442,6 +468,34 @@ func ByFederatedIdentities(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOpti
 		sqlgraph.OrderByNeighborTerms(s, newFederatedIdentitiesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByEmailOutboxCount orders the results by email_outbox count.
+func ByEmailOutboxCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newEmailOutboxStep(), opts...)
+	}
+}
+
+// ByEmailOutbox orders the results by email_outbox terms.
+func ByEmailOutbox(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newEmailOutboxStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByEmailVerificationTokensCount orders the results by email_verification_tokens count.
+func ByEmailVerificationTokensCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newEmailVerificationTokensStep(), opts...)
+	}
+}
+
+// ByEmailVerificationTokens orders the results by email_verification_tokens terms.
+func ByEmailVerificationTokens(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newEmailVerificationTokensStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newRealmStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -517,5 +571,19 @@ func newFederatedIdentitiesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(FederatedIdentitiesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, FederatedIdentitiesTable, FederatedIdentitiesColumn),
+	)
+}
+func newEmailOutboxStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(EmailOutboxInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, EmailOutboxTable, EmailOutboxColumn),
+	)
+}
+func newEmailVerificationTokensStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(EmailVerificationTokensInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, EmailVerificationTokensTable, EmailVerificationTokensColumn),
 	)
 }

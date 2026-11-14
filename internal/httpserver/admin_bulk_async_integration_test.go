@@ -199,6 +199,12 @@ func TestAdmin_Integration_BulkReaper(t *testing.T) {
 		got, err = repo.GetByID(ctx, lost.ID)
 		return err == nil && got.Status == domain.BulkJobInterrupted && len(got.Items) == len(ids)
 	}, 5*time.Second, 10*time.Millisecond)
+	// The audit entry comes right after the report: wait for it, stopping
+	// the reaper first would race with its write.
+	require.Eventually(t, func() bool {
+		status, entries := e.call(t, at, http.MethodGet, "/api/v1/realms/demo/audit-logs?operation=op_00000000000000aa", nil)
+		return status == http.StatusOK && entries["total"] == float64(1)
+	}, 5*time.Second, 20*time.Millisecond)
 	cancel()
 	require.NotNil(t, got.FinishedAt)
 	// b, c ran (the count says 3) but nobody recorded how; d was maybe being

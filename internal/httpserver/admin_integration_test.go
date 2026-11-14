@@ -167,7 +167,11 @@ func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *admin
 		// process, so realms may get their keys here (see ensureSigningKey).
 		KMSBackend: "test", Now: clock.Now,
 		TrustedDevices: trusted,
+		Outbox:         entstore.NewEmailOutboxRepository(client),
 	}
+	deps.EmailVerification = service.NewEmailVerificationService(service.EmailVerificationDeps{
+		Tx: tx, Users: users, Links: entstore.NewEmailVerificationRepository(client), Notifier: notifier, Audit: audit, Now: clock.Now,
+	})
 	for _, option := range options {
 		option(&deps)
 	}

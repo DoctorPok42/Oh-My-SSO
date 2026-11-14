@@ -448,11 +448,14 @@ func (s *AdminService) reapBulkJobs(ctx context.Context) {
 		// done when the process died is unknown: the audit log tells.
 		saved := len(job.Items)
 		job.Items = append(job.Items, bulkItemsLeft(job.IDs, saved, job.Processed+1, domain.BulkItemNotRun)...)
-		if err := s.d.BulkJobs.SaveItems(ctx, job.ID, job.Items); err != nil {
+		// ReapStale already marked the job: a stop of the reaper must not
+		// cut its report and its audit entry, nothing would write them again.
+		done := context.WithoutCancel(ctx)
+		if err := s.d.BulkJobs.SaveItems(done, job.ID, job.Items); err != nil {
 			s.d.Logger.Warn("bulk action: report not saved", "job_id", job.ID, "error", err)
 		}
 		job.Status = domain.BulkJobInterrupted
-		s.auditBulkJob(ctx, job, nil) // the changes of the items died with the process
+		s.auditBulkJob(done, job, nil) // the changes of the items died with the process
 	}
 	if _, err := s.d.BulkJobs.DeleteFinishedBefore(ctx, now.Add(-bulkRetention)); err != nil && ctx.Err() == nil {
 		s.d.Logger.Warn("bulk actions: cannot purge old reports", "error", err)

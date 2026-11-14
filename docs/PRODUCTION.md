@@ -52,7 +52,7 @@ containers run as uid 65532, which must be able to read them), then set `OVHKMS_
 (`KEYMANAGER_BACKEND=vault`: initialised, unsealed, with its own storage and backups), with the Transit engine:
 
 ```bash
-vault secrets enable transit          # the mount path must be "transit"
+vault secrets enable transit          # another mount path: set VAULT_TRANSIT_MOUNT (and edit the policy paths)
 vault policy write oh-my-sso - <<'POLICY'
 path "transit/keys/*"    { capabilities = ["create", "read", "update"] }
 path "transit/sign/*"    { capabilities = ["update"] }
@@ -62,9 +62,23 @@ POLICY
 vault token create -policy=oh-my-sso -period=768h -orphan   # -> VAULT_TOKEN
 ```
 
-Set `VAULT_ADDR` and `VAULT_TOKEN` in `.env`. The servers use this static token and do not renew it: use a
+Set `VAULT_ADDR` and `VAULT_TOKEN` in `.env`. A static `VAULT_TOKEN` is never renewed by the servers: use a
 **periodic token** that you renew (Vault Agent, cron) or a long-lived one, and alert before it expires, otherwise
-signing stops. `local_dev` keeps the keys in memory: development only, never in production.
+signing stops.
+
+Preferred: **AppRole**, which the servers renew (or replace by a new login) on their own, so no token expires:
+
+```bash
+vault auth enable approle
+vault write auth/approle/role/oh-my-sso token_policies=oh-my-sso token_ttl=1h token_max_ttl=24h
+vault read -field=role_id auth/approle/role/oh-my-sso/role-id                    # -> VAULT_APPROLE_ROLE_ID
+vault write -f -field=secret_id auth/approle/role/oh-my-sso/secret-id            # -> VAULT_APPROLE_SECRET_ID
+```
+
+Set `VAULT_APPROLE_ROLE_ID` and `VAULT_APPROLE_SECRET_ID` (or `VAULT_APPROLE_SECRET_ID_FILE`, a file re-read at each
+login, which lets you rotate the secret id) instead of `VAULT_TOKEN`. Optional: `VAULT_APPROLE_MOUNT` (default
+`approle`), `VAULT_TRANSIT_MOUNT` (default `transit`), `VAULT_NAMESPACE` (Vault Enterprise / HCP). A failing login
+at startup stops the server; later failures are logged and retried. `local_dev` keeps the keys in memory: development only, never in production.
 
 ## 3. Configure
 
@@ -271,9 +285,31 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   `deploy.sh` stops, changing nothing, while either is missing. The deploy then restarts Valkey with the password
   (its data are kept in `valkey-data`). Rolling back to an older version afterwards: remove `--requirepass` from
   `compose.yml` first, older versions send no password.
+  **E-mail verification**: the claim `email_verified` now comes from the account's verified state (a link e-mailed
+  to the address was used, or an administrator marked it), no longer from a profile key. The upgrade moves the
+  `email_verified: true` that administrators had put in profiles to that state and removes the key; every other
+  address starts **not verified**: applications that require `email_verified = true` refuse those users until they
+  confirm their address (account console > Profile > "Send a verification e-mail", or the console's user drawer), or
+  until an administrator marks it verified. Choosing a password with an e-mailed invitation or reset link verifies the
+  address too.
 - **Settings**: after a change of `.env`, `docker compose up -d` recreates the containers that use it.
 - **Realms**: the public server keeps each realm it serves for a minute: disabling a realm, or enabling it again,
   takes effect there within a minute (as the realm settings do).
+- **E-mails**: every e-mail goes through an outbox, a table of the database (`email_outbox`): the request that asks for
+  it writes a row, and the dispatchers of `idp` and `idp-admin` send the rows that are due (each row by one server,
+  `FOR UPDATE SKIP LOCKED`). When the mail server fails, the e-mail is tried again 30 s later, then after a delay that
+  doubles up to every 2 h, for 24 h, or until the link it carries expires (activation: `invite_ttl_hours`, reset:
+  `password_reset_ttl_minutes`), whichever comes first; a refusal of the mail server (bad address) ends it at once. A
+  restart or an SMTP outage loses nothing: the rows wait, and a server stopping in the middle of an e-mail leaves it
+  due for the next one. An e-mail whose link was used or replaced meanwhile, or whose account was deleted, is
+  cancelled rather than sent. The link of a reset, activation or verification e-mail is kept encrypted with the key
+  manager (envelope, like the TOTP secrets). Delivery is at least once: a server killed between the mail server's
+  answer and the update of the row sends that e-mail again. The logs say `e-mail not sent, will try again` (warning)
+  at each failed attempt and `e-mail not sent` (error) when it gives up: alert on the second. Each e-mail writes one
+  `notification.sent` audit entry when it ends (sent or failed). The console shows the latest e-mails of an account
+  in its drawer (status, attempts, last error) with **Send again** for a failed one, and an import's report counts its
+  invitations sent, waiting and not delivered, with **Send these invitations again**. Ended e-mails are purged with
+  the realm's data retention.
 - **Valkey outage**: the servers go on in a degraded mode. While Valkey does not answer, each server keeps the
   short-lived state of sign-ins in its own memory: rate limits, lockout counters of unknown identifiers and of
   devices, second-factor challenges, OIDC and SAML flows. Sessions and tokens are in PostgreSQL and keep working (the
@@ -293,7 +329,8 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   keys are lost even with a good database backup. Keep a copy of `.env`. Test a restore.
 - **Purge**: every hour, `idp` and `idp-admin` delete what has ended longer ago than the realm's retention (Settings >
   General > Data retention, 90 days by default): expired or revoked sessions and tokens, used or expired reset and
-  activation links, sign-in attempts, remembered accounts and trusted devices unused for that long. Each row is
+  activation links, address verification links, e-mails of the outbox that were sent, failed or cancelled, sign-in
+  attempts, remembered accounts and trusted devices unused for that long. Each row is
   deleted by one server (batches of 1000, `FOR UPDATE SKIP LOCKED`); the logs show `purge: expired data deleted` with
   the counts.
 - **Audit log retention**: 1 year by default, per realm (Settings > Audit: 30 days to 10 years, or unlimited; any

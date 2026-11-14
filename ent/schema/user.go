@@ -37,6 +37,10 @@ func (User) Fields() []ent.Field {
 		// Signing in with the password is refused until it changes.
 		field.Bool("must_change_password").Default(false),
 		field.String("email").NotEmpty(),
+		// email_verified_at: when the account proved it reads this address (a
+		// link e-mailed to it was used), or an administrator said so. Cleared
+		// whenever the address changes. The OIDC claim email_verified.
+		field.Time("email_verified_at").Optional().Nillable(),
 		field.Time("created_at").Default(func() time.Time { return time.Now() }).Immutable(),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.Time("deleted_at").Optional().Nillable(),
@@ -75,6 +79,8 @@ func (User) Edges() []ent.Edge {
 		edge.To("trusted_devices", TrustedDevice.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("consents", Consent.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("federated_identities", FederatedIdentity.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
+		edge.To("email_outbox", EmailOutbox.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
+		edge.To("email_verification_tokens", EmailVerificationToken.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 	}
 }
 

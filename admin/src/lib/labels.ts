@@ -10,6 +10,25 @@ export const MFA_METHOD_LABELS: Record<string, Msg> = {
   biometric: m("labels.mfa.biometric", "Biometric"),
 };
 
+/** The e-mails the server sends (domain.NotificationKind). */
+export const EMAIL_KIND_LABELS: Record<string, Msg> = {
+  account_invite: m("labels.email.account_invite", "Invitation"),
+  password_reset: m("labels.email.password_reset", "Password reset link"),
+  password_reset_required: m("labels.email.password_reset_required", "Forced password reset"),
+  password_changed: m("labels.email.password_changed", "Password changed"),
+  email_verification: m("labels.email.email_verification", "Address verification"),
+  new_device_login: m("labels.email.new_device_login", "New device sign-in"),
+  suspicious_login: m("labels.email.suspicious_login", "Suspicious sign-in"),
+  mfa_method_added: m("labels.email.mfa_method_added", "Second factor added"),
+  mfa_method_removed: m("labels.email.mfa_method_removed", "Second factor removed"),
+  mfa_reset: m("labels.email.mfa_reset", "MFA reset"),
+  backup_codes_regenerated: m("labels.email.backup_codes_regenerated", "Backup codes regenerated"),
+  account_locked: m("labels.email.account_locked", "Account locked"),
+  app_connected: m("labels.email.app_connected", "Application connected"),
+  admin_recovery: m("labels.email.admin_recovery", "Administrator recovery"),
+  user_import_finished: m("labels.email.user_import_finished", "Import finished"),
+};
+
 /** Second factors a client or a role can require (domain.MfaMethodType). */
 export const MFA_METHODS = ["totp", "webauthn", "passkey", "backup_codes"];
 

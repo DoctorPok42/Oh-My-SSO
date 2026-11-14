@@ -168,7 +168,8 @@ func devSeed(ctx context.Context, args []string, out io.Writer) error {
 			return fmt.Errorf("create user: %w", err)
 		}
 		err = client.User.UpdateOneID(user.ID).
-			SetProfile(map[string]interface{}{"given_name": *username, "family_name": "Demo", "email_verified": true}).
+			SetProfile(map[string]interface{}{"given_name": *username, "family_name": "Demo"}).
+			SetEmailVerifiedAt(time.Now()).
 			Exec(ctx)
 		if err != nil {
 			return fmt.Errorf("set profile: %w", err)

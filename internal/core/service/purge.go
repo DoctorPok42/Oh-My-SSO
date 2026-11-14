@@ -107,6 +107,7 @@ type PurgeCounts struct {
 	LoginAttempts  int
 	KnownAccounts  int
 	TrustedDevices int
+	Emails         int // e-mails of the outbox
 	AuditLogs      int
 }
 
@@ -116,7 +117,7 @@ func (c PurgeCounts) Total() int {
 
 // ended: the rows of data that had ended (all but the audit log).
 func (c PurgeCounts) ended() int {
-	return c.Sessions + c.Tokens + c.ResetLinks + c.LoginAttempts + c.KnownAccounts + c.TrustedDevices
+	return c.Sessions + c.Tokens + c.ResetLinks + c.LoginAttempts + c.KnownAccounts + c.TrustedDevices + c.Emails
 }
 
 func (c *PurgeCounts) add(o PurgeCounts) {
@@ -126,6 +127,7 @@ func (c *PurgeCounts) add(o PurgeCounts) {
 	c.LoginAttempts += o.LoginAttempts
 	c.KnownAccounts += o.KnownAccounts
 	c.TrustedDevices += o.TrustedDevices
+	c.Emails += o.Emails
 	c.AuditLogs += o.AuditLogs
 }
 
@@ -180,7 +182,7 @@ func (s *PurgeService) PurgeAll(ctx context.Context) (PurgeCounts, error) {
 		if c.ended() > 0 {
 			s.d.Logger.InfoContext(ctx, "purge: expired data deleted", "realm_id", r.ID, "retention_days", days,
 				"sessions", c.Sessions, "tokens", c.Tokens, "reset_links", c.ResetLinks,
-				"login_attempts", c.LoginAttempts, "known_accounts", c.KnownAccounts, "trusted_devices", c.TrustedDevices)
+				"login_attempts", c.LoginAttempts, "known_accounts", c.KnownAccounts, "trusted_devices", c.TrustedDevices, "emails", c.Emails)
 		}
 		if c.AuditLogs > 0 {
 			s.d.Logger.InfoContext(ctx, "purge: audit log entries deleted", "realm_id", r.ID,
@@ -294,6 +296,8 @@ func (s *PurgeService) PurgeRealm(ctx context.Context, realmID string, before ti
 		{"tokens", &c.Tokens, s.d.Purge.DeleteExpiredTokens},
 		{"sessions", &c.Sessions, s.d.Purge.DeleteEndedSessions},
 		{"reset links", &c.ResetLinks, s.d.Purge.DeleteEndedResetLinks},
+		{"verification links", &c.ResetLinks, s.d.Purge.DeleteEndedVerificationLinks},
+		{"e-mails", &c.Emails, s.d.Purge.DeleteEndedEmails},
 		{"sign-in attempts", &c.LoginAttempts, s.d.Purge.DeleteLoginAttempts},
 		{"known accounts", &c.KnownAccounts, s.d.Purge.DeleteUnusedKnownAccounts},
 		{"trusted devices", &c.TrustedDevices, s.d.Purge.DeleteExpiredTrustedDevices},

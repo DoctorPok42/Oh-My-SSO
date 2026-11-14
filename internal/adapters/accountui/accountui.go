@@ -190,10 +190,13 @@ type ProfilePage struct {
 	Username      string
 	Email         string
 	EmailVerified bool
-	GivenName     string
-	FamilyName    string
-	FormError     string
-	Saved         bool
+	// CanVerifyEmail: offer "Send a verification e-mail" (not verified, and
+	// e-mails can leave).
+	CanVerifyEmail bool
+	GivenName      string
+	FamilyName     string
+	FormError      string
+	Saved          bool
 	// Languages: the choices of the "Language" card, the current one
 	// selected. One language only: no card.
 	Languages []LanguageOption

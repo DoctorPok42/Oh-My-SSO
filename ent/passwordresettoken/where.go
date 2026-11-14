@@ -95,6 +95,11 @@ func RequestedIP(v string) predicate.PasswordResetToken {
 	return predicate.PasswordResetToken(sql.FieldEQ(FieldRequestedIP, v))
 }
 
+// EmailedTo applies equality check predicate on the "emailed_to" field. It's identical to EmailedToEQ.
+func EmailedTo(v string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldEQ(FieldEmailedTo, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.PasswordResetToken {
 	return predicate.PasswordResetToken(sql.FieldEQ(FieldCreatedAt, v))
@@ -408,6 +413,81 @@ func RequestedIPEqualFold(v string) predicate.PasswordResetToken {
 // RequestedIPContainsFold applies the ContainsFold predicate on the "requested_ip" field.
 func RequestedIPContainsFold(v string) predicate.PasswordResetToken {
 	return predicate.PasswordResetToken(sql.FieldContainsFold(FieldRequestedIP, v))
+}
+
+// EmailedToEQ applies the EQ predicate on the "emailed_to" field.
+func EmailedToEQ(v string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldEQ(FieldEmailedTo, v))
+}
+
+// EmailedToNEQ applies the NEQ predicate on the "emailed_to" field.
+func EmailedToNEQ(v string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldNEQ(FieldEmailedTo, v))
+}
+
+// EmailedToIn applies the In predicate on the "emailed_to" field.
+func EmailedToIn(vs ...string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldIn(FieldEmailedTo, vs...))
+}
+
+// EmailedToNotIn applies the NotIn predicate on the "emailed_to" field.
+func EmailedToNotIn(vs ...string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldNotIn(FieldEmailedTo, vs...))
+}
+
+// EmailedToGT applies the GT predicate on the "emailed_to" field.
+func EmailedToGT(v string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldGT(FieldEmailedTo, v))
+}
+
+// EmailedToGTE applies the GTE predicate on the "emailed_to" field.
+func EmailedToGTE(v string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldGTE(FieldEmailedTo, v))
+}
+
+// EmailedToLT applies the LT predicate on the "emailed_to" field.
+func EmailedToLT(v string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldLT(FieldEmailedTo, v))
+}
+
+// EmailedToLTE applies the LTE predicate on the "emailed_to" field.
+func EmailedToLTE(v string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldLTE(FieldEmailedTo, v))
+}
+
+// EmailedToContains applies the Contains predicate on the "emailed_to" field.
+func EmailedToContains(v string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldContains(FieldEmailedTo, v))
+}
+
+// EmailedToHasPrefix applies the HasPrefix predicate on the "emailed_to" field.
+func EmailedToHasPrefix(v string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldHasPrefix(FieldEmailedTo, v))
+}
+
+// EmailedToHasSuffix applies the HasSuffix predicate on the "emailed_to" field.
+func EmailedToHasSuffix(v string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldHasSuffix(FieldEmailedTo, v))
+}
+
+// EmailedToIsNil applies the IsNil predicate on the "emailed_to" field.
+func EmailedToIsNil() predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldIsNull(FieldEmailedTo))
+}
+
+// EmailedToNotNil applies the NotNil predicate on the "emailed_to" field.
+func EmailedToNotNil() predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldNotNull(FieldEmailedTo))
+}
+
+// EmailedToEqualFold applies the EqualFold predicate on the "emailed_to" field.
+func EmailedToEqualFold(v string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldEqualFold(FieldEmailedTo, v))
+}
+
+// EmailedToContainsFold applies the ContainsFold predicate on the "emailed_to" field.
+func EmailedToContainsFold(v string) predicate.PasswordResetToken {
+	return predicate.PasswordResetToken(sql.FieldContainsFold(FieldEmailedTo, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

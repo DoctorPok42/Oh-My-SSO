@@ -50,10 +50,10 @@ func (s *Server) accountEvent(r *http.Request) service.AccountEvent {
 func (s *Server) profilePage(w http.ResponseWriter, r *http.Request, a *acct) accountui.ProfilePage {
 	given, _ := a.user.Profile["given_name"].(string)
 	family, _ := a.user.Profile["family_name"].(string)
-	verified, _ := a.user.Profile["email_verified"].(bool)
 	return accountui.ProfilePage{
 		Layout:   s.accountLayout(w, r, a, "profile", titleProfile),
-		Username: a.user.Username, Email: a.user.Email, EmailVerified: verified,
+		Username: a.user.Username, Email: a.user.Email, EmailVerified: a.user.EmailVerifiedAt != nil,
+		CanVerifyEmail: s.canVerifyEmail(a.user),
 		GivenName: given, FamilyName: family,
 		Languages: s.languageOptions(r),
 	}

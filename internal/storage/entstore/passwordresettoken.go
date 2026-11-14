@@ -84,6 +84,13 @@ func (r *entPasswordResetTokenRepository) Delete(ctx context.Context, id string)
 	return r.client.PasswordResetToken.DeleteOneID(id).Exec(ctx)
 }
 
+func (r *entPasswordResetTokenRepository) MarkEmailed(ctx context.Context, tokenHash, address string) error {
+	return r.client.PasswordResetToken.Update().
+		Where(passwordresettoken.TokenHash(tokenHash)).
+		SetEmailedTo(domain.NormalizeIdentifier(address)).
+		Exec(ctx)
+}
+
 func toDomainPasswordResetToken(e *ent.PasswordResetToken) *domain.PasswordResetToken {
 	return &domain.PasswordResetToken{
 		ID:          e.ID,
@@ -93,6 +100,7 @@ func toDomainPasswordResetToken(e *ent.PasswordResetToken) *domain.PasswordReset
 		Used:        e.Used,
 		UsedAt:      e.UsedAt,
 		RequestedIP: e.RequestedIP,
+		EmailedTo:   e.EmailedTo,
 		CreatedAt:   e.CreatedAt,
 		UpdatedAt:   e.UpdatedAt,
 	}

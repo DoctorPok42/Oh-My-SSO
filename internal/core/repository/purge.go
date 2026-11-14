@@ -23,6 +23,12 @@ type PurgeRepository interface {
 	// DeleteEndedResetLinks removes the reset and activation links of the
 	// realm's users that expired, or were used, before `before`.
 	DeleteEndedResetLinks(ctx context.Context, realmID string, before time.Time, limit int) (int, error)
+	// DeleteEndedVerificationLinks removes the address verification links
+	// of the realm's users that expired, or were used, before `before`.
+	DeleteEndedVerificationLinks(ctx context.Context, realmID string, before time.Time, limit int) (int, error)
+	// DeleteEndedEmails removes the realm's e-mails of the outbox that ended
+	// (sent, failed, cancelled) before `before`. Pending ones are kept.
+	DeleteEndedEmails(ctx context.Context, realmID string, before time.Time, limit int) (int, error)
 	// DeleteLoginAttempts removes the sign-in attempts made before
 	// `before`. realmID "": the attempts of no existing realm.
 	DeleteLoginAttempts(ctx context.Context, realmID string, before time.Time, limit int) (int, error)

@@ -30,6 +30,8 @@ type User struct {
 	MustChangePassword bool `json:"must_change_password,omitempty"`
 	// Email holds the value of the "email" field.
 	Email string `json:"email,omitempty"`
+	// EmailVerifiedAt holds the value of the "email_verified_at" field.
+	EmailVerifiedAt *time.Time `json:"email_verified_at,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -82,9 +84,13 @@ type UserEdges struct {
 	Consents []*Consent `json:"consents,omitempty"`
 	// FederatedIdentities holds the value of the federated_identities edge.
 	FederatedIdentities []*FederatedIdentity `json:"federated_identities,omitempty"`
+	// EmailOutbox holds the value of the email_outbox edge.
+	EmailOutbox []*EmailOutbox `json:"email_outbox,omitempty"`
+	// EmailVerificationTokens holds the value of the email_verification_tokens edge.
+	EmailVerificationTokens []*EmailVerificationToken `json:"email_verification_tokens,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [11]bool
+	loadedTypes [13]bool
 }
 
 // RealmOrErr returns the Realm value or an error if the edge
@@ -188,6 +194,24 @@ func (e UserEdges) FederatedIdentitiesOrErr() ([]*FederatedIdentity, error) {
 	return nil, &NotLoadedError{edge: "federated_identities"}
 }
 
+// EmailOutboxOrErr returns the EmailOutbox value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) EmailOutboxOrErr() ([]*EmailOutbox, error) {
+	if e.loadedTypes[11] {
+		return e.EmailOutbox, nil
+	}
+	return nil, &NotLoadedError{edge: "email_outbox"}
+}
+
+// EmailVerificationTokensOrErr returns the EmailVerificationTokens value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) EmailVerificationTokensOrErr() ([]*EmailVerificationToken, error) {
+	if e.loadedTypes[12] {
+		return e.EmailVerificationTokens, nil
+	}
+	return nil, &NotLoadedError{edge: "email_verification_tokens"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -201,7 +225,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case user.FieldID, user.FieldRealmID, user.FieldUsername, user.FieldPasswordHash, user.FieldEmail, user.FieldStatus:
 			values[i] = new(sql.NullString)
-		case user.FieldCreatedAt, user.FieldUpdatedAt, user.FieldDeletedAt, user.FieldLastLoginAt, user.FieldLastFailedLoginAt, user.FieldLockedUntil, user.FieldLastLockedAt:
+		case user.FieldEmailVerifiedAt, user.FieldCreatedAt, user.FieldUpdatedAt, user.FieldDeletedAt, user.FieldLastLoginAt, user.FieldLastFailedLoginAt, user.FieldLockedUntil, user.FieldLastLockedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -253,6 +277,13 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field email", values[i])
 			} else if value.Valid {
 				_m.Email = value.String
+			}
+		case user.FieldEmailVerifiedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field email_verified_at", values[i])
+			} else if value.Valid {
+				_m.EmailVerifiedAt = new(time.Time)
+				*_m.EmailVerifiedAt = value.Time
 			}
 		case user.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -395,6 +426,16 @@ func (_m *User) QueryFederatedIdentities() *FederatedIdentityQuery {
 	return NewUserClient(_m.config).QueryFederatedIdentities(_m)
 }
 
+// QueryEmailOutbox queries the "email_outbox" edge of the User entity.
+func (_m *User) QueryEmailOutbox() *EmailOutboxQuery {
+	return NewUserClient(_m.config).QueryEmailOutbox(_m)
+}
+
+// QueryEmailVerificationTokens queries the "email_verification_tokens" edge of the User entity.
+func (_m *User) QueryEmailVerificationTokens() *EmailVerificationTokenQuery {
+	return NewUserClient(_m.config).QueryEmailVerificationTokens(_m)
+}
+
 // Update returns a builder for updating this User.
 // Note that you need to call User.Unwrap() before calling this method if this User
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -432,6 +473,11 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("email=")
 	builder.WriteString(_m.Email)
+	builder.WriteString(", ")
+	if v := _m.EmailVerifiedAt; v != nil {
+		builder.WriteString("email_verified_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

@@ -81,8 +81,14 @@ func KeyManager() (keymanager.KeyManager, string) {
 	switch backend := os.Getenv("KEYMANAGER_BACKEND"); backend {
 	case "vault":
 		km, err := vault.New(vault.Config{
-			Address: os.Getenv("VAULT_ADDR"),
-			Token:   os.Getenv("VAULT_TOKEN"),
+			Address:             os.Getenv("VAULT_ADDR"),
+			Token:               os.Getenv("VAULT_TOKEN"),
+			MountPath:           os.Getenv("VAULT_TRANSIT_MOUNT"),
+			Namespace:           os.Getenv("VAULT_NAMESPACE"),
+			AppRoleID:           os.Getenv("VAULT_APPROLE_ROLE_ID"),
+			AppRoleSecretID:     os.Getenv("VAULT_APPROLE_SECRET_ID"),
+			AppRoleSecretIDFile: os.Getenv("VAULT_APPROLE_SECRET_ID_FILE"),
+			AppRoleMountPath:    os.Getenv("VAULT_APPROLE_MOUNT"),
 		})
 		if err != nil {
 			log.Fatalf("keymanager: %v", err)

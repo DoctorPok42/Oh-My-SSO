@@ -56,7 +56,7 @@ func TestBuildClaims(t *testing.T) {
 		Subject: "sub-1",
 		UserAttributes: map[string]any{
 			"username": "alice", "email": "alice@acme.test", "updated_at": int64(1700000000),
-			"profile.given_name": "Alice", "profile.email_verified": true, "profile.department": "R&D",
+			"profile.given_name": "Alice", "email_verified": true, "profile.department": "R&D",
 			"profile.secret_note": "never leaves", "groups": []string{"admins"}, "roles": []string{"employees"},
 		},
 		Scopes: []*domain.ClientScope{groups, samlOnly},
@@ -79,10 +79,14 @@ func TestBuildClaims(t *testing.T) {
 	ui := buildClaims(as, nil, []string{"openid"}, locUserinfo, quiet)
 	require.Equal(t, map[string]any{"department": "R&D"}, ui, "no profile/email scope: no standard claims")
 
-	t.Run("email_verified only when known", func(t *testing.T) {
+	t.Run("email_verified false unless verified", func(t *testing.T) {
 		as2 := &core.IdentityAssertion{UserAttributes: map[string]any{"email": "bob@acme.test"}}
 		got := buildClaims(as2, nil, []string{"email"}, locIDToken, quiet)
-		require.Equal(t, map[string]any{"email": "bob@acme.test"}, got)
+		require.Equal(t, map[string]any{"email": "bob@acme.test", "email_verified": false}, got)
+		// A profile key of the same name is not the verified state (B-13).
+		as2.UserAttributes["profile.email_verified"] = true
+		got = buildClaims(as2, nil, []string{"email"}, locIDToken, quiet)
+		require.Equal(t, false, got["email_verified"])
 	})
 
 	t.Run("token_location as a single string", func(t *testing.T) {

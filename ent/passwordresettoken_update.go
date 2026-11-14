@@ -62,6 +62,26 @@ func (_u *PasswordResetTokenUpdate) ClearUsedAt() *PasswordResetTokenUpdate {
 	return _u
 }
 
+// SetEmailedTo sets the "emailed_to" field.
+func (_u *PasswordResetTokenUpdate) SetEmailedTo(v string) *PasswordResetTokenUpdate {
+	_u.mutation.SetEmailedTo(v)
+	return _u
+}
+
+// SetNillableEmailedTo sets the "emailed_to" field if the given value is not nil.
+func (_u *PasswordResetTokenUpdate) SetNillableEmailedTo(v *string) *PasswordResetTokenUpdate {
+	if v != nil {
+		_u.SetEmailedTo(*v)
+	}
+	return _u
+}
+
+// ClearEmailedTo clears the value of the "emailed_to" field.
+func (_u *PasswordResetTokenUpdate) ClearEmailedTo() *PasswordResetTokenUpdate {
+	_u.mutation.ClearEmailedTo()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *PasswordResetTokenUpdate) SetUpdatedAt(v time.Time) *PasswordResetTokenUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -141,6 +161,12 @@ func (_u *PasswordResetTokenUpdate) sqlSave(ctx context.Context) (_node int, err
 	if _u.mutation.RequestedIPCleared() {
 		_spec.ClearField(passwordresettoken.FieldRequestedIP, field.TypeString)
 	}
+	if value, ok := _u.mutation.EmailedTo(); ok {
+		_spec.SetField(passwordresettoken.FieldEmailedTo, field.TypeString, value)
+	}
+	if _u.mutation.EmailedToCleared() {
+		_spec.ClearField(passwordresettoken.FieldEmailedTo, field.TypeString)
+	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(passwordresettoken.FieldUpdatedAt, field.TypeTime, value)
 	}
@@ -195,6 +221,26 @@ func (_u *PasswordResetTokenUpdateOne) SetNillableUsedAt(v *time.Time) *Password
 // ClearUsedAt clears the value of the "used_at" field.
 func (_u *PasswordResetTokenUpdateOne) ClearUsedAt() *PasswordResetTokenUpdateOne {
 	_u.mutation.ClearUsedAt()
+	return _u
+}
+
+// SetEmailedTo sets the "emailed_to" field.
+func (_u *PasswordResetTokenUpdateOne) SetEmailedTo(v string) *PasswordResetTokenUpdateOne {
+	_u.mutation.SetEmailedTo(v)
+	return _u
+}
+
+// SetNillableEmailedTo sets the "emailed_to" field if the given value is not nil.
+func (_u *PasswordResetTokenUpdateOne) SetNillableEmailedTo(v *string) *PasswordResetTokenUpdateOne {
+	if v != nil {
+		_u.SetEmailedTo(*v)
+	}
+	return _u
+}
+
+// ClearEmailedTo clears the value of the "emailed_to" field.
+func (_u *PasswordResetTokenUpdateOne) ClearEmailedTo() *PasswordResetTokenUpdateOne {
+	_u.mutation.ClearEmailedTo()
 	return _u
 }
 
@@ -306,6 +352,12 @@ func (_u *PasswordResetTokenUpdateOne) sqlSave(ctx context.Context) (_node *Pass
 	}
 	if _u.mutation.RequestedIPCleared() {
 		_spec.ClearField(passwordresettoken.FieldRequestedIP, field.TypeString)
+	}
+	if value, ok := _u.mutation.EmailedTo(); ok {
+		_spec.SetField(passwordresettoken.FieldEmailedTo, field.TypeString, value)
+	}
+	if _u.mutation.EmailedToCleared() {
+		_spec.ClearField(passwordresettoken.FieldEmailedTo, field.TypeString)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(passwordresettoken.FieldUpdatedAt, field.TypeTime, value)

@@ -28,6 +28,10 @@ type Tx struct {
 	ClientScopeMapping *ClientScopeMappingClient
 	// Consent is the client for interacting with the Consent builders.
 	Consent *ConsentClient
+	// EmailOutbox is the client for interacting with the EmailOutbox builders.
+	EmailOutbox *EmailOutboxClient
+	// EmailVerificationToken is the client for interacting with the EmailVerificationToken builders.
+	EmailVerificationToken *EmailVerificationTokenClient
 	// FederatedIdentity is the client for interacting with the FederatedIdentity builders.
 	FederatedIdentity *FederatedIdentityClient
 	// Group is the client for interacting with the Group builders.
@@ -213,6 +217,8 @@ func (tx *Tx) init() {
 	tx.ClientScope = NewClientScopeClient(tx.config)
 	tx.ClientScopeMapping = NewClientScopeMappingClient(tx.config)
 	tx.Consent = NewConsentClient(tx.config)
+	tx.EmailOutbox = NewEmailOutboxClient(tx.config)
+	tx.EmailVerificationToken = NewEmailVerificationTokenClient(tx.config)
 	tx.FederatedIdentity = NewFederatedIdentityClient(tx.config)
 	tx.Group = NewGroupClient(tx.config)
 	tx.GroupClientScope = NewGroupClientScopeClient(tx.config)

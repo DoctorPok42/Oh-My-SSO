@@ -45,6 +45,15 @@
     <div><dt>{{t "account.profile.ids.username" "Username"}}</dt><dd>{{.Username}}</dd></div>
     <div><dt>{{t "account.profile.ids.email" "E-mail address"}}</dt><dd>{{.Email}}{{if .EmailVerified}} <span class="badge badge-success">{{t "account.profile.ids.verified" "Verified"}}</span>{{end}}</dd></div>
   </dl>
+  {{- if and (not .EmailVerified) .CanVerifyEmail}}
+  <form class="stack" method="post" action="{{.Base}}/profile/verify-email">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <p class="card-note">{{t "account.profile.ids.not_verified" "This address is not verified yet. Some applications only accept a verified address: confirm it with the link we e-mail you."}}</p>
+    <div class="actions">
+      <button type="submit" class="btn btn-secondary">{{t "account.profile.ids.verify" "Send a verification e-mail"}}</button>
+    </div>
+  </form>
+  {{- end}}
   <p class="card-note">{{t "account.profile.ids.ask_admin" "To change your username or e-mail address, ask your administrator."}}
     <a href="{{.Base}}/security">{{t "account.profile.ids.security_link" "Your password and sign-in methods are on the Security page."}}</a></p>
 </section>

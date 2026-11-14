@@ -13,6 +13,8 @@ import (
 	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/clientscopemapping"
 	"sso.internal/sso/ent/consent"
+	"sso.internal/sso/ent/emailoutbox"
+	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/federatedidentity"
 	"sso.internal/sso/ent/group"
 	"sso.internal/sso/ent/groupclientscope"
@@ -353,6 +355,68 @@ func init() {
 	consent.DefaultID = consentDescID.Default.(func() string)
 	// consent.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	consent.IDValidator = consentDescID.Validators[0].(func(string) error)
+	emailoutboxFields := schema.EmailOutbox{}.Fields()
+	_ = emailoutboxFields
+	// emailoutboxDescRealmID is the schema descriptor for realm_id field.
+	emailoutboxDescRealmID := emailoutboxFields[1].Descriptor()
+	// emailoutbox.RealmIDValidator is a validator for the "realm_id" field. It is called by the builders before save.
+	emailoutbox.RealmIDValidator = emailoutboxDescRealmID.Validators[0].(func(string) error)
+	// emailoutboxDescUserID is the schema descriptor for user_id field.
+	emailoutboxDescUserID := emailoutboxFields[2].Descriptor()
+	// emailoutbox.UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
+	emailoutbox.UserIDValidator = emailoutboxDescUserID.Validators[0].(func(string) error)
+	// emailoutboxDescKind is the schema descriptor for kind field.
+	emailoutboxDescKind := emailoutboxFields[3].Descriptor()
+	// emailoutbox.KindValidator is a validator for the "kind" field. It is called by the builders before save.
+	emailoutbox.KindValidator = emailoutboxDescKind.Validators[0].(func(string) error)
+	// emailoutboxDescStatus is the schema descriptor for status field.
+	emailoutboxDescStatus := emailoutboxFields[6].Descriptor()
+	// emailoutbox.DefaultStatus holds the default value on creation for the status field.
+	emailoutbox.DefaultStatus = schema.EmailOutboxStatus(emailoutboxDescStatus.Default.(string))
+	// emailoutboxDescAttempts is the schema descriptor for attempts field.
+	emailoutboxDescAttempts := emailoutboxFields[7].Descriptor()
+	// emailoutbox.DefaultAttempts holds the default value on creation for the attempts field.
+	emailoutbox.DefaultAttempts = emailoutboxDescAttempts.Default.(int)
+	// emailoutboxDescCreatedAt is the schema descriptor for created_at field.
+	emailoutboxDescCreatedAt := emailoutboxFields[15].Descriptor()
+	// emailoutbox.DefaultCreatedAt holds the default value on creation for the created_at field.
+	emailoutbox.DefaultCreatedAt = emailoutboxDescCreatedAt.Default.(func() time.Time)
+	// emailoutboxDescUpdatedAt is the schema descriptor for updated_at field.
+	emailoutboxDescUpdatedAt := emailoutboxFields[16].Descriptor()
+	// emailoutbox.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	emailoutbox.DefaultUpdatedAt = emailoutboxDescUpdatedAt.Default.(func() time.Time)
+	// emailoutbox.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	emailoutbox.UpdateDefaultUpdatedAt = emailoutboxDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// emailoutboxDescID is the schema descriptor for id field.
+	emailoutboxDescID := emailoutboxFields[0].Descriptor()
+	// emailoutbox.DefaultID holds the default value on creation for the id field.
+	emailoutbox.DefaultID = emailoutboxDescID.Default.(func() string)
+	// emailoutbox.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	emailoutbox.IDValidator = emailoutboxDescID.Validators[0].(func(string) error)
+	emailverificationtokenFields := schema.EmailVerificationToken{}.Fields()
+	_ = emailverificationtokenFields
+	// emailverificationtokenDescUserID is the schema descriptor for user_id field.
+	emailverificationtokenDescUserID := emailverificationtokenFields[1].Descriptor()
+	// emailverificationtoken.UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
+	emailverificationtoken.UserIDValidator = emailverificationtokenDescUserID.Validators[0].(func(string) error)
+	// emailverificationtokenDescEmail is the schema descriptor for email field.
+	emailverificationtokenDescEmail := emailverificationtokenFields[2].Descriptor()
+	// emailverificationtoken.EmailValidator is a validator for the "email" field. It is called by the builders before save.
+	emailverificationtoken.EmailValidator = emailverificationtokenDescEmail.Validators[0].(func(string) error)
+	// emailverificationtokenDescTokenHash is the schema descriptor for token_hash field.
+	emailverificationtokenDescTokenHash := emailverificationtokenFields[3].Descriptor()
+	// emailverificationtoken.TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
+	emailverificationtoken.TokenHashValidator = emailverificationtokenDescTokenHash.Validators[0].(func(string) error)
+	// emailverificationtokenDescCreatedAt is the schema descriptor for created_at field.
+	emailverificationtokenDescCreatedAt := emailverificationtokenFields[6].Descriptor()
+	// emailverificationtoken.DefaultCreatedAt holds the default value on creation for the created_at field.
+	emailverificationtoken.DefaultCreatedAt = emailverificationtokenDescCreatedAt.Default.(func() time.Time)
+	// emailverificationtokenDescID is the schema descriptor for id field.
+	emailverificationtokenDescID := emailverificationtokenFields[0].Descriptor()
+	// emailverificationtoken.DefaultID holds the default value on creation for the id field.
+	emailverificationtoken.DefaultID = emailverificationtokenDescID.Default.(func() string)
+	// emailverificationtoken.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	emailverificationtoken.IDValidator = emailverificationtokenDescID.Validators[0].(func(string) error)
 	federatedidentityFields := schema.FederatedIdentity{}.Fields()
 	_ = federatedidentityFields
 	// federatedidentityDescUserID is the schema descriptor for user_id field.
@@ -790,11 +854,11 @@ func init() {
 	// passwordresettoken.DefaultUsed holds the default value on creation for the used field.
 	passwordresettoken.DefaultUsed = passwordresettokenDescUsed.Default.(bool)
 	// passwordresettokenDescCreatedAt is the schema descriptor for created_at field.
-	passwordresettokenDescCreatedAt := passwordresettokenFields[7].Descriptor()
+	passwordresettokenDescCreatedAt := passwordresettokenFields[8].Descriptor()
 	// passwordresettoken.DefaultCreatedAt holds the default value on creation for the created_at field.
 	passwordresettoken.DefaultCreatedAt = passwordresettokenDescCreatedAt.Default.(func() time.Time)
 	// passwordresettokenDescUpdatedAt is the schema descriptor for updated_at field.
-	passwordresettokenDescUpdatedAt := passwordresettokenFields[8].Descriptor()
+	passwordresettokenDescUpdatedAt := passwordresettokenFields[9].Descriptor()
 	// passwordresettoken.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	passwordresettoken.DefaultUpdatedAt = passwordresettokenDescUpdatedAt.Default.(func() time.Time)
 	// passwordresettoken.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -1116,25 +1180,25 @@ func init() {
 	// user.EmailValidator is a validator for the "email" field. It is called by the builders before save.
 	user.EmailValidator = userDescEmail.Validators[0].(func(string) error)
 	// userDescCreatedAt is the schema descriptor for created_at field.
-	userDescCreatedAt := userFields[6].Descriptor()
+	userDescCreatedAt := userFields[7].Descriptor()
 	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
 	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
 	// userDescUpdatedAt is the schema descriptor for updated_at field.
-	userDescUpdatedAt := userFields[7].Descriptor()
+	userDescUpdatedAt := userFields[8].Descriptor()
 	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
 	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// userDescStatus is the schema descriptor for status field.
-	userDescStatus := userFields[9].Descriptor()
+	userDescStatus := userFields[10].Descriptor()
 	// user.DefaultStatus holds the default value on creation for the status field.
 	user.DefaultStatus = schema.UserStatus(userDescStatus.Default.(string))
 	// userDescFailedLoginCount is the schema descriptor for failed_login_count field.
-	userDescFailedLoginCount := userFields[12].Descriptor()
+	userDescFailedLoginCount := userFields[13].Descriptor()
 	// user.DefaultFailedLoginCount holds the default value on creation for the failed_login_count field.
 	user.DefaultFailedLoginCount = userDescFailedLoginCount.Default.(int)
 	// userDescLockoutCount is the schema descriptor for lockout_count field.
-	userDescLockoutCount := userFields[15].Descriptor()
+	userDescLockoutCount := userFields[16].Descriptor()
 	// user.DefaultLockoutCount holds the default value on creation for the lockout_count field.
 	user.DefaultLockoutCount = userDescLockoutCount.Default.(int)
 	// userDescID is the schema descriptor for id field.

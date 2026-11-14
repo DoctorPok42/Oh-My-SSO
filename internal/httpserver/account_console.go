@@ -109,6 +109,7 @@ func (s *Server) mountAccount(r chi.Router) {
 
 			r.Get("/", s.handleAccountProfile)
 			r.Post("/profile", s.handleAccountProfileSave)
+			r.Post("/profile/verify-email", s.handleAccountVerifyEmail)
 			r.Post("/language", s.handleAccountLanguage)
 			r.Post("/signout", s.handleAccountSignOut)
 
@@ -421,6 +422,9 @@ var flashText = map[string]i18n.Text{
 	"refused":          i18n.M("account.flash.refused", "This form had expired: nothing was changed. Try again."),
 	"failed":           i18n.M("account.flash.failed", "Something went wrong: nothing was changed. Try again in a moment."),
 	"bad_language":     i18n.M("account.flash.bad_language", "This language is not available."),
+	"verify_sent":        i18n.M("account.flash.verify_sent", "We sent a confirmation link to your e-mail address. It works for 24 hours."),
+	"verify_too_soon":    i18n.M("account.flash.verify_too_soon", "A confirmation link was sent less than a minute ago. Check your mailbox, or try again in a moment."),
+	"verify_unavailable": i18n.M("account.flash.verify_unavailable", "The confirmation e-mail cannot be sent right now. Try again later."),
 }
 
 // flashValue: a key, with a count for the sentences that show one.
@@ -473,7 +477,7 @@ func flashParts(loc *i18n.Localizer, value string) (notice, problem string) {
 		}
 	}
 	switch key {
-	case "confirm_first", "not_found", "enroll_expired", "refused", "failed", "bad_language":
+	case "confirm_first", "not_found", "enroll_expired", "refused", "failed", "bad_language", "verify_too_soon", "verify_unavailable":
 		return "", text
 	}
 	return text, ""

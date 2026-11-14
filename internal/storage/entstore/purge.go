@@ -8,6 +8,8 @@ import (
 
 	"sso.internal/sso/ent"
 	"sso.internal/sso/ent/auditlog"
+	"sso.internal/sso/ent/emailoutbox"
+	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/knownaccount"
 	"sso.internal/sso/ent/loginattempt"
 	"sso.internal/sso/ent/passwordresettoken"
@@ -90,6 +92,30 @@ func (r *entPurgeRepository) DeleteEndedResetLinks(ctx context.Context, realmID 
 				// updated_at moves when the link is used.
 				sql.And(sql.EQ(t.C(passwordresettoken.FieldUsed), true), sql.LT(t.C(passwordresettoken.FieldUpdatedAt), before)),
 			),
+		))
+	}))).Exec(ctx)
+}
+
+func (r *entPurgeRepository) DeleteEndedVerificationLinks(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
+	return r.client.EmailVerificationToken.Delete().Where(predicate.EmailVerificationToken(batch(emailverificationtoken.Table, limit, func(t *sql.SelectTable, s *sql.Selector) {
+		users := sql.Table(user.Table)
+		s.Where(sql.And(
+			sql.In(t.C(emailverificationtoken.FieldUserID),
+				sql.Select(users.C(user.FieldID)).From(users).Where(sql.EQ(users.C(user.FieldRealmID), realmID))),
+			sql.Or(
+				sql.LT(t.C(emailverificationtoken.FieldExpiresAt), before),
+				sql.LT(t.C(emailverificationtoken.FieldUsedAt), before),
+			),
+		))
+	}))).Exec(ctx)
+}
+
+func (r *entPurgeRepository) DeleteEndedEmails(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
+	return r.client.EmailOutbox.Delete().Where(predicate.EmailOutbox(batch(emailoutbox.Table, limit, func(t *sql.SelectTable, s *sql.Selector) {
+		s.Where(sql.And(
+			sql.EQ(t.C(emailoutbox.FieldRealmID), realmID),
+			sql.NEQ(t.C(emailoutbox.FieldStatus), string(entschema.EmailOutboxPending)),
+			sql.LT(t.C(emailoutbox.FieldUpdatedAt), before),
 		))
 	}))).Exec(ctx)
 }

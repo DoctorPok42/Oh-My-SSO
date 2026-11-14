@@ -66,6 +66,17 @@ func (s *Server) handleGetUserImport(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, job)
 }
 
+// handleResendImportInvitations e-mails a new activation link to the
+// accounts of an import whose invitation did not get through.
+func (s *Server) handleResendImportInvitations(w http.ResponseWriter, r *http.Request) {
+	sent, err := s.d.Admin.ResendFailedImportInvitations(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id"))
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]int{"sent": sent})
+}
+
 func (s *Server) handleUserImportLinks(w http.ResponseWriter, r *http.Request) {
 	links, err := s.d.Admin.UserImportActivationLinks(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id"))
 	if err != nil {

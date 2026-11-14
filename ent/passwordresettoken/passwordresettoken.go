@@ -26,6 +26,8 @@ const (
 	FieldUsedAt = "used_at"
 	// FieldRequestedIP holds the string denoting the requested_ip field in the database.
 	FieldRequestedIP = "requested_ip"
+	// FieldEmailedTo holds the string denoting the emailed_to field in the database.
+	FieldEmailedTo = "emailed_to"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -52,6 +54,7 @@ var Columns = []string{
 	FieldUsed,
 	FieldUsedAt,
 	FieldRequestedIP,
+	FieldEmailedTo,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -121,6 +124,11 @@ func ByUsedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByRequestedIP orders the results by the requested_ip field.
 func ByRequestedIP(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRequestedIP, opts...).ToFunc()
+}
+
+// ByEmailedTo orders the results by the emailed_to field.
+func ByEmailedTo(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEmailedTo, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

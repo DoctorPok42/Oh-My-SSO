@@ -62,6 +62,42 @@
     });
   }
 
+  // The link of a "confirm your address" e-mail: one click confirms (a mail
+  // scanner that opens the link runs no script and confirms nothing).
+  const verify = $("verify");
+  if (verify) {
+    const base = verify.dataset.base;
+    const token = new URLSearchParams(location.hash.slice(1)).get("token") || "";
+    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+    const form = $("verify-form");
+    const invalid = () => {
+      form.hidden = true;
+      $("new-link").hidden = false;
+      showError("invalid_or_expired_token_verify");
+    };
+    messages.invalid_or_expired_token_verify = t("password.js.error.verify_invalid", "This link is invalid, was already used, or has expired. Sign in to your account to ask for a new one.");
+    if (!token) return invalid();
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      clearError();
+      busy(form, true);
+      try {
+        const { status, data } = await post(base, "/auth/verify-email", { token });
+        if (status === 200) {
+          form.hidden = true;
+          $("done").hidden = false;
+          return;
+        }
+        if (data.error === "invalid_or_expired_token") return invalid();
+        showError(data.error);
+      } catch {
+        showError();
+      } finally {
+        busy(form, false);
+      }
+    });
+  }
+
   const reset = $("reset");
   if (reset) {
     const base = reset.dataset.base;

@@ -2,6 +2,10 @@ package vault
 
 import (
 	"context"
+	"log"
+	"os"
+	"sync"
+	"time"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
@@ -17,12 +21,26 @@ import (
 type Config struct {
 	Address   string
 	Token     string
-	MountPath string
+	MountPath string // Transit engine mount, default "transit"
+	Namespace string // Vault Enterprise / HCP namespace, optional
+
+	// AppRole authentication, used instead of Token when AppRoleID is set.
+	// The token it yields is renewed, or replaced by a new login, before it
+	// expires. The secret id is AppRoleSecretID, or the content of
+	// AppRoleSecretIDFile (re-read at every login, so it can be rotated).
+	AppRoleID           string
+	AppRoleSecretID     string
+	AppRoleSecretIDFile string
+	AppRoleMountPath    string // default "approle"
 }
 
 type KeyManager struct {
 	client    *vaultapi.Client
 	mountPath string
+
+	cfg    Config
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
 var (
@@ -31,6 +49,9 @@ var (
 	_ keymanager.DigestSigner = (*KeyManager)(nil)
 )
 
+// New connects to Vault. With AppRole configured it logs in right away (an
+// error is returned if that fails) and keeps the token alive in the
+// background until Close.
 func New(cfg Config) (*KeyManager, error) {
 	vc := vaultapi.DefaultConfig()
 	vc.Address = cfg.Address
@@ -38,13 +59,131 @@ func New(cfg Config) (*KeyManager, error) {
 	if err != nil {
 		return nil, fmt.Errorf("vault keymanager: creating client: %w", err)
 	}
-	client.SetToken(cfg.Token)
+	if cfg.Namespace != "" {
+		client.SetNamespace(cfg.Namespace)
+	}
 
 	mount := cfg.MountPath
 	if mount == "" {
 		mount = "transit"
 	}
-	return &KeyManager{client: client, mountPath: mount}, nil
+	k := &KeyManager{client: client, mountPath: strings.Trim(mount, "/"), cfg: cfg}
+
+	if cfg.AppRoleID == "" {
+		client.SetToken(cfg.Token)
+		return k, nil
+	}
+	if cfg.AppRoleSecretID == "" && cfg.AppRoleSecretIDFile == "" {
+		return nil, fmt.Errorf("vault keymanager: AppRole needs a secret id (or a secret id file)")
+	}
+	secret, err := k.appRoleLogin(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	k.cancel = cancel
+	k.wg.Add(1)
+	go func() {
+		defer k.wg.Done()
+		k.keepAlive(ctx, secret)
+	}()
+	return k, nil
+}
+
+// Close stops the background token renewal.
+func (k *KeyManager) Close() {
+	if k.cancel != nil {
+		k.cancel()
+		k.wg.Wait()
+	}
+}
+
+func (k *KeyManager) appRoleLogin(ctx context.Context) (*vaultapi.Secret, error) {
+	secretID := k.cfg.AppRoleSecretID
+	if k.cfg.AppRoleSecretIDFile != "" {
+		raw, err := os.ReadFile(k.cfg.AppRoleSecretIDFile)
+		if err != nil {
+			return nil, fmt.Errorf("vault keymanager: reading AppRole secret id file: %w", err)
+		}
+		secretID = strings.TrimSpace(string(raw))
+	}
+	mount := strings.Trim(k.cfg.AppRoleMountPath, "/")
+	if mount == "" {
+		mount = "approle"
+	}
+	secret, err := k.client.Logical().WriteWithContext(ctx, "auth/"+mount+"/login", map[string]interface{}{
+		"role_id":   k.cfg.AppRoleID,
+		"secret_id": secretID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("vault keymanager: AppRole login: %w", err)
+	}
+	if secret == nil || secret.Auth == nil || secret.Auth.ClientToken == "" {
+		return nil, fmt.Errorf("vault keymanager: AppRole login: no token in response")
+	}
+	k.client.SetToken(secret.Auth.ClientToken)
+	return secret, nil
+}
+
+// keepAlive renews the token with a LifetimeWatcher when it is renewable,
+// and logs in again when it can no longer be renewed (or never could be).
+func (k *KeyManager) keepAlive(ctx context.Context, secret *vaultapi.Secret) {
+	backoff := time.Second
+	for {
+		k.holdToken(ctx, secret)
+		for {
+			if ctx.Err() != nil {
+				return
+			}
+			var err error
+			secret, err = k.appRoleLogin(ctx)
+			if err == nil {
+				backoff = time.Second
+				break
+			}
+			log.Printf("vault keymanager: %v (retrying in %s)", err, backoff)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(backoff):
+			}
+			if backoff < time.Minute {
+				backoff *= 2
+			}
+		}
+	}
+}
+
+// holdToken returns when the token must be replaced.
+func (k *KeyManager) holdToken(ctx context.Context, secret *vaultapi.Secret) {
+	if secret.Auth.Renewable {
+		w, err := k.client.NewLifetimeWatcher(&vaultapi.LifetimeWatcherInput{Secret: secret})
+		if err == nil {
+			go w.Start()
+			defer w.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case err := <-w.DoneCh():
+					if err != nil {
+						log.Printf("vault keymanager: token renewal ended: %v", err)
+					}
+					return
+				case <-w.RenewCh():
+				}
+			}
+		}
+	}
+	// Not renewable: log in again at two thirds of the lease.
+	wait := time.Duration(secret.Auth.LeaseDuration) * time.Second * 2 / 3
+	if wait <= 0 {
+		wait = time.Minute
+	}
+	select {
+	case <-ctx.Done():
+	case <-time.After(wait):
+	}
 }
 
 func (k *KeyManager) GenerateKey(ctx context.Context, keyType keymanager.KeyType) (*keymanager.GeneratedKey, error) {
@@ -127,6 +266,9 @@ func (k *KeyManager) Sign(ctx context.Context, kmsKeyReference string, payload [
 	if err != nil {
 		return nil, fmt.Errorf("vault keymanager: sign: %w", err)
 	}
+	if secret == nil {
+		return nil, fmt.Errorf("vault keymanager: sign: empty response")
+	}
 	raw, _ := secret.Data["signature"].(string)
 	parts := strings.SplitN(raw, ":", 3)
 	if len(parts) != 3 {
@@ -147,6 +289,9 @@ func (k *KeyManager) SignDigest(ctx context.Context, kmsKeyReference string, dig
 	})
 	if err != nil {
 		return nil, fmt.Errorf("vault keymanager: sign digest: %w", err)
+	}
+	if secret == nil {
+		return nil, fmt.Errorf("vault keymanager: sign digest: empty response")
 	}
 	raw, _ := secret.Data["signature"].(string)
 	parts := strings.SplitN(raw, ":", 3)

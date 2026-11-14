@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>{{t "verify.page_title" "Confirm your e-mail address · {realm}" "realm" .RealmDisplay}}</title>
+<link rel="icon" type="image/svg+xml" href="{{.Assets}}/icon.svg">
+<link rel="stylesheet" href="{{.Assets}}/omsso.css">
+<link rel="stylesheet" href="{{.Assets}}/login.css">
+{{template "i18n-js" "password.js."}}
+<script src="{{.Assets}}/password.js" defer></script>
+</head>
+<body>
+<main class="auth">
+<div class="auth-inner">
+<div class="auth-card" id="verify" data-base="{{.Base}}">
+  {{template "logo"}}
+  <header>
+    <p class="auth-eyebrow">{{.RealmDisplay}}</p>
+    <h1 class="auth-title">{{t "verify.title" "Confirm your e-mail address"}}</h1>
+    <p class="auth-subtitle">{{t "verify.subtitle" "Applications you sign in to can then rely on this address."}}</p>
+  </header>
+
+  <div class="auth-body">
+  <p class="banner banner-danger" id="error" role="alert" hidden></p>
+  <p class="banner banner-success" id="done" role="status" hidden>{{t "verify.done" "Your e-mail address is confirmed. You can close this page."}}</p>
+  <noscript><p class="banner banner-danger">{{t "common.noscript" "This page needs JavaScript."}}</p></noscript>
+
+  <form class="stack" id="verify-form">
+    <button type="submit" class="btn btn-md btn-block">{{t "verify.submit" "Confirm my address"}}</button>
+  </form>
+
+  <p class="auth-links" id="new-link" hidden><a href="{{.Base}}/account/">{{t "verify.account" "Go to my account"}}</a></p>
+  </div>
+</div>
+{{template "auth-footer"}}
+</div>
+</main>
+</body>
+</html>

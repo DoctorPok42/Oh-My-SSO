@@ -46,6 +46,8 @@ type Server struct {
 
 	passwordReset  *service.PasswordResetService
 	forgotPassword bool
+	// emailVerify: the address verification page (email_verification_handler.go).
+	emailVerify *service.EmailVerificationService
 
 	accounts *service.KnownAccountService
 

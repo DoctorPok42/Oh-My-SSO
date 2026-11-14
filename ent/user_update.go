@@ -12,6 +12,8 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"sso.internal/sso/ent/consent"
+	"sso.internal/sso/ent/emailoutbox"
+	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/federatedidentity"
 	"sso.internal/sso/ent/group"
 	"sso.internal/sso/ent/knownaccount"
@@ -98,6 +100,26 @@ func (_u *UserUpdate) SetNillableEmail(v *string) *UserUpdate {
 	if v != nil {
 		_u.SetEmail(*v)
 	}
+	return _u
+}
+
+// SetEmailVerifiedAt sets the "email_verified_at" field.
+func (_u *UserUpdate) SetEmailVerifiedAt(v time.Time) *UserUpdate {
+	_u.mutation.SetEmailVerifiedAt(v)
+	return _u
+}
+
+// SetNillableEmailVerifiedAt sets the "email_verified_at" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableEmailVerifiedAt(v *time.Time) *UserUpdate {
+	if v != nil {
+		_u.SetEmailVerifiedAt(*v)
+	}
+	return _u
+}
+
+// ClearEmailVerifiedAt clears the value of the "email_verified_at" field.
+func (_u *UserUpdate) ClearEmailVerifiedAt() *UserUpdate {
+	_u.mutation.ClearEmailVerifiedAt()
 	return _u
 }
 
@@ -425,6 +447,36 @@ func (_u *UserUpdate) AddFederatedIdentities(v ...*FederatedIdentity) *UserUpdat
 	return _u.AddFederatedIdentityIDs(ids...)
 }
 
+// AddEmailOutboxIDs adds the "email_outbox" edge to the EmailOutbox entity by IDs.
+func (_u *UserUpdate) AddEmailOutboxIDs(ids ...string) *UserUpdate {
+	_u.mutation.AddEmailOutboxIDs(ids...)
+	return _u
+}
+
+// AddEmailOutbox adds the "email_outbox" edges to the EmailOutbox entity.
+func (_u *UserUpdate) AddEmailOutbox(v ...*EmailOutbox) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddEmailOutboxIDs(ids...)
+}
+
+// AddEmailVerificationTokenIDs adds the "email_verification_tokens" edge to the EmailVerificationToken entity by IDs.
+func (_u *UserUpdate) AddEmailVerificationTokenIDs(ids ...string) *UserUpdate {
+	_u.mutation.AddEmailVerificationTokenIDs(ids...)
+	return _u
+}
+
+// AddEmailVerificationTokens adds the "email_verification_tokens" edges to the EmailVerificationToken entity.
+func (_u *UserUpdate) AddEmailVerificationTokens(v ...*EmailVerificationToken) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddEmailVerificationTokenIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
@@ -640,6 +692,48 @@ func (_u *UserUpdate) RemoveFederatedIdentities(v ...*FederatedIdentity) *UserUp
 	return _u.RemoveFederatedIdentityIDs(ids...)
 }
 
+// ClearEmailOutbox clears all "email_outbox" edges to the EmailOutbox entity.
+func (_u *UserUpdate) ClearEmailOutbox() *UserUpdate {
+	_u.mutation.ClearEmailOutbox()
+	return _u
+}
+
+// RemoveEmailOutboxIDs removes the "email_outbox" edge to EmailOutbox entities by IDs.
+func (_u *UserUpdate) RemoveEmailOutboxIDs(ids ...string) *UserUpdate {
+	_u.mutation.RemoveEmailOutboxIDs(ids...)
+	return _u
+}
+
+// RemoveEmailOutbox removes "email_outbox" edges to EmailOutbox entities.
+func (_u *UserUpdate) RemoveEmailOutbox(v ...*EmailOutbox) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveEmailOutboxIDs(ids...)
+}
+
+// ClearEmailVerificationTokens clears all "email_verification_tokens" edges to the EmailVerificationToken entity.
+func (_u *UserUpdate) ClearEmailVerificationTokens() *UserUpdate {
+	_u.mutation.ClearEmailVerificationTokens()
+	return _u
+}
+
+// RemoveEmailVerificationTokenIDs removes the "email_verification_tokens" edge to EmailVerificationToken entities by IDs.
+func (_u *UserUpdate) RemoveEmailVerificationTokenIDs(ids ...string) *UserUpdate {
+	_u.mutation.RemoveEmailVerificationTokenIDs(ids...)
+	return _u
+}
+
+// RemoveEmailVerificationTokens removes "email_verification_tokens" edges to EmailVerificationToken entities.
+func (_u *UserUpdate) RemoveEmailVerificationTokens(v ...*EmailVerificationToken) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveEmailVerificationTokenIDs(ids...)
+}
+
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *UserUpdate) Save(ctx context.Context) (int, error) {
 	_u.defaults()
@@ -720,6 +814,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Email(); ok {
 		_spec.SetField(user.FieldEmail, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.EmailVerifiedAt(); ok {
+		_spec.SetField(user.FieldEmailVerifiedAt, field.TypeTime, value)
+	}
+	if _u.mutation.EmailVerifiedAtCleared() {
+		_spec.ClearField(user.FieldEmailVerifiedAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
@@ -1225,6 +1325,96 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.EmailOutboxCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailOutboxTable,
+			Columns: []string{user.EmailOutboxColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailoutbox.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedEmailOutboxIDs(); len(nodes) > 0 && !_u.mutation.EmailOutboxCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailOutboxTable,
+			Columns: []string{user.EmailOutboxColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailoutbox.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.EmailOutboxIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailOutboxTable,
+			Columns: []string{user.EmailOutboxColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailoutbox.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.EmailVerificationTokensCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailVerificationTokensTable,
+			Columns: []string{user.EmailVerificationTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailverificationtoken.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedEmailVerificationTokensIDs(); len(nodes) > 0 && !_u.mutation.EmailVerificationTokensCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailVerificationTokensTable,
+			Columns: []string{user.EmailVerificationTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailverificationtoken.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.EmailVerificationTokensIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailVerificationTokensTable,
+			Columns: []string{user.EmailVerificationTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailverificationtoken.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -1304,6 +1494,26 @@ func (_u *UserUpdateOne) SetNillableEmail(v *string) *UserUpdateOne {
 	if v != nil {
 		_u.SetEmail(*v)
 	}
+	return _u
+}
+
+// SetEmailVerifiedAt sets the "email_verified_at" field.
+func (_u *UserUpdateOne) SetEmailVerifiedAt(v time.Time) *UserUpdateOne {
+	_u.mutation.SetEmailVerifiedAt(v)
+	return _u
+}
+
+// SetNillableEmailVerifiedAt sets the "email_verified_at" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableEmailVerifiedAt(v *time.Time) *UserUpdateOne {
+	if v != nil {
+		_u.SetEmailVerifiedAt(*v)
+	}
+	return _u
+}
+
+// ClearEmailVerifiedAt clears the value of the "email_verified_at" field.
+func (_u *UserUpdateOne) ClearEmailVerifiedAt() *UserUpdateOne {
+	_u.mutation.ClearEmailVerifiedAt()
 	return _u
 }
 
@@ -1631,6 +1841,36 @@ func (_u *UserUpdateOne) AddFederatedIdentities(v ...*FederatedIdentity) *UserUp
 	return _u.AddFederatedIdentityIDs(ids...)
 }
 
+// AddEmailOutboxIDs adds the "email_outbox" edge to the EmailOutbox entity by IDs.
+func (_u *UserUpdateOne) AddEmailOutboxIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.AddEmailOutboxIDs(ids...)
+	return _u
+}
+
+// AddEmailOutbox adds the "email_outbox" edges to the EmailOutbox entity.
+func (_u *UserUpdateOne) AddEmailOutbox(v ...*EmailOutbox) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddEmailOutboxIDs(ids...)
+}
+
+// AddEmailVerificationTokenIDs adds the "email_verification_tokens" edge to the EmailVerificationToken entity by IDs.
+func (_u *UserUpdateOne) AddEmailVerificationTokenIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.AddEmailVerificationTokenIDs(ids...)
+	return _u
+}
+
+// AddEmailVerificationTokens adds the "email_verification_tokens" edges to the EmailVerificationToken entity.
+func (_u *UserUpdateOne) AddEmailVerificationTokens(v ...*EmailVerificationToken) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddEmailVerificationTokenIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
@@ -1846,6 +2086,48 @@ func (_u *UserUpdateOne) RemoveFederatedIdentities(v ...*FederatedIdentity) *Use
 	return _u.RemoveFederatedIdentityIDs(ids...)
 }
 
+// ClearEmailOutbox clears all "email_outbox" edges to the EmailOutbox entity.
+func (_u *UserUpdateOne) ClearEmailOutbox() *UserUpdateOne {
+	_u.mutation.ClearEmailOutbox()
+	return _u
+}
+
+// RemoveEmailOutboxIDs removes the "email_outbox" edge to EmailOutbox entities by IDs.
+func (_u *UserUpdateOne) RemoveEmailOutboxIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.RemoveEmailOutboxIDs(ids...)
+	return _u
+}
+
+// RemoveEmailOutbox removes "email_outbox" edges to EmailOutbox entities.
+func (_u *UserUpdateOne) RemoveEmailOutbox(v ...*EmailOutbox) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveEmailOutboxIDs(ids...)
+}
+
+// ClearEmailVerificationTokens clears all "email_verification_tokens" edges to the EmailVerificationToken entity.
+func (_u *UserUpdateOne) ClearEmailVerificationTokens() *UserUpdateOne {
+	_u.mutation.ClearEmailVerificationTokens()
+	return _u
+}
+
+// RemoveEmailVerificationTokenIDs removes the "email_verification_tokens" edge to EmailVerificationToken entities by IDs.
+func (_u *UserUpdateOne) RemoveEmailVerificationTokenIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.RemoveEmailVerificationTokenIDs(ids...)
+	return _u
+}
+
+// RemoveEmailVerificationTokens removes "email_verification_tokens" edges to EmailVerificationToken entities.
+func (_u *UserUpdateOne) RemoveEmailVerificationTokens(v ...*EmailVerificationToken) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveEmailVerificationTokenIDs(ids...)
+}
+
 // Where appends a list predicates to the UserUpdate builder.
 func (_u *UserUpdateOne) Where(ps ...predicate.User) *UserUpdateOne {
 	_u.mutation.Where(ps...)
@@ -1956,6 +2238,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.Email(); ok {
 		_spec.SetField(user.FieldEmail, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.EmailVerifiedAt(); ok {
+		_spec.SetField(user.FieldEmailVerifiedAt, field.TypeTime, value)
+	}
+	if _u.mutation.EmailVerifiedAtCleared() {
+		_spec.ClearField(user.FieldEmailVerifiedAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
@@ -2454,6 +2742,96 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(federatedidentity.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.EmailOutboxCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailOutboxTable,
+			Columns: []string{user.EmailOutboxColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailoutbox.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedEmailOutboxIDs(); len(nodes) > 0 && !_u.mutation.EmailOutboxCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailOutboxTable,
+			Columns: []string{user.EmailOutboxColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailoutbox.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.EmailOutboxIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailOutboxTable,
+			Columns: []string{user.EmailOutboxColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailoutbox.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.EmailVerificationTokensCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailVerificationTokensTable,
+			Columns: []string{user.EmailVerificationTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailverificationtoken.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedEmailVerificationTokensIDs(); len(nodes) > 0 && !_u.mutation.EmailVerificationTokensCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailVerificationTokensTable,
+			Columns: []string{user.EmailVerificationTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailverificationtoken.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.EmailVerificationTokensIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailVerificationTokensTable,
+			Columns: []string{user.EmailVerificationTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailverificationtoken.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

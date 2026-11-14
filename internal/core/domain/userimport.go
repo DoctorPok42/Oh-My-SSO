@@ -28,6 +28,9 @@ type UserImportRow struct {
 	Error    string `json:"error,omitempty"`
 	UserID   string `json:"-"` // what the activation links are issued from
 	Emailed  bool   `json:"emailed"`
+	// Delivery: what became of the e-mailed invitation ("pending", "sent",
+	// "failed"), filled when the report is read (never stored).
+	Delivery string `json:"delivery,omitempty"`
 	// What the account received: the import's audit entry lists it.
 	Groups []string `json:"-"`
 	Roles  []string `json:"-"`

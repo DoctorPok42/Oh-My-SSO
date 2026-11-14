@@ -11,6 +11,8 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"sso.internal/sso/ent/consent"
+	"sso.internal/sso/ent/emailoutbox"
+	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/federatedidentity"
 	"sso.internal/sso/ent/group"
 	"sso.internal/sso/ent/knownaccount"
@@ -75,6 +77,20 @@ func (_c *UserCreate) SetNillableMustChangePassword(v *bool) *UserCreate {
 // SetEmail sets the "email" field.
 func (_c *UserCreate) SetEmail(v string) *UserCreate {
 	_c.mutation.SetEmail(v)
+	return _c
+}
+
+// SetEmailVerifiedAt sets the "email_verified_at" field.
+func (_c *UserCreate) SetEmailVerifiedAt(v time.Time) *UserCreate {
+	_c.mutation.SetEmailVerifiedAt(v)
+	return _c
+}
+
+// SetNillableEmailVerifiedAt sets the "email_verified_at" field if the given value is not nil.
+func (_c *UserCreate) SetNillableEmailVerifiedAt(v *time.Time) *UserCreate {
+	if v != nil {
+		_c.SetEmailVerifiedAt(*v)
+	}
 	return _c
 }
 
@@ -393,6 +409,36 @@ func (_c *UserCreate) AddFederatedIdentities(v ...*FederatedIdentity) *UserCreat
 	return _c.AddFederatedIdentityIDs(ids...)
 }
 
+// AddEmailOutboxIDs adds the "email_outbox" edge to the EmailOutbox entity by IDs.
+func (_c *UserCreate) AddEmailOutboxIDs(ids ...string) *UserCreate {
+	_c.mutation.AddEmailOutboxIDs(ids...)
+	return _c
+}
+
+// AddEmailOutbox adds the "email_outbox" edges to the EmailOutbox entity.
+func (_c *UserCreate) AddEmailOutbox(v ...*EmailOutbox) *UserCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddEmailOutboxIDs(ids...)
+}
+
+// AddEmailVerificationTokenIDs adds the "email_verification_tokens" edge to the EmailVerificationToken entity by IDs.
+func (_c *UserCreate) AddEmailVerificationTokenIDs(ids ...string) *UserCreate {
+	_c.mutation.AddEmailVerificationTokenIDs(ids...)
+	return _c
+}
+
+// AddEmailVerificationTokens adds the "email_verification_tokens" edges to the EmailVerificationToken entity.
+func (_c *UserCreate) AddEmailVerificationTokens(v ...*EmailVerificationToken) *UserCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddEmailVerificationTokenIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_c *UserCreate) Mutation() *UserMutation {
 	return _c.mutation
@@ -560,6 +606,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Email(); ok {
 		_spec.SetField(user.FieldEmail, field.TypeString, value)
 		_node.Email = value
+	}
+	if value, ok := _c.mutation.EmailVerifiedAt(); ok {
+		_spec.SetField(user.FieldEmailVerifiedAt, field.TypeTime, value)
+		_node.EmailVerifiedAt = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)
@@ -775,6 +825,38 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(federatedidentity.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.EmailOutboxIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailOutboxTable,
+			Columns: []string{user.EmailOutboxColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailoutbox.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.EmailVerificationTokensIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EmailVerificationTokensTable,
+			Columns: []string{user.EmailVerificationTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(emailverificationtoken.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

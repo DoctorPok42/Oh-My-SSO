@@ -23,6 +23,8 @@ import (
 	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/clientscopemapping"
 	"sso.internal/sso/ent/consent"
+	"sso.internal/sso/ent/emailoutbox"
+	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/federatedidentity"
 	"sso.internal/sso/ent/group"
 	"sso.internal/sso/ent/groupclientscope"
@@ -69,6 +71,10 @@ type Client struct {
 	ClientScopeMapping *ClientScopeMappingClient
 	// Consent is the client for interacting with the Consent builders.
 	Consent *ConsentClient
+	// EmailOutbox is the client for interacting with the EmailOutbox builders.
+	EmailOutbox *EmailOutboxClient
+	// EmailVerificationToken is the client for interacting with the EmailVerificationToken builders.
+	EmailVerificationToken *EmailVerificationTokenClient
 	// FederatedIdentity is the client for interacting with the FederatedIdentity builders.
 	FederatedIdentity *FederatedIdentityClient
 	// Group is the client for interacting with the Group builders.
@@ -134,6 +140,8 @@ func (c *Client) init() {
 	c.ClientScope = NewClientScopeClient(c.config)
 	c.ClientScopeMapping = NewClientScopeMappingClient(c.config)
 	c.Consent = NewConsentClient(c.config)
+	c.EmailOutbox = NewEmailOutboxClient(c.config)
+	c.EmailVerificationToken = NewEmailVerificationTokenClient(c.config)
 	c.FederatedIdentity = NewFederatedIdentityClient(c.config)
 	c.Group = NewGroupClient(c.config)
 	c.GroupClientScope = NewGroupClientScopeClient(c.config)
@@ -247,39 +255,41 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:                ctx,
-		config:             cfg,
-		AuditLog:           NewAuditLogClient(cfg),
-		BulkJob:            NewBulkJobClient(cfg),
-		ClientApp:          NewClientAppClient(cfg),
-		ClientGroup:        NewClientGroupClient(cfg),
-		ClientRole:         NewClientRoleClient(cfg),
-		ClientScope:        NewClientScopeClient(cfg),
-		ClientScopeMapping: NewClientScopeMappingClient(cfg),
-		Consent:            NewConsentClient(cfg),
-		FederatedIdentity:  NewFederatedIdentityClient(cfg),
-		Group:              NewGroupClient(cfg),
-		GroupClientScope:   NewGroupClientScopeClient(cfg),
-		IdentityProvider:   NewIdentityProviderClient(cfg),
-		InstanceSettings:   NewInstanceSettingsClient(cfg),
-		KeyRotationLog:     NewKeyRotationLogClient(cfg),
-		KnownAccount:       NewKnownAccountClient(cfg),
-		LoginAttempt:       NewLoginAttemptClient(cfg),
-		MfaBackupCode:      NewMfaBackupCodeClient(cfg),
-		MfaMethod:          NewMfaMethodClient(cfg),
-		MfaPolicy:          NewMfaPolicyClient(cfg),
-		PasswordResetToken: NewPasswordResetTokenClient(cfg),
-		Permission:         NewPermissionClient(cfg),
-		Realm:              NewRealmClient(cfg),
-		Role:               NewRoleClient(cfg),
-		RoleClientScope:    NewRoleClientScopeClient(cfg),
-		Session:            NewSessionClient(cfg),
-		SigningKey:         NewSigningKeyClient(cfg),
-		Timeout:            NewTimeoutClient(cfg),
-		Token:              NewTokenClient(cfg),
-		TrustedDevice:      NewTrustedDeviceClient(cfg),
-		User:               NewUserClient(cfg),
-		UserImportJob:      NewUserImportJobClient(cfg),
+		ctx:                    ctx,
+		config:                 cfg,
+		AuditLog:               NewAuditLogClient(cfg),
+		BulkJob:                NewBulkJobClient(cfg),
+		ClientApp:              NewClientAppClient(cfg),
+		ClientGroup:            NewClientGroupClient(cfg),
+		ClientRole:             NewClientRoleClient(cfg),
+		ClientScope:            NewClientScopeClient(cfg),
+		ClientScopeMapping:     NewClientScopeMappingClient(cfg),
+		Consent:                NewConsentClient(cfg),
+		EmailOutbox:            NewEmailOutboxClient(cfg),
+		EmailVerificationToken: NewEmailVerificationTokenClient(cfg),
+		FederatedIdentity:      NewFederatedIdentityClient(cfg),
+		Group:                  NewGroupClient(cfg),
+		GroupClientScope:       NewGroupClientScopeClient(cfg),
+		IdentityProvider:       NewIdentityProviderClient(cfg),
+		InstanceSettings:       NewInstanceSettingsClient(cfg),
+		KeyRotationLog:         NewKeyRotationLogClient(cfg),
+		KnownAccount:           NewKnownAccountClient(cfg),
+		LoginAttempt:           NewLoginAttemptClient(cfg),
+		MfaBackupCode:          NewMfaBackupCodeClient(cfg),
+		MfaMethod:              NewMfaMethodClient(cfg),
+		MfaPolicy:              NewMfaPolicyClient(cfg),
+		PasswordResetToken:     NewPasswordResetTokenClient(cfg),
+		Permission:             NewPermissionClient(cfg),
+		Realm:                  NewRealmClient(cfg),
+		Role:                   NewRoleClient(cfg),
+		RoleClientScope:        NewRoleClientScopeClient(cfg),
+		Session:                NewSessionClient(cfg),
+		SigningKey:             NewSigningKeyClient(cfg),
+		Timeout:                NewTimeoutClient(cfg),
+		Token:                  NewTokenClient(cfg),
+		TrustedDevice:          NewTrustedDeviceClient(cfg),
+		User:                   NewUserClient(cfg),
+		UserImportJob:          NewUserImportJobClient(cfg),
 	}, nil
 }
 
@@ -297,39 +307,41 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:                ctx,
-		config:             cfg,
-		AuditLog:           NewAuditLogClient(cfg),
-		BulkJob:            NewBulkJobClient(cfg),
-		ClientApp:          NewClientAppClient(cfg),
-		ClientGroup:        NewClientGroupClient(cfg),
-		ClientRole:         NewClientRoleClient(cfg),
-		ClientScope:        NewClientScopeClient(cfg),
-		ClientScopeMapping: NewClientScopeMappingClient(cfg),
-		Consent:            NewConsentClient(cfg),
-		FederatedIdentity:  NewFederatedIdentityClient(cfg),
-		Group:              NewGroupClient(cfg),
-		GroupClientScope:   NewGroupClientScopeClient(cfg),
-		IdentityProvider:   NewIdentityProviderClient(cfg),
-		InstanceSettings:   NewInstanceSettingsClient(cfg),
-		KeyRotationLog:     NewKeyRotationLogClient(cfg),
-		KnownAccount:       NewKnownAccountClient(cfg),
-		LoginAttempt:       NewLoginAttemptClient(cfg),
-		MfaBackupCode:      NewMfaBackupCodeClient(cfg),
-		MfaMethod:          NewMfaMethodClient(cfg),
-		MfaPolicy:          NewMfaPolicyClient(cfg),
-		PasswordResetToken: NewPasswordResetTokenClient(cfg),
-		Permission:         NewPermissionClient(cfg),
-		Realm:              NewRealmClient(cfg),
-		Role:               NewRoleClient(cfg),
-		RoleClientScope:    NewRoleClientScopeClient(cfg),
-		Session:            NewSessionClient(cfg),
-		SigningKey:         NewSigningKeyClient(cfg),
-		Timeout:            NewTimeoutClient(cfg),
-		Token:              NewTokenClient(cfg),
-		TrustedDevice:      NewTrustedDeviceClient(cfg),
-		User:               NewUserClient(cfg),
-		UserImportJob:      NewUserImportJobClient(cfg),
+		ctx:                    ctx,
+		config:                 cfg,
+		AuditLog:               NewAuditLogClient(cfg),
+		BulkJob:                NewBulkJobClient(cfg),
+		ClientApp:              NewClientAppClient(cfg),
+		ClientGroup:            NewClientGroupClient(cfg),
+		ClientRole:             NewClientRoleClient(cfg),
+		ClientScope:            NewClientScopeClient(cfg),
+		ClientScopeMapping:     NewClientScopeMappingClient(cfg),
+		Consent:                NewConsentClient(cfg),
+		EmailOutbox:            NewEmailOutboxClient(cfg),
+		EmailVerificationToken: NewEmailVerificationTokenClient(cfg),
+		FederatedIdentity:      NewFederatedIdentityClient(cfg),
+		Group:                  NewGroupClient(cfg),
+		GroupClientScope:       NewGroupClientScopeClient(cfg),
+		IdentityProvider:       NewIdentityProviderClient(cfg),
+		InstanceSettings:       NewInstanceSettingsClient(cfg),
+		KeyRotationLog:         NewKeyRotationLogClient(cfg),
+		KnownAccount:           NewKnownAccountClient(cfg),
+		LoginAttempt:           NewLoginAttemptClient(cfg),
+		MfaBackupCode:          NewMfaBackupCodeClient(cfg),
+		MfaMethod:              NewMfaMethodClient(cfg),
+		MfaPolicy:              NewMfaPolicyClient(cfg),
+		PasswordResetToken:     NewPasswordResetTokenClient(cfg),
+		Permission:             NewPermissionClient(cfg),
+		Realm:                  NewRealmClient(cfg),
+		Role:                   NewRoleClient(cfg),
+		RoleClientScope:        NewRoleClientScopeClient(cfg),
+		Session:                NewSessionClient(cfg),
+		SigningKey:             NewSigningKeyClient(cfg),
+		Timeout:                NewTimeoutClient(cfg),
+		Token:                  NewTokenClient(cfg),
+		TrustedDevice:          NewTrustedDeviceClient(cfg),
+		User:                   NewUserClient(cfg),
+		UserImportJob:          NewUserImportJobClient(cfg),
 	}, nil
 }
 
@@ -360,12 +372,12 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.AuditLog, c.BulkJob, c.ClientApp, c.ClientGroup, c.ClientRole, c.ClientScope,
-		c.ClientScopeMapping, c.Consent, c.FederatedIdentity, c.Group,
-		c.GroupClientScope, c.IdentityProvider, c.InstanceSettings, c.KeyRotationLog,
-		c.KnownAccount, c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.MfaPolicy,
-		c.PasswordResetToken, c.Permission, c.Realm, c.Role, c.RoleClientScope,
-		c.Session, c.SigningKey, c.Timeout, c.Token, c.TrustedDevice, c.User,
-		c.UserImportJob,
+		c.ClientScopeMapping, c.Consent, c.EmailOutbox, c.EmailVerificationToken,
+		c.FederatedIdentity, c.Group, c.GroupClientScope, c.IdentityProvider,
+		c.InstanceSettings, c.KeyRotationLog, c.KnownAccount, c.LoginAttempt,
+		c.MfaBackupCode, c.MfaMethod, c.MfaPolicy, c.PasswordResetToken, c.Permission,
+		c.Realm, c.Role, c.RoleClientScope, c.Session, c.SigningKey, c.Timeout,
+		c.Token, c.TrustedDevice, c.User, c.UserImportJob,
 	} {
 		n.Use(hooks...)
 	}
@@ -376,12 +388,12 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.AuditLog, c.BulkJob, c.ClientApp, c.ClientGroup, c.ClientRole, c.ClientScope,
-		c.ClientScopeMapping, c.Consent, c.FederatedIdentity, c.Group,
-		c.GroupClientScope, c.IdentityProvider, c.InstanceSettings, c.KeyRotationLog,
-		c.KnownAccount, c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.MfaPolicy,
-		c.PasswordResetToken, c.Permission, c.Realm, c.Role, c.RoleClientScope,
-		c.Session, c.SigningKey, c.Timeout, c.Token, c.TrustedDevice, c.User,
-		c.UserImportJob,
+		c.ClientScopeMapping, c.Consent, c.EmailOutbox, c.EmailVerificationToken,
+		c.FederatedIdentity, c.Group, c.GroupClientScope, c.IdentityProvider,
+		c.InstanceSettings, c.KeyRotationLog, c.KnownAccount, c.LoginAttempt,
+		c.MfaBackupCode, c.MfaMethod, c.MfaPolicy, c.PasswordResetToken, c.Permission,
+		c.Realm, c.Role, c.RoleClientScope, c.Session, c.SigningKey, c.Timeout,
+		c.Token, c.TrustedDevice, c.User, c.UserImportJob,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -406,6 +418,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ClientScopeMapping.mutate(ctx, m)
 	case *ConsentMutation:
 		return c.Consent.mutate(ctx, m)
+	case *EmailOutboxMutation:
+		return c.EmailOutbox.mutate(ctx, m)
+	case *EmailVerificationTokenMutation:
+		return c.EmailVerificationToken.mutate(ctx, m)
 	case *FederatedIdentityMutation:
 		return c.FederatedIdentity.mutate(ctx, m)
 	case *GroupMutation:
@@ -1934,6 +1950,304 @@ func (c *ConsentClient) mutate(ctx context.Context, m *ConsentMutation) (Value, 
 		return (&ConsentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Consent mutation op: %q", m.Op())
+	}
+}
+
+// EmailOutboxClient is a client for the EmailOutbox schema.
+type EmailOutboxClient struct {
+	config
+}
+
+// NewEmailOutboxClient returns a client for the EmailOutbox from the given config.
+func NewEmailOutboxClient(c config) *EmailOutboxClient {
+	return &EmailOutboxClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `emailoutbox.Hooks(f(g(h())))`.
+func (c *EmailOutboxClient) Use(hooks ...Hook) {
+	c.hooks.EmailOutbox = append(c.hooks.EmailOutbox, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `emailoutbox.Intercept(f(g(h())))`.
+func (c *EmailOutboxClient) Intercept(interceptors ...Interceptor) {
+	c.inters.EmailOutbox = append(c.inters.EmailOutbox, interceptors...)
+}
+
+// Create returns a builder for creating a EmailOutbox entity.
+func (c *EmailOutboxClient) Create() *EmailOutboxCreate {
+	mutation := newEmailOutboxMutation(c.config, OpCreate)
+	return &EmailOutboxCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of EmailOutbox entities.
+func (c *EmailOutboxClient) CreateBulk(builders ...*EmailOutboxCreate) *EmailOutboxCreateBulk {
+	return &EmailOutboxCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *EmailOutboxClient) MapCreateBulk(slice any, setFunc func(*EmailOutboxCreate, int)) *EmailOutboxCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &EmailOutboxCreateBulk{err: fmt.Errorf("calling to EmailOutboxClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*EmailOutboxCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &EmailOutboxCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for EmailOutbox.
+func (c *EmailOutboxClient) Update() *EmailOutboxUpdate {
+	mutation := newEmailOutboxMutation(c.config, OpUpdate)
+	return &EmailOutboxUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *EmailOutboxClient) UpdateOne(_m *EmailOutbox) *EmailOutboxUpdateOne {
+	mutation := newEmailOutboxMutation(c.config, OpUpdateOne, withEmailOutbox(_m))
+	return &EmailOutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *EmailOutboxClient) UpdateOneID(id string) *EmailOutboxUpdateOne {
+	mutation := newEmailOutboxMutation(c.config, OpUpdateOne, withEmailOutboxID(id))
+	return &EmailOutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for EmailOutbox.
+func (c *EmailOutboxClient) Delete() *EmailOutboxDelete {
+	mutation := newEmailOutboxMutation(c.config, OpDelete)
+	return &EmailOutboxDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *EmailOutboxClient) DeleteOne(_m *EmailOutbox) *EmailOutboxDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *EmailOutboxClient) DeleteOneID(id string) *EmailOutboxDeleteOne {
+	builder := c.Delete().Where(emailoutbox.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &EmailOutboxDeleteOne{builder}
+}
+
+// Query returns a query builder for EmailOutbox.
+func (c *EmailOutboxClient) Query() *EmailOutboxQuery {
+	return &EmailOutboxQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeEmailOutbox},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a EmailOutbox entity by its id.
+func (c *EmailOutboxClient) Get(ctx context.Context, id string) (*EmailOutbox, error) {
+	return c.Query().Where(emailoutbox.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *EmailOutboxClient) GetX(ctx context.Context, id string) *EmailOutbox {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a EmailOutbox.
+func (c *EmailOutboxClient) QueryUser(_m *EmailOutbox) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(emailoutbox.Table, emailoutbox.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, emailoutbox.UserTable, emailoutbox.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *EmailOutboxClient) Hooks() []Hook {
+	return c.hooks.EmailOutbox
+}
+
+// Interceptors returns the client interceptors.
+func (c *EmailOutboxClient) Interceptors() []Interceptor {
+	return c.inters.EmailOutbox
+}
+
+func (c *EmailOutboxClient) mutate(ctx context.Context, m *EmailOutboxMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&EmailOutboxCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&EmailOutboxUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&EmailOutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&EmailOutboxDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown EmailOutbox mutation op: %q", m.Op())
+	}
+}
+
+// EmailVerificationTokenClient is a client for the EmailVerificationToken schema.
+type EmailVerificationTokenClient struct {
+	config
+}
+
+// NewEmailVerificationTokenClient returns a client for the EmailVerificationToken from the given config.
+func NewEmailVerificationTokenClient(c config) *EmailVerificationTokenClient {
+	return &EmailVerificationTokenClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `emailverificationtoken.Hooks(f(g(h())))`.
+func (c *EmailVerificationTokenClient) Use(hooks ...Hook) {
+	c.hooks.EmailVerificationToken = append(c.hooks.EmailVerificationToken, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `emailverificationtoken.Intercept(f(g(h())))`.
+func (c *EmailVerificationTokenClient) Intercept(interceptors ...Interceptor) {
+	c.inters.EmailVerificationToken = append(c.inters.EmailVerificationToken, interceptors...)
+}
+
+// Create returns a builder for creating a EmailVerificationToken entity.
+func (c *EmailVerificationTokenClient) Create() *EmailVerificationTokenCreate {
+	mutation := newEmailVerificationTokenMutation(c.config, OpCreate)
+	return &EmailVerificationTokenCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of EmailVerificationToken entities.
+func (c *EmailVerificationTokenClient) CreateBulk(builders ...*EmailVerificationTokenCreate) *EmailVerificationTokenCreateBulk {
+	return &EmailVerificationTokenCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *EmailVerificationTokenClient) MapCreateBulk(slice any, setFunc func(*EmailVerificationTokenCreate, int)) *EmailVerificationTokenCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &EmailVerificationTokenCreateBulk{err: fmt.Errorf("calling to EmailVerificationTokenClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*EmailVerificationTokenCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &EmailVerificationTokenCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for EmailVerificationToken.
+func (c *EmailVerificationTokenClient) Update() *EmailVerificationTokenUpdate {
+	mutation := newEmailVerificationTokenMutation(c.config, OpUpdate)
+	return &EmailVerificationTokenUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *EmailVerificationTokenClient) UpdateOne(_m *EmailVerificationToken) *EmailVerificationTokenUpdateOne {
+	mutation := newEmailVerificationTokenMutation(c.config, OpUpdateOne, withEmailVerificationToken(_m))
+	return &EmailVerificationTokenUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *EmailVerificationTokenClient) UpdateOneID(id string) *EmailVerificationTokenUpdateOne {
+	mutation := newEmailVerificationTokenMutation(c.config, OpUpdateOne, withEmailVerificationTokenID(id))
+	return &EmailVerificationTokenUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for EmailVerificationToken.
+func (c *EmailVerificationTokenClient) Delete() *EmailVerificationTokenDelete {
+	mutation := newEmailVerificationTokenMutation(c.config, OpDelete)
+	return &EmailVerificationTokenDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *EmailVerificationTokenClient) DeleteOne(_m *EmailVerificationToken) *EmailVerificationTokenDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *EmailVerificationTokenClient) DeleteOneID(id string) *EmailVerificationTokenDeleteOne {
+	builder := c.Delete().Where(emailverificationtoken.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &EmailVerificationTokenDeleteOne{builder}
+}
+
+// Query returns a query builder for EmailVerificationToken.
+func (c *EmailVerificationTokenClient) Query() *EmailVerificationTokenQuery {
+	return &EmailVerificationTokenQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeEmailVerificationToken},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a EmailVerificationToken entity by its id.
+func (c *EmailVerificationTokenClient) Get(ctx context.Context, id string) (*EmailVerificationToken, error) {
+	return c.Query().Where(emailverificationtoken.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *EmailVerificationTokenClient) GetX(ctx context.Context, id string) *EmailVerificationToken {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryOwner queries the owner edge of a EmailVerificationToken.
+func (c *EmailVerificationTokenClient) QueryOwner(_m *EmailVerificationToken) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(emailverificationtoken.Table, emailverificationtoken.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, emailverificationtoken.OwnerTable, emailverificationtoken.OwnerColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *EmailVerificationTokenClient) Hooks() []Hook {
+	return c.hooks.EmailVerificationToken
+}
+
+// Interceptors returns the client interceptors.
+func (c *EmailVerificationTokenClient) Interceptors() []Interceptor {
+	return c.inters.EmailVerificationToken
+}
+
+func (c *EmailVerificationTokenClient) mutate(ctx context.Context, m *EmailVerificationTokenMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&EmailVerificationTokenCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&EmailVerificationTokenUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&EmailVerificationTokenUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&EmailVerificationTokenDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown EmailVerificationToken mutation op: %q", m.Op())
 	}
 }
 
@@ -6006,6 +6320,38 @@ func (c *UserClient) QueryFederatedIdentities(_m *User) *FederatedIdentityQuery 
 	return query
 }
 
+// QueryEmailOutbox queries the email_outbox edge of a User.
+func (c *UserClient) QueryEmailOutbox(_m *User) *EmailOutboxQuery {
+	query := (&EmailOutboxClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(emailoutbox.Table, emailoutbox.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.EmailOutboxTable, user.EmailOutboxColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryEmailVerificationTokens queries the email_verification_tokens edge of a User.
+func (c *UserClient) QueryEmailVerificationTokens(_m *User) *EmailVerificationTokenQuery {
+	query := (&EmailVerificationTokenClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(emailverificationtoken.Table, emailverificationtoken.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.EmailVerificationTokensTable, user.EmailVerificationTokensColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
@@ -6184,18 +6530,20 @@ func (c *UserImportJobClient) mutate(ctx context.Context, m *UserImportJobMutati
 type (
 	hooks struct {
 		AuditLog, BulkJob, ClientApp, ClientGroup, ClientRole, ClientScope,
-		ClientScopeMapping, Consent, FederatedIdentity, Group, GroupClientScope,
-		IdentityProvider, InstanceSettings, KeyRotationLog, KnownAccount, LoginAttempt,
-		MfaBackupCode, MfaMethod, MfaPolicy, PasswordResetToken, Permission, Realm,
-		Role, RoleClientScope, Session, SigningKey, Timeout, Token, TrustedDevice,
-		User, UserImportJob []ent.Hook
+		ClientScopeMapping, Consent, EmailOutbox, EmailVerificationToken,
+		FederatedIdentity, Group, GroupClientScope, IdentityProvider, InstanceSettings,
+		KeyRotationLog, KnownAccount, LoginAttempt, MfaBackupCode, MfaMethod,
+		MfaPolicy, PasswordResetToken, Permission, Realm, Role, RoleClientScope,
+		Session, SigningKey, Timeout, Token, TrustedDevice, User,
+		UserImportJob []ent.Hook
 	}
 	inters struct {
 		AuditLog, BulkJob, ClientApp, ClientGroup, ClientRole, ClientScope,
-		ClientScopeMapping, Consent, FederatedIdentity, Group, GroupClientScope,
-		IdentityProvider, InstanceSettings, KeyRotationLog, KnownAccount, LoginAttempt,
-		MfaBackupCode, MfaMethod, MfaPolicy, PasswordResetToken, Permission, Realm,
-		Role, RoleClientScope, Session, SigningKey, Timeout, Token, TrustedDevice,
-		User, UserImportJob []ent.Interceptor
+		ClientScopeMapping, Consent, EmailOutbox, EmailVerificationToken,
+		FederatedIdentity, Group, GroupClientScope, IdentityProvider, InstanceSettings,
+		KeyRotationLog, KnownAccount, LoginAttempt, MfaBackupCode, MfaMethod,
+		MfaPolicy, PasswordResetToken, Permission, Realm, Role, RoleClientScope,
+		Session, SigningKey, Timeout, Token, TrustedDevice, User,
+		UserImportJob []ent.Interceptor
 	}
 )

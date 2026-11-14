@@ -36,4 +36,7 @@ type UpdateUserParams struct {
 	Status       *domain.UserStatus
 	// MustChangePassword: see domain.User.
 	MustChangePassword *bool
+	// EmailVerified: true marks the address verified now (kept if it already
+	// was), false clears it. Changing Email clears it unless this is set.
+	EmailVerified *bool
 }

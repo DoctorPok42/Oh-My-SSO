@@ -362,6 +362,82 @@ var (
 			},
 		},
 	}
+	// EmailOutboxColumns holds the columns for the "email_outbox" table.
+	EmailOutboxColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "realm_id", Type: field.TypeString},
+		{Name: "kind", Type: field.TypeString},
+		{Name: "event", Type: field.TypeString, Size: 2147483647},
+		{Name: "sealed_token", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "status", Type: field.TypeString, Default: "pending"},
+		{Name: "attempts", Type: field.TypeInt, Default: 0},
+		{Name: "next_attempt_at", Type: field.TypeTime},
+		{Name: "deadline", Type: field.TypeTime},
+		{Name: "locked_until", Type: field.TypeTime, Nullable: true},
+		{Name: "claim", Type: field.TypeString, Nullable: true},
+		{Name: "last_error", Type: field.TypeString, Nullable: true},
+		{Name: "recipient", Type: field.TypeString, Nullable: true},
+		{Name: "template", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "sent_at", Type: field.TypeTime, Nullable: true},
+		{Name: "user_id", Type: field.TypeString},
+	}
+	// EmailOutboxTable holds the schema information for the "email_outbox" table.
+	EmailOutboxTable = &schema.Table{
+		Name:       "email_outbox",
+		Columns:    EmailOutboxColumns,
+		PrimaryKey: []*schema.Column{EmailOutboxColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "email_outbox_users_email_outbox",
+				Columns:    []*schema.Column{EmailOutboxColumns[17]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "emailoutbox_status_next_attempt_at",
+				Unique:  false,
+				Columns: []*schema.Column{EmailOutboxColumns[5], EmailOutboxColumns[7]},
+			},
+			{
+				Name:    "emailoutbox_user_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{EmailOutboxColumns[17], EmailOutboxColumns[14]},
+			},
+			{
+				Name:    "emailoutbox_realm_id_updated_at",
+				Unique:  false,
+				Columns: []*schema.Column{EmailOutboxColumns[1], EmailOutboxColumns[15]},
+			},
+		},
+	}
+	// EmailVerificationTokensColumns holds the columns for the "email_verification_tokens" table.
+	EmailVerificationTokensColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "email", Type: field.TypeString},
+		{Name: "token_hash", Type: field.TypeString, Unique: true},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "used_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeString},
+	}
+	// EmailVerificationTokensTable holds the schema information for the "email_verification_tokens" table.
+	EmailVerificationTokensTable = &schema.Table{
+		Name:       "email_verification_tokens",
+		Columns:    EmailVerificationTokensColumns,
+		PrimaryKey: []*schema.Column{EmailVerificationTokensColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "email_verification_tokens_users_email_verification_tokens",
+				Columns:    []*schema.Column{EmailVerificationTokensColumns[6]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// FederatedIdentitiesColumns holds the columns for the "federated_identities" table.
 	FederatedIdentitiesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
@@ -797,6 +873,7 @@ var (
 		{Name: "used", Type: field.TypeBool, Default: false},
 		{Name: "used_at", Type: field.TypeTime, Nullable: true},
 		{Name: "requested_ip", Type: field.TypeString, Nullable: true},
+		{Name: "emailed_to", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "user_id", Type: field.TypeString},
@@ -809,7 +886,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "password_reset_tokens_users_password_reset_tokens",
-				Columns:    []*schema.Column{PasswordResetTokensColumns[8]},
+				Columns:    []*schema.Column{PasswordResetTokensColumns[9]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -1173,6 +1250,7 @@ var (
 		{Name: "password_hash", Type: field.TypeString, Nullable: true},
 		{Name: "must_change_password", Type: field.TypeBool, Default: false},
 		{Name: "email", Type: field.TypeString},
+		{Name: "email_verified_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
@@ -1194,7 +1272,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "users_realms_users",
-				Columns:    []*schema.Column{UsersColumns[16]},
+				Columns:    []*schema.Column{UsersColumns[17]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -1203,12 +1281,12 @@ var (
 			{
 				Name:    "user_realm_id_username",
 				Unique:  true,
-				Columns: []*schema.Column{UsersColumns[16], UsersColumns[1]},
+				Columns: []*schema.Column{UsersColumns[17], UsersColumns[1]},
 			},
 			{
 				Name:    "user_realm_id_email",
 				Unique:  true,
-				Columns: []*schema.Column{UsersColumns[16], UsersColumns[4]},
+				Columns: []*schema.Column{UsersColumns[17], UsersColumns[4]},
 			},
 		},
 	}
@@ -1377,6 +1455,8 @@ var (
 		ClientScopesTable,
 		ClientScopeMappingsTable,
 		ConsentsTable,
+		EmailOutboxTable,
+		EmailVerificationTokensTable,
 		FederatedIdentitiesTable,
 		GroupsTable,
 		GroupClientScopesTable,
@@ -1420,6 +1500,11 @@ func init() {
 	ClientScopeMappingsTable.ForeignKeys[1].RefTable = ClientScopesTable
 	ConsentsTable.ForeignKeys[0].RefTable = ClientAppsTable
 	ConsentsTable.ForeignKeys[1].RefTable = UsersTable
+	EmailOutboxTable.ForeignKeys[0].RefTable = UsersTable
+	EmailOutboxTable.Annotation = &entsql.Annotation{
+		Table: "email_outbox",
+	}
+	EmailVerificationTokensTable.ForeignKeys[0].RefTable = UsersTable
 	FederatedIdentitiesTable.ForeignKeys[0].RefTable = IdentityProvidersTable
 	FederatedIdentitiesTable.ForeignKeys[1].RefTable = UsersTable
 	GroupsTable.ForeignKeys[0].RefTable = RealmsTable

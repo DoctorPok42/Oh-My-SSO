@@ -56,14 +56,14 @@ const (
 	maxImportFileName   = 200
 )
 
-// QueueNotifier is a Notifier that can wait for room in its queue. Notify
-// drops an event when the queue is full: right for a single e-mail, not for
-// a thousand invitations in a row.
+// QueueNotifier is a Notifier that tells whether the e-mail was queued (the
+// outbox of notify.Dispatcher): an invitation that was not shows its link
+// instead, an import counts it as not e-mailed.
 type QueueNotifier interface {
 	NotifyWait(ctx context.Context, e domain.NotificationEvent) error
 }
 
-// notifyWait queues an event, waiting if the notifier can.
+// notifyWait queues an event and says whether it was, if the notifier can.
 func (s *AdminService) notifyWait(ctx context.Context, e domain.NotificationEvent) error {
 	if q, ok := s.d.Notifier.(QueueNotifier); ok {
 		return q.NotifyWait(ctx, e)
@@ -438,7 +438,11 @@ type UserImportView struct {
 	IgnoredColumns  []string                `json:"ignored_columns"`
 	Rows            []domain.UserImportRow  `json:"rows,omitempty"`
 	// WithoutEmail: accounts created whose activation link was not e-mailed.
-	WithoutEmail int        `json:"without_email"`
+	WithoutEmail int `json:"without_email"`
+	// EmailFailed, EmailPending: e-mailed invitations that did not get
+	// through (ResendFailedImportInvitations), or are still waiting.
+	EmailFailed  int        `json:"email_failed"`
+	EmailPending int        `json:"email_pending"`
 	CreatedAt    time.Time  `json:"created_at"`
 	FinishedAt   *time.Time `json:"finished_at"`
 }
@@ -488,7 +492,11 @@ func (s *AdminService) GetUserImport(ctx context.Context, realm *domain.Realm, i
 	if err != nil {
 		return nil, err
 	}
-	return userImportView(job), nil
+	v := userImportView(job)
+	if err := s.importDeliveries(ctx, job, v); err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 // UserImportLink is the activation link of an imported account.

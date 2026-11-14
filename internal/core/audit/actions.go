@@ -38,6 +38,11 @@ const (
 	UserPasswordResetRequested = "user.password_reset_requested"
 	UserPasswordReset          = "user.password_reset"
 	UserPasswordResetForced    = "user.password_reset_forced" // by an administrator
+	// UserEmailVerificationSent: a "confirm your address" e-mail, asked by
+	// the user (account console) or an administrator.
+	UserEmailVerificationSent = "user.email_verification_sent"
+	// UserEmailVerified: its link was used; the address is verified.
+	UserEmailVerified = "user.email_verified"
 
 	// Second factors.
 	MFAMethodEnrolled         = "mfa.method_enrolled"
@@ -116,6 +121,9 @@ const (
 
 	// E-mails.
 	NotificationSent = "notification.sent"
+	// NotificationRequeued: an administrator sent a failed (or waiting)
+	// e-mail of the outbox again.
+	NotificationRequeued = "notification.requeued"
 
 	// The audit log itself.
 	AuditLogExported = "audit_log.exported"
@@ -158,6 +166,8 @@ var Catalog = []ActionInfo{
 	{UserPasswordResetRequested, "Users", "Password reset requested"},
 	{UserPasswordReset, "Users", "Password reset"},
 	{UserPasswordResetForced, "Users", "Password reset forced by an administrator"},
+	{UserEmailVerificationSent, "Users", "Address verification e-mail sent"},
+	{UserEmailVerified, "Users", "E-mail address verified"},
 
 	{MFAMethodEnrolled, "Second factors", "Factor enrolled"},
 	{MFAMethodRemoved, "Second factors", "Factor removed"},
@@ -219,6 +229,7 @@ var Catalog = []ActionInfo{
 	{RecoveryIPAllowlistCleared, "Realm", "IP allowlist emptied (recovery)"},
 
 	{NotificationSent, "E-mails", "E-mail sent"},
+	{NotificationRequeued, "E-mails", "E-mail sent again"},
 
 	{AuditLogExported, "Audit log", "Audit log exported"},
 	{AuditLogPurged, "Audit log", "Old audit log entries deleted"},

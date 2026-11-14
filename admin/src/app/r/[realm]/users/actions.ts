@@ -116,11 +116,27 @@ export async function userImportLinks(realm: string, id: string) {
   );
 }
 
+/** E-mails a new activation link to the accounts whose invitation did not get through. */
+export async function resendImportInvitations(realm: string, id: string) {
+  return act(() =>
+    api<{ sent: number }>(apiPath(["realms", realm, "users", "imports", id, "resend-invitations"]), {
+      method: "POST",
+      timeoutMs: IMPORT_TIMEOUT_MS,
+    }),
+  );
+}
+
 /** Profile keys are merged; a null value removes the key. */
 export async function updateUser(
   realm: string,
   id: string,
-  body: { username?: string; email?: string; status?: string; profile?: Record<string, string | null> },
+  body: {
+    username?: string;
+    email?: string;
+    status?: string;
+    profile?: Record<string, string | null>;
+    email_verified?: boolean;
+  },
 ) {
   return act(() => api<UserDetail>(apiPath(["realms", realm, "users", id]), { method: "PATCH", body }));
 }
@@ -166,6 +182,18 @@ export async function resendActivation(realm: string, id: string, sendEmail: boo
       method: "POST",
       body: { send_email: sendEmail },
     }),
+  );
+}
+
+/** E-mails the user a link that confirms their address. */
+export async function sendEmailVerification(realm: string, id: string) {
+  return act(() => api<UserDetail>(apiPath(["realms", realm, "users", id, "email-verification"]), { method: "POST" }));
+}
+
+/** Sends a failed (or waiting) e-mail again, with 24 h more to get through. */
+export async function resendEmail(realm: string, id: string, emailId: string) {
+  return act(() =>
+    api<UserDetail>(apiPath(["realms", realm, "users", id, "emails", emailId, "resend"]), { method: "POST" }),
   );
 }
 

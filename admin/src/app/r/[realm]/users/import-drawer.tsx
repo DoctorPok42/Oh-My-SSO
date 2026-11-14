@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileUp, Upload } from "lucide-react";
+import { Download, FileUp, Send, Upload } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -25,7 +25,14 @@ import {
   MAX_IMPORT_BYTES,
   toCsv,
 } from "@/lib/user-import";
-import { getUserImport, listUserImports, previewUserImport, startUserImport, userImportLinks } from "./actions";
+import {
+  getUserImport,
+  listUserImports,
+  previewUserImport,
+  resendImportInvitations,
+  startUserImport,
+  userImportLinks,
+} from "./actions";
 
 // Importing users from a CSV file: choose the file, read what it would do
 // (nothing is written yet), start it, follow it. The import runs on the
@@ -205,6 +212,22 @@ function ImportDrawer({ realm, opened, onClose }: { realm: string; opened?: stri
     );
   };
 
+  // The invitations that did not get through (mail server down for too
+  // long, address refused): a new link, e-mailed again.
+  const resendInvitations = async (job: UserImport) => {
+    setError(null);
+    const r = await run(() => resendImportInvitations(realm, job.id), {
+      quiet: true,
+      refresh: false,
+      intent: `import=${job.id}`,
+    });
+    if (!r.ok) return refused(r);
+    toast.success(
+      tn("users.import.resent", r.data.sent, "{count} invitation sent again", "{count} invitations sent again"),
+    );
+    await openReport(job.id);
+  };
+
   return (
     <Drawer
       open
@@ -251,7 +274,14 @@ function ImportDrawer({ realm, opened, onClose }: { realm: string; opened?: stri
           onNotify={setNotify}
         />
       )}
-      {view.step === "job" && <Job job={view.job} pending={pending} onLinks={() => downloadLinks(view.job)} />}
+      {view.step === "job" && (
+        <Job
+          job={view.job}
+          pending={pending}
+          onLinks={() => downloadLinks(view.job)}
+          onResend={() => resendInvitations(view.job)}
+        />
+      )}
     </Drawer>
   );
 }
@@ -419,8 +449,18 @@ function Preview({
   );
 }
 
-function Job({ job, pending, onLinks }: { job: UserImport; pending: boolean; onLinks: () => void }) {
-  const { t, locale } = useT();
+function Job({
+  job,
+  pending,
+  onLinks,
+  onResend,
+}: {
+  job: UserImport;
+  pending: boolean;
+  onLinks: () => void;
+  onResend: () => void;
+}) {
+  const { t, tn, locale } = useT();
   if (job.status === "running") {
     const percent = importPercent(job);
     return (
@@ -483,7 +523,35 @@ function Job({ job, pending, onLinks }: { job: UserImport; pending: boolean; onL
             <dd>{job.total - job.processed}</dd>
           </>
         )}
+        {job.send_email && job.created > 0 && (
+          <>
+            <dt className="text-text-secondary">{t("users.import.report_invitations", "Invitations")}</dt>
+            <dd>{invitationSummary(job, t)}</dd>
+          </>
+        )}
       </dl>
+      {job.email_failed > 0 && (
+        <div className="space-y-1.5">
+          <Banner tone="warning">
+            {tn(
+              "users.import.invitations_failed",
+              job.email_failed,
+              "{count} invitation did not get through (mail server unavailable for too long, or address refused).",
+              "{count} invitations did not get through (mail server unavailable for too long, or address refused).",
+            )}
+          </Banner>
+          <Button variant="secondary" onClick={onResend} loading={pending} disabled={pending}>
+            <Send />
+            {t("users.import.resend", "Send these invitations again")}
+          </Button>
+          <p className="text-[12px] text-text-muted">
+            {t(
+              "users.import.resend_hint",
+              "Each of these accounts gets a new activation link by e-mail; the previous one stops working. Accounts that chose their password since are left alone.",
+            )}
+          </p>
+        </div>
+      )}
       {job.ignored_columns.length > 0 && (
         <Banner tone="info">
           {t("users.import.ignored", "Ignored columns, never read: {columns}", {
@@ -558,4 +626,15 @@ function RefusedRows({ rows, fileName }: { rows: UserImportRow[]; fileName: stri
       )}
     </div>
   );
+}
+
+/** "238 sent, 2 waiting, 0 failed". */
+function invitationSummary(job: UserImport, t: ReturnType<typeof useT>["t"]) {
+  const rows = job.rows ?? [];
+  const sent = rows.filter((r) => r.delivery === "sent").length;
+  return t("users.import.invitations_value", "{sent} sent, {pending} waiting, {failed} not delivered", {
+    sent,
+    pending: job.email_pending,
+    failed: job.email_failed,
+  });
 }

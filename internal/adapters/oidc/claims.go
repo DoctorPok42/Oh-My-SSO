@@ -108,11 +108,11 @@ func buildClaims(as *core.IdentityAssertion, pc *core.ProtocolClient, granted []
 		if slices.Contains(granted, scopeEmail) {
 			if v, ok := attrs["email"]; ok {
 				out["email"] = v
-				// Only claim "verified" when the profile says so: an unknown
-				// status must not be reported as verified.
-				if verified, ok := attrs["profile.email_verified"].(bool); ok {
-					out["email_verified"] = verified
-				}
+				// Verified only when the user proved they read the address
+				// (a link e-mailed to it was used) or an administrator said
+				// so; cleared when the address changes.
+				verified, _ := attrs["email_verified"].(bool)
+				out["email_verified"] = verified
 			}
 		}
 	}

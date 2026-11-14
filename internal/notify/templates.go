@@ -88,6 +88,10 @@ type Data struct {
 	ImportNotDone     int
 	ImportInterrupted bool
 	ImportURL         string // the report in the admin console
+
+	// email_verification: the link that confirms the address (ExpiresIn:
+	// how long it works).
+	VerifyURL string
 }
 
 type htmlData struct {
