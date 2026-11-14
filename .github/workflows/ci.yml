@@ -136,8 +136,14 @@ jobs:
 
       - name: Test the deploy script
         run: |
-          chmod +x scripts/deploy.sh scripts/deploy_test.sh
+          chmod +x scripts/*.sh
           scripts/deploy_test.sh
+
+      - name: Test backup and restore (real PostgreSQL)
+        run: scripts/restore_test.sh
+
+      - name: Test the release notes script
+        run: scripts/release_notes_test.sh
 
       - name: Check that the Ent code is up to date
         run: |
