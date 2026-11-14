@@ -58,6 +58,7 @@ jobs:
       - name: Tag the image the CI built for this commit
         id: tag
         run: |
+          set -o pipefail # a missing image must fail digest_of, not give an empty digest
           version=${GITHUB_REF_NAME#v}
           src="$DOCKER_REPOSITORY:${{ matrix.image }}-$GITHUB_SHA"
           dst="$DOCKER_REPOSITORY:${{ matrix.image }}-$version"
