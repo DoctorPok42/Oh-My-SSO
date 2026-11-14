@@ -20,6 +20,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Segmented } from "@/components/ui/segmented";
 import { TogglePill } from "@/components/ui/toggle-pill";
+import { UriList } from "@/components/ui/uri-list";
 import { useT } from "@/i18n/client";
 import { clientBody, draftFromClient, emptyDraft, type ClientDraft } from "@/lib/client-form";
 import { formatDate } from "@/lib/format";
@@ -483,12 +484,10 @@ function OidcFields({
         )}
         error={err("redirect_uris")}
       >
-        <Textarea
+        <UriList
           id="c-redirect"
-          className="font-mono text-[13px]"
-          rows={3}
           value={draft.redirectUris}
-          onChange={(e) => set("redirectUris", e.target.value)}
+          onChange={(v) => set("redirectUris", v)}
           placeholder="https://payroll.example.com/auth/callback"
         />
       </Field>
@@ -499,13 +498,7 @@ function OidcFields({
         hint={t("clients.field.logout_uris_hint", "Where users may land after signing out (one per line).")}
         error={err("post_logout_redirect_uris")}
       >
-        <Textarea
-          id="c-logout"
-          className="font-mono text-[13px]"
-          rows={2}
-          value={draft.postLogoutUris}
-          onChange={(e) => set("postLogoutUris", e.target.value)}
-        />
+        <UriList id="c-logout" value={draft.postLogoutUris} onChange={(v) => set("postLogoutUris", v)} />
       </Field>
 
       <Field
