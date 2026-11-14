@@ -31,7 +31,7 @@ jobs:
       - name: Tag is a semantic version, on main, with changelog notes
         run: |
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
-          scripts/release_notes.sh "$GITHUB_REF_NAME" >/dev/null
+          bash scripts/release_notes.sh "$GITHUB_REF_NAME" >/dev/null
 
   images:
     name: Release ${{ matrix.image }}
@@ -107,7 +107,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          scripts/release_notes.sh "$GITHUB_REF_NAME" >notes.md
+          bash scripts/release_notes.sh "$GITHUB_REF_NAME" >notes.md
           # 1.0.0-rc.1: marked as a pre-release, not the latest release.
           flag=""; [[ $GITHUB_REF_NAME == *-* ]] && flag=--prerelease
           gh release create "$GITHUB_REF_NAME" $flag --title "$GITHUB_REF_NAME" --notes-file notes.md
