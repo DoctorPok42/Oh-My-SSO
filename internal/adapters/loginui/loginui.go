@@ -203,6 +203,13 @@ type ResetPassword struct {
 	MaxLength    int
 }
 
+// VerifyEmail is the page of the link of a "confirm your address" e-mail.
+type VerifyEmail struct {
+	RealmDisplay string
+	Base         string // "/r/<realm>": the JSON call, and the account console
+	Assets       string
+}
+
 type Consent struct {
 	// Client: the public id of the application (OIDC client_id, SAML entity
 	// ID), sent back with the answer: if the request expired meanwhile, the
@@ -346,6 +353,13 @@ func (p *Pages) RenderForgotPassword(w http.ResponseWriter, r *http.Request, dat
 // browser never sends to the server; password.js reads it.
 func (p *Pages) RenderResetPassword(w http.ResponseWriter, r *http.Request, data ResetPassword) {
 	p.render(w, r, http.StatusOK, "reset.html", PageCSP, data)
+}
+
+// RenderVerifyEmail writes the address verification page. Like the reset
+// page, the token stays in the URL fragment; password.js reads it and sends
+// it when the user confirms.
+func (p *Pages) RenderVerifyEmail(w http.ResponseWriter, r *http.Request, data VerifyEmail) {
+	p.render(w, r, http.StatusOK, "verify.html", PageCSP, data)
 }
 
 // RenderConsent writes the consent page (no script). After the answer the

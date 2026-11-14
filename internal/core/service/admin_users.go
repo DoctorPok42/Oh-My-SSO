@@ -41,6 +41,10 @@ type UserSummary struct {
 	ID          string            `json:"id"`
 	Username    string            `json:"username"`
 	Email       string            `json:"email"`
+	// EmailVerified: the user proved they read the address, or an
+	// administrator said so (B-13); since EmailVerifiedAt.
+	EmailVerified   bool       `json:"email_verified"`
+	EmailVerifiedAt *time.Time `json:"email_verified_at"`
 	Name        string            `json:"name"`
 	Status      domain.UserStatus `json:"status"`
 	HasPassword bool              `json:"has_password"` // false: invitation not accepted yet
@@ -65,6 +69,8 @@ type UserDetail struct {
 	BackupCodesLeft int                    `json:"backup_codes_left"`
 	Effective       EffectiveAccess        `json:"effective"`
 	TrustedDevices  []TrustedDeviceView    `json:"trusted_devices"`
+	// Emails: the account's latest e-mails and what became of them (B-12).
+	Emails []OutboxEmailView `json:"emails"`
 }
 
 // TrustedDeviceView: a device where the user ticked "Don't ask again on
@@ -146,6 +152,7 @@ func (s *AdminService) summaries(ctx context.Context, users []*domain.User) ([]U
 	for _, u := range users {
 		sum := UserSummary{
 			ID: u.ID, Username: u.Username, Email: u.Email, Name: displayName(u), Status: u.Status,
+			EmailVerified: u.EmailVerifiedAt != nil, EmailVerifiedAt: u.EmailVerifiedAt,
 			HasPassword: u.PasswordHash != "", MFAEnrolled: mfa[u.ID], Locked: u.Lockout.LockedAt(now),
 			CreatedAt: u.CreatedAt, MustChangePassword: u.MustChangePassword, FailedLogins: u.Lockout.FailedCount,
 			// Names loaded with the memberships: no query per group or role.
@@ -195,6 +202,9 @@ func (s *AdminService) GetUser(ctx context.Context, realm *domain.Realm, userID 
 		return nil, err
 	}
 	if d.TrustedDevices, err = s.trustedDevices(ctx, u.ID); err != nil {
+		return nil, err
+	}
+	if d.Emails, err = s.userEmails(ctx, u.ID); err != nil {
 		return nil, err
 	}
 	return d, nil
@@ -458,10 +468,8 @@ func (s *AdminService) ResendActivation(ctx context.Context, actor AdminActor, r
 }
 
 func (s *AdminService) issueActivation(ctx context.Context, actor AdminActor, realm *domain.Realm, u *domain.User, sendEmail bool) (*InviteResult, error) {
-	return s.issueActivationVia(ctx, actor, realm, u, sendEmail, false, func(ctx context.Context, e domain.NotificationEvent) error {
-		s.d.Notifier.Notify(ctx, e)
-		return nil
-	})
+	// notifyWait: an e-mail that cannot be queued shows its link instead.
+	return s.issueActivationVia(ctx, actor, realm, u, sendEmail, false, s.notifyWait)
 }
 
 // issueActivationVia is issueActivation with the way the e-mail is queued.
@@ -504,6 +512,9 @@ type UpdateUserInput struct {
 	Email    *string
 	Status   *domain.UserStatus
 	Profile  map[string]interface{}
+	// EmailVerified: mark the address verified (true) or not (false). A new
+	// Email is not verified unless this says so.
+	EmailVerified *bool
 }
 
 // UpdateUser changes a user. A user who is no longer active is signed out
@@ -530,6 +541,13 @@ func (s *AdminService) UpdateUser(ctx context.Context, actor AdminActor, realm *
 		}
 		params.Email = &email
 		changes["email"] = email
+		if u.EmailVerifiedAt != nil && in.EmailVerified == nil {
+			changes["email_verified"] = false // a new address is not verified
+		}
+	}
+	if in.EmailVerified != nil && (*in.EmailVerified != (u.EmailVerifiedAt != nil) || params.Email != nil) {
+		params.EmailVerified = in.EmailVerified
+		changes["email_verified"] = *in.EmailVerified
 	}
 	if params.Username != nil || params.Email != nil {
 		name, email := "", ""
@@ -571,7 +589,7 @@ func (s *AdminService) UpdateUser(ctx context.Context, actor AdminActor, realm *
 	// sessions, and a failure changes nothing.
 	var revocation *StoredRevocation
 	err = s.d.Tx.InTx(ctx, func(ctx context.Context) error {
-		if params.Username != nil || params.Email != nil || params.Status != nil {
+		if params.Username != nil || params.Email != nil || params.Status != nil || params.EmailVerified != nil {
 			if _, err := s.d.Users.Update(ctx, u.ID, params); err != nil {
 				return fmt.Errorf("update user: %w", err)
 			}
@@ -802,6 +820,10 @@ func cleanProfile(current, patch map[string]interface{}) (map[string]interface{}
 		out = map[string]interface{}{}
 	}
 	for k, v := range patch {
+		if k == "email_verified" {
+			// Its own column now (B-13): EmailVerified of UpdateUserInput.
+			return nil, adminText(AdminInvalid, "invalid_request", "profile", i18n.M("admin.error.profile_email_verified", "profile key \"email_verified\" is not a profile key: mark the address verified instead"))
+		}
 		if !profileKeyPattern.MatchString(k) {
 			return nil, adminText(AdminInvalid, "invalid_request", "profile", i18n.M("admin.error.profile_key", "profile key \"{key}\": lowercase letters, digits and _ only", "key", k))
 		}

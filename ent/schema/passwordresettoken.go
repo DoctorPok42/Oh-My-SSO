@@ -26,6 +26,11 @@ func (PasswordResetToken) Fields() []ent.Field {
 		field.Bool("used").Default(false),
 		field.Time("used_at").Optional(),
 		field.String("requested_ip").Optional().Immutable(),
+		// emailed_to: the address the link was e-mailed to, set when the e-mail
+		// left (notify.Dispatcher). Using a link that reached the account's
+		// current address proves the user reads it (users.email_verified_at);
+		// a link an administrator handed over proves nothing.
+		field.String("emailed_to").Optional(),
 		field.Time("created_at").Default(func() time.Time { return time.Now() }).Immutable(),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 	}

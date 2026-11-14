@@ -35,6 +35,7 @@ type PasswordResetService struct {
 	lockout  *LockoutService // optional: a reset also unlocks the account
 	notifier Notifier
 	audit    repository.AuditLogRepository // optional
+	verify   repository.EmailVerificationRepository // optional
 	settings *settingsCache
 	now      func() time.Time
 	logger   *slog.Logger
@@ -56,7 +57,10 @@ type PasswordResetDeps struct {
 	Lockout  *LockoutService                       // optional
 	Notifier Notifier                              // nil: no e-mail (the link is lost)
 	Audit    repository.AuditLogRepository         // optional
-	Now      func() time.Time                      // optional (tests)
+	// Verifications: a link e-mailed to the account's address and used
+	// marks the address verified (B-13). Optional.
+	Verifications repository.EmailVerificationRepository
+	Now           func() time.Time // optional (tests)
 	Logger   *slog.Logger                          // optional
 }
 
@@ -70,6 +74,7 @@ func NewPasswordResetService(d PasswordResetDeps) *PasswordResetService {
 		lockout:  d.Lockout,
 		notifier: d.Notifier,
 		audit:    d.Audit,
+		verify:   d.Verifications,
 		now:      d.Now,
 		logger:   d.Logger,
 		async:    make(chan struct{}, 32),
@@ -301,6 +306,7 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 	// who stole the old password) is signed out everywhere, and the tokens
 	// issued to applications for those sessions die with them.
 	var revocation *StoredRevocation
+	verified := false
 	err = s.tx.InTx(ctx, func(ctx context.Context) error {
 		consumed, err := s.tokens.ConsumeIfUnused(ctx, tok.ID, now)
 		if err != nil {
@@ -315,6 +321,14 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 		}
 		if revocation, err = s.sessions.RevokeUserSessionsInStore(ctx, user.ID, domain.SessionRevokedPasswordReset); err != nil {
 			return fmt.Errorf("password reset: revoke sessions: %w", err)
+		}
+		// The link was e-mailed to the account's address: using it proves
+		// the user reads that address (not when an administrator handed it
+		// over, nor when the address changed since).
+		if s.verify != nil && tok.EmailedTo != "" && tok.EmailedTo == user.Email && user.EmailVerifiedAt == nil {
+			if verified, err = s.verify.MarkEmailVerified(ctx, user.ID, tok.EmailedTo, now); err != nil {
+				return fmt.Errorf("password reset: mark address verified: %w", err)
+			}
 		}
 		return nil
 	})
@@ -335,9 +349,11 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 		}
 	}
 
-	s.auditEvent(ctx, user, audit.UserPasswordReset, in.IPAddress, in.UserAgent, domain.AuditLogWarning, map[string]interface{}{
-		"sessions_revoked": true,
-	})
+	details := map[string]interface{}{"sessions_revoked": true}
+	if verified {
+		details["email_verified"] = true
+	}
+	s.auditEvent(ctx, user, audit.UserPasswordReset, in.IPAddress, in.UserAgent, domain.AuditLogWarning, details)
 	s.notifier.Notify(ctx, domain.NotificationEvent{
 		Kind:       domain.NotificationPasswordChanged,
 		RealmID:    user.RealmID,

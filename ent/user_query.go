@@ -13,6 +13,8 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"sso.internal/sso/ent/consent"
+	"sso.internal/sso/ent/emailoutbox"
+	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/federatedidentity"
 	"sso.internal/sso/ent/group"
 	"sso.internal/sso/ent/knownaccount"
@@ -30,21 +32,23 @@ import (
 // UserQuery is the builder for querying User entities.
 type UserQuery struct {
 	config
-	ctx                     *QueryContext
-	order                   []user.OrderOption
-	inters                  []Interceptor
-	predicates              []predicate.User
-	withRealm               *RealmQuery
-	withRoles               *RoleQuery
-	withGroups              *GroupQuery
-	withSessions            *SessionQuery
-	withMfaMethods          *MfaMethodQuery
-	withMfaBackupCodes      *MfaBackupCodeQuery
-	withPasswordResetTokens *PasswordResetTokenQuery
-	withKnownAccounts       *KnownAccountQuery
-	withTrustedDevices      *TrustedDeviceQuery
-	withConsents            *ConsentQuery
-	withFederatedIdentities *FederatedIdentityQuery
+	ctx                         *QueryContext
+	order                       []user.OrderOption
+	inters                      []Interceptor
+	predicates                  []predicate.User
+	withRealm                   *RealmQuery
+	withRoles                   *RoleQuery
+	withGroups                  *GroupQuery
+	withSessions                *SessionQuery
+	withMfaMethods              *MfaMethodQuery
+	withMfaBackupCodes          *MfaBackupCodeQuery
+	withPasswordResetTokens     *PasswordResetTokenQuery
+	withKnownAccounts           *KnownAccountQuery
+	withTrustedDevices          *TrustedDeviceQuery
+	withConsents                *ConsentQuery
+	withFederatedIdentities     *FederatedIdentityQuery
+	withEmailOutbox             *EmailOutboxQuery
+	withEmailVerificationTokens *EmailVerificationTokenQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -323,6 +327,50 @@ func (_q *UserQuery) QueryFederatedIdentities() *FederatedIdentityQuery {
 	return query
 }
 
+// QueryEmailOutbox chains the current query on the "email_outbox" edge.
+func (_q *UserQuery) QueryEmailOutbox() *EmailOutboxQuery {
+	query := (&EmailOutboxClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(emailoutbox.Table, emailoutbox.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.EmailOutboxTable, user.EmailOutboxColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryEmailVerificationTokens chains the current query on the "email_verification_tokens" edge.
+func (_q *UserQuery) QueryEmailVerificationTokens() *EmailVerificationTokenQuery {
+	query := (&EmailVerificationTokenClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(emailverificationtoken.Table, emailverificationtoken.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.EmailVerificationTokensTable, user.EmailVerificationTokensColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // First returns the first User entity from the query.
 // Returns a *NotFoundError when no User was found.
 func (_q *UserQuery) First(ctx context.Context) (*User, error) {
@@ -510,22 +558,24 @@ func (_q *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:                  _q.config,
-		ctx:                     _q.ctx.Clone(),
-		order:                   append([]user.OrderOption{}, _q.order...),
-		inters:                  append([]Interceptor{}, _q.inters...),
-		predicates:              append([]predicate.User{}, _q.predicates...),
-		withRealm:               _q.withRealm.Clone(),
-		withRoles:               _q.withRoles.Clone(),
-		withGroups:              _q.withGroups.Clone(),
-		withSessions:            _q.withSessions.Clone(),
-		withMfaMethods:          _q.withMfaMethods.Clone(),
-		withMfaBackupCodes:      _q.withMfaBackupCodes.Clone(),
-		withPasswordResetTokens: _q.withPasswordResetTokens.Clone(),
-		withKnownAccounts:       _q.withKnownAccounts.Clone(),
-		withTrustedDevices:      _q.withTrustedDevices.Clone(),
-		withConsents:            _q.withConsents.Clone(),
-		withFederatedIdentities: _q.withFederatedIdentities.Clone(),
+		config:                      _q.config,
+		ctx:                         _q.ctx.Clone(),
+		order:                       append([]user.OrderOption{}, _q.order...),
+		inters:                      append([]Interceptor{}, _q.inters...),
+		predicates:                  append([]predicate.User{}, _q.predicates...),
+		withRealm:                   _q.withRealm.Clone(),
+		withRoles:                   _q.withRoles.Clone(),
+		withGroups:                  _q.withGroups.Clone(),
+		withSessions:                _q.withSessions.Clone(),
+		withMfaMethods:              _q.withMfaMethods.Clone(),
+		withMfaBackupCodes:          _q.withMfaBackupCodes.Clone(),
+		withPasswordResetTokens:     _q.withPasswordResetTokens.Clone(),
+		withKnownAccounts:           _q.withKnownAccounts.Clone(),
+		withTrustedDevices:          _q.withTrustedDevices.Clone(),
+		withConsents:                _q.withConsents.Clone(),
+		withFederatedIdentities:     _q.withFederatedIdentities.Clone(),
+		withEmailOutbox:             _q.withEmailOutbox.Clone(),
+		withEmailVerificationTokens: _q.withEmailVerificationTokens.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -653,6 +703,28 @@ func (_q *UserQuery) WithFederatedIdentities(opts ...func(*FederatedIdentityQuer
 	return _q
 }
 
+// WithEmailOutbox tells the query-builder to eager-load the nodes that are connected to
+// the "email_outbox" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithEmailOutbox(opts ...func(*EmailOutboxQuery)) *UserQuery {
+	query := (&EmailOutboxClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withEmailOutbox = query
+	return _q
+}
+
+// WithEmailVerificationTokens tells the query-builder to eager-load the nodes that are connected to
+// the "email_verification_tokens" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithEmailVerificationTokens(opts ...func(*EmailVerificationTokenQuery)) *UserQuery {
+	query := (&EmailVerificationTokenClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withEmailVerificationTokens = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
@@ -731,7 +803,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [11]bool{
+		loadedTypes = [13]bool{
 			_q.withRealm != nil,
 			_q.withRoles != nil,
 			_q.withGroups != nil,
@@ -743,6 +815,8 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withTrustedDevices != nil,
 			_q.withConsents != nil,
 			_q.withFederatedIdentities != nil,
+			_q.withEmailOutbox != nil,
+			_q.withEmailVerificationTokens != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -839,6 +913,22 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			func(n *User) { n.Edges.FederatedIdentities = []*FederatedIdentity{} },
 			func(n *User, e *FederatedIdentity) {
 				n.Edges.FederatedIdentities = append(n.Edges.FederatedIdentities, e)
+			}); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withEmailOutbox; query != nil {
+		if err := _q.loadEmailOutbox(ctx, query, nodes,
+			func(n *User) { n.Edges.EmailOutbox = []*EmailOutbox{} },
+			func(n *User, e *EmailOutbox) { n.Edges.EmailOutbox = append(n.Edges.EmailOutbox, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withEmailVerificationTokens; query != nil {
+		if err := _q.loadEmailVerificationTokens(ctx, query, nodes,
+			func(n *User) { n.Edges.EmailVerificationTokens = []*EmailVerificationToken{} },
+			func(n *User, e *EmailVerificationToken) {
+				n.Edges.EmailVerificationTokens = append(n.Edges.EmailVerificationTokens, e)
 			}); err != nil {
 			return nil, err
 		}
@@ -1222,6 +1312,66 @@ func (_q *UserQuery) loadFederatedIdentities(ctx context.Context, query *Federat
 	}
 	query.Where(predicate.FederatedIdentity(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.FederatedIdentitiesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadEmailOutbox(ctx context.Context, query *EmailOutboxQuery, nodes []*User, init func(*User), assign func(*User, *EmailOutbox)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(emailoutbox.FieldUserID)
+	}
+	query.Where(predicate.EmailOutbox(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.EmailOutboxColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadEmailVerificationTokens(ctx context.Context, query *EmailVerificationTokenQuery, nodes []*User, init func(*User), assign func(*User, *EmailVerificationToken)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(emailverificationtoken.FieldUserID)
+	}
+	query.Where(predicate.EmailVerificationToken(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.EmailVerificationTokensColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

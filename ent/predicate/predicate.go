@@ -30,6 +30,12 @@ type ClientScopeMapping func(*sql.Selector)
 // Consent is the predicate function for consent builders.
 type Consent func(*sql.Selector)
 
+// EmailOutbox is the predicate function for emailoutbox builders.
+type EmailOutbox func(*sql.Selector)
+
+// EmailVerificationToken is the predicate function for emailverificationtoken builders.
+type EmailVerificationToken func(*sql.Selector)
+
 // FederatedIdentity is the predicate function for federatedidentity builders.
 type FederatedIdentity func(*sql.Selector)
 

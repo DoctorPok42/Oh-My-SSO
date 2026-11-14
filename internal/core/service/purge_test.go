@@ -74,6 +74,12 @@ func (r *purgeRepo) DeleteExpiredTokens(ctx context.Context, realmID string, bef
 func (r *purgeRepo) DeleteEndedResetLinks(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
 	return r.del("reset")(ctx, realmID, before, limit)
 }
+func (r *purgeRepo) DeleteEndedVerificationLinks(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
+	return r.del("verify")(ctx, realmID, before, limit)
+}
+func (r *purgeRepo) DeleteEndedEmails(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
+	return r.del("emails")(ctx, realmID, before, limit)
+}
 func (r *purgeRepo) DeleteLoginAttempts(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
 	return r.del("attempts")(ctx, realmID, before, limit)
 }
@@ -130,7 +136,7 @@ func TestPurgeAll_UsesEachRealmsRetention(t *testing.T) {
 	require.Equal(t, now.AddDate(0, 0, -service.DefaultRetentionDays), repo.before["invalid"])
 	require.Equal(t, now.AddDate(0, 0, -service.DefaultRetentionDays), repo.before["unset"], "no settings row: the default")
 	require.Equal(t, now.AddDate(0, 0, -service.DefaultRetentionDays), repo.before[""], "attempts of no realm: the default")
-	require.Equal(t, []string{"tokens", "sessions", "reset", "attempts", "known", "trusted"}, repo.kinds["custom"],
+	require.Equal(t, []string{"tokens", "sessions", "reset", "verify", "emails", "attempts", "known", "trusted"}, repo.kinds["custom"],
 		"every kind, tokens before their sessions")
 	require.Equal(t, []string{"attempts"}, repo.kinds[""])
 }
@@ -147,9 +153,9 @@ func TestPurgeAll_DeletesInBatchesUntilDone(t *testing.T) {
 	require.Equal(t, 3503, got.Total())
 	require.Zero(t, repo.stock["r/tokens"])
 	// tokens: 1000, 1000, 500; known: 1000, then 0 to see it is done;
-	// the four other kinds once each; the attempts of no realm once.
+	// the six other kinds once each; the attempts of no realm once.
 	// plus the audit log of r (no settings: the default retention), once.
-	require.Equal(t, 3+2+4+1+1, repo.calls)
+	require.Equal(t, 3+2+6+1+1, repo.calls)
 }
 
 func TestPurgeAll_OneFailureDoesNotStopTheRest(t *testing.T) {
@@ -189,7 +195,7 @@ func TestPurgeAll_AuditLogOnlyWhenTheRealmHasARetention(t *testing.T) {
 	require.Equal(t, 2500, got.Total())
 	require.Equal(t, now.AddDate(0, 0, -365), repo.auditBefore["year"], "its own retention")
 	require.Equal(t, now.AddDate(0, 0, -30), repo.before["year"], "the ended data keeps theirs")
-	require.Equal(t, []string{"tokens", "sessions", "reset", "attempts", "known", "trusted", "audit", "audit", "audit"},
+	require.Equal(t, []string{"tokens", "sessions", "reset", "verify", "emails", "attempts", "known", "trusted", "audit", "audit", "audit"},
 		repo.kinds["year"], "the audit log after the ended data")
 	for _, kept := range []string{"forever", "invalid"} {
 		require.NotContains(t, repo.kinds[kept], "audit", "%s: kept forever", kept)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"sso.internal/sso/ent"
+	"sso.internal/sso/internal/app"
 	valkeycache "sso.internal/sso/internal/cache/valkey"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
@@ -29,6 +31,13 @@ import (
 type captureSender struct {
 	mu   sync.Mutex
 	sent []capturedMail
+	fail error // the mail server is down: every Send fails with it
+}
+
+func (c *captureSender) setFail(err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.fail = err
 }
 
 type capturedMail struct {
@@ -40,6 +49,9 @@ type capturedMail struct {
 func (c *captureSender) Send(_ context.Context, to string, tmpl notify.Template, data notify.Data) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.fail != nil {
+		return c.fail
+	}
 	c.sent = append(c.sent, capturedMail{to, tmpl, data})
 	return nil
 }
@@ -73,11 +85,33 @@ func (c *captureSender) waitMails(t *testing.T, tmpl notify.Template, n int) []c
 
 type resetEnv struct {
 	ts     *httptest.Server
+	client *ent.Client
 	realms repository.RealmRepository
 	users  repository.UserRepository
 	audit  repository.AuditLogRepository
 	mail   *captureSender
 	clock  *fakeClock
+	// dispatcher: the e-mails, through the outbox (newDispatcher makes
+	// another one on the same database: a restarted server).
+	dispatcher    *notify.Dispatcher
+	newDispatcher func(now func() time.Time) *notify.Dispatcher
+	verify        *service.EmailVerificationService
+}
+
+// testSealer stands for the envelope encryption of the links in the outbox:
+// bound to the row (aad), like the real one.
+type testSealer struct{}
+
+func (testSealer) Seal(_ context.Context, _ string, plaintext, aad []byte) (string, error) {
+	return string(aad) + "|" + string(plaintext), nil
+}
+
+func (testSealer) Open(_ context.Context, sealed string, aad []byte) ([]byte, error) {
+	rest, ok := strings.CutPrefix(sealed, string(aad)+"|")
+	if !ok {
+		return nil, errors.New("authentication failed")
+	}
+	return []byte(rest), nil
 }
 
 func setupResetEnv(t *testing.T) *resetEnv {
@@ -105,11 +139,21 @@ func setupResetEnv(t *testing.T) *resetEnv {
 	audit := entstore.NewAuditLogRepository(client)
 	mail := &captureSender{}
 
-	dispatcher := notify.NewDispatcher(notify.DispatcherConfig{PublicURL: "https://sso.example.com"}, notify.DispatcherDeps{
-		Sender: mail, Users: users, Realms: realms, Settings: settings, Audit: audit,
-	})
+	newDispatcher := func(now func() time.Time) *notify.Dispatcher {
+		return notify.NewDispatcher(notify.DispatcherConfig{PublicURL: "https://sso.example.com", PollInterval: 50 * time.Millisecond},
+			notify.DispatcherDeps{
+				Sender: mail, Users: users, Realms: realms, Settings: settings, Audit: audit,
+				Outbox: entstore.NewEmailOutboxRepository(client), Sealer: testSealer{}, Links: app.NewEmailLinks(client),
+				Now: now,
+			})
+	}
+	dispatcher := newDispatcher(nil)
 	dispatcher.Start()
 	t.Cleanup(func() { dispatcher.Close(context.Background()) })
+	verifications := entstore.NewEmailVerificationRepository(client)
+	verify := service.NewEmailVerificationService(service.EmailVerificationDeps{
+		Tx: tx, Users: users, Links: verifications, Notifier: dispatcher, Audit: audit,
+	})
 
 	lockout := service.NewLockoutService(service.LockoutDeps{
 		Users: users, Unknown: valkeycache.NewLockoutStore(valkeyClient), Settings: settings, Notifier: dispatcher, Audit: audit,
@@ -120,15 +164,18 @@ func setupResetEnv(t *testing.T) *resetEnv {
 	reset := service.NewPasswordResetService(service.PasswordResetDeps{
 		Tx: tx, Users: users, Tokens: entstore.NewPasswordResetTokenRepository(client), Sessions: sessions,
 		Settings: settings, Lockout: lockout, Notifier: dispatcher, Audit: audit, Now: clock.Now,
+		Verifications: verifications,
 	})
 	srv := httpserver.New(auth, sessions,
 		service.NewRBACService(entstore.NewAccessRepository(client), audit),
 		realms, entstore.NewClientRepository(client), valkeycache.NewRateLimiter(valkeyClient),
 		httpserver.WithPasswordReset(reset), httpserver.WithForgotPassword(true),
+		httpserver.WithEmailVerification(verify),
 	)
 	ts := httptest.NewServer(srv.Router())
 	t.Cleanup(ts.Close)
-	return &resetEnv{ts: ts, realms: realms, users: users, audit: audit, mail: mail, clock: clock}
+	return &resetEnv{ts: ts, client: client, realms: realms, users: users, audit: audit, mail: mail, clock: clock,
+		dispatcher: dispatcher, newDispatcher: newDispatcher, verify: verify}
 }
 
 func (e *resetEnv) post(t *testing.T, path string, body any, cookies ...*http.Cookie) (int, map[string]any, []byte) {

@@ -64,6 +64,9 @@ func (s *Server) mountPasswordReset(r chi.Router) {
 		loginui.Asset(w, r, chi.URLParam(r, "file"))
 	})
 	r.With(requireJSON).Post("/auth/reset-password", s.handleResetPassword)
+	if s.emailVerify != nil {
+		s.mountEmailVerification(r, pages)
+	}
 
 	if s.forgotPassword {
 		r.Get("/auth/forgot-password", func(w http.ResponseWriter, r *http.Request) {

@@ -19,6 +19,9 @@ type PasswordResetTokenRepository interface {
 	// new request (or a successful reset) cancels the links sent before.
 	DeleteUnusedByUser(ctx context.Context, userID string) (int, error)
 	Delete(ctx context.Context, id string) error
+	// MarkEmailed records the address the link was e-mailed to (the e-mail
+	// left). Nothing happens when the link no longer exists.
+	MarkEmailed(ctx context.Context, tokenHash, address string) error
 }
 
 type CreatePasswordResetTokenParams struct {

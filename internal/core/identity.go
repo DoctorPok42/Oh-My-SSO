@@ -231,6 +231,7 @@ type IdentityAssertion struct {
 	// (minimal disclosure, OIDC Core §5.4). Keys:
 	//
 	//	username, email   string
+	//	email_verified    bool, with email: users.email_verified_at is set
 	//	updated_at        int64 (Unix seconds)
 	//	groups, roles     []string, names of the user's active groups / roles
 	//	profile.<key>     every key of User.Profile, e.g. "profile.given_name"

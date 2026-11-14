@@ -96,10 +96,30 @@ func (r *entUserRepository) Update(ctx context.Context, id string, p repository.
 	if p.MustChangePassword != nil {
 		builder = builder.SetMustChangePassword(*p.MustChangePassword)
 	}
+	verify := p.EmailVerified != nil && *p.EmailVerified
+	switch {
+	case verify && p.Email != nil:
+		builder = builder.SetEmailVerifiedAt(time.Now()) // a new address, verified from now
+	case !verify && (p.EmailVerified != nil || p.Email != nil):
+		// A new address is not verified, whatever the old one was.
+		builder = builder.ClearEmailVerifiedAt()
+	}
 
 	e, err := builder.Save(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if verify && p.Email == nil && e.EmailVerifiedAt == nil {
+		// Only when not verified yet: the date says since when.
+		if _, err := r.client.User.Update().
+			Where(user.ID(id), user.EmailVerifiedAtIsNil()).
+			SetEmailVerifiedAt(time.Now()).
+			Save(ctx); err != nil {
+			return nil, err
+		}
+		if e, err = r.client.User.Get(ctx, id); err != nil {
+			return nil, mapNotFound(err)
+		}
 	}
 	return toDomainUser(e), nil
 }
@@ -188,18 +208,19 @@ func derefTime(t *time.Time) time.Time {
 
 func toDomainUser(e *ent.User) *domain.User {
 	return &domain.User{
-		ID:           e.ID,
-		RealmID:      e.RealmID,
-		Username:     e.Username,
-		Email:        e.Email,
-		PasswordHash: e.PasswordHash,
-		CreatedAt:    e.CreatedAt,
-		UpdatedAt:    e.UpdatedAt,
-		DeletedAt:    e.DeletedAt,
-		Status:       domain.UserStatus(e.Status),
-		LastLoginAt:  e.LastLoginAt,
-		Profile:      e.Profile,
-		Lockout:      lockoutFromEnt(e),
+		ID:              e.ID,
+		RealmID:         e.RealmID,
+		Username:        e.Username,
+		Email:           e.Email,
+		EmailVerifiedAt: e.EmailVerifiedAt,
+		PasswordHash:    e.PasswordHash,
+		CreatedAt:       e.CreatedAt,
+		UpdatedAt:       e.UpdatedAt,
+		DeletedAt:       e.DeletedAt,
+		Status:          domain.UserStatus(e.Status),
+		LastLoginAt:     e.LastLoginAt,
+		Profile:         e.Profile,
+		Lockout:         lockoutFromEnt(e),
 
 		MustChangePassword: e.MustChangePassword,
 	}

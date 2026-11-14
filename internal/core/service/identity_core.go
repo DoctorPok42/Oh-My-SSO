@@ -480,11 +480,15 @@ func userAttributes(u *domain.User, groups, roles []string) map[string]any {
 	attrs := map[string]any{"username": u.Username}
 	if u.Email != "" {
 		attrs["email"] = u.Email
+		attrs["email_verified"] = u.EmailVerifiedAt != nil
 	}
 	if !u.UpdatedAt.IsZero() {
 		attrs["updated_at"] = u.UpdatedAt.Unix()
 	}
 	for k, v := range u.Profile {
+		if k == "email_verified" {
+			continue // users.email_verified_at (B-13): a profile key would contradict it
+		}
 		attrs["profile."+k] = v
 	}
 	if groups == nil {

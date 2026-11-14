@@ -105,6 +105,30 @@ func (f ConsentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ConsentMutation", m)
 }
 
+// The EmailOutboxFunc type is an adapter to allow the use of ordinary
+// function as EmailOutbox mutator.
+type EmailOutboxFunc func(context.Context, *ent.EmailOutboxMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f EmailOutboxFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.EmailOutboxMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EmailOutboxMutation", m)
+}
+
+// The EmailVerificationTokenFunc type is an adapter to allow the use of ordinary
+// function as EmailVerificationToken mutator.
+type EmailVerificationTokenFunc func(context.Context, *ent.EmailVerificationTokenMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f EmailVerificationTokenFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.EmailVerificationTokenMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EmailVerificationTokenMutation", m)
+}
+
 // The FederatedIdentityFunc type is an adapter to allow the use of ordinary
 // function as FederatedIdentity mutator.
 type FederatedIdentityFunc func(context.Context, *ent.FederatedIdentityMutation) (ent.Value, error)

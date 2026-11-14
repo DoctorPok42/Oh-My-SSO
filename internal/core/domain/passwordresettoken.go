@@ -10,6 +10,9 @@ type PasswordResetToken struct {
 	Used        bool
 	UsedAt      time.Time
 	RequestedIP string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	// EmailedTo: the address the link was e-mailed to ("" when it was not,
+	// e.g. handed over by an administrator). See EmailVerifiedAt.
+	EmailedTo string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

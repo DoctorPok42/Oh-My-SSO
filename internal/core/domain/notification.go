@@ -29,6 +29,9 @@ const (
 	// NotificationUserImportFinished goes to the administrator who asked for
 	// it when starting an import of users.
 	NotificationUserImportFinished NotificationKind = "user_import_finished"
+	// NotificationEmailVerification: "is this your address?", with a link
+	// (ResetToken) that marks the address verified.
+	NotificationEmailVerification NotificationKind = "email_verification"
 )
 
 // IsSecurityAlert tells whether the realm's notification_email_enabled
@@ -36,7 +39,8 @@ const (
 func (k NotificationKind) IsSecurityAlert() bool {
 	switch k {
 	case NotificationPasswordReset, NotificationPasswordResetRequired, NotificationPasswordChanged,
-		NotificationAccountInvite, NotificationAdminRecovery, NotificationUserImportFinished:
+		NotificationAccountInvite, NotificationAdminRecovery, NotificationUserImportFinished,
+		NotificationEmailVerification:
 		return false
 	default:
 		return true

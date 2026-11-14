@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -76,6 +77,8 @@ type Core struct {
 	Account *service.AccountService
 	// Purge deletes the data that ended (StartTimeoutEnforcer runs it).
 	Purge *service.PurgeService
+	// EmailVerification: "confirm your address" e-mails and their links.
+	EmailVerification *service.EmailVerificationService
 
 	stopEnforcer func() // StartTimeoutEnforcer
 }
@@ -115,12 +118,24 @@ func BuildCore() *Core {
 	sessionRepo := entstore.NewSessionRepository(client)
 	c.RateLimiter = fallback.NewLimiter(valkeycache.NewRateLimiter(c.Valkey), nil)
 
+	encrypter, ok := c.KeyManager.(keymanager.Encrypter)
+	if !ok {
+		log.Fatalf("keymanager: backend %q cannot encrypt (needed for TOTP secrets and the links of queued e-mails)", c.KMSBackend)
+	}
+	envelope := service.NewEnvelopeService(c.SigningKeys, encrypter, c.KMSBackend)
+
 	c.Notifier = service.NopNotifier{}
 	if sender := EmailSender(Templates()); sender != nil {
-		c.Dispatcher = NewDispatcher(client, c.PublicURL, sender)
+		// The outbox: e-mails outlive an SMTP outage and a restart (B-12).
+		c.Dispatcher = NewDispatcher(client, c.PublicURL, sender, envelope)
 		c.Dispatcher.Start()
 		c.Notifier = c.Dispatcher
 	}
+
+	c.EmailVerification = service.NewEmailVerificationService(service.EmailVerificationDeps{
+		Tx: c.Tx, Users: c.Users, Links: entstore.NewEmailVerificationRepository(client),
+		Notifier: c.Notifier, Audit: c.Audit,
+	})
 
 	c.Lockout = service.NewLockoutService(service.LockoutDeps{
 		Users:   c.Users,
@@ -209,10 +224,6 @@ func BuildCore() *Core {
 		service.WithKeyRotationAudit(c.Audit),
 	)
 
-	encrypter, ok := c.KeyManager.(keymanager.Encrypter)
-	if !ok {
-		log.Fatalf("keymanager: backend %q cannot encrypt (needed for TOTP secrets)", c.KMSBackend)
-	}
 	c.MFAPolicy = service.NewMFAPolicyService(service.MFAPolicyDeps{
 		Settings: c.Settings,
 		Clients:  c.Clients,
@@ -227,7 +238,7 @@ func BuildCore() *Core {
 		BackupCodes:   entstore.NewMfaBackupCodeRepository(client),
 		Sessions:      c.Sessions,
 		Policy:        c.MFAPolicy,
-		Envelope:      service.NewEnvelopeService(c.SigningKeys, encrypter, c.KMSBackend),
+		Envelope:      envelope,
 		Store:         fallback.NewMFAStore(valkeycache.NewMFAStore(c.Valkey), nil),
 		Limiter:       c.RateLimiter,
 		LoginAttempts: loginAttempts,
@@ -257,6 +268,8 @@ func BuildCore() *Core {
 		Lockout:  c.Lockout,
 		Notifier: c.Notifier,
 		Audit:    c.Audit,
+		// A link e-mailed to the address and used marks it verified (B-13).
+		Verifications: entstore.NewEmailVerificationRepository(client),
 	})
 
 	c.Consent = service.NewConsentService(service.ConsentDeps{
@@ -341,8 +354,9 @@ func (c *Core) StartTimeoutEnforcer() {
 	}
 }
 
-// Close stops the timeout enforcer, lets queued e-mails leave (a few
-// seconds at most), then closes Valkey and the database.
+// Close stops the timeout enforcer, lets the e-mails being sent finish (a
+// few seconds at most: the others wait in the outbox for the next start),
+// then closes Valkey and the database.
 func (c *Core) Close() {
 	if c.stopEnforcer != nil {
 		c.stopEnforcer()
@@ -361,14 +375,19 @@ func (c *Core) Close() {
 	}
 }
 
-// NewDispatcher wires the e-mail dispatcher on the database.
-func NewDispatcher(client *ent.Client, publicURL string, sender notify.EmailSender) *notify.Dispatcher {
+// NewDispatcher wires the e-mail dispatcher on the database and its outbox.
+// sealer encrypts the links of the queued e-mails; nil: an e-mail with a
+// link cannot be queued (Enqueue fails).
+func NewDispatcher(client *ent.Client, publicURL string, sender notify.EmailSender, sealer notify.Sealer) *notify.Dispatcher {
 	return notify.NewDispatcher(notify.DispatcherConfig{PublicURL: publicURL}, notify.DispatcherDeps{
 		Sender:   sender,
 		Users:    entstore.NewUserRepository(client),
 		Realms:   entstore.NewRealmRepository(client),
 		Settings: entstore.NewInstanceSettingsRepository(client),
 		Audit:    entstore.NewAuditLogRepository(client),
+		Outbox:   entstore.NewEmailOutboxRepository(client),
+		Sealer:   sealer,
+		Links:    NewEmailLinks(client),
 		I18n:     Languages(),
 	})
 }
@@ -381,15 +400,31 @@ func CLINotifier(client *ent.Client) service.Notifier {
 	if sender == nil {
 		return service.NopNotifier{}
 	}
-	return SyncNotifier{D: NewDispatcher(client, DevPublicURL(), sender)}
+	return SyncNotifier{D: NewDispatcher(client, DevPublicURL(), sender, nil)}
 }
 
-// SyncNotifier processes each event in the caller's goroutine.
+// SyncNotifier sends each e-mail in the caller's goroutine: it goes through
+// the outbox, so that when the mail server fails the servers try again
+// later. An e-mail that cannot be queued is sent directly.
 type SyncNotifier struct{ D *notify.Dispatcher }
 
 func (n SyncNotifier) Notify(ctx context.Context, e domain.NotificationEvent) {
-	if err := n.D.Process(ctx, e); err != nil {
+	id, err := n.D.Enqueue(ctx, e)
+	if err != nil {
+		if err := n.D.Process(ctx, e); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: e-mail not sent: %v\n", err)
+		}
+		return
+	}
+	if id == "" {
+		return // the realm does not send it
+	}
+	switch err := n.D.DeliverNow(ctx, id); {
+	case err == nil:
+	case errors.Is(err, notify.ErrPermanent):
 		fmt.Fprintf(os.Stderr, "warning: e-mail not sent: %v\n", err)
+	default:
+		fmt.Fprintf(os.Stderr, "warning: e-mail not sent yet (%v): the server tries again for 24 h\n", err)
 	}
 }
 
@@ -407,6 +442,8 @@ func (c *Core) AdminService() *service.AdminService {
 		Languages:      Languages(),
 		UserImports:    entstore.NewUserImportRepository(c.Ent),
 		BulkJobs:       entstore.NewBulkJobRepository(c.Ent),
+		Outbox:            entstore.NewEmailOutboxRepository(c.Ent),
+		EmailVerification: c.EmailVerification,
 		ConsoleURL:    os.Getenv("ADMIN_PANEL_URL"),
 	})
 }

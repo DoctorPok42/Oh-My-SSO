@@ -198,7 +198,8 @@ func setupOIDCTestEnv(t *testing.T, opts ...httpserver.Option) *oidcTestEnv {
 	require.NoError(t, err)
 	require.NoError(t, client.User.UpdateOneID(alice.ID).
 		AddRoleIDs(employees.ID).AddGroupIDs(admins.ID).
-		SetProfile(map[string]interface{}{"given_name": "Alice", "family_name": "Martin", "email_verified": true}).
+		SetProfile(map[string]interface{}{"given_name": "Alice", "family_name": "Martin"}).
+		SetEmailVerifiedAt(time.Now()).
 		Exec(ctx))
 
 	// A custom scope "groups" (the ArgoCD example of the data model),

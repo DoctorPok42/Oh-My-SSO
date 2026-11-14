@@ -167,6 +167,11 @@ type AdminDeps struct {
 	// BulkJobs: the bulk actions of the console, run in the background. nil
 	// outside idp-admin.
 	BulkJobs repository.BulkJobRepository
+	// Outbox: the e-mails of the accounts (delivery status, "send again").
+	// nil: not shown.
+	Outbox repository.EmailOutboxRepository
+	// EmailVerification: "send a verification e-mail". nil: refused.
+	EmailVerification *EmailVerificationService
 
 	// PublicURL of cmd/idp: base of activation links.
 	PublicURL string

@@ -20,6 +20,8 @@ import (
 	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/clientscopemapping"
 	"sso.internal/sso/ent/consent"
+	"sso.internal/sso/ent/emailoutbox"
+	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/federatedidentity"
 	"sso.internal/sso/ent/group"
 	"sso.internal/sso/ent/groupclientscope"
@@ -103,37 +105,39 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			auditlog.Table:           auditlog.ValidColumn,
-			bulkjob.Table:            bulkjob.ValidColumn,
-			clientapp.Table:          clientapp.ValidColumn,
-			clientgroup.Table:        clientgroup.ValidColumn,
-			clientrole.Table:         clientrole.ValidColumn,
-			clientscope.Table:        clientscope.ValidColumn,
-			clientscopemapping.Table: clientscopemapping.ValidColumn,
-			consent.Table:            consent.ValidColumn,
-			federatedidentity.Table:  federatedidentity.ValidColumn,
-			group.Table:              group.ValidColumn,
-			groupclientscope.Table:   groupclientscope.ValidColumn,
-			identityprovider.Table:   identityprovider.ValidColumn,
-			instancesettings.Table:   instancesettings.ValidColumn,
-			keyrotationlog.Table:     keyrotationlog.ValidColumn,
-			knownaccount.Table:       knownaccount.ValidColumn,
-			loginattempt.Table:       loginattempt.ValidColumn,
-			mfabackupcode.Table:      mfabackupcode.ValidColumn,
-			mfamethod.Table:          mfamethod.ValidColumn,
-			mfapolicy.Table:          mfapolicy.ValidColumn,
-			passwordresettoken.Table: passwordresettoken.ValidColumn,
-			permission.Table:         permission.ValidColumn,
-			realm.Table:              realm.ValidColumn,
-			role.Table:               role.ValidColumn,
-			roleclientscope.Table:    roleclientscope.ValidColumn,
-			session.Table:            session.ValidColumn,
-			signingkey.Table:         signingkey.ValidColumn,
-			timeout.Table:            timeout.ValidColumn,
-			token.Table:              token.ValidColumn,
-			trusteddevice.Table:      trusteddevice.ValidColumn,
-			user.Table:               user.ValidColumn,
-			userimportjob.Table:      userimportjob.ValidColumn,
+			auditlog.Table:               auditlog.ValidColumn,
+			bulkjob.Table:                bulkjob.ValidColumn,
+			clientapp.Table:              clientapp.ValidColumn,
+			clientgroup.Table:            clientgroup.ValidColumn,
+			clientrole.Table:             clientrole.ValidColumn,
+			clientscope.Table:            clientscope.ValidColumn,
+			clientscopemapping.Table:     clientscopemapping.ValidColumn,
+			consent.Table:                consent.ValidColumn,
+			emailoutbox.Table:            emailoutbox.ValidColumn,
+			emailverificationtoken.Table: emailverificationtoken.ValidColumn,
+			federatedidentity.Table:      federatedidentity.ValidColumn,
+			group.Table:                  group.ValidColumn,
+			groupclientscope.Table:       groupclientscope.ValidColumn,
+			identityprovider.Table:       identityprovider.ValidColumn,
+			instancesettings.Table:       instancesettings.ValidColumn,
+			keyrotationlog.Table:         keyrotationlog.ValidColumn,
+			knownaccount.Table:           knownaccount.ValidColumn,
+			loginattempt.Table:           loginattempt.ValidColumn,
+			mfabackupcode.Table:          mfabackupcode.ValidColumn,
+			mfamethod.Table:              mfamethod.ValidColumn,
+			mfapolicy.Table:              mfapolicy.ValidColumn,
+			passwordresettoken.Table:     passwordresettoken.ValidColumn,
+			permission.Table:             permission.ValidColumn,
+			realm.Table:                  realm.ValidColumn,
+			role.Table:                   role.ValidColumn,
+			roleclientscope.Table:        roleclientscope.ValidColumn,
+			session.Table:                session.ValidColumn,
+			signingkey.Table:             signingkey.ValidColumn,
+			timeout.Table:                timeout.ValidColumn,
+			token.Table:                  token.ValidColumn,
+			trusteddevice.Table:          trusteddevice.ValidColumn,
+			user.Table:                   user.ValidColumn,
+			userimportjob.Table:          userimportjob.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

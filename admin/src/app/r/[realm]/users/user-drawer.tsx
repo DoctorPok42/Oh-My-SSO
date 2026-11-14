@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, Laptop, LogOut, Plus, ShieldOff, Smartphone, Trash2, Unlock, X } from "lucide-react";
+import { KeyRound, Laptop, LogOut, Mail, Plus, ShieldOff, Smartphone, Trash2, Unlock, X } from "lucide-react";
 import { NavLink } from "@/components/console/nav-link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -22,17 +22,19 @@ import { Input, Textarea } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useT } from "@/i18n/client";
 import { formatDate, formatDateTime, formatRelative } from "@/lib/format";
-import { MFA_METHOD_LABELS } from "@/lib/labels";
-import type { Access, UserDetail } from "@/lib/types";
+import { EMAIL_KIND_LABELS, MFA_METHOD_LABELS } from "@/lib/labels";
+import type { Access, OutboxEmail, UserDetail } from "@/lib/types";
 import { profilePatch, sameSet } from "@/lib/user-form";
 import {
   deleteUser,
   inviteUser,
   resendActivation,
+  resendEmail,
   resetUserMfa,
   revokeTrustedDevice,
   revokeTrustedDevices,
   revokeUserSessions,
+  sendEmailVerification,
   setUserGroups,
   setUserRoles,
   unlockUser,
@@ -635,6 +637,8 @@ function UserDetails({
         )}
       </section>
 
+      <EmailSection realm={realm} user={user} locked={locked} emailEnabled={emailEnabled} />
+
       <section className="space-y-2">
         <h3 className="text-[13px] font-semibold text-text-secondary">{t("users.account", "Account")}</h3>
         <div className="flex flex-wrap gap-2">
@@ -806,5 +810,168 @@ function UserDetails({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/** The address (verified or not) and the latest e-mails of the account, with what became of them. */
+function EmailSection({
+  realm,
+  user,
+  locked,
+  emailEnabled,
+}: {
+  realm: string;
+  user: UserDetail;
+  locked: boolean;
+  emailEnabled: boolean;
+}) {
+  const tr = useT();
+  const { t, tm, locale } = tr;
+  const markLabel = user.email_verified
+    ? t("users.verify_unmark", "Mark as not verified")
+    : t("users.verify_mark", "Mark as verified");
+  return (
+    <section className="space-y-3">
+      <h3 className="text-[13px] font-semibold text-text-secondary">{t("users.email_section", "E-mail")}</h3>
+      <div className="flex flex-wrap items-center gap-2 text-[13px]">
+        <Mail className="size-4 text-text-muted" />
+        <span className="font-medium">{user.email}</span>
+        {user.email_verified ? (
+          <StatusBadge status="verified" />
+        ) : (
+          <StatusBadge status="unverified" label={t("users.email_unverified", "Not verified")} />
+        )}
+        {user.email_verified && user.email_verified_at && (
+          <span className="text-[12px] text-text-muted">
+            {t("users.email_verified_since", "since {when}", { when: formatDate(user.email_verified_at, locale) })}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {!user.email_verified && emailEnabled && user.status === "active" && (
+          <ConfirmAction
+            variant="secondary"
+            size="sm"
+            disabled={locked}
+            trigger={t("users.verify_send", "Send a verification e-mail")}
+            title={t("users.verify_send_title", "E-mail {user} a verification link?", { user: user.username })}
+            description={t(
+              "users.verify_send_text",
+              "The link works for 24 hours. Opening it marks the address verified: applications then receive email_verified = true.",
+            )}
+            confirmLabel={t("users.verify_send_confirm", "Send")}
+            confirmVariant="primary"
+            success={t("users.verify_sent", "Verification e-mail sent")}
+            action={() => sendEmailVerification(realm, user.id)}
+          />
+        )}
+        <ConfirmAction
+          variant="secondary"
+          size="sm"
+          disabled={locked}
+          trigger={markLabel}
+          title={
+            user.email_verified
+              ? t("users.verify_unmark_title", "Mark this address as not verified?")
+              : t("users.verify_mark_title", "Mark this address as verified?")
+          }
+          description={
+            user.email_verified
+              ? t(
+                  "users.verify_unmark_text",
+                  "Applications receive email_verified = false until the user confirms the address again.",
+                )
+              : t(
+                  "users.verify_mark_text",
+                  "Only if you checked yourself that this address belongs to the user: applications rely on it (email_verified = true).",
+                )
+          }
+          confirmLabel={markLabel}
+          confirmVariant="primary"
+          success={t("users.verify_marked", "Saved")}
+          action={() => updateUser(realm, user.id, { email_verified: !user.email_verified })}
+        />
+      </div>
+
+      {user.emails.length === 0 ? (
+        <p className="text-[13px] text-text-muted">{t("users.no_email", "No e-mail sent to this account recently.")}</p>
+      ) : (
+        <ul className="space-y-2">
+          {user.emails.map((e) => (
+            <EmailRow
+              key={e.id}
+              realm={realm}
+              userId={user.id}
+              email={e}
+              locked={locked}
+              label={EMAIL_KIND_LABELS[e.kind] ? tm(EMAIL_KIND_LABELS[e.kind]!) : e.kind}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function EmailRow({
+  realm,
+  userId,
+  email: e,
+  locked,
+  label,
+}: {
+  realm: string;
+  userId: string;
+  email: OutboxEmail;
+  locked: boolean;
+  label: string;
+}) {
+  const { t, tn, locale } = useT();
+  let when = t("users.email_asked_at", "Asked {when}", { when: formatDateTime(e.created_at, locale) });
+  if (e.status === "sent") {
+    when = t("users.email_sent_at", "Sent {when}", { when: formatDateTime(e.sent_at ?? e.created_at, locale) });
+  } else if (e.status === "pending" && e.next_attempt_at) {
+    when = t("users.email_next_attempt", "Next attempt {when}, until {deadline}", {
+      when: formatDateTime(e.next_attempt_at, locale),
+      deadline: formatDateTime(e.deadline, locale),
+    });
+  }
+  return (
+    <li className="flex items-start gap-3 rounded-lg border border-border p-3">
+      <div className="min-w-0 flex-1">
+        <p className="flex flex-wrap items-center gap-2 text-[13px] font-medium">
+          {label}
+          <StatusBadge status={e.status} />
+          {e.attempts > 1 && (
+            <span className="text-[12px] font-normal text-text-muted">
+              {tn("users.email_attempts", e.attempts, "{count} attempt", "{count} attempts")}
+            </span>
+          )}
+        </p>
+        <p className="text-[12px] text-text-muted">{[e.recipient, when].filter(Boolean).join(" · ")}</p>
+        {e.last_error && e.status !== "sent" && (
+          <p className="mt-1 text-[12px] break-words text-text-muted">{e.last_error}</p>
+        )}
+      </div>
+      {e.can_resend && (
+        <ConfirmAction
+          variant="secondary"
+          size="xs"
+          disabled={locked}
+          trigger={
+            e.status === "pending" ? t("users.email_retry_now", "Retry now") : t("users.email_resend", "Send again")
+          }
+          title={t("users.email_resend_title", "Send this e-mail again?")}
+          description={t(
+            "users.email_resend_text",
+            "It leaves at once; if the mail server still fails, it is tried again for 24 hours (or until its link expires).",
+          )}
+          confirmLabel={t("users.email_resend", "Send again")}
+          confirmVariant="primary"
+          success={t("users.email_requeued", "E-mail queued")}
+          action={() => resendEmail(realm, userId, e.id)}
+        />
+      )}
+    </li>
   );
 }

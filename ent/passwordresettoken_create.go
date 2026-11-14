@@ -81,6 +81,20 @@ func (_c *PasswordResetTokenCreate) SetNillableRequestedIP(v *string) *PasswordR
 	return _c
 }
 
+// SetEmailedTo sets the "emailed_to" field.
+func (_c *PasswordResetTokenCreate) SetEmailedTo(v string) *PasswordResetTokenCreate {
+	_c.mutation.SetEmailedTo(v)
+	return _c
+}
+
+// SetNillableEmailedTo sets the "emailed_to" field if the given value is not nil.
+func (_c *PasswordResetTokenCreate) SetNillableEmailedTo(v *string) *PasswordResetTokenCreate {
+	if v != nil {
+		_c.SetEmailedTo(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *PasswordResetTokenCreate) SetCreatedAt(v time.Time) *PasswordResetTokenCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -279,6 +293,10 @@ func (_c *PasswordResetTokenCreate) createSpec() (*PasswordResetToken, *sqlgraph
 	if value, ok := _c.mutation.RequestedIP(); ok {
 		_spec.SetField(passwordresettoken.FieldRequestedIP, field.TypeString, value)
 		_node.RequestedIP = value
+	}
+	if value, ok := _c.mutation.EmailedTo(); ok {
+		_spec.SetField(passwordresettoken.FieldEmailedTo, field.TypeString, value)
+		_node.EmailedTo = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(passwordresettoken.FieldCreatedAt, field.TypeTime, value)

@@ -145,6 +145,7 @@ func serve() {
 		httpserver.WithSAML(samlProvider),
 		httpserver.WithPasswordReset(c.PasswordReset),
 		httpserver.WithForgotPassword(c.EmailEnabled()),
+		httpserver.WithEmailVerification(c.EmailVerification),
 		httpserver.WithKnownAccounts(c.KnownAccounts),
 		httpserver.WithSignInNetworks(c.SignInNetworks), // the realms' IP allowlists
 		httpserver.WithPublicURL(c.PublicURL),           // https: __Host- cookies

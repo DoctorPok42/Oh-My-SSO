@@ -218,6 +218,9 @@ export type UserSummary = {
   id: string;
   username: string;
   email: string;
+  /** The user proved they read the address, or an administrator said so. */
+  email_verified: boolean;
+  email_verified_at: string | null;
   name: string;
   status: UserStatus;
   has_password: boolean;
@@ -249,6 +252,25 @@ export type TrustedDevice = {
 };
 export type EffectiveGrant = { id: string; name: string; sources: string[] };
 
+/** An e-mail of the outbox: what became of it. Never its link. */
+export type OutboxEmail = {
+  id: string;
+  /** The notification kind: account_invite, password_reset... */
+  kind: string;
+  status: "pending" | "sent" | "failed" | "cancelled";
+  attempts: number;
+  recipient?: string;
+  last_error?: string;
+  created_at: string;
+  sent_at: string | null;
+  /** Pending only. */
+  next_attempt_at: string | null;
+  /** Given up after it. */
+  deadline: string;
+  /** "Send again" makes sense: failed or waiting, link (if any) still valid. */
+  can_resend: boolean;
+};
+
 export type UserDetail = UserSummary & {
   profile: Record<string, unknown>;
   failed_logins: number;
@@ -257,6 +279,8 @@ export type UserDetail = UserSummary & {
   backup_codes_left: number;
   effective: { permissions: EffectiveGrant[]; client_scopes: EffectiveGrant[] };
   trusted_devices: TrustedDevice[];
+  /** The latest e-mails of the account, newest first. */
+  emails: OutboxEmail[];
 };
 
 export type InviteResult = { user: UserDetail; emailed: boolean; activation_url?: string; expires_at: string };
@@ -268,6 +292,8 @@ export type UserImportRow = {
   status: "valid" | "created" | "failed";
   error?: string;
   emailed: boolean;
+  /** The e-mailed invitation, once the import is over. */
+  delivery?: "pending" | "sent" | "failed";
 };
 
 export type UserImportPreview = {
@@ -295,6 +321,9 @@ export type UserImport = {
   /** Once it is over. */
   rows?: UserImportRow[];
   without_email: number;
+  /** E-mailed invitations that did not get through / still waiting. */
+  email_failed: number;
+  email_pending: number;
   created_at: string;
   finished_at: string | null;
 };

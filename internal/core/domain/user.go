@@ -26,13 +26,17 @@ type User struct {
 	Username     string
 	PasswordHash string
 	Email        string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	DeletedAt    *time.Time
-	Status       UserStatus
-	LastLoginAt  *time.Time
-	Profile      map[string]interface{}
-	Lockout      LockoutState
+	// EmailVerifiedAt: when the user proved they read Email (a link e-mailed
+	// to it was used), or an administrator said so; nil otherwise. Cleared
+	// whenever Email changes. The OIDC claim email_verified.
+	EmailVerifiedAt *time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	DeletedAt       *time.Time
+	Status          UserStatus
+	LastLoginAt     *time.Time
+	Profile         map[string]interface{}
+	Lockout         LockoutState
 	// MustChangePassword: an administrator forced a password reset. Signing
 	// in with the password is refused until the password changes.
 	MustChangePassword bool

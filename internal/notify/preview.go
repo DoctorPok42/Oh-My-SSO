@@ -33,6 +33,9 @@ func PreviewDataIn(loc *i18n.Localizer, tmpl Template, product string, now time.
 	switch tmpl {
 	case TemplatePasswordReset, TemplatePasswordResetRequired:
 		d.ResetURL, d.ExpiresIn = resetURL, humanDuration(loc, 30*time.Minute)
+	case TemplateEmailVerification:
+		d.VerifyURL = base + "/auth/verify-email#token=Xk3pQ9vRt2LmN8wYz4AbCdEfGh7JkLmNoPqRsTuVwXy"
+		d.ExpiresIn = humanDuration(loc, 24*time.Hour)
 	case TemplateAccountInvite:
 		d.ResetURL, d.ExpiresIn = resetURL, humanDuration(loc, 72*time.Hour)
 	case TemplateMfaMethodAdded, TemplateMfaMethodRemoved:

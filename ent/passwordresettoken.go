@@ -30,6 +30,8 @@ type PasswordResetToken struct {
 	UsedAt time.Time `json:"used_at,omitempty"`
 	// RequestedIP holds the value of the "requested_ip" field.
 	RequestedIP string `json:"requested_ip,omitempty"`
+	// EmailedTo holds the value of the "emailed_to" field.
+	EmailedTo string `json:"emailed_to,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -67,7 +69,7 @@ func (*PasswordResetToken) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case passwordresettoken.FieldUsed:
 			values[i] = new(sql.NullBool)
-		case passwordresettoken.FieldID, passwordresettoken.FieldUserID, passwordresettoken.FieldTokenHash, passwordresettoken.FieldRequestedIP:
+		case passwordresettoken.FieldID, passwordresettoken.FieldUserID, passwordresettoken.FieldTokenHash, passwordresettoken.FieldRequestedIP, passwordresettoken.FieldEmailedTo:
 			values[i] = new(sql.NullString)
 		case passwordresettoken.FieldExpiresAt, passwordresettoken.FieldUsedAt, passwordresettoken.FieldCreatedAt, passwordresettoken.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -127,6 +129,12 @@ func (_m *PasswordResetToken) assignValues(columns []string, values []any) error
 				return fmt.Errorf("unexpected type %T for field requested_ip", values[i])
 			} else if value.Valid {
 				_m.RequestedIP = value.String
+			}
+		case passwordresettoken.FieldEmailedTo:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field emailed_to", values[i])
+			} else if value.Valid {
+				_m.EmailedTo = value.String
 			}
 		case passwordresettoken.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -198,6 +206,9 @@ func (_m *PasswordResetToken) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("requested_ip=")
 	builder.WriteString(_m.RequestedIP)
+	builder.WriteString(", ")
+	builder.WriteString("emailed_to=")
+	builder.WriteString(_m.EmailedTo)
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

@@ -1,0 +1,21 @@
+{{define "subject"}}{{t "email.verify.subject" "Confirm your e-mail address"}}{{end}}
+
+{{define "text"}}{{template "hello" .}}
+
+{{tp "email.verify.intro" "Confirm that this address belongs to your <strong>{realm}</strong> account: open the link below. It works once and expires in <strong>{expires}</strong>." "realm" .Realm "expires" .ExpiresIn}}
+
+{{.VerifyURL}}
+
+{{t "email.verify.why" "Applications you sign in to can then rely on this address."}}
+{{t "email.verify.ignore" "If you did not ask for this, ignore this e-mail: nothing changes on your account."}}
+{{end}}
+
+{{define "html"}}{{template "badge.info" (t "email.badge.account" "Account")}}
+{{template "title" (t "email.verify.subject" "Confirm your e-mail address")}}
+{{template "hello" .}}
+<p>{{th "email.verify.intro" "Confirm that this address belongs to your <strong>{realm}</strong> account: open the link below. It works once and expires in <strong>{expires}</strong>." "realm" .Realm "expires" .ExpiresIn}}</p>
+{{template "button" (button .VerifyURL (t "email.verify.button" "Confirm my address"))}}
+{{template "link" .VerifyURL}}
+<p>{{t "email.verify.why" "Applications you sign in to can then rely on this address."}}</p>
+{{template "muted" (t "email.verify.ignore" "If you did not ask for this, ignore this e-mail: nothing changes on your account.")}}
+{{end}}

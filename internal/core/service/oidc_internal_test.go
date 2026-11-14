@@ -37,17 +37,19 @@ func TestUserAttributes(t *testing.T) {
 	u := &domain.User{
 		Username: "alice", Email: "alice@example.com",
 		UpdatedAt: time.Unix(1_700_000_000, 0),
-		Profile:   map[string]interface{}{"given_name": "Alice", "email_verified": true},
+		// email_verified in the profile is ignored: the column says (B-13).
+		Profile:         map[string]interface{}{"given_name": "Alice", "email_verified": false},
+		EmailVerifiedAt: new(time.Unix(1_600_000_000, 0)),
 	}
 	got := userAttributes(u, []string{"admins"}, nil)
 	require.Equal(t, map[string]any{
-		"username":               "alice",
-		"email":                  "alice@example.com",
-		"updated_at":             int64(1_700_000_000),
-		"profile.given_name":     "Alice",
-		"profile.email_verified": true,
-		"groups":                 []string{"admins"},
-		"roles":                  []string{},
+		"username":           "alice",
+		"email":              "alice@example.com",
+		"updated_at":         int64(1_700_000_000),
+		"profile.given_name": "Alice",
+		"email_verified":     true,
+		"groups":             []string{"admins"},
+		"roles":              []string{},
 	}, got)
 }
 
