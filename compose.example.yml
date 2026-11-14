@@ -77,7 +77,7 @@ services:
   # the code: IMAGE_MIGRATE is deployed with IMAGE_IDP and IMAGE_IDP_ADMIN
   # (scripts/deploy.sh sets the three), and follows IMAGE_IDP while it is unset.
   migrate:
-    image: doctorpok/omsso:migrate-${IMAGE_MIGRATE:-${IMAGE_IDP:-latest}}
+    image: doctorpok/omsso:migrate-${IMAGE_MIGRATE:-${IMAGE_IDP:?set IMAGE_IDP in .env (a release, see CHANGELOG.md)}}
     # build: { context: ., target: migrate }
     command:
       - migrate
@@ -91,7 +91,7 @@ services:
     networks: [data]
 
   idp:
-    image: doctorpok/omsso:idp-${IMAGE_IDP:-latest}
+    image: doctorpok/omsso:idp-${IMAGE_IDP:?set IMAGE_IDP in .env (a release, see CHANGELOG.md)}
     # build: { context: ., target: idp } # instead of image: from this checkout
     env_file: .env
     volumes:
@@ -115,7 +115,7 @@ services:
     stop_grace_period: 30s
 
   idp-admin:
-    image: doctorpok/omsso:idp-admin-${IMAGE_IDP_ADMIN:-latest}
+    image: doctorpok/omsso:idp-admin-${IMAGE_IDP_ADMIN:?set IMAGE_IDP_ADMIN in .env (a release, see CHANGELOG.md)}
     # build: { context: ., target: idp-admin }
     env_file: .env
     volumes:
@@ -140,7 +140,7 @@ services:
     stop_grace_period: 30s
 
   admin:
-    image: doctorpok/omsso:admin-${IMAGE_ADMIN:-latest}
+    image: doctorpok/omsso:admin-${IMAGE_ADMIN:?set IMAGE_ADMIN in .env (a release, see CHANGELOG.md)}
     # build: { context: ./admin }
     environment:
       OIDC_ISSUER: ${PUBLIC_URL:-http://localhost:8080}/r/master

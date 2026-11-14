@@ -5,7 +5,7 @@
 # in the migrate image of the tag: they always match the code deployed.
 #
 #   scripts/deploy.sh --package all --version <sha of a commit of main>
-#   scripts/deploy.sh --package idp --version latest
+#   scripts/deploy.sh --package idp --version 1.2.3
 #   scripts/deploy.sh --package all --version <sha> --no-backup
 #
 # Runs in the repository root, wherever it is called from: .env and
@@ -14,7 +14,6 @@
 set -euo pipefail
 
 PACKAGES=(idp idp-admin migrate admin)
-KEEP_BACKUPS=10
 
 usage() {
   cat <<EOF
@@ -25,7 +24,7 @@ Usage: $0 --package PACKAGE --version TAG [--no-backup]
   --package    ${PACKAGES[*]}, or all (every image at the same version).
                idp and idp-admin bring migrate with them: the schema and the
                code of a version go together.
-  --version    image tag: the sha of a commit of main whose CI passed, or latest
+  --version    image tag: a release (1.2.3) or the sha of a commit of main whose CI passed
   --no-backup  do not dump the database before the containers are recreated
   -h, --help   this help
 EOF
@@ -36,26 +35,6 @@ EOF
 image_var() {
   local name=${1^^}
   echo "IMAGE_${name//-/_}"
-}
-
-# Dumps the database to $BACKUP_DIR before a deploy: the migrations that follow
-# are not automatically reversible. Only the database: the keys of the key
-# manager and .env are backed up separately (docs/PRODUCTION.md).
-backup_database() {
-  local version=$1 dir=${BACKUP_DIR:-backups} file
-  if ! docker compose ps --status running --services | grep -qx postgres; then
-    echo "The postgres service is not running: no backup taken" >&2
-    return 0
-  fi
-  mkdir -p "$dir"
-  file="$dir/sso-$(date +%Y%m%d-%H%M%S)-before-$version.sql.gz"
-  if ! (umask 077 && docker compose exec -T postgres pg_dump -U sso sso | gzip >"$file"); then
-    rm -f "$file"
-    echo "The backup failed: nothing was deployed. Fix it, or use --no-backup." >&2
-    exit 1
-  fi
-  echo "Database backed up to $file"
-  ls -1t "$dir"/sso-*.sql.gz | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm --
 }
 
 # In production, idp and idp-admin refuse to start without VALKEY_PASSWORD,
@@ -130,7 +109,10 @@ main() {
   # `docker compose up` does not deploy the new tags either. Only a deploy
   # that brings migrations needs one.
   if [[ $backup == 1 && " ${targets[*]} " == *" migrate "* ]]; then
-    backup_database "$version"
+    # The migrations that follow are not automatically reversible. Only the
+    # database: the key manager and .env are backed up separately (docs/BACKUP.md).
+    scripts/backup.sh --if-running --label "before-$version" ||
+      { echo "Nothing was deployed. Fix the backup, or use --no-backup." >&2; exit 1; }
   fi
 
   local kv var

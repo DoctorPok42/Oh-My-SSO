@@ -104,7 +104,7 @@ cp .env.example .env && chmod 600 .env
 | `ADMIN_PANEL_URL`, `IDP_INTERNAL_URL` | `https://admin.example.com`, `http://idp:8080` |
 | `ADMIN_SESSION_SECRET` | `openssl rand -base64 32`. Changing it signs every admin out |
 | `ADMIN_OIDC_CLIENT_SECRET` | empty for now: the bootstrap prints it (section 5) |
-| `IMAGE_IDP`, `IMAGE_IDP_ADMIN`, `IMAGE_ADMIN` | `latest`, or a commit sha (below) |
+| `IMAGE_IDP`, `IMAGE_IDP_ADMIN`, `IMAGE_ADMIN` | a release (`1.2.3`), or a commit sha (below) |
 
 **`compose.yml`**: one line to edit, the `extra_hosts` of `admin`: the host name of `PUBLIC_URL`. The console's
 server calls the IdP at its public URL (the OIDC issuer must match exactly), through nginx on the host
@@ -121,11 +121,19 @@ production, and you may delete them from `compose.yml`.
 
 **Images.** Every push on `main` that passes CI publishes `doctorpok/omsso:<image>-<commit sha>` and
 `doctorpok/omsso:<image>-latest`, for `idp`, `idp-admin`, `migrate` and `admin`. `IMAGE_IDP`, `IMAGE_IDP_ADMIN`,
-`IMAGE_MIGRATE` and `IMAGE_ADMIN` choose the tag of each image. Pin a commit (its full sha, `git rev-parse HEAD`), the
+`IMAGE_MIGRATE` and `IMAGE_ADMIN` choose the tag of each image. Pin a release (`1.2.3`, with the manual steps of [CHANGELOG.md](../CHANGELOG.md)) or a commit (its full sha), the
 same one for `idp`, `idp-admin` and `migrate`: the `migrate` image holds the database migrations of that commit,
 which must match the code of the other two. `idp` and `idp-admin` refuse to start on a database that lacks a
 migration they need. The checkout plays no part in the migrations. The console image has no build-time setting:
 everything comes from its environment.
+
+A release (`vX.Y.Z` tag) re-tags the images of its commit as `<image>-X.Y.Z`; they are signed with cosign (keyless,
+by the `Release` workflow) and carry an SBOM. Check one before deploying it:
+
+```bash
+cosign verify doctorpok/omsso:idp-1.2.3 \n  --certificate-identity-regexp '^https://github.com/DoctorPok42/Oh-My-SSO/.github/workflows/release.yml@refs/tags/v' \n  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+# the SBOM: cosign verify-attestation --type spdxjson (same flags) doctorpok/omsso:idp-1.2.3
+```
 
 ## 4. Reverse proxy (nginx on the host)
 
@@ -251,7 +259,7 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
 
 - **Update**: wait for the CI of the commit to be green (its `docker` job pushes the images), then:
   ```bash
-  scripts/deploy.sh --package all --version <commit sha>   # or --package idp|idp-admin|admin, --version latest
+  scripts/deploy.sh --package all --version <release or commit sha>   # or --package idp|idp-admin|admin, --version 1.2.3
   ```
   It pulls the images of that tag (a tag the CI has not pushed yet stops it there, nothing changed), writes the
   `IMAGE_*` lines of `.env`, dumps the database to `./backups/` (the last ten are kept; `--no-backup` skips it; the
@@ -261,7 +269,7 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   once the database and Valkey answer (`GET /readyz`, the `HEALTHCHECK` of the images, not published by the nginx
   above), and the console waits for them. Rollback: deploy the previous sha. The older version starts on the newer database and logs a warning, which
   is safe only when the migrations in between did not remove or rename anything; otherwise restore the dump taken
-  by the deploy.
+  by the deploy (`scripts/restore.sh`, [BACKUP.md](BACKUP.md)).
   Recreating `idp-admin` during a bulk action or a CSV import is safe: on `SIGTERM` it finishes the requests in flight
   (15 s at most), then the job stops **at the item it is on** (an item is never left half done), lists the items it did
   not get to as _not processed_ in its report, and writes a `bulk.interrupted` audit entry naming them (an import ends
@@ -323,10 +331,11 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   only. In the console, administrators' rights are checked in the database, and changes to the master realm are
   refused until Valkey answers (the other admins' tokens could otherwise keep a right just withdrawn). Valkey must
   answer when a server starts.
-- **Backups**: PostgreSQL (users, clients, audit log), e.g.
-  `docker compose exec -T postgres pg_dump -U sso sso | gzip > sso-$(date +%F).sql.gz`, **and** the key manager:
-  Vault's Transit keys, or the OKMS domain and its access certificate. Without the keys, encrypted secrets and signing
-  keys are lost even with a good database backup. Keep a copy of `.env`. Test a restore.
+- **Backups**: `scripts/backup.sh` dumps PostgreSQL (users, clients, audit log) to `./backups/`
+  (the last ten are kept; `deploy.sh` runs it before a deploy with migrations); `scripts/restore.sh <dump> --yes`
+  puts it back. The key manager (Vault's Transit keys, or the OKMS domain and its access certificate) is backed up
+  separately: without it, encrypted secrets and signing keys are lost even with a good dump. What each loss costs, and
+  how to rehearse a restore: [BACKUP.md](BACKUP.md).
 - **Purge**: every hour, `idp` and `idp-admin` delete what has ended longer ago than the realm's retention (Settings >
   General > Data retention, 90 days by default): expired or revoked sessions and tokens, used or expired reset and
   activation links, address verification links, e-mails of the outbox that were sent, failed or cancelled, sign-in

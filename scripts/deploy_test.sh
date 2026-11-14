@@ -9,7 +9,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
 mkdir -p "$work/repo/scripts" "$work/bin"
-cp "$here/deploy.sh" "$work/repo/scripts/deploy.sh"
+cp "$here/deploy.sh" "$here/backup.sh" "$work/repo/scripts/"
 touch "$work/repo/compose.yml"
 
 # The fake logs each call. FAKE_PG_DUMP=fail makes pg_dump fail,
@@ -52,7 +52,7 @@ calls() { grep -c "$1" "$work/log" || true; }
 deploy --package all --version new
 check "all: succeeds" "$status" 0
 check "all: .env updated" "$(grep -c '=new$' "$work/repo/.env")" 4
-check "all: one dump" "$(ls "$work/repo/backups" | wc -l)" 1
+check "all: one dump" "$(ls "$work/repo/backups"/*.sql.gz | wc -l)" 1
 order=$(grep -o 'pg_dump\|compose up' "$work/log" | tr '\n' ' ')
 check "all: the dump comes before up" "$order" "pg_dump compose up "
 
@@ -104,6 +104,26 @@ check "production, console only: not concerned" "$status" 0
 
 EXTRA_ENV="APP_ENV=development" COMPOSE="$without_requirepass" deploy --package all --version new
 check "development: no password needed" "$status" 0
+
+# backup.sh on its own (cron): an error when postgres is down, no .env copy
+# unless asked, and the oldest dumps go with their .env copy.
+backup() { (cd "$work/repo" && PATH="$work/bin:$PATH" FAKE_LOG="$work/log" scripts/backup.sh "$@") >"$work/out" 2>&1; }
+deploy --package all --version new
+FAKE_POSTGRES=down backup && status=0 || status=$?
+check "backup.sh: postgres down is an error" "$status" 1
+FAKE_POSTGRES=down backup --if-running && status=0 || status=$?
+check "backup.sh --if-running: postgres down is fine" "$status" 0
+rm -rf "$work/repo/backups"; mkdir "$work/repo/backups"
+backup
+check "backup.sh: no .env copy by default" "$(ls "$work/repo/backups" | grep -c '\.env$' || true)" 0
+rm -rf "$work/repo/backups"; mkdir "$work/repo/backups"
+for i in 1 2 3 4 5 6 7 8 9 10 11; do
+  touch -d "@$((1000 + i))" "$work/repo/backups/sso-old$i.sql.gz" "$work/repo/backups/sso-old$i.env"
+done
+backup --with-env
+check "retention: ten dumps kept" "$(ls "$work/repo/backups"/*.sql.gz | wc -l)" 10
+check "retention: ten .env copies kept" "$(ls "$work/repo/backups"/*.env | wc -l)" 10
+check "retention: the oldest goes with its .env" "$(ls "$work/repo/backups"/sso-old1.* 2>/dev/null | wc -l)" 0
 
 if ((failures > 0)); then
   echo "$failures failure(s)"
