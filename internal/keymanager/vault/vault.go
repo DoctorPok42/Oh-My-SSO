@@ -165,7 +165,10 @@ func (k *KeyManager) holdToken(ctx context.Context, secret *vaultapi.Secret) {
 				select {
 				case <-ctx.Done():
 					return
-				case <-w.DoneCh():
+				case err := <-w.DoneCh():
+					if err != nil {
+						log.Printf("vault keymanager: token renewal ended: %v", err)
+					}
 					return
 				case <-w.RenewCh():
 				}
