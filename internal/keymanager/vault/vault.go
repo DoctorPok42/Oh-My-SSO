@@ -2,17 +2,17 @@ package vault
 
 import (
 	"context"
-	"log"
-	"os"
-	"sync"
-	"time"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"log/slog"
+	"os"
 	"strconv"
 	"strings"
-	"github.com/google/uuid"
+	"sync"
+	"time"
 
+	"github.com/google/uuid"
 	vaultapi "github.com/hashicorp/vault/api"
 
 	"sso.internal/sso/internal/keymanager"
@@ -44,8 +44,8 @@ type KeyManager struct {
 }
 
 var (
-	_ keymanager.KeyManager = (*KeyManager)(nil)
-	_ keymanager.Encrypter  = (*KeyManager)(nil)
+	_ keymanager.KeyManager   = (*KeyManager)(nil)
+	_ keymanager.Encrypter    = (*KeyManager)(nil)
 	_ keymanager.DigestSigner = (*KeyManager)(nil)
 )
 
@@ -141,7 +141,7 @@ func (k *KeyManager) keepAlive(ctx context.Context, secret *vaultapi.Secret) {
 				backoff = time.Second
 				break
 			}
-			log.Printf("vault keymanager: %v (retrying in %s)", err, backoff)
+			slog.Error("vault keymanager: cannot sign in", "error", err, "retry_in", backoff.String())
 			select {
 			case <-ctx.Done():
 				return
@@ -167,7 +167,7 @@ func (k *KeyManager) holdToken(ctx context.Context, secret *vaultapi.Secret) {
 					return
 				case err := <-w.DoneCh():
 					if err != nil {
-						log.Printf("vault keymanager: token renewal ended: %v", err)
+						slog.Warn("vault keymanager: token renewal ended", "error", err)
 					}
 					return
 				case <-w.RenewCh():
@@ -260,7 +260,7 @@ func (k *KeyManager) readLatestPublicKey(ctx context.Context, name string) (stri
 func (k *KeyManager) Sign(ctx context.Context, kmsKeyReference string, payload []byte) ([]byte, error) {
 	// POST /transit/sign/:name
 	secret, err := k.client.Logical().WriteWithContext(ctx, k.path("sign", kmsKeyReference), map[string]interface{}{
-		"input": base64.StdEncoding.EncodeToString(payload),
+		"input":               base64.StdEncoding.EncodeToString(payload),
 		"signature_algorithm": "pkcs1v15",
 	})
 	if err != nil {

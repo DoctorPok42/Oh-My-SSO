@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 
 	"sso.internal/sso/internal/adapters/accountui"
 	"sso.internal/sso/internal/adapters/loginui"
@@ -13,6 +12,7 @@ import (
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/health"
 	"sso.internal/sso/internal/i18n"
+	"sso.internal/sso/internal/logging"
 	"sso.internal/sso/internal/ratelimit"
 )
 
@@ -160,11 +160,12 @@ func New(
 		s.i18n = i18n.MustDefault()
 	}
 
-	s.router.Use(middleware.RequestID)
+	s.router.Use(logging.RequestID)
 	// Not middleware.RealIP: it believes X-Forwarded-For from anyone, so a
 	// client could choose its own address (rate limits, audit log).
 	s.router.Use(s.ipResolver.Middleware)
-	s.router.Use(middleware.Recoverer)
+	s.router.Use(accessLog) // before Recoverer: a panic is logged with its 500
+	s.router.Use(logging.Recoverer)
 
 	s.router.Get("/health", s.handleHealth)
 	s.router.Method(http.MethodGet, "/readyz", health.Handler(s.ready...))

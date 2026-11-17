@@ -1,11 +1,11 @@
 package app
 
 import (
-	"log"
 	"os"
 	"sync"
 
 	"sso.internal/sso/internal/i18n"
+	"sso.internal/sso/internal/logging"
 )
 
 // Languages returns the languages of the pages and e-mails: the embedded
@@ -16,7 +16,7 @@ import (
 var Languages = sync.OnceValue(func() *i18n.Bundle {
 	b, err := i18n.Load(os.Getenv("LOCALES_DIR"))
 	if err != nil {
-		log.Fatalf("languages: %v", err)
+		logging.Fatal("languages: cannot load", "error", err)
 	}
 	return b
 })

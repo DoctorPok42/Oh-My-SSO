@@ -3,6 +3,7 @@ package saml
 import (
 	"bytes"
 	"compress/flate"
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -74,7 +75,6 @@ func appWith(keys ...*spKey) *domain.ClientApp {
 func testAdapter() *Adapter {
 	return &Adapter{logger: quiet, now: time.Now}
 }
-
 
 func deflateB64(t *testing.T, s string) string {
 	t.Helper()
@@ -177,7 +177,6 @@ func TestVerifyQuerySignature(t *testing.T) {
 	require.ErrorIs(t, check(tampered, rsaKey), errBadSignature, "an added parameter breaks the signature")
 }
 
-
 func TestCertificatesAt(t *testing.T) {
 	now := time.Now()
 	current := validSPKey(t, false)
@@ -271,7 +270,6 @@ func TestVerifyXMLSignature(t *testing.T) {
 	})
 }
 
-
 func TestBuildAttributes(t *testing.T) {
 	as := &core.IdentityAssertion{
 		UserAttributes: map[string]any{
@@ -297,7 +295,7 @@ func TestBuildAttributes(t *testing.T) {
 		},
 	}
 	app := &domain.ClientApp{EntityID: "sp", AttributeMappings: map[string]interface{}{"uid": "user", "mail": "givenName"}}
-	attrs := buildAttributes(as, app, quiet)
+	attrs := buildAttributes(context.Background(), as, app, quiet)
 
 	got := map[string][]string{}
 	for _, at := range attrs {
@@ -340,7 +338,6 @@ func TestNameIDValue(t *testing.T) {
 	_, err := nameIDValue(domain.NameIDFormatEmail, &core.IdentityAssertion{UserAttributes: map[string]any{}})
 	require.ErrorIs(t, err, errNoEmail)
 }
-
 
 func TestParseSPMetadata(t *testing.T) {
 	k := validSPKey(t, false)

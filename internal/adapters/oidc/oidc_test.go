@@ -39,7 +39,6 @@ func testClient(mod func(*domain.ClientApp), scopes ...*domain.ClientScope) *cor
 	return &core.ProtocolClient{App: app, Scopes: scopes}
 }
 
-
 func TestBuildClaims(t *testing.T) {
 	groups := &domain.ClientScope{Name: "groups", ClaimMappers: []map[string]interface{}{
 		{"source_attribute": "groups", "claim_name": "groups", "token_location": []interface{}{"id_token", "access_token"}},
@@ -62,7 +61,7 @@ func TestBuildClaims(t *testing.T) {
 		Scopes: []*domain.ClientScope{groups, samlOnly},
 	}
 
-	idt := buildClaims(as, nil, []string{"openid", "profile", "email", "groups"}, locIDToken, quiet)
+	idt := buildClaims(context.Background(), as, nil, []string{"openid", "profile", "email", "groups"}, locIDToken, quiet)
 	require.Equal(t, map[string]any{
 		"preferred_username": "alice",
 		"given_name":         "Alice",
@@ -73,19 +72,19 @@ func TestBuildClaims(t *testing.T) {
 		"department":         "R&D",
 	}, idt, "minimal disclosure: profile.secret_note, roles and the SAML scope never appear")
 
-	at := buildClaims(as, nil, []string{"openid", "profile", "email", "groups"}, locAccessToken, quiet)
+	at := buildClaims(context.Background(), as, nil, []string{"openid", "profile", "email", "groups"}, locAccessToken, quiet)
 	require.Equal(t, map[string]any{"groups": []string{"admins"}}, at, "standard claims stay out of access tokens")
 
-	ui := buildClaims(as, nil, []string{"openid"}, locUserinfo, quiet)
+	ui := buildClaims(context.Background(), as, nil, []string{"openid"}, locUserinfo, quiet)
 	require.Equal(t, map[string]any{"department": "R&D"}, ui, "no profile/email scope: no standard claims")
 
 	t.Run("email_verified false unless verified", func(t *testing.T) {
 		as2 := &core.IdentityAssertion{UserAttributes: map[string]any{"email": "bob@acme.test"}}
-		got := buildClaims(as2, nil, []string{"email"}, locIDToken, quiet)
+		got := buildClaims(context.Background(), as2, nil, []string{"email"}, locIDToken, quiet)
 		require.Equal(t, map[string]any{"email": "bob@acme.test", "email_verified": false}, got)
 		// A profile key of the same name is not the verified state (B-13).
 		as2.UserAttributes["profile.email_verified"] = true
-		got = buildClaims(as2, nil, []string{"email"}, locIDToken, quiet)
+		got = buildClaims(context.Background(), as2, nil, []string{"email"}, locIDToken, quiet)
 		require.Equal(t, false, got["email_verified"])
 	})
 
@@ -99,13 +98,13 @@ func TestBuildClaims(t *testing.T) {
 func TestApplyRenames(t *testing.T) {
 	pc := testClient(func(c *domain.ClientApp) {
 		c.AttributeMappings = map[string]interface{}{
-			"email":              "mail",         // ok
-			"given_name":         "sub",          // reserved target: ignored
-			"sid":                "session",      // reserved source: ignored
-			"preferred_username": "groups",       // would overwrite: ignored
-			"department":         "",             // empty: ignored
-			"absent":             "whatever",     // nothing to rename
-			"family_name":        42,             // not a string: ignored
+			"email":              "mail",     // ok
+			"given_name":         "sub",      // reserved target: ignored
+			"sid":                "session",  // reserved source: ignored
+			"preferred_username": "groups",   // would overwrite: ignored
+			"department":         "",         // empty: ignored
+			"absent":             "whatever", // nothing to rename
+			"family_name":        42,         // not a string: ignored
 			"team":               "entitlements",
 		}
 	})
@@ -113,13 +112,39 @@ func TestApplyRenames(t *testing.T) {
 		"email": "a@acme.test", "given_name": "Alice", "preferred_username": "alice",
 		"groups": []string{"admins"}, "department": "R&D", "family_name": "Martin", "team": "ops",
 	}
-	applyRenames(claims, pc.App.AttributeMappings, pc.App.ClientID, quiet)
+	applyRenames(context.Background(), claims, pc.App.AttributeMappings, pc.App.ClientID, quiet)
 	require.Equal(t, map[string]any{
 		"mail": "a@acme.test", "given_name": "Alice", "preferred_username": "alice",
 		"groups": []string{"admins"}, "department": "R&D", "family_name": "Martin", "team": "ops",
 	}, claims)
 }
 
+// ctxRecorder keeps the context of each line logged: the request's, from
+// which the log handler (internal/logging) adds the request ID.
+type ctxRecorder struct{ got *[]context.Context }
+
+func (h ctxRecorder) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h ctxRecorder) Handle(ctx context.Context, _ slog.Record) error {
+	*h.got = append(*h.got, ctx)
+	return nil
+}
+
+func (h ctxRecorder) WithAttrs([]slog.Attr) slog.Handler { return h }
+
+func (h ctxRecorder) WithGroup(string) slog.Handler { return h }
+
+func TestIgnoredRenameIsLoggedWithTheRequestContext(t *testing.T) {
+	type requestKey struct{}
+	ctx := context.WithValue(context.Background(), requestKey{}, "request-1")
+	pc := testClient(func(c *domain.ClientApp) { c.AttributeMappings = map[string]interface{}{"email": "sub"} })
+	as := &core.IdentityAssertion{UserAttributes: map[string]any{"email": "a@acme.test"}}
+
+	var got []context.Context
+	buildClaims(ctx, as, pc, []string{"email"}, locIDToken, slog.New(ctxRecorder{&got}))
+	require.Len(t, got, 1, "the rename onto a reserved claim is refused and logged")
+	require.Equal(t, "request-1", got[0].Value(requestKey{}))
+}
 
 func TestCheckAuthorizePolicy(t *testing.T) {
 	ok := func() *oidc.AuthRequest {
@@ -224,7 +249,6 @@ func TestCheckPublicURL(t *testing.T) {
 	}
 }
 
-
 // fakeSigner behaves like core.Signer on top of the KMS: SHA-256, then
 // PKCS#1 v1.5 (RSA) or ASN.1 DER ECDSA.
 type fakeSigner struct {
@@ -308,7 +332,6 @@ func TestParsePublicKeyPEM(t *testing.T) {
 	_, err = parsePublicKeyPEM("not pem")
 	require.Error(t, err)
 }
-
 
 func TestReauthRequired(t *testing.T) {
 	now := time.Date(2026, 10, 18, 12, 0, 0, 0, time.UTC)

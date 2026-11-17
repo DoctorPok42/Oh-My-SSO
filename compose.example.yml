@@ -19,6 +19,14 @@
 
 name: oh-my-sso
 
+# Container logs (docker compose logs): Docker keeps them in files that grow
+# without limit by default, and idp writes one line per request. Each service
+# keeps at most 5 files of 50 MB. json-file, not local: a log collector that
+# reads /var/lib/docker/containers/*/*-json.log keeps working.
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "50m", max-file: "5" }
+
 services:
   # TLS reverse proxy in this file instead of on the host (docs/PRODUCTION.md,
   # section 4): uncomment, then remove the ports of idp and admin and the
@@ -38,6 +46,7 @@ services:
   #       # certificate): the OIDC issuer must match exactly. EDIT: the host
   #       # name of PUBLIC_URL.
   #       aliases: [sso.example.com]
+  #   logging: *logging
   #   restart: unless-stopped
 
   postgres:
@@ -53,6 +62,7 @@ services:
       retries: 20
     volumes: [db-data:/var/lib/postgresql/data]
     networks: [data]
+    logging: *logging
     restart: unless-stopped
 
   valkey:
@@ -70,6 +80,7 @@ services:
       retries: 10
     volumes: [valkey-data:/data]
     networks: [data]
+    logging: *logging
     restart: unless-stopped
 
   # One-shot, before idp and idp-admin start: database migrations (Atlas,
@@ -109,6 +120,7 @@ services:
       # mailcow: {} # mail server of another compose project, see networks
     # extra_hosts: ["mail.example.com:172.22.1.253"] # SMTP_HOST -> its container
     read_only: true
+    logging: *logging
     restart: unless-stopped
     # The default (10 s) is shorter than the 15 s idp gives the requests in
     # flight to end, then the queued e-mails to leave.
@@ -131,6 +143,7 @@ services:
       # mailcow: {}
     # extra_hosts: ["mail.example.com:172.22.1.253"]
     read_only: true
+    logging: *logging
     restart: unless-stopped
     # The default (10 s) is shorter than what idp-admin needs to stop: up to
     # 15 s to finish the requests in flight, then the bulk action or CSV import
@@ -168,6 +181,7 @@ services:
       admin: { ipv4_address: 172.30.10.10 } # = ADMIN_API_ALLOWED_CIDRS
     read_only: true
     tmpfs: [/tmp, /app/.next/cache]
+    logging: *logging
     restart: unless-stopped
 
   # ===== Local development only ==============================================

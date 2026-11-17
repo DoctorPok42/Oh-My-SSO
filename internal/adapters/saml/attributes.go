@@ -1,6 +1,7 @@
 package saml
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -11,7 +12,6 @@ import (
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
 )
-
 
 const (
 	locSAMLAttribute = "saml_attribute"
@@ -68,8 +68,9 @@ func parseAttrMapper(raw map[string]interface{}, protocol domain.ClientScopeProt
 }
 
 // buildAttributes returns the attributes of the assertion, in a stable
-// order (scopes as the core returned them, mappers in their order).
-func buildAttributes(as *core.IdentityAssertion, app *domain.ClientApp, log *slog.Logger) []samllib.Attribute {
+// order (scopes as the core returned them, mappers in their order). ctx is
+// the request's: the lines logged carry its request ID.
+func buildAttributes(ctx context.Context, as *core.IdentityAssertion, app *domain.ClientApp, log *slog.Logger) []samllib.Attribute {
 	var out []samllib.Attribute
 	index := map[string]int{} // attribute name -> position in out
 	for _, cs := range as.Scopes {
@@ -102,12 +103,12 @@ func buildAttributes(as *core.IdentityAssertion, app *domain.ClientApp, log *slo
 			out = append(out, attr)
 		}
 	}
-	return applyRenames(out, app.AttributeMappings, app.EntityID, log)
+	return applyRenames(ctx, out, app.AttributeMappings, app.EntityID, log)
 }
 
 // applyRenames applies Client.attribute_mappings ({"from": "to"}) in a
 // stable order. A rename that would overwrite another attribute is skipped.
-func applyRenames(attrs []samllib.Attribute, mappings map[string]interface{}, entityID string, log *slog.Logger) []samllib.Attribute {
+func applyRenames(ctx context.Context, attrs []samllib.Attribute, mappings map[string]interface{}, entityID string, log *slog.Logger) []samllib.Attribute {
 	froms := make([]string, 0, len(mappings))
 	for from := range mappings {
 		froms = append(froms, from)
@@ -123,7 +124,7 @@ func applyRenames(attrs []samllib.Attribute, mappings map[string]interface{}, en
 			continue
 		}
 		if slices.ContainsFunc(attrs, func(a samllib.Attribute) bool { return a.Name == to }) {
-			log.Warn("saml: attribute_mappings would overwrite an attribute, ignored",
+			log.WarnContext(ctx, "saml: attribute_mappings would overwrite an attribute, ignored",
 				"entity_id", entityID, "from", from, "to", to)
 			continue
 		}

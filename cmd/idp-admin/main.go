@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -18,6 +18,7 @@ import (
 	valkeycache "sso.internal/sso/internal/cache/valkey"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/httptimeout"
+	"sso.internal/sso/internal/logging"
 	"sso.internal/sso/internal/notify"
 )
 
@@ -39,6 +40,7 @@ environment (besides DATABASE_URL, VALKEY_ADDR, KEYMANAGER_BACKEND... shared wit
 `
 
 func main() {
+	logging.Setup()
 	cmd := "serve"
 	if len(os.Args) > 1 {
 		cmd = os.Args[1]
@@ -72,13 +74,13 @@ func serve() {
 	addr := adminAddr()
 	nets, err := allowedNets(os.Getenv("ADMIN_API_ALLOWED_CIDRS"))
 	if err != nil {
-		log.Fatalf("ADMIN_API_ALLOWED_CIDRS: %v", err)
+		logging.Fatal("ADMIN_API_ALLOWED_CIDRS is invalid", "error", err)
 	}
 	if len(nets) == 0 {
 		if os.Getenv("APP_ENV") == "production" {
-			log.Fatalf("ADMIN_API_ALLOWED_CIDRS is required when APP_ENV=production: list the address(es) of the admin console's server")
+			logging.Fatal("ADMIN_API_ALLOWED_CIDRS is required when APP_ENV=production: list the address(es) of the admin console's server")
 		}
-		log.Printf("ADMIN_API_ALLOWED_CIDRS is not set: any address may call the Admin API (development only)")
+		slog.Warn("ADMIN_API_ALLOWED_CIDRS is not set: any address may call the Admin API (development only)")
 	}
 
 	c := app.BuildCore()
@@ -119,14 +121,14 @@ func serve() {
 	go func() {
 		defer close(drained)
 		<-stop
-		log.Printf("shutting down...")
+		slog.Info("shutting down...")
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(ctx)
 	}()
-	log.Printf("Admin API listening on %s (issuer of admin tokens: %s/r/master)", addr, c.PublicURL)
+	slog.Info("Admin API listening", "addr", addr, "admin_token_issuer", c.PublicURL+"/r/master")
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatal(err)
+		logging.Fatal("Admin API stopped", "error", err)
 	}
 	// ListenAndServe returns as soon as Shutdown starts: wait for the requests
 	// in flight to end, or leaving would cut them.
@@ -154,18 +156,18 @@ func syncAdminCatalogue(admin interface {
 	defer cancel()
 	changed, err := admin.SyncAdminCatalogue(ctx)
 	if err != nil {
-		log.Printf("admin permissions: cannot bring the catalogue up to date: %v", err)
+		slog.Error("admin permissions: cannot bring the catalogue up to date", "error", err)
 		return
 	}
 	if !changed {
 		return
 	}
 	if err := rights.Changed(ctx, time.Now()); err != nil {
-		log.Printf("admin permissions: updated, but the rights epoch could not move (%v): "+
-			"administrators see the new permissions at their next sign-in", err)
+		slog.Warn("admin permissions: updated, but the rights epoch could not move: "+
+			"administrators see the new permissions at their next sign-in", "error", err)
 		return
 	}
-	log.Printf("admin permissions: the admins and auditors groups now have every permission of this version")
+	slog.Info("admin permissions: the admins and auditors groups now have every permission of this version")
 }
 
 // allowedNets parses "10.0.0.5, 10.1.0.0/16": IPs become /32 (or /128).

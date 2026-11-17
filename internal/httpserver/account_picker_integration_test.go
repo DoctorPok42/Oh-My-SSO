@@ -103,6 +103,8 @@ func TestOIDC_Integration_AccountPicker(t *testing.T) {
 		require.Equal(t, "revoked", string(e.sessionRow(t, sid).Status), "same browser: signed out without a question")
 		logs := e.logouts(t, sid)
 		require.Len(t, logs, 1)
+		require.NotEmpty(t, logs[0].Details["request_id"], "the audit entry names the HTTP request")
+		delete(logs[0].Details, "request_id")
 		require.Equal(t, map[string]interface{}{"via": "oidc", "remember_me": true, "client_id": webClientID}, logs[0].Details)
 
 		resp, body := b.page(web.AuthCodeURL("s", pkce()))

@@ -3,7 +3,7 @@ package app
 import (
 	"database/sql"
 	"encoding/base64"
-	"log"
+	"log/slog"
 	"net"
 	"os"
 	"strconv"
@@ -22,6 +22,7 @@ import (
 	localdev "sso.internal/sso/internal/keymanager/local_dev"
 	"sso.internal/sso/internal/keymanager/ovhkms"
 	"sso.internal/sso/internal/keymanager/vault"
+	"sso.internal/sso/internal/logging"
 	"sso.internal/sso/internal/notify"
 	"sso.internal/sso/internal/passkey"
 	"sso.internal/sso/internal/storage/entstore"
@@ -48,7 +49,7 @@ const (
 func OpenDatabase() *sql.DB {
 	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
 	if err != nil {
-		log.Fatalf("db: %v", err)
+		logging.Fatal("db: cannot open", "error", err)
 	}
 	db.SetMaxOpenConns(dbMaxOpenConns)
 	db.SetMaxIdleConns(dbMaxIdleConns)
@@ -91,13 +92,13 @@ func KeyManager() (keymanager.KeyManager, string) {
 			AppRoleMountPath:    os.Getenv("VAULT_APPROLE_MOUNT"),
 		})
 		if err != nil {
-			log.Fatalf("keymanager: %v", err)
+			logging.Fatal("keymanager: cannot start", "backend", backend, "error", err)
 		}
 		return km, backend
 	case "ovhkms":
 		okmsID, err := uuid.Parse(os.Getenv("OVHKMS_DOMAIN_ID"))
 		if err != nil {
-			log.Fatalf("keymanager: invalid OVHKMS_DOMAIN_ID: %v", err)
+			logging.Fatal("keymanager: invalid OVHKMS_DOMAIN_ID", "error", err)
 		}
 		km, err := ovhkms.New(ovhkms.Config{
 			Endpoint:       os.Getenv("OVHKMS_ENDPOINT"),
@@ -106,7 +107,7 @@ func KeyManager() (keymanager.KeyManager, string) {
 			ClientKeyFile:  os.Getenv("OVHKMS_CLIENT_KEY_FILE"),
 		})
 		if err != nil {
-			log.Fatalf("keymanager: %v", err)
+			logging.Fatal("keymanager: cannot start", "backend", backend, "error", err)
 		}
 		return km, backend
 	case BackendLocalDev, "":
@@ -114,15 +115,15 @@ func KeyManager() (keymanager.KeyManager, string) {
 		if raw := os.Getenv("LOCALDEV_ENVELOPE_KEY"); raw != "" {
 			key, err := base64.StdEncoding.DecodeString(raw)
 			if err != nil || len(key) != 32 {
-				log.Fatalf("keymanager: LOCALDEV_ENVELOPE_KEY must be 32 bytes, base64 encoded (openssl rand -base64 32)")
+				logging.Fatal("keymanager: LOCALDEV_ENVELOPE_KEY must be 32 bytes, base64 encoded (openssl rand -base64 32)")
 			}
 			opts = append(opts, localdev.WithEnvelopeMasterKey(key))
 		} else {
-			log.Printf("keymanager: LOCALDEV_ENVELOPE_KEY is not set: TOTP secrets enrolled now will be unreadable after a restart")
+			slog.Warn("keymanager: LOCALDEV_ENVELOPE_KEY is not set: TOTP secrets enrolled now will be unreadable after a restart")
 		}
 		return localdev.New(os.Getenv("APP_ENV"), opts...), BackendLocalDev
 	default:
-		log.Fatalf("keymanager: unknown backend %q", backend)
+		logging.Fatal("keymanager: unknown backend", "backend", backend)
 		return nil, ""
 	}
 }
@@ -136,7 +137,7 @@ func KeyManager() (keymanager.KeyManager, string) {
 func Passkeys() service.PasskeyProvider {
 	rpID := os.Getenv("WEBAUTHN_RP_ID")
 	if rpID == "" {
-		log.Printf("passkeys: disabled (set WEBAUTHN_RP_ID and WEBAUTHN_RP_ORIGINS to enable them)")
+		slog.Info("passkeys: disabled (set WEBAUTHN_RP_ID and WEBAUTHN_RP_ORIGINS to enable them)")
 		return nil
 	}
 	var origins []string
@@ -151,7 +152,7 @@ func Passkeys() service.PasskeyProvider {
 		RPOrigins:     origins,
 	})
 	if err != nil {
-		log.Fatalf("passkeys: %v", err)
+		logging.Fatal("passkeys: invalid settings", "error", err)
 	}
 	return p
 }
@@ -171,10 +172,10 @@ func PublicURL() string {
 	publicURL := os.Getenv("PUBLIC_URL")
 	if publicURL == "" {
 		if os.Getenv("APP_ENV") == "production" {
-			log.Fatalf("PUBLIC_URL is required when APP_ENV=production")
+			logging.Fatal("PUBLIC_URL is required when APP_ENV=production")
 		}
 		publicURL = "http://localhost:" + IdPPort()
-		log.Printf("PUBLIC_URL is not set, using %s (development only)", publicURL)
+		slog.Warn("PUBLIC_URL is not set, using " + publicURL + " (development only)")
 	}
 	return strings.TrimRight(publicURL, "/")
 }
@@ -210,9 +211,9 @@ func IdPPort() string {
 func ClientIP() clientip.Resolver {
 	res, err := clientip.Parse(os.Getenv("TRUSTED_PROXIES"), os.Getenv("CLIENT_IP_HEADER"))
 	if err != nil {
-		log.Fatalf("client ip: %v", err)
+		logging.Fatal("client ip: invalid settings", "error", err)
 	}
-	log.Print(res.String())
+	slog.Info(res.String())
 	return res
 }
 
@@ -228,38 +229,37 @@ func ConfigurePasswordHashing() {
 	if v := os.Getenv("PASSWORD_HASH_CONCURRENCY"); v != "" {
 		parsed, err := strconv.Atoi(v)
 		if err != nil || parsed < 1 {
-			log.Fatalf("PASSWORD_HASH_CONCURRENCY %q must be a whole number of at least 1", v)
+			logging.Fatal("PASSWORD_HASH_CONCURRENCY must be a whole number of at least 1", "value", v)
 		}
 		n = parsed
 	}
 	service.SetPasswordHashConcurrency(n)
-	log.Printf("passwords: Argon2id, at most %d hashes at a time (%d MiB of RAM)", n, n*service.PasswordHashMemoryMiB)
+	slog.Info("passwords: Argon2id", "max_hashes_at_a_time", n, "ram_mib", n*service.PasswordHashMemoryMiB)
 }
 
 func GeoIP() service.GeoIPResolver {
 	path := os.Getenv("GEOIP_DB_PATH")
 	if path == "" {
-		log.Printf("geoip: GEOIP_DB_PATH is not set: no \"new country\" signal on sign-ins")
+		slog.Info("geoip: GEOIP_DB_PATH is not set: no \"new country\" signal on sign-ins")
 		return nil
 	}
 	r, err := geoip.Open(path)
 	if err != nil {
-		log.Fatalf("%v", err)
+		logging.Fatal("geoip: cannot open the database", "error", err)
 	}
-	log.Printf("geoip: %s", r.Description())
+	slog.Info("geoip: " + r.Description())
 	return r
 }
-
 
 func EmailSender(templates *notify.Templates) notify.EmailSender {
 	appEnv := os.Getenv("APP_ENV")
 	host := os.Getenv("SMTP_HOST")
 	if host == "" {
 		if appEnv == "development" {
-			log.Printf("mail: SMTP_HOST is not set: e-mails are printed in this log instead (development only)")
+			slog.Warn("mail: SMTP_HOST is not set: e-mails are printed in this log instead (development only)")
 			return &notify.LogEmailSender{Templates: templates, Logger: nil}
 		}
-		log.Printf("mail: SMTP_HOST is not set: no e-mail is sent, \"forgot password\" is disabled")
+		slog.Warn("mail: SMTP_HOST is not set: no e-mail is sent, \"forgot password\" is disabled")
 		return nil
 	}
 
@@ -267,20 +267,20 @@ func EmailSender(templates *notify.Templates) notify.EmailSender {
 	if p := os.Getenv("SMTP_PORT"); p != "" {
 		n, err := strconv.Atoi(p)
 		if err != nil {
-			log.Fatalf("mail: SMTP_PORT %q is not a number", p)
+			logging.Fatal("mail: SMTP_PORT is not a number", "value", p)
 		}
 		port = n
 	}
 	from := Unquote(os.Getenv("SMTP_FROM"))
 	if from == "" {
 		if appEnv == "production" {
-			log.Fatalf("mail: SMTP_FROM is required when APP_ENV=production")
+			logging.Fatal("mail: SMTP_FROM is required when APP_ENV=production")
 		}
 		from = "Oh-My-SSO <no-reply@localhost>"
 	}
 	security := notify.Security(strings.ToLower(os.Getenv("SMTP_SECURITY")))
 	if security == notify.SecurityNone && appEnv == "production" && !isLoopbackHost(host) {
-		log.Fatalf("mail: SMTP_SECURITY=none sends passwords and reset links in clear: refused in production (except to localhost)")
+		logging.Fatal("mail: SMTP_SECURITY=none sends passwords and reset links in clear: refused in production (except to localhost)")
 	}
 
 	sender, err := notify.NewSMTPEmailSender(notify.SMTPConfig{
@@ -293,10 +293,10 @@ func EmailSender(templates *notify.Templates) notify.EmailSender {
 		HeloName: os.Getenv("SMTP_HELO_NAME"),
 	}, templates)
 	if err != nil {
-		log.Fatalf("mail: %v", err)
+		logging.Fatal("mail: invalid SMTP settings", "error", err)
 	}
 	cfg := sender.Config()
-	log.Printf("mail: SMTP %s:%d (%s), from %s", cfg.Host, cfg.Port, cfg.Security, cfg.From)
+	slog.Info("mail: SMTP", "host", cfg.Host, "port", cfg.Port, "security", cfg.Security, "from", cfg.From)
 	return sender
 }
 
@@ -338,7 +338,7 @@ func isLoopbackHost(host string) bool {
 func Templates() *notify.Templates {
 	t, err := notify.LoadTemplates(Languages())
 	if err != nil {
-		log.Fatalf("mail: %v", err) // embedded files: only a broken build gets here
+		logging.Fatal("mail: cannot load the templates", "error", err) // embedded files: only a broken build gets here
 	}
 	return t
 }
