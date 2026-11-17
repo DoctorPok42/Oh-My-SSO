@@ -48,7 +48,6 @@ func (s *storage) lookupClient(ctx context.Context, clientID string) (*core.Prot
 	return s.a.core.LookupClient(ctx, realm.ID, protocolOIDC, clientID)
 }
 
-
 func (s *storage) GetClientByClientID(ctx context.Context, clientID string) (op.Client, error) {
 	pc, err := s.lookupClient(ctx, clientID)
 	if err != nil {
@@ -73,7 +72,6 @@ func (s *storage) AuthorizeClientIDSecret(ctx context.Context, clientID, clientS
 	ReportClientAuthenticated(ctx, clientID)
 	return nil
 }
-
 
 // CreateAuthRequest runs after the library validated the client, the
 // redirect_uri and the response_type. It adds this IdP's own rules, then
@@ -223,7 +221,6 @@ func (s *storage) DeleteAuthRequest(ctx context.Context, id string) error {
 	}
 	return s.a.store.Delete(ctx, authRequestCodeKey(id))
 }
-
 
 func (s *storage) CreateAccessToken(ctx context.Context, request op.TokenRequest) (string, time.Time, error) {
 	ar, ok := request.(*authRequest)
@@ -375,7 +372,6 @@ func (s *storage) GetRefreshTokenInfo(ctx context.Context, clientID, token strin
 	return tok.SessionID, tok.JTI, nil
 }
 
-
 // SetUserinfoFromScopes is deprecated in the library; SetUserinfoFromRequest
 // does the work.
 func (s *storage) SetUserinfoFromScopes(context.Context, *oidc.UserInfo, string, string, []string) error {
@@ -389,7 +385,7 @@ func (s *storage) SetUserinfoFromRequest(ctx context.Context, info *oidc.UserInf
 		return err
 	}
 	info.Subject = as.Subject
-	for k, v := range buildClaims(as, pc, scopes, locIDToken, s.a.logger) {
+	for k, v := range buildClaims(ctx, as, pc, scopes, locIDToken, s.a.logger) {
 		info.AppendClaims(k, v)
 	}
 	// "sid" (OIDC Front-Channel Logout, section 3) lets the application ask
@@ -404,7 +400,7 @@ func (s *storage) GetPrivateClaimsFromRequest(ctx context.Context, request op.To
 	if err != nil {
 		return nil, err
 	}
-	claims := buildClaims(as, pc, request.GetScopes(), locAccessToken, s.a.logger)
+	claims := buildClaims(ctx, as, pc, request.GetScopes(), locAccessToken, s.a.logger)
 	// RFC 9068, section 2.2.3: the granted scopes, space separated.
 	claims["scope"] = strings.Join(request.GetScopes(), " ")
 	claims["sid"] = as.SessionID
@@ -440,7 +436,7 @@ func (s *storage) SetUserinfoFromToken(ctx context.Context, info *oidc.UserInfo,
 		return err
 	}
 	info.Subject = as.Subject
-	for k, v := range buildClaims(as, pc, tok.Scopes, locUserinfo, s.a.logger) {
+	for k, v := range buildClaims(ctx, as, pc, tok.Scopes, locUserinfo, s.a.logger) {
 		info.AppendClaims(k, v)
 	}
 	return nil
@@ -487,7 +483,6 @@ func (s *storage) activeAccessToken(ctx context.Context, jti, subject string) (*
 	return tok, as, pc, nil
 }
 
-
 func (s *storage) GetKeyByIDAndClientID(context.Context, string, string) (*jose.JSONWebKey, error) {
 	return nil, errors.New("oidc: private_key_jwt and the JWT bearer grant are not supported")
 }
@@ -495,7 +490,6 @@ func (s *storage) GetKeyByIDAndClientID(context.Context, string, string) (*jose.
 func (s *storage) ValidateJWTProfileScopes(context.Context, string, []string) ([]string, error) {
 	return nil, errors.New("oidc: the JWT bearer grant is not supported")
 }
-
 
 func (s *storage) SigningKey(ctx context.Context) (op.SigningKey, error) {
 	realm, err := s.realm(ctx)
@@ -569,7 +563,6 @@ func (s *storage) KeySet(ctx context.Context) ([]op.Key, error) {
 }
 
 func (s *storage) Health(context.Context) error { return nil }
-
 
 // toTokenError turns a core error into the OAuth error the client gets.
 // Every "this grant is not valid any more" case is invalid_grant, with no

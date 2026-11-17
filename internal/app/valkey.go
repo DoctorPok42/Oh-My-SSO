@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"os"
 	"strconv"
@@ -14,6 +14,7 @@ import (
 	vk "github.com/valkey-io/valkey-go"
 
 	valkeycache "sso.internal/sso/internal/cache/valkey"
+	"sso.internal/sso/internal/logging"
 )
 
 // ValkeyOptions reads how to reach Valkey:
@@ -148,12 +149,12 @@ func OpenValkey() (vk.Client, error) {
 func mustOpenValkey() vk.Client {
 	o, err := ValkeyOptions()
 	if err != nil {
-		log.Fatalf("valkey: %v", err)
+		logging.Fatal("valkey: invalid settings", "error", err)
 	}
 	c, err := valkeycache.Open(o)
 	if err != nil {
-		log.Fatalf("valkey: %s: %v", describeValkey(o), err)
+		logging.Fatal("valkey: cannot connect", "valkey", describeValkey(o), "error", err)
 	}
-	log.Printf("valkey: %s", describeValkey(o))
+	slog.Info("valkey: " + describeValkey(o))
 	return c
 }

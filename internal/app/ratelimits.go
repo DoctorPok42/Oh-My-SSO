@@ -2,13 +2,14 @@ package app
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"sso.internal/sso/internal/httpserver"
+	"sso.internal/sso/internal/logging"
 )
 
 // ProtocolRateLimits reads the rate limits of the protocol endpoints of
@@ -42,12 +43,12 @@ func ProtocolRateLimits() httpserver.ProtocolLimits {
 		}
 		rule, err := parseRateRule(raw)
 		if err != nil {
-			log.Fatalf("%s %q: %v", v.name, raw, err)
+			logging.Fatal(v.name+" is invalid", "value", raw, "error", err)
 		}
 		*v.rule = rule
 	}
-	log.Printf("rate limits: OIDC %s per address, %s client failures per address, SAML %s per address, %s failed sign-ins per address",
-		l.OIDCPerIP, l.ClientFailuresPerIP, l.SAMLPerIP, l.LoginFailuresPerIP)
+	slog.Info("rate limits per address", "oidc", l.OIDCPerIP.String(), "client_failures", l.ClientFailuresPerIP.String(),
+		"saml", l.SAMLPerIP.String(), "failed_sign_ins", l.LoginFailuresPerIP.String())
 	return l
 }
 

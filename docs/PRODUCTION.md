@@ -372,8 +372,13 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   `docker compose exec idp-admin /usr/local/bin/idp-admin recover admin --email ...` or `recover client-secret` (then
   the new secret in `ADMIN_OIDC_CLIENT_SECRET` and `docker compose up -d admin`), `recover timeouts`, `recover
   ip-allowlist` (the master realm's IP allowlist left everyone out). Every admin is alerted by e-mail.
-- **Logs**: `docker compose logs -f idp idp-admin`. `ADMIN_API_LOG_REQUESTS=true` logs each Admin API call with its
-  duration.
+- **Logs**: `docker compose logs -f idp idp-admin`. `LOG_FORMAT=json` writes one JSON object per line for a log
+  collector; `LOG_LEVEL` (default `info`) sets the level. `idp` logs one line per request (method, path without its
+  query string, status, duration, realm, client address). Every line of a request carries its `request_id`, and so
+  do its audit entries (`details.request_id`): from an entry, find what the server logged. A proxy's `X-Request-Id`
+  is kept when it looks like an ID. `ADMIN_API_LOG_REQUESTS=true` logs each Admin API call with its duration.
+  Docker keeps at most 5 files of 50 MB per service (`x-logging` in `compose.yml`: change `max-size` and `max-file`
+  there, then `docker compose up -d`); a log collector reads them from `/var/lib/docker/containers/*/*-json.log`.
 - **Sizing**: Argon2id uses 64 MiB of RAM per password hash; `PASSWORD_HASH_CONCURRENCY` (default 4) caps parallel
   hashes. Each Go process opens at most 25 database connections.
 - Optional `GEOIP_DB_PATH` (MaxMind / DB-IP country `.mmdb`, mounted read-only in `idp`) enables the "sign-in from a

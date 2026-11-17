@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/keymanager"
+	"sso.internal/sso/internal/logging"
 	"sso.internal/sso/internal/notify"
 	"sso.internal/sso/internal/ratelimit"
 	"sso.internal/sso/internal/storage/entstore"
@@ -55,23 +55,23 @@ type Core struct {
 	Permissions repository.PermissionRepository
 	Admin       repository.AdminRepository
 
-	Auth          *service.AuthService
-	Sessions      *service.SessionService
-	RBAC          *service.RBACService
-	KeyRotation   *service.KeyRotationService
-	Lockout       *service.LockoutService
+	Auth        *service.AuthService
+	Sessions    *service.SessionService
+	RBAC        *service.RBACService
+	KeyRotation *service.KeyRotationService
+	Lockout     *service.LockoutService
 	// SignInNetworks applies the realms' IP allowlists to sign-in.
 	SignInNetworks *service.SignInNetworkService
-	MFAPolicy     *service.MFAPolicyService
-	MFA           *service.MFAService
-	PasswordReset *service.PasswordResetService
-	Consent       *service.ConsentService
-	KnownAccounts *service.KnownAccountService
-	IdentityCore  *service.IdentityCoreService
-	OIDCClients   *service.OIDCClientService
-	SAMLClients   *service.SAMLClientService
-	Timeouts      *service.TimeoutService
-	RateLimiter   ratelimit.Limiter
+	MFAPolicy      *service.MFAPolicyService
+	MFA            *service.MFAService
+	PasswordReset  *service.PasswordResetService
+	Consent        *service.ConsentService
+	KnownAccounts  *service.KnownAccountService
+	IdentityCore   *service.IdentityCoreService
+	OIDCClients    *service.OIDCClientService
+	SAMLClients    *service.SAMLClientService
+	Timeouts       *service.TimeoutService
+	RateLimiter    ratelimit.Limiter
 	TrustedDevices *service.TrustedDeviceService
 	// Account is the account console's service (Step 14c).
 	Account *service.AccountService
@@ -120,7 +120,7 @@ func BuildCore() *Core {
 
 	encrypter, ok := c.KeyManager.(keymanager.Encrypter)
 	if !ok {
-		log.Fatalf("keymanager: backend %q cannot encrypt (needed for TOTP secrets and the links of queued e-mails)", c.KMSBackend)
+		logging.Fatal("keymanager: the backend cannot encrypt (needed for TOTP secrets and the links of queued e-mails)", "backend", c.KMSBackend)
 	}
 	envelope := service.NewEnvelopeService(c.SigningKeys, encrypter, c.KMSBackend)
 
@@ -437,13 +437,13 @@ func (c *Core) AdminService() *service.AdminService {
 		Sessions: c.Sessions, KeyRotation: c.KeyRotation, MFA: c.MFA, MFAPolicy: c.MFAPolicy,
 		PasswordReset: c.PasswordReset, Lockout: c.Lockout, OIDCClients: c.OIDCClients, SAMLClients: c.SAMLClients,
 		Notifier: c.Notifier, PublicURL: c.PublicURL, EmailEnabled: c.EmailEnabled(), KMSBackend: c.KMSBackend,
-		TrustedDevices: c.TrustedDevices,
-		Timeouts:       c.Timeouts,
-		Languages:      Languages(),
-		UserImports:    entstore.NewUserImportRepository(c.Ent),
-		BulkJobs:       entstore.NewBulkJobRepository(c.Ent),
+		TrustedDevices:    c.TrustedDevices,
+		Timeouts:          c.Timeouts,
+		Languages:         Languages(),
+		UserImports:       entstore.NewUserImportRepository(c.Ent),
+		BulkJobs:          entstore.NewBulkJobRepository(c.Ent),
 		Outbox:            entstore.NewEmailOutboxRepository(c.Ent),
 		EmailVerification: c.EmailVerification,
-		ConsoleURL:    os.Getenv("ADMIN_PANEL_URL"),
+		ConsoleURL:        os.Getenv("ADMIN_PANEL_URL"),
 	})
 }

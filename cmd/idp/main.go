@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,9 +22,9 @@ import (
 	"sso.internal/sso/internal/httpserver"
 	"sso.internal/sso/internal/httptimeout"
 	"sso.internal/sso/internal/keymanager"
+	"sso.internal/sso/internal/logging"
 	"sso.internal/sso/internal/oidcstore"
 )
-
 
 func buildKeyManager() (keymanager.KeyManager, string) { return app.KeyManager() }
 
@@ -43,9 +43,9 @@ func buildOIDC(publicURL string, idp core.IdentityCore, store oidcstore.Store, p
 		I18n:              app.Languages(),
 	}, idp, store)
 	if err != nil {
-		log.Fatalf("oidc: %v", err)
+		logging.Fatal("oidc: cannot start", "error", err)
 	}
-	log.Printf("oidc: issuer of realm <name> is %s/r/<name>", strings.TrimRight(publicURL, "/"))
+	slog.Info("oidc: issuer of realm <name> is " + strings.TrimRight(publicURL, "/") + "/r/<name>")
 	return a
 }
 
@@ -62,9 +62,9 @@ func buildSAML(publicURL string, idp core.IdentityCore, store oidcstore.Store, p
 		I18n:              app.Languages(),
 	}, idp, store)
 	if err != nil {
-		log.Fatalf("saml: %v", err)
+		logging.Fatal("saml: cannot start", "error", err)
 	}
-	log.Printf("saml: IdP metadata of realm <name> is %s/r/<name>/saml/metadata", strings.TrimRight(publicURL, "/"))
+	slog.Info("saml: IdP metadata of realm <name> is " + strings.TrimRight(publicURL, "/") + "/r/<name>/saml/metadata")
 	return a
 }
 
@@ -85,6 +85,7 @@ const backendLocalDev = app.BackendLocalDev
 //	idp dev seed   demo realm, user and OIDC client (development only, see dev.go)
 //	idp healthcheck  exit 0 when this server is ready (HEALTHCHECK of the image)
 func main() {
+	logging.Setup()
 	if err := guardMasterRealm(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(2)
@@ -169,15 +170,15 @@ func serve() {
 	go func() {
 		defer close(drained)
 		<-stop
-		log.Printf("shutting down...")
+		slog.Info("shutting down...")
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		_ = httpSrv.Shutdown(ctx)
 	}()
 
-	log.Printf("Starting server on port %s...", port)
+	slog.Info("server listening", "port", port)
 	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatal(err)
+		logging.Fatal("server stopped", "error", err)
 	}
 	// ListenAndServe returns as soon as Shutdown starts: wait for the requests
 	// in flight to end before c.Close takes the database from under them.

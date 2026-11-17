@@ -361,14 +361,14 @@ func (p *Pages) execute(w http.ResponseWriter, r *http.Request, status int, page
 	}
 	t, ok := set[page]
 	if !ok {
-		p.logger.Error("accountui: unknown page", "page", page)
+		p.logger.ErrorContext(r.Context(), "accountui: unknown page", "page", page)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	// Render first: a template error must not leave half a page.
 	var b strings.Builder
 	if err := t.ExecuteTemplate(&b, block, data); err != nil {
-		p.logger.Error("accountui: render", "page", page, "block", block, "error", err)
+		p.logger.ErrorContext(r.Context(), "accountui: render", "page", page, "block", block, "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}

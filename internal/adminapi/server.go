@@ -17,6 +17,7 @@ import (
 	"sso.internal/sso/internal/health"
 	"sso.internal/sso/internal/httptimeout"
 	"sso.internal/sso/internal/i18n"
+	"sso.internal/sso/internal/logging"
 )
 
 // Config of the Admin API.
@@ -125,8 +126,8 @@ func New(cfg Config, d Deps) *Server {
 		audience: "sso-admin", now: cfg.Now}
 
 	r := s.router
-	r.Use(middleware.RequestID)
-	r.Use(middleware.Recoverer)
+	r.Use(logging.RequestID)
+	r.Use(logging.Recoverer)
 	r.Use(s.logSlow)
 	r.Use(securityHeaders)
 	r.Use(s.languages)

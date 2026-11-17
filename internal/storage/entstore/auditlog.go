@@ -2,6 +2,9 @@ package entstore
 
 import (
 	"context"
+	"maps"
+
+	"github.com/go-chi/chi/v5/middleware"
 
 	"sso.internal/sso/ent"
 	"sso.internal/sso/ent/auditlog"
@@ -33,8 +36,15 @@ func (r *entAuditLogRepository) Create(ctx context.Context, p repository.CreateA
 		SetNillableUserAgent(nonEmpty(p.UserAgent)).
 		SetLevel(entschema.AuditLogLevel(p.Level)).
 		SetStatus(entschema.AuditLogStatus(p.Status))
-	if p.Details != nil {
-		builder = builder.SetDetails(p.Details)
+	details := p.Details
+	// The ID of the HTTP request (internal/logging), to find its log lines.
+	if id := middleware.GetReqID(ctx); id != "" {
+		details = make(map[string]interface{}, len(p.Details)+1) // a copy: the caller's map is left alone
+		maps.Copy(details, p.Details)
+		details["request_id"] = id
+	}
+	if details != nil {
+		builder = builder.SetDetails(details)
 	}
 	e, err := builder.Save(ctx)
 	if err != nil {

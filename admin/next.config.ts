@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
   // alone (src/lib/oidc.ts).
   serverExternalPackages: ["openid-client"],
   experimental: {
+    // Coding agents are only nudged about security upgrades (the default, made
+    // explicit by the Next.js upgrade tool).
+    agentUpgrade: "security",
     // The browser keeps a page it has shown for 30 seconds: going back to a
     // tab asks the server nothing. Without this, every visit asks it again.
     // Every change made in the console empties this cache (router.refresh(),

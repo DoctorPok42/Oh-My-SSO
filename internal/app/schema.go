@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
 	"sso.internal/sso/ent/migrate/migrations"
+	"sso.internal/sso/internal/logging"
 	"sso.internal/sso/internal/storage/entstore"
 )
 
@@ -28,8 +29,8 @@ func CheckSchema(ctx context.Context, db *sql.DB) error {
 			"(the migrate service of compose.yml, or make migrate-apply)", len(missing), listVersions(missing))
 	}
 	if len(unknown) > 0 {
-		log.Printf("database: %d migration(s) applied are unknown to this version (%s): the database is ahead of the code",
-			len(unknown), listVersions(unknown))
+		slog.Warn("database: migrations applied are unknown to this version: the database is ahead of the code",
+			"count", len(unknown), "versions", listVersions(unknown))
 	}
 	return nil
 }
@@ -48,6 +49,6 @@ func checkSchemaOrExit(db *sql.DB) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	if err := CheckSchema(ctx, db); err != nil {
-		log.Fatalf("db: %v", err)
+		logging.Fatal("db: schema check failed", "error", err)
 	}
 }

@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"log/slog"
 	"slices"
 
@@ -86,8 +87,9 @@ func parseClaimMapper(raw map[string]interface{}) (claimMapper, bool) {
 //  3. the client's attribute_mappings, which can only RENAME what steps 1-2
 //     produced ({"email": "mail"}), never add data.
 //
-// UserAttributes that no step selects never leave (minimal disclosure).
-func buildClaims(as *core.IdentityAssertion, pc *core.ProtocolClient, granted []string, loc location, log *slog.Logger) map[string]any {
+// UserAttributes that no step selects never leave (minimal disclosure). ctx
+// is the request's: the lines logged carry its request ID.
+func buildClaims(ctx context.Context, as *core.IdentityAssertion, pc *core.ProtocolClient, granted []string, loc location, log *slog.Logger) map[string]any {
 	out := map[string]any{}
 	attrs := as.UserAttributes
 
@@ -127,7 +129,7 @@ func buildClaims(as *core.IdentityAssertion, pc *core.ProtocolClient, granted []
 				continue
 			}
 			if isReserved(m.claim) {
-				log.Warn("oidc: claim mapper targets a reserved claim, ignored",
+				log.WarnContext(ctx, "oidc: claim mapper targets a reserved claim, ignored",
 					"client_scope", cs.Name, "claim", m.claim)
 				continue
 			}
@@ -138,7 +140,7 @@ func buildClaims(as *core.IdentityAssertion, pc *core.ProtocolClient, granted []
 	}
 
 	if pc != nil {
-		applyRenames(out, pc.App.AttributeMappings, pc.App.ClientID, log)
+		applyRenames(ctx, out, pc.App.AttributeMappings, pc.App.ClientID, log)
 	}
 	return out
 }
@@ -146,7 +148,7 @@ func buildClaims(as *core.IdentityAssertion, pc *core.ProtocolClient, granted []
 // applyRenames applies Client.attribute_mappings ({"from": "to"}), in a
 // stable order. A rename is skipped (and logged) when it touches a reserved
 // claim or would overwrite another claim.
-func applyRenames(claims map[string]any, mappings map[string]interface{}, clientID string, log *slog.Logger) {
+func applyRenames(ctx context.Context, claims map[string]any, mappings map[string]interface{}, clientID string, log *slog.Logger) {
 	froms := make([]string, 0, len(mappings))
 	for from := range mappings {
 		froms = append(froms, from)
@@ -159,7 +161,7 @@ func applyRenames(claims map[string]any, mappings map[string]interface{}, client
 			continue
 		}
 		if isReserved(from) || isReserved(to) {
-			log.Warn("oidc: attribute_mappings touches a reserved claim, ignored",
+			log.WarnContext(ctx, "oidc: attribute_mappings touches a reserved claim, ignored",
 				"client_id", clientID, "from", from, "to", to)
 			continue
 		}
@@ -168,7 +170,7 @@ func applyRenames(claims map[string]any, mappings map[string]interface{}, client
 			continue
 		}
 		if _, taken := claims[to]; taken {
-			log.Warn("oidc: attribute_mappings would overwrite a claim, ignored",
+			log.WarnContext(ctx, "oidc: attribute_mappings would overwrite a claim, ignored",
 				"client_id", clientID, "from", from, "to", to)
 			continue
 		}

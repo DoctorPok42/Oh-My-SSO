@@ -12,8 +12,8 @@ import (
 
 	"sso.internal/sso/internal/adapters/loginui"
 	"sso.internal/sso/internal/core"
-	"sso.internal/sso/internal/i18n"
 	"sso.internal/sso/internal/core/domain"
+	"sso.internal/sso/internal/i18n"
 )
 
 // Building the <samlp:Response> sent to the service provider's ACS
@@ -99,7 +99,7 @@ func (a *Adapter) assertionResponse(ctx context.Context, key *signingKey, in ass
 			},
 		}},
 	}
-	if attrs := buildAttributes(in.as, in.app, a.logger); len(attrs) > 0 {
+	if attrs := buildAttributes(ctx, in.as, in.app, a.logger); len(attrs) > 0 {
 		assertion.AttributeStatements = []samllib.AttributeStatement{{Attributes: attrs}}
 	}
 

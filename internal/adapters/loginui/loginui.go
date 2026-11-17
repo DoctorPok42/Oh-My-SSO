@@ -214,7 +214,7 @@ type Consent struct {
 	// Client: the public id of the application (OIDC client_id, SAML entity
 	// ID), sent back with the answer: if the request expired meanwhile, the
 	// message page still knows where to send the user back.
-	Client string
+	Client       string
 	RealmDisplay string
 	ClientName   string
 	// ClientHost is where the browser goes after the answer (host of the
@@ -426,7 +426,7 @@ func (p *Pages) render(w http.ResponseWriter, r *http.Request, status int, name,
 	h.Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(status)
 	if err := t.ExecuteTemplate(w, name, data); err != nil {
-		p.logger.Error("loginui: render page", "page", name, "error", err)
+		p.logger.ErrorContext(r.Context(), "loginui: render page", "page", name, "error", err)
 	}
 }
 
