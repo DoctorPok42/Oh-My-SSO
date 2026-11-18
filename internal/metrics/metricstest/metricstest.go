@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 )
 
 // Value sums the series of metric name whose labels include labels: a
@@ -23,16 +24,20 @@ func Value(t testing.TB, name string, labels map[string]string) float64 {
 			continue
 		}
 		for _, m := range f.GetMetric() {
-			matched := 0
-			for _, l := range m.GetLabel() {
-				if v, ok := labels[l.GetName()]; ok && v == l.GetValue() {
-					matched++
-				}
-			}
-			if matched == len(labels) {
+			if hasLabels(m, labels) {
 				sum += m.GetCounter().GetValue() + float64(m.GetHistogram().GetSampleCount())
 			}
 		}
 	}
 	return sum
+}
+
+func hasLabels(m *dto.Metric, labels map[string]string) bool {
+	matched := 0
+	for _, l := range m.GetLabel() {
+		if v, ok := labels[l.GetName()]; ok && v == l.GetValue() {
+			matched++
+		}
+	}
+	return matched == len(labels)
 }

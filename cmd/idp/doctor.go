@@ -40,6 +40,9 @@ const doctorUsage = `usage:
 // the others.
 const doctorCheckTimeout = 10 * time.Second
 
+// whatFailed: what was checked, then why it failed.
+const whatFailed = "%s: %v"
+
 // result of a check. OFF: not configured, on purpose.
 type result struct{ status, detail string }
 
@@ -195,7 +198,7 @@ func (d *doctor) keyManager(ctx context.Context) result {
 	}
 	km, backend, err := b.km, b.backend, b.err
 	if err != nil {
-		return fail("%s: %v", backend, err)
+		return fail(whatFailed, backend, err)
 	}
 	if _, ok := km.(keymanager.Encrypter); !ok {
 		return fail("%s cannot encrypt (TOTP secrets, links of queued e-mails)", backend)
@@ -209,7 +212,7 @@ func (d *doctor) keyManager(ctx context.Context) result {
 	client := ent.NewClient(ent.Driver(entstore.NewDriver(d.db)))
 	err = app.SignWithKMS(ctx, km, entstore.NewRealmRepository(client), entstore.NewSigningKeyRepository(client))
 	if err != nil {
-		return fail("%s: %v", backend, err)
+		return fail(whatFailed, backend, err)
 	}
 	return pass("%s: signed with the master realm's key", backend)
 }
@@ -229,7 +232,7 @@ func (d *doctor) smtp(ctx context.Context) result {
 	d.from = cfg.From
 	where := fmt.Sprintf("%s:%d (%s)", cfg.Host, cfg.Port, cfg.Security)
 	if err := sender.Verify(ctx); err != nil {
-		return fail("%s: %v", where, err)
+		return fail(whatFailed, where, err)
 	}
 	if cfg.Username == "" {
 		return pass("%s: connected, no AUTH (SMTP_USERNAME is not set)", where)
