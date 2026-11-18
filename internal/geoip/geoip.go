@@ -3,6 +3,7 @@ package geoip
 import (
 	"fmt"
 	"net/netip"
+	"time"
 
 	"github.com/oschwald/maxminddb-golang/v2"
 )
@@ -28,6 +29,10 @@ func (r *Resolver) Close() error { return r.db.Close() }
 func (r *Resolver) Description() string {
 	return fmt.Sprintf("%s, built %s", r.db.Metadata.DatabaseType, r.db.Metadata.BuildTime().UTC().Format("2006-01-02"))
 }
+
+// BuiltAt is when the database was built: countries move between address
+// blocks, an old one gets them wrong (idp doctor).
+func (r *Resolver) BuiltAt() time.Time { return r.db.Metadata.BuildTime() }
 
 // record is the part of a country record we read. The same layout is used
 // by DB-IP and MaxMind ("country" → "iso_code", "names").

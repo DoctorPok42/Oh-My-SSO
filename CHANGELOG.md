@@ -21,10 +21,18 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
 - A handler that panics is logged as one error line with its stack and request ID (before: a text stack trace on
   stderr, outside the log format).
 - `compose.example.yml` caps the logs Docker keeps for each service: 5 files of 50 MB.
+- Prometheus metrics on `METRICS_ADDR` (e.g. `:9100`; unset: none), a listener of its own on `idp` and
+  `idp-admin`: request duration by route, audit events (sign-ins, failures, lockouts…), tokens issued, the status of
+  PostgreSQL, Valkey, the key manager and SMTP (`omsso_dependency_up`), Go runtime and process metrics.
+- `idp doctor`: checks every setting and dependency at once (database and schema, clock drift, Valkey, key manager
+  signature, SMTP sign-in, SPF / DKIM, `PUBLIC_URL` and its TLS certificate, `TRUSTED_PROXIES`, GeoIP database),
+  one line each; exit status 1 when one fails.
 
 ### Changed
 - The startup lines go through `slog` with a level (`WARN` for a development-only setting, `ERROR` before a
   refused start) instead of Go's `log` package: their format changed, `time=… level=… msg=…` in text.
+- `KEYMANAGER_BACKEND=local_dev` (or unset) with `APP_ENV=production` stops the servers with an error line instead
+  of a panic.
 
 ## [1.0.0-rc.1] - 2026-11-14
 

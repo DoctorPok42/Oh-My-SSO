@@ -245,6 +245,7 @@ SAML test service provider in production.
 ## 6. Verify
 
 ```bash
+docker compose run --rm --no-deps idp doctor                   # every setting and dependency at once
 curl -fsS https://sso.example.com/health                       # the process runs
 docker compose ps                                              # idp, idp-admin, valkey: healthy
 curl -fsS https://sso.example.com/r/master/.well-known/openid-configuration | head
@@ -379,6 +380,20 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   is kept when it looks like an ID. `ADMIN_API_LOG_REQUESTS=true` logs each Admin API call with its duration.
   Docker keeps at most 5 files of 50 MB per service (`x-logging` in `compose.yml`: change `max-size` and `max-file`
   there, then `docker compose up -d`); a log collector reads them from `/var/lib/docker/containers/*/*-json.log`.
+- **Diagnosis**: `docker compose run --rm --no-deps idp doctor` checks everything at once, one `OK` / `OFF` /
+  `WARN` / `FAIL` line each, and exits 1 on a `FAIL` (`--no-deps`: without it, Compose starts `migrate` first and
+  applies the migrations, without the backup `deploy.sh` takes): database and schema version, clock drift against PostgreSQL, Valkey, the key
+  manager (a real signature with the master realm's key), SMTP (connection, STARTTLS and AUTH, nothing sent), SPF and
+  DKIM of the `SMTP_FROM` domain (DKIM only under the usual selectors), `PUBLIC_URL` (the master realm's discovery
+  answers with the same issuer, TLS certificate valid for 14 more days), `TRUSTED_PROXIES`, the GeoIP database.
+  Run it after each change of `.env`, and when something fails.
+- **Metrics**: `METRICS_ADDR=:9100` serves Prometheus `GET /metrics` on that port of `idp` and `idp-admin`, outside
+  the public server: scrape it from a Prometheus on their Docker network, never through nginx. Metrics:
+  `omsso_http_request_duration_seconds{method,route,code}` (requests of `idp`, by route pattern: count, errors,
+  latency), `omsso_audit_events_total{action,status}` (sign-ins `auth.login`, failures `auth.login_failed` and
+  `auth.mfa_failed`, lockouts `user.locked`… every action of the audit log), `omsso_tokens_issued_total{type}`,
+  `omsso_dependency_up{dependency}` (`postgresql`, `valkey`, `kms` with a real signature, `smtp` connection; checked
+  at each scrape; absent when not configured), and the Go runtime and process metrics (`go_*`, `process_*`).
 - **Sizing**: Argon2id uses 64 MiB of RAM per password hash; `PASSWORD_HASH_CONCURRENCY` (default 4) caps parallel
   hashes. Each Go process opens at most 25 database connections.
 - Optional `GEOIP_DB_PATH` (MaxMind / DB-IP country `.mmdb`, mounted read-only in `idp`) enables the "sign-in from a
@@ -387,6 +402,7 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
 ## Pre-launch checklist
 
 - [ ] `APP_ENV=production`, `PUBLIC_URL` in https, the startup logs show no "development only" warning
+- [ ] `idp doctor` reports no `FAIL`, and every `WARN` is understood
 - [ ] `.env` is `chmod 600` and the only file with secrets: none in `compose.yml`
 - [ ] `KEYMANAGER_BACKEND=ovhkms`, the OKMS domain and its access certificate backed up
 - [ ] PostgreSQL backed up, restore tested; PostgreSQL, Valkey and the Admin API unreachable from the internet

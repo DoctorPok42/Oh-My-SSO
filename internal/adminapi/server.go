@@ -48,12 +48,12 @@ type Authorizer interface {
 	GetEffectivePermissions(ctx context.Context, userID, clientRef string) ([]*domain.Permission, error)
 }
 
-// HealthCheck is one line of the dashboard's infrastructure status.
-type HealthCheck struct {
-	Name string
-	// Check returns nil when healthy. ErrDisabled: not configured.
-	Check func(ctx context.Context) error
-}
+// HealthCheck is one line of the dashboard's infrastructure status: its
+// Check returns nil when healthy, ErrDisabled when not configured.
+type HealthCheck = health.Check
+
+// ErrDisabled: a health check of something not configured (e.g. SMTP).
+var ErrDisabled = health.ErrDisabled
 
 // Deps of the Admin API.
 type Deps struct {

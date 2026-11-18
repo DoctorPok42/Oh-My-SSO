@@ -12,7 +12,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"sso.internal/sso/internal/core/domain"
+	"sso.internal/sso/internal/metrics/metricstest"
 )
+
+func TestAccessLogFeedsTheMetrics(t *testing.T) {
+	s := New(nil, nil, nil, &fakeRealmByName{realm: &domain.Realm{ID: "realm-1", Name: "acme", Status: domain.RealmActive}}, nil, nil)
+	health := map[string]string{"method": "GET", "route": "/health", "code": "200"}
+	before := metricstest.Value(t, "omsso_http_request_duration_seconds", health)
+
+	s.Router().ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/health", nil))
+
+	require.Equal(t, before+1, metricstest.Value(t, "omsso_http_request_duration_seconds", health))
+}
 
 func TestAccessLog(t *testing.T) {
 	var buf bytes.Buffer

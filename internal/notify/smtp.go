@@ -160,6 +160,45 @@ func (s *SMTPEmailSender) identity(o Sender) (from, replyTo *mail.Address) {
 }
 
 func (s *SMTPEmailSender) deliver(ctx context.Context, sender, rcpt string, raw []byte) error {
+	c, err := s.open(ctx)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	if err := c.Mail(sender); err != nil {
+		return classify(fmt.Errorf("notify: MAIL FROM: %w", err))
+	}
+	if err := c.Rcpt(rcpt); err != nil {
+		return classify(fmt.Errorf("notify: RCPT TO: %w", err))
+	}
+	w, err := c.Data()
+	if err != nil {
+		return classify(fmt.Errorf("notify: DATA: %w", err))
+	}
+	if _, err := w.Write(raw); err != nil {
+		return fmt.Errorf("notify: write message: %w", err)
+	}
+	if err := w.Close(); err != nil {
+		return classify(fmt.Errorf("notify: end of message: %w", err))
+	}
+	return c.Quit()
+}
+
+// Verify connects and signs in to the mail server as Send does, then
+// leaves without sending anything (idp doctor).
+func (s *SMTPEmailSender) Verify(ctx context.Context) error {
+	c, err := s.open(ctx)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	return c.Quit()
+}
+
+// open connects to the mail server and signs in: greeting, EHLO, STARTTLS,
+// AUTH.
+func (s *SMTPEmailSender) open(ctx context.Context) (*smtp.Client, error) {
 	addr := net.JoinHostPort(s.cfg.Host, strconv.Itoa(s.cfg.Port))
 	deadline := time.Now().Add(s.cfg.Timeout)
 	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {
@@ -176,7 +215,7 @@ func (s *SMTPEmailSender) deliver(ctx context.Context, sender, rcpt string, raw 
 		conn, err = dialer.DialContext(ctx, "tcp", addr)
 	}
 	if err != nil {
-		return fmt.Errorf("notify: connect to %s: %w", addr, err)
+		return nil, fmt.Errorf("notify: connect to %s: %w", addr, err)
 	}
 	// One deadline for the whole conversation: a server that stops
 	// answering cannot block a worker forever.
@@ -185,10 +224,17 @@ func (s *SMTPEmailSender) deliver(ctx context.Context, sender, rcpt string, raw 
 	c, err := smtp.NewClient(conn, s.cfg.Host)
 	if err != nil {
 		_ = conn.Close()
-		return fmt.Errorf("notify: smtp greeting: %w", err)
+		return nil, fmt.Errorf("notify: smtp greeting: %w", err)
 	}
-	defer c.Close()
+	if err := s.signIn(c, addr, tlsConfig); err != nil {
+		_ = c.Close()
+		return nil, err
+	}
+	return c, nil
+}
 
+// signIn: EHLO, STARTTLS when asked for, AUTH when there is a user.
+func (s *SMTPEmailSender) signIn(c *smtp.Client, addr string, tlsConfig *tls.Config) error {
 	if err := c.Hello(s.cfg.HeloName); err != nil {
 		return fmt.Errorf("notify: EHLO: %w", err)
 	}
@@ -207,23 +253,7 @@ func (s *SMTPEmailSender) deliver(ctx context.Context, sender, rcpt string, raw 
 			return classify(fmt.Errorf("notify: AUTH: %w", err))
 		}
 	}
-	if err := c.Mail(sender); err != nil {
-		return classify(fmt.Errorf("notify: MAIL FROM: %w", err))
-	}
-	if err := c.Rcpt(rcpt); err != nil {
-		return classify(fmt.Errorf("notify: RCPT TO: %w", err))
-	}
-	w, err := c.Data()
-	if err != nil {
-		return classify(fmt.Errorf("notify: DATA: %w", err))
-	}
-	if _, err := w.Write(raw); err != nil {
-		return fmt.Errorf("notify: write message: %w", err)
-	}
-	if err := w.Close(); err != nil {
-		return classify(fmt.Errorf("notify: end of message: %w", err))
-	}
-	return c.Quit()
+	return nil
 }
 
 // classify marks 5xx SMTP replies as permanent (RFC 5321 §4.2.1: 4xx means

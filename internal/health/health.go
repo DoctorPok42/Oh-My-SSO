@@ -20,6 +20,10 @@ const (
 	cacheTTL = 5 * time.Second
 )
 
+// ErrDisabled: a check of something not configured (SMTP): neither up nor
+// down (the admin dashboard, /metrics).
+var ErrDisabled = errors.New("disabled")
+
 // Check is one dependency of the server.
 type Check struct {
 	Name  string

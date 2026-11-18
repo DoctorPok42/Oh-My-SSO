@@ -1,10 +1,6 @@
 package app
 
-import (
-	"context"
-
-	"sso.internal/sso/internal/health"
-)
+import "sso.internal/sso/internal/health"
 
 // ReadinessChecks are what a server needs to serve (GET /readyz). The KMS is
 // not one of them: it is checked by a real signature, too slow to run for an
@@ -15,8 +11,6 @@ import (
 func (c *Core) ReadinessChecks() []health.Check {
 	return []health.Check{
 		{Name: "PostgreSQL", Check: c.DB.PingContext},
-		{Name: "Valkey", Degrades: true, Check: func(ctx context.Context) error {
-			return c.Valkey.Do(ctx, c.Valkey.B().Ping().Build()).Error()
-		}},
+		{Name: "Valkey", Degrades: true, Check: c.pingValkey},
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -16,7 +17,6 @@ import (
 	"sso.internal/sso/internal/adminapi"
 	"sso.internal/sso/internal/app"
 	valkeycache "sso.internal/sso/internal/cache/valkey"
-	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/httptimeout"
 	"sso.internal/sso/internal/logging"
 	"sso.internal/sso/internal/notify"
@@ -104,6 +104,7 @@ func serve() {
 	admin, rights := c.AdminService(), valkeycache.NewRightsEpoch(c.Valkey)
 	syncAdminCatalogue(admin, rights)
 	c.StartTimeoutEnforcer()
+	c.ServeMetrics()
 	admin.StartUserImportReaper()
 	admin.StartBulkReaper()
 
@@ -198,64 +199,28 @@ func allowedNets(v string) ([]*net.IPNet, error) {
 	return out, nil
 }
 
-// healthChecks: the "Infrastructure" line of the dashboard.
+// healthChecks: the "Infrastructure" lines of the dashboard: the
+// dependencies of both servers, and the public server itself.
 func healthChecks(c *app.Core) []adminapi.HealthCheck {
 	idpURL := strings.TrimRight(os.Getenv("IDP_INTERNAL_URL"), "/")
 	if idpURL == "" {
 		idpURL = "http://localhost:" + app.IdPPort()
 	}
-	smtpAddr := app.SMTPAddress()
-	return []adminapi.HealthCheck{
-		{Name: "PostgreSQL", Check: func(ctx context.Context) error {
-			_, err := c.Ent.Realm.Query().Exist(ctx)
+	public := adminapi.HealthCheck{Name: "Public server (OIDC, SAML)", Check: func(ctx context.Context) error {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, idpURL+"/health", nil)
+		if err != nil {
 			return err
-		}},
-		{Name: "Valkey", Check: func(ctx context.Context) error {
-			return c.Valkey.Do(ctx, c.Valkey.B().Ping().Build()).Error()
-		}},
-		{Name: "Key manager (" + c.KMSBackend + ")", Check: func(ctx context.Context) error {
-			// A real signature with the master realm's JWT key: proves the
-			// KMS answers and holds the key.
-			master, err := c.Realms.GetByName(ctx, "master")
-			if err != nil {
-				return err
-			}
-			keys, err := c.SigningKeys.ListByRealm(ctx, master.ID)
-			if err != nil {
-				return err
-			}
-			for _, k := range keys {
-				if k.Status == domain.SigningKeyActive && k.Purpose == domain.SigningKeyPurposeJWT {
-					_, err := c.KeyManager.Sign(ctx, k.KMSKeyReference, []byte("omsso-health"))
-					return err
-				}
-			}
-			return errors.New("the master realm has no active signing key")
-		}},
-		{Name: "Public server (OIDC, SAML)", Check: func(ctx context.Context) error {
-			req, err := http.NewRequestWithContext(ctx, http.MethodGet, idpURL+"/health", nil)
-			if err != nil {
-				return err
-			}
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return err
-			}
-			resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				return fmt.Errorf("HTTP %d", resp.StatusCode)
-			}
-			return nil
-		}},
-		{Name: "Notifications (SMTP)", Check: func(ctx context.Context) error {
-			if smtpAddr == "" {
-				return adminapi.ErrDisabled
-			}
-			conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", smtpAddr)
-			if err != nil {
-				return err
-			}
-			return conn.Close()
-		}},
-	}
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return err
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("HTTP %d", resp.StatusCode)
+		}
+		return nil
+	}}
+	checks := c.DependencyChecks()
+	return slices.Insert(checks, len(checks)-1, public) // before SMTP, where it always was
 }
