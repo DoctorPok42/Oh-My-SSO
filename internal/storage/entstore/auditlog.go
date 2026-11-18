@@ -11,6 +11,7 @@ import (
 	entschema "sso.internal/sso/ent/schema"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
+	"sso.internal/sso/internal/metrics"
 )
 
 type entAuditLogRepository struct {
@@ -50,6 +51,7 @@ func (r *entAuditLogRepository) Create(ctx context.Context, p repository.CreateA
 	if err != nil {
 		return nil, err
 	}
+	metrics.AuditEvent(p.Action, string(p.Status))
 	return toDomainAuditLog(e), nil
 }
 

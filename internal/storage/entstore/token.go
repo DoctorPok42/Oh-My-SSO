@@ -10,6 +10,7 @@ import (
 	"sso.internal/sso/ent/token"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
+	"sso.internal/sso/internal/metrics"
 )
 
 type entTokenRepository struct {
@@ -47,6 +48,7 @@ func (r *entTokenRepository) Create(ctx context.Context, p repository.CreateToke
 	if err != nil {
 		return nil, err
 	}
+	metrics.TokenIssued(string(p.Type))
 	return toDomainToken(e), nil
 }
 

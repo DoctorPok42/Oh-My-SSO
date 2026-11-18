@@ -16,7 +16,6 @@ import (
 	"sso.internal/sso/internal/i18n"
 )
 
-
 type meResponse struct {
 	User struct {
 		ID       string `json:"id"`
@@ -96,7 +95,6 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-
 func (s *Server) handleListRealms(w http.ResponseWriter, r *http.Request) {
 	realms, err := s.d.Admin.ListRealms(r.Context())
 	if err != nil {
@@ -163,10 +161,6 @@ func (s *Server) handleUpdateRealm(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, s.realmDetail(v))
 }
-
-
-// ErrDisabled: a health check of something not configured (e.g. SMTP).
-var ErrDisabled = errors.New("disabled")
 
 type healthLine struct {
 	Name      string `json:"name"`
@@ -276,7 +270,6 @@ func (s *Server) health(ctx context.Context) []healthLine {
 	wg.Wait()
 	return out
 }
-
 
 type keyView struct {
 	Kid         string     `json:"kid"`
@@ -454,7 +447,6 @@ func (s *Server) handleRetireKeys(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"keys": toKeyViews(retired)})
 }
 
-
 func (s *Server) handleMFAPolicies(w http.ResponseWriter, r *http.Request) {
 	v, err := s.d.Admin.MFAPolicies(r.Context(), realmFrom(r))
 	if err != nil {
@@ -513,7 +505,6 @@ func (s *Server) handleDeleteRoleMFA(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, v)
 }
-
 
 func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 	v, err := s.d.Admin.GetSettings(r.Context(), realmFrom(r))
@@ -593,7 +584,6 @@ func (s *Server) handleTestEmail(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "sent", "to": addr.Address})
 }
-
 
 // GET /timeouts?status=current|past|all (default current), paginated.
 func (s *Server) handleTimeouts(w http.ResponseWriter, r *http.Request) {

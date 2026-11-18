@@ -84,6 +84,7 @@ const backendLocalDev = app.BackendLocalDev
 //	idp mail test  send a test e-mail with the SMTP_* settings (see mail.go)
 //	idp dev seed   demo realm, user and OIDC client (development only, see dev.go)
 //	idp healthcheck  exit 0 when this server is ready (HEALTHCHECK of the image)
+//	idp doctor     check every setting and dependency at once (see doctor.go)
 func main() {
 	logging.Setup()
 	if err := guardMasterRealm(os.Args[1:]); err != nil {
@@ -115,8 +116,10 @@ func main() {
 			os.Exit(runDevCommand(os.Args[2:]))
 		case "healthcheck":
 			os.Exit(runHealthcheck())
+		case "doctor":
+			os.Exit(runDoctor(os.Args[2:], os.Stdout))
 		default:
-			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|activate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n  idp oidc clients <create|list|rotate-secret> [flags]\n  idp saml clients <create|list|add-cert|remove-cert> [flags]\n  idp consents <set-client|list|revoke> [flags]\n  idp users <status|unlock> [flags]\n  idp timeouts <list|create|update|lift> [flags]\n  idp settings <show|set> [flags]\n  			idp mail test --to <address> [--all]\n  idp dev seed [flags]\n  idp healthcheck\n", os.Args[1])
+			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  idp [serve]\n  idp keys <rotate|activate|retire|list> [flags]\n  idp mfa <list|reset|policy> [flags]\n  idp oidc clients <create|list|rotate-secret> [flags]\n  idp saml clients <create|list|add-cert|remove-cert> [flags]\n  idp consents <set-client|list|revoke> [flags]\n  idp users <status|unlock> [flags]\n  idp timeouts <list|create|update|lift> [flags]\n  idp settings <show|set> [flags]\n  			idp mail test --to <address> [--all]\n  idp dev seed [flags]\n  idp healthcheck\n  idp doctor\n", os.Args[1])
 			os.Exit(2)
 		}
 	}
@@ -130,6 +133,7 @@ func serve() {
 	defer c.Close()
 	// Scheduled timeouts: their targets are signed out when they start.
 	c.StartTimeoutEnforcer()
+	c.ServeMetrics()
 
 	// OIDC and SAML flows: in memory too while Valkey is down.
 	flowStore := fallback.NewFlowStore(valkeycache.NewOIDCStore(c.Valkey), nil)

@@ -3,6 +3,8 @@ package app
 import (
 	"database/sql"
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"os"
@@ -79,6 +81,15 @@ func EntClientTx() (*ent.Client, repository.Transactor) {
 // KeyManager returns the KeyManager and the backend name stored on each
 // SigningKey it creates (SigningKey.kms_backend).
 func KeyManager() (keymanager.KeyManager, string) {
+	km, backend, err := NewKeyManager()
+	if err != nil {
+		logging.Fatal("keymanager: cannot start", "backend", backend, "error", err)
+	}
+	return km, backend
+}
+
+// NewKeyManager is KeyManager, returning the error (idp doctor).
+func NewKeyManager() (keymanager.KeyManager, string, error) {
 	switch backend := os.Getenv("KEYMANAGER_BACKEND"); backend {
 	case "vault":
 		km, err := vault.New(vault.Config{
@@ -92,13 +103,13 @@ func KeyManager() (keymanager.KeyManager, string) {
 			AppRoleMountPath:    os.Getenv("VAULT_APPROLE_MOUNT"),
 		})
 		if err != nil {
-			logging.Fatal("keymanager: cannot start", "backend", backend, "error", err)
+			return nil, backend, err
 		}
-		return km, backend
+		return km, backend, nil
 	case "ovhkms":
 		okmsID, err := uuid.Parse(os.Getenv("OVHKMS_DOMAIN_ID"))
 		if err != nil {
-			logging.Fatal("keymanager: invalid OVHKMS_DOMAIN_ID", "error", err)
+			return nil, backend, fmt.Errorf("invalid OVHKMS_DOMAIN_ID: %w", err)
 		}
 		km, err := ovhkms.New(ovhkms.Config{
 			Endpoint:       os.Getenv("OVHKMS_ENDPOINT"),
@@ -107,24 +118,26 @@ func KeyManager() (keymanager.KeyManager, string) {
 			ClientKeyFile:  os.Getenv("OVHKMS_CLIENT_KEY_FILE"),
 		})
 		if err != nil {
-			logging.Fatal("keymanager: cannot start", "backend", backend, "error", err)
+			return nil, backend, err
 		}
-		return km, backend
+		return km, backend, nil
 	case BackendLocalDev, "":
+		if os.Getenv("APP_ENV") == "production" {
+			return nil, BackendLocalDev, errors.New("the local_dev backend is refused when APP_ENV=production: set KEYMANAGER_BACKEND to vault or ovhkms")
+		}
 		var opts []localdev.Option
 		if raw := os.Getenv("LOCALDEV_ENVELOPE_KEY"); raw != "" {
 			key, err := base64.StdEncoding.DecodeString(raw)
 			if err != nil || len(key) != 32 {
-				logging.Fatal("keymanager: LOCALDEV_ENVELOPE_KEY must be 32 bytes, base64 encoded (openssl rand -base64 32)")
+				return nil, BackendLocalDev, errors.New("LOCALDEV_ENVELOPE_KEY must be 32 bytes, base64 encoded (openssl rand -base64 32)")
 			}
 			opts = append(opts, localdev.WithEnvelopeMasterKey(key))
 		} else {
 			slog.Warn("keymanager: LOCALDEV_ENVELOPE_KEY is not set: TOTP secrets enrolled now will be unreadable after a restart")
 		}
-		return localdev.New(os.Getenv("APP_ENV"), opts...), BackendLocalDev
+		return localdev.New(os.Getenv("APP_ENV"), opts...), BackendLocalDev, nil
 	default:
-		logging.Fatal("keymanager: unknown backend", "backend", backend)
-		return nil, ""
+		return nil, backend, fmt.Errorf("unknown backend %q: use vault, ovhkms or local_dev", backend)
 	}
 }
 
@@ -252,38 +265,53 @@ func GeoIP() service.GeoIPResolver {
 }
 
 func EmailSender(templates *notify.Templates) notify.EmailSender {
-	appEnv := os.Getenv("APP_ENV")
-	host := os.Getenv("SMTP_HOST")
-	if host == "" {
-		if appEnv == "development" {
+	sender, err := SMTPSender(templates)
+	if err != nil {
+		logging.Fatal("mail: invalid SMTP settings", "error", err)
+	}
+	if sender == nil {
+		if os.Getenv("APP_ENV") == "development" {
 			slog.Warn("mail: SMTP_HOST is not set: e-mails are printed in this log instead (development only)")
 			return &notify.LogEmailSender{Templates: templates, Logger: nil}
 		}
 		slog.Warn("mail: SMTP_HOST is not set: no e-mail is sent, \"forgot password\" is disabled")
 		return nil
 	}
+	cfg := sender.Config()
+	slog.Info("mail: SMTP", "host", cfg.Host, "port", cfg.Port, "security", cfg.Security, "from", cfg.From)
+	return sender
+}
+
+// SMTPSender reads the SMTP_* settings of EmailSender: nil when SMTP_HOST
+// is not set.
+func SMTPSender(templates *notify.Templates) (*notify.SMTPEmailSender, error) {
+	appEnv := os.Getenv("APP_ENV")
+	host := os.Getenv("SMTP_HOST")
+	if host == "" {
+		return nil, nil
+	}
 
 	port := 0
 	if p := os.Getenv("SMTP_PORT"); p != "" {
 		n, err := strconv.Atoi(p)
 		if err != nil {
-			logging.Fatal("mail: SMTP_PORT is not a number", "value", p)
+			return nil, fmt.Errorf("SMTP_PORT %q is not a number", p)
 		}
 		port = n
 	}
 	from := Unquote(os.Getenv("SMTP_FROM"))
 	if from == "" {
 		if appEnv == "production" {
-			logging.Fatal("mail: SMTP_FROM is required when APP_ENV=production")
+			return nil, errors.New("SMTP_FROM is required when APP_ENV=production")
 		}
 		from = "Oh-My-SSO <no-reply@localhost>"
 	}
 	security := notify.Security(strings.ToLower(os.Getenv("SMTP_SECURITY")))
 	if security == notify.SecurityNone && appEnv == "production" && !isLoopbackHost(host) {
-		logging.Fatal("mail: SMTP_SECURITY=none sends passwords and reset links in clear: refused in production (except to localhost)")
+		return nil, errors.New("SMTP_SECURITY=none sends passwords and reset links in clear: refused in production (except to localhost)")
 	}
 
-	sender, err := notify.NewSMTPEmailSender(notify.SMTPConfig{
+	return notify.NewSMTPEmailSender(notify.SMTPConfig{
 		Host:     host,
 		Port:     port,
 		Username: os.Getenv("SMTP_USERNAME"),
@@ -292,12 +320,6 @@ func EmailSender(templates *notify.Templates) notify.EmailSender {
 		From:     from,
 		HeloName: os.Getenv("SMTP_HELO_NAME"),
 	}, templates)
-	if err != nil {
-		logging.Fatal("mail: invalid SMTP settings", "error", err)
-	}
-	cfg := sender.Config()
-	slog.Info("mail: SMTP", "host", cfg.Host, "port", cfg.Port, "security", cfg.Security, "from", cfg.From)
-	return sender
 }
 
 // SMTPAddress is host:port of the configured mail server ("" when e-mail is
