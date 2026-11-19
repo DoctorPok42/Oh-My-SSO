@@ -272,6 +272,14 @@ func (e *adminTestEnv) signIn(t *testing.T, cfg *oauth2.Config, username string,
 	return tok
 }
 
+// consoleConfig is the OAuth client of the admin console (master realm).
+func (e *adminTestEnv) consoleConfig(clientSecret string) *oauth2.Config {
+	return &oauth2.Config{ClientID: "sso-admin", ClientSecret: clientSecret,
+		RedirectURL: adminConsoleURL + "/auth/callback", Scopes: []string{"openid", "profile", "email", "offline_access"},
+		Endpoint: oauth2.Endpoint{AuthURL: e.idp.URL + "/r/master/oidc/authorize", TokenURL: e.idp.URL + "/r/master/oidc/token",
+			AuthStyle: oauth2.AuthStyleInHeader}}
+}
+
 // activate chooses the password with an activation link (the reset page's JSON call).
 func (e *adminTestEnv) activate(t *testing.T, link string) {
 	t.Helper()
@@ -312,10 +320,7 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 		AdminConsoleURL: adminConsoleURL, Actor: "cli:test@host"})
 	require.ErrorIs(t, err, service.ErrAlreadyBootstrapped)
 
-	console := &oauth2.Config{ClientID: "sso-admin", ClientSecret: res.ClientSecret,
-		RedirectURL: adminConsoleURL + "/auth/callback", Scopes: []string{"openid", "profile", "email", "offline_access"},
-		Endpoint: oauth2.Endpoint{AuthURL: e.idp.URL + "/r/master/oidc/authorize", TokenURL: e.idp.URL + "/r/master/oidc/token",
-			AuthStyle: oauth2.AuthStyleInHeader}}
+	console := e.consoleConfig(res.ClientSecret)
 	var secret string
 	tok := e.signIn(t, console, "root", &secret)
 	at := tok.AccessToken
@@ -631,12 +636,8 @@ func TestAdmin_Integration_RotateKeySize(t *testing.T) {
 		AdminConsoleURL: adminConsoleURL, Actor: "cli:test@host"})
 	require.NoError(t, err)
 	e.activate(t, res.ActivationURL)
-	console := &oauth2.Config{ClientID: "sso-admin", ClientSecret: res.ClientSecret,
-		RedirectURL: adminConsoleURL + "/auth/callback", Scopes: []string{"openid", "profile", "email", "offline_access"},
-		Endpoint: oauth2.Endpoint{AuthURL: e.idp.URL + "/r/master/oidc/authorize", TokenURL: e.idp.URL + "/r/master/oidc/token",
-			AuthStyle: oauth2.AuthStyleInHeader}}
 	var secret string
-	at := e.signIn(t, console, "root", &secret).AccessToken
+	at := e.signIn(t, e.consoleConfig(res.ClientSecret), "root", &secret).AccessToken
 	const rotate = "/api/v1/realms/master/signing-keys/rotate"
 
 	for name, body := range map[string]map[string]any{

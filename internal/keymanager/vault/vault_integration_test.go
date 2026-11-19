@@ -64,27 +64,14 @@ func TestVaultIntegration_GenerateAndSign(t *testing.T) {
 }
 
 func TestVaultIntegration_RSAKeySize(t *testing.T) {
-	addr := os.Getenv("VAULT_ADDR")
-	token := os.Getenv("VAULT_TOKEN")
-	if addr == "" || token == "" {
-		t.Skip("VAULT_ADDR / VAULT_TOKEN not set — skipping Vault integration test")
-	}
-	km, err := vault.New(vault.Config{Address: addr, Token: token})
-	if err != nil {
-		t.Fatalf("vault.New: %v", err)
-	}
+	km := newTestKeyManager(t)
 
 	for bits, want := range map[int]int{0: 2048, 3072: 3072, 4096: 4096} {
 		generated, err := km.GenerateKey(context.Background(), keymanager.KeyTypeRSA, bits)
 		if err != nil {
 			t.Fatalf("GenerateKey(rsa, %d): %v", bits, err)
 		}
-		block, _ := pem.Decode([]byte(generated.PublicKeyPEM))
-		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got := pub.(*rsa.PublicKey).N.BitLen(); got != want {
+		if got := parsePublicKey(t, generated.PublicKeyPEM).(*rsa.PublicKey).N.BitLen(); got != want {
 			t.Errorf("rsa, %d bits asked: Vault made a %d-bit key, want %d", bits, got, want)
 		}
 	}
@@ -93,9 +80,22 @@ func TestVaultIntegration_RSAKeySize(t *testing.T) {
 	}
 }
 
-func verifySignature(t *testing.T, keyType keymanager.KeyType, publicKeyPEM string, payload, sig []byte) {
+// newTestKeyManager is the dev Vault named by VAULT_ADDR / VAULT_TOKEN (the test is skipped without them).
+func newTestKeyManager(t *testing.T) *vault.KeyManager {
 	t.Helper()
+	addr, token := os.Getenv("VAULT_ADDR"), os.Getenv("VAULT_TOKEN")
+	if addr == "" || token == "" {
+		t.Skip("VAULT_ADDR / VAULT_TOKEN not set — skipping Vault integration test")
+	}
+	km, err := vault.New(vault.Config{Address: addr, Token: token})
+	if err != nil {
+		t.Fatalf("vault.New: %v", err)
+	}
+	return km
+}
 
+func parsePublicKey(t *testing.T, publicKeyPEM string) crypto.PublicKey {
+	t.Helper()
 	block, _ := pem.Decode([]byte(publicKeyPEM))
 	if block == nil {
 		t.Fatal("failed to decode public key PEM")
@@ -104,7 +104,13 @@ func verifySignature(t *testing.T, keyType keymanager.KeyType, publicKeyPEM stri
 	if err != nil {
 		t.Fatalf("parse public key: %v", err)
 	}
+	return pub
+}
 
+func verifySignature(t *testing.T, keyType keymanager.KeyType, publicKeyPEM string, payload, sig []byte) {
+	t.Helper()
+
+	pub := parsePublicKey(t, publicKeyPEM)
 	hash := sha256.Sum256(payload)
 
 	switch keyType {

@@ -444,29 +444,35 @@ func TestRotateDue(t *testing.T) {
 		require.Contains(t, created.Reason, "90 days")
 	})
 
-	t.Run("a younger key is left alone", func(t *testing.T) {
-		f := newRotFixtureOn(t, "vault")
-		f.settings.intervalDays = 90
-		first := f.rotate(t, service.RotateInput{}).NewKey
-		f.advance(89 * day)
+	// Same setup (a first key, then time passes), one reason not to rotate each.
+	for _, c := range []struct {
+		name     string
+		backend  string
+		interval int  // key_rotation_interval_days
+		grace    int  // a settings row exists even with interval 0
+		days     int  // age of the key
+		claimed  bool // another instance holds the claim
+	}{
+		{name: "a younger key is left alone", backend: "vault", interval: 90, days: 89},
+		{name: "0 turns it off", backend: "vault", grace: 24, days: 1000},
+		{name: "local_dev keys are never rotated by itself", backend: "local_dev", interval: 90, days: 1000},
+		{name: "another instance holds the claim: this one does not rotate", backend: "vault", interval: 90, days: 91, claimed: true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			f := newRotFixtureOn(t, c.backend)
+			f.settings.intervalDays, f.settings.graceHours = c.interval, c.grace
+			first := f.rotate(t, service.RotateInput{}).NewKey
+			f.advance(time.Duration(c.days) * day)
+			if c.claimed {
+				f.settings.claimedUntil = f.now.Add(time.Minute)
+			}
 
-		rotated, err := f.rot.RotateDue(ctx, rotRealm)
-		require.NoError(t, err)
-		require.False(t, rotated)
-		require.Equal(t, first.Kid, f.signerKid(t))
-	})
-
-	t.Run("0 turns it off", func(t *testing.T) {
-		f := newRotFixtureOn(t, "vault")
-		f.settings.graceHours = 24 // a settings row, interval 0
-		first := f.rotate(t, service.RotateInput{}).NewKey
-		f.advance(1000 * day)
-
-		rotated, err := f.rot.RotateDue(ctx, rotRealm)
-		require.NoError(t, err)
-		require.False(t, rotated)
-		require.Equal(t, first.Kid, f.signerKid(t))
-	})
+			rotated, err := f.rot.RotateDue(ctx, rotRealm)
+			require.NoError(t, err)
+			require.False(t, rotated)
+			require.Equal(t, first.Kid, f.signerKid(t))
+		})
+	}
 
 	t.Run("no key: nothing to do (an empty realm gets its first key elsewhere)", func(t *testing.T) {
 		f := newRotFixtureOn(t, "vault")
@@ -487,31 +493,6 @@ func TestRotateDue(t *testing.T) {
 		require.True(t, rotated)
 		require.Equal(t, 1, f.settings.created)
 		require.NotEqual(t, first.Kid, f.signerKid(t))
-	})
-
-	t.Run("local_dev keys are never rotated by itself", func(t *testing.T) {
-		f := newRotFixtureOn(t, "local_dev")
-		f.settings.intervalDays = 90
-		first := f.rotate(t, service.RotateInput{}).NewKey
-		f.advance(1000 * day)
-
-		rotated, err := f.rot.RotateDue(ctx, rotRealm)
-		require.NoError(t, err)
-		require.False(t, rotated)
-		require.Equal(t, first.Kid, f.signerKid(t))
-	})
-
-	t.Run("another instance holds the claim: this one does not rotate", func(t *testing.T) {
-		f := newRotFixtureOn(t, "vault")
-		f.settings.intervalDays = 90
-		first := f.rotate(t, service.RotateInput{}).NewKey
-		f.advance(91 * day)
-		f.settings.claimedUntil = f.now.Add(time.Minute)
-
-		rotated, err := f.rot.RotateDue(ctx, rotRealm)
-		require.NoError(t, err)
-		require.False(t, rotated)
-		require.Equal(t, first.Kid, f.signerKid(t))
 	})
 
 	t.Run("two ticks in a row rotate once", func(t *testing.T) {
