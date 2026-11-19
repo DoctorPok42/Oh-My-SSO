@@ -49,6 +49,7 @@ describe("settings form", () => {
     mfa_required_globally: false,
     mfa_step_up_max_age_minutes: 10,
     key_rotation_grace_hours: 24,
+    key_rotation_interval_days: 90,
     bulk_limit: 100,
     expired_data_retention_days: 90,
     audit_log_retention_days: 0,
@@ -78,6 +79,7 @@ describe("settings form", () => {
     lockout_threshold: "5",
     lockout_duration_minutes: "15",
     key_rotation_grace_hours: "24",
+    key_rotation_interval_days: "90",
     bulk_limit: "100",
     expired_data_retention_days: "90",
     audit_log_retention_days: "0",
@@ -187,6 +189,7 @@ describe("settings sub-pages", () => {
     for (const k of [...NUMBERS, ...MAIL_FIELDS]) expect(fieldSection(k), k).toBeDefined();
     expect(fieldSection("default_locale")).toBe("general");
     expect(fieldSection("key_rotation_grace_hours")).toBe("security");
+    expect(fieldSection("key_rotation_interval_days")).toBe("security");
     expect(fieldSection("remember_me_max_days")).toBe("sessions");
     expect(fieldSection("mail_reply_to")).toBe("email");
     expect(fieldSection("audit_log_retention_days")).toBe("audit");

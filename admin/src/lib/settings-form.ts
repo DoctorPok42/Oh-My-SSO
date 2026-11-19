@@ -18,6 +18,7 @@ export type SettingsPatch = Partial<
     | "lockout_duration_minutes"
     | "ip_allowlist"
     | "key_rotation_grace_hours"
+    | "key_rotation_interval_days"
     | "notification_email_enabled"
     | "suspicious_login_email_enabled"
     | "default_locale"
@@ -77,6 +78,7 @@ export const NUMBERS = [
   "lockout_threshold",
   "lockout_duration_minutes",
   "key_rotation_grace_hours",
+  "key_rotation_interval_days",
   "bulk_limit",
   "expired_data_retention_days",
   "audit_log_retention_days",
@@ -101,6 +103,7 @@ const SECTION_FIELDS: Record<SettingsSection, readonly string[]> = {
     "lockout_duration_minutes",
     "ip_allowlist",
     "key_rotation_grace_hours",
+    "key_rotation_interval_days",
   ],
   sessions: [
     "session_idle_minutes",

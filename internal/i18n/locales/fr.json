@@ -423,6 +423,8 @@
   "admin.error.remember_max_lt_normal": "une session mémorisée ({days} jours) ne peut pas être plus courte qu'une session normale ({hours} heures)",
   "admin.error.rights_paused": "les changements du realm master sont suspendus : Valkey est injoignable",
   "admin.error.role_name_taken": "un rôle nommé « {name} » existe déjà",
+  "admin.error.rsa_bits": "rsa_bits doit valoir 2048, 3072 ou 4096",
+  "admin.error.rsa_bits_type": "rsa_bits ne s'applique qu'aux clés RSA",
   "admin.error.saml_certs_only": "seuls les clients SAML ont des certificats",
   "admin.error.saml_rsa": "les clés SAML doivent être RSA",
   "admin.error.scope_char": "le scope « {scope} » contient un caractère interdit",

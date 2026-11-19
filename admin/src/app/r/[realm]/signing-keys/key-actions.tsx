@@ -20,6 +20,8 @@ export function KeyActions({ realm, hasPendingSaml }: { realm: string; hasPendin
   const [open, setOpen] = useState(false);
   const [purpose, setPurpose] = useState<"jwt_signing" | "saml_signing">("jwt_signing");
   const [keyType, setKeyType] = useState<"RSA" | "EC">("RSA");
+  // "0": the size of the current key.
+  const [rsaBits, setRsaBits] = useState<"0" | "2048" | "3072" | "4096">("0");
   // Empty: the realm's default (Settings → default key rotation grace).
   const [grace, setGrace] = useState("");
   const [compromised, setCompromised] = useState(false);
@@ -29,6 +31,9 @@ export function KeyActions({ realm, hasPendingSaml }: { realm: string; hasPendin
   const { run, pending } = useAction();
   const { t, tn } = useT();
 
+  // SAML keys are always RSA.
+  const isRsa = purpose === "saml_signing" || keyType === "RSA";
+
   async function rotate() {
     setError(null);
     const r = await run(
@@ -36,6 +41,7 @@ export function KeyActions({ realm, hasPendingSaml }: { realm: string; hasPendin
         rotateKey(realm, {
           purpose,
           key_type: purpose === "saml_signing" ? "RSA" : keyType,
+          rsa_bits: isRsa ? Number(rsaBits) : 0,
           grace_hours: Number(grace) || 0,
           compromised,
           reason: reason.trim(),
@@ -129,6 +135,21 @@ export function KeyActions({ realm, hasPendingSaml }: { realm: string; hasPendin
                   options={[
                     { value: "RSA", label: "RSA (RS256)" },
                     { value: "EC", label: "EC P-256 (ES256)" },
+                  ]}
+                />
+              </Field>
+            )}
+            {isRsa && (
+              <Field label={t("keys.rsa_bits", "Key size (bits)")}>
+                <Segmented
+                  label={t("keys.rsa_bits", "Key size (bits)")}
+                  value={rsaBits}
+                  onChange={setRsaBits}
+                  options={[
+                    { value: "0", label: t("keys.rsa_bits_current", "Current") },
+                    { value: "2048", label: "2048" },
+                    { value: "3072", label: "3072" },
+                    { value: "4096", label: "4096" },
                   ]}
                 />
               </Field>

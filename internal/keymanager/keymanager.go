@@ -20,8 +20,27 @@ type GeneratedKey struct {
 	PublicKeyPEM string
 }
 
+// DefaultRSABits is the size of an RSA key when none is asked for.
+const DefaultRSABits = 2048
+
+// ValidRSABits tells whether a wallet may be asked for an RSA key of that
+// size: 0 (DefaultRSABits), 2048, 3072 or 4096.
+func ValidRSABits(bits int) bool {
+	return bits == 0 || bits == 2048 || bits == 3072 || bits == 4096
+}
+
+// RSABitsOrDefault turns 0 into DefaultRSABits.
+func RSABitsOrDefault(bits int) int {
+	if bits == 0 {
+		return DefaultRSABits
+	}
+	return bits
+}
+
 type KeyManager interface {
-	GenerateKey(ctx context.Context, keyType KeyType) (*GeneratedKey, error)
+	// GenerateKey creates a key. rsaBits is the size of an RSA key (see
+	// ValidRSABits; 0: DefaultRSABits) and is ignored for other key types.
+	GenerateKey(ctx context.Context, keyType KeyType, rsaBits int) (*GeneratedKey, error)
 	Sign(ctx context.Context, kmsKeyReference string, payload []byte) (signature []byte, err error)
 }
 

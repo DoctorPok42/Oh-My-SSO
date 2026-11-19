@@ -29,7 +29,7 @@ func TestLocalDev_GenerateAndSign(t *testing.T) {
 			km := localdev.New("test")
 			ctx := context.Background()
 
-			generated, err := km.GenerateKey(ctx, tt.keyType)
+			generated, err := km.GenerateKey(ctx, tt.keyType, 0)
 			if err != nil {
 				t.Fatalf("GenerateKey: %v", err)
 			}

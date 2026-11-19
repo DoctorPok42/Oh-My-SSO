@@ -43,7 +43,7 @@ func TestOVHKMSIntegration_GenerateAndSign(t *testing.T) {
 
 	ctx := context.Background()
 
-	generated, err := km.GenerateKey(ctx, keymanager.KeyTypeRSA)
+	generated, err := km.GenerateKey(ctx, keymanager.KeyTypeRSA, 0)
 	if err != nil {
 		t.Fatalf("GenerateKey: %v", err)
 	}

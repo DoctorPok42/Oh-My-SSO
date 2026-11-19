@@ -45,6 +45,10 @@ const (
 	FieldNotificationEmailEnabled = "notification_email_enabled"
 	// FieldKeyRotationGraceHours holds the string denoting the key_rotation_grace_hours field in the database.
 	FieldKeyRotationGraceHours = "key_rotation_grace_hours"
+	// FieldKeyRotationIntervalDays holds the string denoting the key_rotation_interval_days field in the database.
+	FieldKeyRotationIntervalDays = "key_rotation_interval_days"
+	// FieldKeyRotationClaimedUntil holds the string denoting the key_rotation_claimed_until field in the database.
+	FieldKeyRotationClaimedUntil = "key_rotation_claimed_until"
 	// FieldMfaStepUpMaxAgeMinutes holds the string denoting the mfa_step_up_max_age_minutes field in the database.
 	FieldMfaStepUpMaxAgeMinutes = "mfa_step_up_max_age_minutes"
 	// FieldMfaTrustedDeviceEnabled holds the string denoting the mfa_trusted_device_enabled field in the database.
@@ -108,6 +112,8 @@ var Columns = []string{
 	FieldMfaRequiredGlobally,
 	FieldNotificationEmailEnabled,
 	FieldKeyRotationGraceHours,
+	FieldKeyRotationIntervalDays,
+	FieldKeyRotationClaimedUntil,
 	FieldMfaStepUpMaxAgeMinutes,
 	FieldMfaTrustedDeviceEnabled,
 	FieldMfaTrustedDeviceDays,
@@ -165,6 +171,8 @@ var (
 	DefaultNotificationEmailEnabled bool
 	// DefaultKeyRotationGraceHours holds the default value on creation for the "key_rotation_grace_hours" field.
 	DefaultKeyRotationGraceHours int
+	// DefaultKeyRotationIntervalDays holds the default value on creation for the "key_rotation_interval_days" field.
+	DefaultKeyRotationIntervalDays int
 	// DefaultMfaStepUpMaxAgeMinutes holds the default value on creation for the "mfa_step_up_max_age_minutes" field.
 	DefaultMfaStepUpMaxAgeMinutes int
 	// DefaultMfaTrustedDeviceEnabled holds the default value on creation for the "mfa_trusted_device_enabled" field.
@@ -279,6 +287,16 @@ func ByNotificationEmailEnabled(opts ...sql.OrderTermOption) OrderOption {
 // ByKeyRotationGraceHours orders the results by the key_rotation_grace_hours field.
 func ByKeyRotationGraceHours(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldKeyRotationGraceHours, opts...).ToFunc()
+}
+
+// ByKeyRotationIntervalDays orders the results by the key_rotation_interval_days field.
+func ByKeyRotationIntervalDays(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldKeyRotationIntervalDays, opts...).ToFunc()
+}
+
+// ByKeyRotationClaimedUntil orders the results by the key_rotation_claimed_until field.
+func ByKeyRotationClaimedUntil(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldKeyRotationClaimedUntil, opts...).ToFunc()
 }
 
 // ByMfaStepUpMaxAgeMinutes orders the results by the mfa_step_up_max_age_minutes field.

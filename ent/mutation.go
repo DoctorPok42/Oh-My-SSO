@@ -16991,6 +16991,9 @@ type InstanceSettingsMutation struct {
 	notification_email_enabled     *bool
 	key_rotation_grace_hours       *int
 	addkey_rotation_grace_hours    *int
+	key_rotation_interval_days     *int
+	addkey_rotation_interval_days  *int
+	key_rotation_claimed_until     *time.Time
 	mfa_step_up_max_age_minutes    *int
 	addmfa_step_up_max_age_minutes *int
 	mfa_trusted_device_enabled     *bool
@@ -17875,6 +17878,111 @@ func (m *InstanceSettingsMutation) ResetKeyRotationGraceHours() {
 	m.addkey_rotation_grace_hours = nil
 }
 
+// SetKeyRotationIntervalDays sets the "key_rotation_interval_days" field.
+func (m *InstanceSettingsMutation) SetKeyRotationIntervalDays(i int) {
+	m.key_rotation_interval_days = &i
+	m.addkey_rotation_interval_days = nil
+}
+
+// KeyRotationIntervalDays returns the value of the "key_rotation_interval_days" field in the mutation.
+func (m *InstanceSettingsMutation) KeyRotationIntervalDays() (r int, exists bool) {
+	v := m.key_rotation_interval_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKeyRotationIntervalDays returns the old "key_rotation_interval_days" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldKeyRotationIntervalDays(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKeyRotationIntervalDays is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKeyRotationIntervalDays requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeyRotationIntervalDays: %w", err)
+	}
+	return oldValue.KeyRotationIntervalDays, nil
+}
+
+// AddKeyRotationIntervalDays adds i to the "key_rotation_interval_days" field.
+func (m *InstanceSettingsMutation) AddKeyRotationIntervalDays(i int) {
+	if m.addkey_rotation_interval_days != nil {
+		*m.addkey_rotation_interval_days += i
+	} else {
+		m.addkey_rotation_interval_days = &i
+	}
+}
+
+// AddedKeyRotationIntervalDays returns the value that was added to the "key_rotation_interval_days" field in this mutation.
+func (m *InstanceSettingsMutation) AddedKeyRotationIntervalDays() (r int, exists bool) {
+	v := m.addkey_rotation_interval_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetKeyRotationIntervalDays resets all changes to the "key_rotation_interval_days" field.
+func (m *InstanceSettingsMutation) ResetKeyRotationIntervalDays() {
+	m.key_rotation_interval_days = nil
+	m.addkey_rotation_interval_days = nil
+}
+
+// SetKeyRotationClaimedUntil sets the "key_rotation_claimed_until" field.
+func (m *InstanceSettingsMutation) SetKeyRotationClaimedUntil(t time.Time) {
+	m.key_rotation_claimed_until = &t
+}
+
+// KeyRotationClaimedUntil returns the value of the "key_rotation_claimed_until" field in the mutation.
+func (m *InstanceSettingsMutation) KeyRotationClaimedUntil() (r time.Time, exists bool) {
+	v := m.key_rotation_claimed_until
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKeyRotationClaimedUntil returns the old "key_rotation_claimed_until" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldKeyRotationClaimedUntil(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKeyRotationClaimedUntil is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKeyRotationClaimedUntil requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeyRotationClaimedUntil: %w", err)
+	}
+	return oldValue.KeyRotationClaimedUntil, nil
+}
+
+// ClearKeyRotationClaimedUntil clears the value of the "key_rotation_claimed_until" field.
+func (m *InstanceSettingsMutation) ClearKeyRotationClaimedUntil() {
+	m.key_rotation_claimed_until = nil
+	m.clearedFields[instancesettings.FieldKeyRotationClaimedUntil] = struct{}{}
+}
+
+// KeyRotationClaimedUntilCleared returns if the "key_rotation_claimed_until" field was cleared in this mutation.
+func (m *InstanceSettingsMutation) KeyRotationClaimedUntilCleared() bool {
+	_, ok := m.clearedFields[instancesettings.FieldKeyRotationClaimedUntil]
+	return ok
+}
+
+// ResetKeyRotationClaimedUntil resets all changes to the "key_rotation_claimed_until" field.
+func (m *InstanceSettingsMutation) ResetKeyRotationClaimedUntil() {
+	m.key_rotation_claimed_until = nil
+	delete(m.clearedFields, instancesettings.FieldKeyRotationClaimedUntil)
+}
+
 // SetMfaStepUpMaxAgeMinutes sets the "mfa_step_up_max_age_minutes" field.
 func (m *InstanceSettingsMutation) SetMfaStepUpMaxAgeMinutes(i int) {
 	m.mfa_step_up_max_age_minutes = &i
@@ -18665,7 +18773,7 @@ func (m *InstanceSettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstanceSettingsMutation) Fields() []string {
-	fields := make([]string, 0, 31)
+	fields := make([]string, 0, 33)
 	if m.realm != nil {
 		fields = append(fields, instancesettings.FieldRealmID)
 	}
@@ -18710,6 +18818,12 @@ func (m *InstanceSettingsMutation) Fields() []string {
 	}
 	if m.key_rotation_grace_hours != nil {
 		fields = append(fields, instancesettings.FieldKeyRotationGraceHours)
+	}
+	if m.key_rotation_interval_days != nil {
+		fields = append(fields, instancesettings.FieldKeyRotationIntervalDays)
+	}
+	if m.key_rotation_claimed_until != nil {
+		fields = append(fields, instancesettings.FieldKeyRotationClaimedUntil)
 	}
 	if m.mfa_step_up_max_age_minutes != nil {
 		fields = append(fields, instancesettings.FieldMfaStepUpMaxAgeMinutes)
@@ -18797,6 +18911,10 @@ func (m *InstanceSettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.NotificationEmailEnabled()
 	case instancesettings.FieldKeyRotationGraceHours:
 		return m.KeyRotationGraceHours()
+	case instancesettings.FieldKeyRotationIntervalDays:
+		return m.KeyRotationIntervalDays()
+	case instancesettings.FieldKeyRotationClaimedUntil:
+		return m.KeyRotationClaimedUntil()
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		return m.MfaStepUpMaxAgeMinutes()
 	case instancesettings.FieldMfaTrustedDeviceEnabled:
@@ -18868,6 +18986,10 @@ func (m *InstanceSettingsMutation) OldField(ctx context.Context, name string) (e
 		return m.OldNotificationEmailEnabled(ctx)
 	case instancesettings.FieldKeyRotationGraceHours:
 		return m.OldKeyRotationGraceHours(ctx)
+	case instancesettings.FieldKeyRotationIntervalDays:
+		return m.OldKeyRotationIntervalDays(ctx)
+	case instancesettings.FieldKeyRotationClaimedUntil:
+		return m.OldKeyRotationClaimedUntil(ctx)
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		return m.OldMfaStepUpMaxAgeMinutes(ctx)
 	case instancesettings.FieldMfaTrustedDeviceEnabled:
@@ -19013,6 +19135,20 @@ func (m *InstanceSettingsMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetKeyRotationGraceHours(v)
+		return nil
+	case instancesettings.FieldKeyRotationIntervalDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeyRotationIntervalDays(v)
+		return nil
+	case instancesettings.FieldKeyRotationClaimedUntil:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeyRotationClaimedUntil(v)
 		return nil
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		v, ok := value.(int)
@@ -19161,6 +19297,9 @@ func (m *InstanceSettingsMutation) AddedFields() []string {
 	if m.addkey_rotation_grace_hours != nil {
 		fields = append(fields, instancesettings.FieldKeyRotationGraceHours)
 	}
+	if m.addkey_rotation_interval_days != nil {
+		fields = append(fields, instancesettings.FieldKeyRotationIntervalDays)
+	}
 	if m.addmfa_step_up_max_age_minutes != nil {
 		fields = append(fields, instancesettings.FieldMfaStepUpMaxAgeMinutes)
 	}
@@ -19208,6 +19347,8 @@ func (m *InstanceSettingsMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedLockoutDurationMinutes()
 	case instancesettings.FieldKeyRotationGraceHours:
 		return m.AddedKeyRotationGraceHours()
+	case instancesettings.FieldKeyRotationIntervalDays:
+		return m.AddedKeyRotationIntervalDays()
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		return m.AddedMfaStepUpMaxAgeMinutes()
 	case instancesettings.FieldMfaTrustedDeviceDays:
@@ -19294,6 +19435,13 @@ func (m *InstanceSettingsMutation) AddField(name string, value ent.Value) error 
 		}
 		m.AddKeyRotationGraceHours(v)
 		return nil
+	case instancesettings.FieldKeyRotationIntervalDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddKeyRotationIntervalDays(v)
+		return nil
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		v, ok := value.(int)
 		if !ok {
@@ -19354,6 +19502,9 @@ func (m *InstanceSettingsMutation) ClearedFields() []string {
 	if m.FieldCleared(instancesettings.FieldIPAllowlist) {
 		fields = append(fields, instancesettings.FieldIPAllowlist)
 	}
+	if m.FieldCleared(instancesettings.FieldKeyRotationClaimedUntil) {
+		fields = append(fields, instancesettings.FieldKeyRotationClaimedUntil)
+	}
 	if m.FieldCleared(instancesettings.FieldUpdatedBy) {
 		fields = append(fields, instancesettings.FieldUpdatedBy)
 	}
@@ -19373,6 +19524,9 @@ func (m *InstanceSettingsMutation) ClearField(name string) error {
 	switch name {
 	case instancesettings.FieldIPAllowlist:
 		m.ClearIPAllowlist()
+		return nil
+	case instancesettings.FieldKeyRotationClaimedUntil:
+		m.ClearKeyRotationClaimedUntil()
 		return nil
 	case instancesettings.FieldUpdatedBy:
 		m.ClearUpdatedBy()
@@ -19429,6 +19583,12 @@ func (m *InstanceSettingsMutation) ResetField(name string) error {
 		return nil
 	case instancesettings.FieldKeyRotationGraceHours:
 		m.ResetKeyRotationGraceHours()
+		return nil
+	case instancesettings.FieldKeyRotationIntervalDays:
+		m.ResetKeyRotationIntervalDays()
+		return nil
+	case instancesettings.FieldKeyRotationClaimedUntil:
+		m.ResetKeyRotationClaimedUntil()
 		return nil
 	case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 		m.ResetMfaStepUpMaxAgeMinutes()

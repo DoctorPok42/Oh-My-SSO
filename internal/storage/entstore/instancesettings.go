@@ -2,6 +2,7 @@ package entstore
 
 import (
 	"context"
+	"time"
 
 	"sso.internal/sso/ent"
 	"sso.internal/sso/ent/instancesettings"
@@ -59,6 +60,7 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 		SetNillableMfaRequiredGlobally(p.MFARequiredGlobally).
 		SetNillableNotificationEmailEnabled(p.NotificationEmailEnabled).
 		SetNillableKeyRotationGraceHours(p.KeyRotationGraceHours).
+		SetNillableKeyRotationIntervalDays(p.KeyRotationIntervalDays).
 		SetNillableMfaStepUpMaxAgeMinutes(p.MFAStepUpMaxAgeMinutes).
 		SetNillablePasswordResetTTLMinutes(p.PasswordResetTTLMinutes).
 		SetNillableInviteTTLHours(p.InviteTTLHours).
@@ -85,6 +87,36 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 	return toDomainInstanceSettings(e), nil
 }
 
+// ClaimKeyRotation is one conditional UPDATE: of two instances racing, the
+// database lets exactly one change the row.
+//
+// A claim is not a settings change, so updated_at keeps its value (ent would
+// bump it, and the console shows it as "Last change"). The UPDATE also checks
+// that updated_at is still the value just read: if an administrator saved the
+// settings in between, the claim fails and the next tick tries again.
+func (r *entInstanceSettingsRepository) ClaimKeyRotation(ctx context.Context, realmID string, now, until time.Time) (bool, error) {
+	cur, err := r.client.InstanceSettings.Query().Where(instancesettings.RealmID(realmID)).Only(ctx)
+	if ent.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	n, err := r.client.InstanceSettings.Update().
+		Where(
+			instancesettings.ID(cur.ID),
+			instancesettings.UpdatedAt(cur.UpdatedAt),
+			instancesettings.Or(
+				instancesettings.KeyRotationClaimedUntilIsNil(),
+				instancesettings.KeyRotationClaimedUntilLT(now),
+			),
+		).
+		SetKeyRotationClaimedUntil(until).
+		SetUpdatedAt(cur.UpdatedAt).
+		Save(ctx)
+	return n == 1, err
+}
+
 func (r *entInstanceSettingsRepository) Delete(ctx context.Context, id string) error {
 	return r.client.InstanceSettings.DeleteOneID(id).Exec(ctx)
 }
@@ -107,6 +139,7 @@ func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings 
 		MFARequiredGlobally:         e.MfaRequiredGlobally,
 		NotificationEmailEnabled:    e.NotificationEmailEnabled,
 		KeyRotationGraceHours:       e.KeyRotationGraceHours,
+		KeyRotationIntervalDays:     e.KeyRotationIntervalDays,
 		MFAStepUpMaxAgeMinutes:      e.MfaStepUpMaxAgeMinutes,
 		PasswordResetTTLMinutes:     e.PasswordResetTTLMinutes,
 		InviteTTLHours:              e.InviteTTLHours,

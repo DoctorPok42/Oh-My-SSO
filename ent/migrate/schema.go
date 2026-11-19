@@ -603,6 +603,8 @@ var (
 		{Name: "mfa_required_globally", Type: field.TypeBool, Default: false},
 		{Name: "notification_email_enabled", Type: field.TypeBool, Default: false},
 		{Name: "key_rotation_grace_hours", Type: field.TypeInt, Default: 24},
+		{Name: "key_rotation_interval_days", Type: field.TypeInt, Default: 90},
+		{Name: "key_rotation_claimed_until", Type: field.TypeTime, Nullable: true},
 		{Name: "mfa_step_up_max_age_minutes", Type: field.TypeInt, Default: 10},
 		{Name: "mfa_trusted_device_enabled", Type: field.TypeBool, Default: true},
 		{Name: "mfa_trusted_device_days", Type: field.TypeInt, Default: 30},
@@ -629,7 +631,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instance_settings_realms_instance_settings",
-				Columns:    []*schema.Column{InstanceSettingsColumns[31]},
+				Columns:    []*schema.Column{InstanceSettingsColumns[33]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},

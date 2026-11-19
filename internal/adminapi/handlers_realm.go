@@ -348,6 +348,10 @@ func rotationError(w http.ResponseWriter, r *http.Request, err error) {
 		writeErrorT(w, r, http.StatusBadRequest, "unsupported_purpose", i18n.M("admin.error.unsupported_purpose", "rotation is not supported for this key purpose"))
 	case errors.Is(err, service.ErrSAMLKeyMustBeRSA):
 		writeErrorT(w, r, http.StatusBadRequest, "unsupported_key_type", i18n.M("admin.error.saml_rsa", "SAML keys must be RSA"))
+	case errors.Is(err, service.ErrInvalidRSABits):
+		writeErrorT(w, r, http.StatusBadRequest, "invalid_rsa_bits", i18n.M("admin.error.rsa_bits", "rsa_bits must be 2048, 3072 or 4096"))
+	case errors.Is(err, service.ErrRSABitsNeedsRSA):
+		writeErrorT(w, r, http.StatusBadRequest, "invalid_rsa_bits", i18n.M("admin.error.rsa_bits_type", "rsa_bits only applies to RSA keys"))
 	case errors.Is(err, service.ErrPendingKeyExists):
 		writeErrorT(w, r, http.StatusConflict, "pending_key_exists", i18n.M("admin.error.pending_key", "a new SAML key is already waiting: activate it first"))
 	case errors.Is(err, service.ErrNoPendingKey):
@@ -373,6 +377,7 @@ func (s *Server) handleRotateKey(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Purpose     string `json:"purpose"`  // jwt_signing (default) | saml_signing
 		KeyType     string `json:"key_type"` // RSA | EC | "" (same as now)
+		RSABits     int    `json:"rsa_bits"` // 2048 | 3072 | 4096 | 0 (same size as now)
 		GraceHours  int    `json:"grace_hours"`
 		Compromised bool   `json:"compromised"`
 		Reason      string `json:"reason"`
@@ -396,7 +401,7 @@ func (s *Server) handleRotateKey(w http.ResponseWriter, r *http.Request) {
 	}
 	a, realm := adminFrom(r), realmFrom(r)
 	res, err := s.d.KeyRotation.Rotate(r.Context(), service.RotateInput{RealmID: realm.ID, Purpose: purpose,
-		KeyType: domain.SigningKeyType(in.KeyType), Grace: time.Duration(in.GraceHours) * time.Hour,
+		KeyType: domain.SigningKeyType(in.KeyType), RSABits: in.RSABits, Grace: time.Duration(in.GraceHours) * time.Hour,
 		Compromised: in.Compromised, TriggeredBy: a.actor.By(), Reason: in.Reason})
 	s.writeRotation(w, r, res, err)
 }
@@ -540,6 +545,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		MFARequiredGlobally         *bool     `json:"mfa_required_globally"`
 		MFAStepUpMaxAgeMinutes      *int      `json:"mfa_step_up_max_age_minutes"`
 		KeyRotationGraceHours       *int      `json:"key_rotation_grace_hours"`
+		KeyRotationIntervalDays     *int      `json:"key_rotation_interval_days"`
 		NotificationEmailEnabled    *bool     `json:"notification_email_enabled"`
 		SuspiciousLoginEmailEnabled *bool     `json:"suspicious_login_email_enabled"`
 		DefaultLocale               *string   `json:"default_locale"`

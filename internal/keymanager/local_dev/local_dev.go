@@ -123,14 +123,17 @@ func (k *KeyManager) envelopeAEAD(kmsKeyReference string) (cipher.AEAD, error) {
 	return cipher.NewGCM(block)
 }
 
-func (k *KeyManager) GenerateKey(ctx context.Context, keyType keymanager.KeyType) (*keymanager.GeneratedKey, error) {
+func (k *KeyManager) GenerateKey(ctx context.Context, keyType keymanager.KeyType, rsaBits int) (*keymanager.GeneratedKey, error) {
 	id := uuid.NewString()
 	var sk storedKey
 	var pub crypto.PublicKey
 
 	switch keyType {
 	case keymanager.KeyTypeRSA:
-		priv, err := rsa.GenerateKey(rand.Reader, 2048)
+		if !keymanager.ValidRSABits(rsaBits) {
+			return nil, fmt.Errorf("local_dev keymanager: unsupported RSA key size %d", rsaBits)
+		}
+		priv, err := rsa.GenerateKey(rand.Reader, keymanager.RSABitsOrDefault(rsaBits))
 		if err != nil {
 			return nil, fmt.Errorf("local_dev keymanager: generate rsa key: %w", err)
 		}

@@ -26,6 +26,7 @@ type InstanceSettings struct {
 	MFARequiredGlobally         bool
 	NotificationEmailEnabled    bool
 	KeyRotationGraceHours       int
+	KeyRotationIntervalDays     int // 0: no automatic rotation
 	MFAStepUpMaxAgeMinutes      int
 	PasswordResetTTLMinutes     int
 	InviteTTLHours              int
