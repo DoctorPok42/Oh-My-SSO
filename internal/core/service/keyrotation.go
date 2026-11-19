@@ -26,6 +26,16 @@ const (
 	// fail verification after a routine rotation.
 	MinKeyRotationGrace = time.Hour
 
+	// DefaultKeyRotationIntervalDays is the age at which a realm's jwt_signing
+	// key is rotated automatically (key_rotation_interval_days; 0 turns it off).
+	DefaultKeyRotationIntervalDays = 90
+	MaxKeyRotationIntervalDays     = 3650
+
+	// keyRotationClaimTTL is how long an instance holds the right to rotate a
+	// realm's key. It must outlast a rotation (a KMS call, a few seconds); if
+	// the instance dies, another one retries after it.
+	keyRotationClaimTTL = 15 * time.Minute
+
 	keyRotationReasonGraceEnded = "grace period ended"
 )
 
@@ -115,6 +125,9 @@ type RotateInput struct {
 	// key", or RSA if there is none (RS256 is the one algorithm every OIDC
 	// client must support, OIDC Core §15.1).
 	KeyType domain.SigningKeyType
+	// RSABits is the size of a new RSA key: 2048, 3072 or 4096. 0 keeps the
+	// size of the current key (2048 when there is none or it is not RSA).
+	RSABits int
 	// Grace overrides the realm's key_rotation_grace_hours when > 0.
 	Grace time.Duration
 	// Compromised retires every previous key of that purpose immediately,
@@ -189,6 +202,14 @@ func (s *KeyRotationService) Rotate(ctx context.Context, in RotateInput) (*Rotat
 			keyType = newest.KeyType
 		}
 	}
+	bits := in.RSABits
+	if bits == 0 && keyType == domain.SigningKeyRSA {
+		// Keep the size the realm chose: an automatic rotation must not
+		// bring a 4096-bit realm back to 2048.
+		if newest := newestWithStatus(current, domain.SigningKeyActive); newest != nil {
+			bits = rsaBitsOf(newest.PublicKey)
+		}
+	}
 
 	// Two-step purposes (SAML): the new key only signs after Activate, unless
 	// there is no key to replace yet or the old one is compromised.
@@ -205,6 +226,7 @@ func (s *KeyRotationService) Rotate(ctx context.Context, in RotateInput) (*Rotat
 	newKey, err := GenerateSigningKey(ctx, s.km, s.keys, s.kmsBackend, GenerateSigningKeyParams{
 		RealmID: in.RealmID,
 		KeyType: keyType,
+		RSABits: bits,
 		Purpose: in.Purpose,
 		Status:  status,
 		Now:     s.now,
@@ -427,8 +449,59 @@ func (s *KeyRotationService) RetireExpired(ctx context.Context, realmID, trigger
 	return retired, errors.Join(errs...)
 }
 
-// RunRetirer retires the expired keys of every realm (and removes them from
-// the wallet) every interval, until ctx ends.
+// RotateDue rotates the realm's jwt_signing key when the one that signs is
+// older than key_rotation_interval_days (0: never). It reports whether it
+// rotated. Safe with several instances: only the one that wins
+// ClaimKeyRotation rotates. The claim is kept after a rotation, failed or not,
+// so a failure is retried after keyRotationClaimTTL, not at every tick.
+//
+// Only jwt_signing: a SAML rotation is two-step (the administrator activates
+// the new key once the service providers have it), so it stays manual. Never
+// with the local_dev key manager either.
+func (s *KeyRotationService) RotateDue(ctx context.Context, realmID string) (bool, error) {
+	if s.kmsBackend == "local_dev" {
+		// Its private keys live in the memory of one process: a key made here
+		// could never sign in the other server (same rule as the Admin API).
+		return false, nil
+	}
+	st, err := s.settings.GetByRealmID(ctx, realmID)
+	if errors.Is(err, repository.ErrNotFound) {
+		// A realm made without its settings (idp dev seed) shows the defaults
+		// in the console, so give it the row: the claim needs one.
+		_, createErr := s.settings.Create(ctx, repository.CreateInstanceSettingsParams{RealmID: realmID})
+		if st, err = s.settings.GetByRealmID(ctx, realmID); err != nil { // another instance may have created it first
+			return false, fmt.Errorf("key auto-rotation: instance settings: %w", errors.Join(err, createErr))
+		}
+	} else if err != nil {
+		return false, fmt.Errorf("key auto-rotation: read instance settings: %w", err)
+	}
+	if st.KeyRotationIntervalDays <= 0 {
+		return false, nil
+	}
+	keys, err := s.keys.ListActiveByRealm(ctx, realmID)
+	if err != nil {
+		return false, fmt.Errorf("key auto-rotation: list keys: %w", err)
+	}
+	current := newestWithStatus(filterPurpose(keys, domain.SigningKeyPurposeJWT), domain.SigningKeyActive)
+	now := s.now()
+	if current == nil || now.Sub(current.CreatedAt) < time.Duration(st.KeyRotationIntervalDays)*24*time.Hour {
+		return false, nil // no key to replace, or not old enough
+	}
+	if ok, err := s.settings.ClaimKeyRotation(ctx, realmID, now, now.Add(keyRotationClaimTTL)); err != nil || !ok {
+		return false, err
+	}
+	_, err = s.Rotate(ctx, RotateInput{
+		RealmID:     realmID,
+		Purpose:     domain.SigningKeyPurposeJWT,
+		TriggeredBy: "system",
+		Reason:      fmt.Sprintf("scheduled rotation: the key is older than %d days", st.KeyRotationIntervalDays),
+	})
+	return true, err
+}
+
+// RunRetirer, every interval and until ctx ends, for every realm: retires the
+// expired keys (and removes them from the wallet), then rotates the key if it
+// is due (RotateDue). A failed rotation is logged as an error.
 func (s *KeyRotationService) RunRetirer(ctx context.Context, realms func(context.Context) ([]*domain.Realm, error), interval time.Duration) {
 	t := time.NewTicker(interval)
 	defer t.Stop()
@@ -446,6 +519,12 @@ func (s *KeyRotationService) RunRetirer(ctx context.Context, realms func(context
 		for _, r := range list {
 			if _, err := s.RetireExpired(ctx, r.ID, "system"); err != nil {
 				s.logger.WarnContext(ctx, "key retirer: retire expired keys", "realm_id", r.ID, "error", err)
+			}
+			rotated, err := s.RotateDue(ctx, r.ID)
+			if err != nil {
+				s.logger.ErrorContext(ctx, "key auto-rotation failed", "realm_id", r.ID, "error", err)
+			} else if rotated {
+				s.logger.InfoContext(ctx, "key auto-rotation: signing key rotated", "realm_id", r.ID)
 			}
 		}
 	}

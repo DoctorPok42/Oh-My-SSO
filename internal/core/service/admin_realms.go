@@ -191,6 +191,7 @@ type SettingsView struct {
 	MFARequiredGlobally         bool      `json:"mfa_required_globally"`
 	MFAStepUpMaxAgeMinutes      int       `json:"mfa_step_up_max_age_minutes"`
 	KeyRotationGraceHours       int       `json:"key_rotation_grace_hours"`
+	KeyRotationIntervalDays     int       `json:"key_rotation_interval_days"` // 0: no automatic rotation
 	NotificationEmailEnabled    bool      `json:"notification_email_enabled"`
 	SuspiciousLoginEmailEnabled bool      `json:"suspicious_login_email_enabled"`
 	DefaultLocale               string    `json:"default_locale"`
@@ -211,6 +212,7 @@ func (s *AdminService) settingsOf(ctx context.Context, realmID string) (*domain.
 		st = DefaultInstanceSettings(realmID)
 		st.ManagedBy = domain.InstanceSettingsManagedByUI
 		st.KeyRotationGraceHours = 24
+		st.KeyRotationIntervalDays = DefaultKeyRotationIntervalDays
 		st.MFAStepUpMaxAgeMinutes = 10
 		st.InviteTTLHours = defaultInviteTTLHours
 		return st, nil
@@ -233,7 +235,7 @@ func (s *AdminService) GetSettings(ctx context.Context, realm *domain.Realm) (*S
 		SessionMaxHours: st.SessionMaxHours, RememberMeEnabled: st.RememberMeEnabled, RememberMeIdleDays: st.RememberMeIdleDays,
 		RememberMeMaxDays: st.RememberMeMaxDays, LockoutThreshold: st.LockoutThreshold, LockoutDurationMinutes: st.LockoutDurationMinutes,
 		IPAllowlist: allow, MFARequiredGlobally: st.MFARequiredGlobally, MFAStepUpMaxAgeMinutes: st.MFAStepUpMaxAgeMinutes,
-		KeyRotationGraceHours: st.KeyRotationGraceHours, NotificationEmailEnabled: st.NotificationEmailEnabled,
+		KeyRotationGraceHours: st.KeyRotationGraceHours, KeyRotationIntervalDays: st.KeyRotationIntervalDays, NotificationEmailEnabled: st.NotificationEmailEnabled,
 		SuspiciousLoginEmailEnabled: st.SuspiciousLoginEmailEnabled, DefaultLocale: localeOrEnglish(st.DefaultLocale),
 		MailFromName: st.MailFromName, MailFromAddress: st.MailFromAddress, MailReplyTo: st.MailReplyTo, MailLogoURL: st.MailLogoURL, BulkLimit: effectiveBulkLimit(st),
 		ExpiredDataRetentionDays: EffectiveRetentionDays(st), AuditLogRetentionDays: EffectiveAuditLogRetentionDays(st),
@@ -258,6 +260,7 @@ type SettingsPatch struct {
 	MFARequiredGlobally         *bool
 	MFAStepUpMaxAgeMinutes      *int
 	KeyRotationGraceHours       *int
+	KeyRotationIntervalDays     *int
 	NotificationEmailEnabled    *bool
 	SuspiciousLoginEmailEnabled *bool
 	DefaultLocale               *string
@@ -295,6 +298,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		{"lockout_duration_minutes", p.LockoutDurationMinutes, 1, 7 * 24 * 60},
 		{"mfa_step_up_max_age_minutes", p.MFAStepUpMaxAgeMinutes, int(minMFAStepUpMaxAge / time.Minute), int(maxMFAStepUpMaxAge / time.Minute)},
 		{"key_rotation_grace_hours", p.KeyRotationGraceHours, int(MinKeyRotationGrace / time.Hour), 365 * 24},
+		{"key_rotation_interval_days", p.KeyRotationIntervalDays, 0, MaxKeyRotationIntervalDays},
 		{"bulk_limit", p.BulkLimit, 1, MaxBulkLimit},
 		{"expired_data_retention_days", p.ExpiredDataRetentionDays, MinRetentionDays, MaxRetentionDays},
 	} {
@@ -367,7 +371,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		RememberMeIdleDays: p.RememberMeIdleDays, RememberMeMaxDays: p.RememberMeMaxDays, LockoutThreshold: p.LockoutThreshold,
 		LockoutDurationMinutes: p.LockoutDurationMinutes, IPAllowlist: allow,
 		MFARequiredGlobally: p.MFARequiredGlobally, MFAStepUpMaxAgeMinutes: p.MFAStepUpMaxAgeMinutes,
-		KeyRotationGraceHours: p.KeyRotationGraceHours, NotificationEmailEnabled: p.NotificationEmailEnabled,
+		KeyRotationGraceHours: p.KeyRotationGraceHours, KeyRotationIntervalDays: p.KeyRotationIntervalDays, NotificationEmailEnabled: p.NotificationEmailEnabled,
 		SuspiciousLoginEmailEnabled: p.SuspiciousLoginEmailEnabled, DefaultLocale: p.DefaultLocale, UpdatedBy: &by,
 		MailFromName: p.MailFromName, MailFromAddress: p.MailFromAddress, MailReplyTo: p.MailReplyTo, MailLogoURL: p.MailLogoURL, BulkLimit: p.BulkLimit,
 		ExpiredDataRetentionDays: p.ExpiredDataRetentionDays, AuditLogRetentionDays: p.AuditLogRetentionDays,
@@ -391,7 +395,7 @@ func settingsChanges(p SettingsPatch) map[string]interface{} {
 		"session_max_hours": p.SessionMaxHours, "remember_me_idle_days": p.RememberMeIdleDays,
 		"remember_me_max_days": p.RememberMeMaxDays, "lockout_threshold": p.LockoutThreshold,
 		"lockout_duration_minutes": p.LockoutDurationMinutes, "mfa_step_up_max_age_minutes": p.MFAStepUpMaxAgeMinutes,
-		"key_rotation_grace_hours": p.KeyRotationGraceHours, "bulk_limit": p.BulkLimit,
+		"key_rotation_grace_hours": p.KeyRotationGraceHours, "key_rotation_interval_days": p.KeyRotationIntervalDays, "bulk_limit": p.BulkLimit,
 		"expired_data_retention_days": p.ExpiredDataRetentionDays, "audit_log_retention_days": p.AuditLogRetentionDays,
 	}
 	for k, v := range ints {

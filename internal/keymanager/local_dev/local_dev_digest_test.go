@@ -17,7 +17,7 @@ func TestLocalDev_SignDigest(t *testing.T) {
 
 	for _, kt := range []keymanager.KeyType{keymanager.KeyTypeRSA, keymanager.KeyTypeEC} {
 		t.Run(string(kt), func(t *testing.T) {
-			generated, err := km.GenerateKey(ctx, kt)
+			generated, err := km.GenerateKey(ctx, kt, 0)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -43,7 +43,7 @@ func TestLocalDev_SignDigest(t *testing.T) {
 	}
 
 	t.Run("refused", func(t *testing.T) {
-		generated, _ := km.GenerateKey(ctx, keymanager.KeyTypeRSA)
+		generated, _ := km.GenerateKey(ctx, keymanager.KeyTypeRSA, 0)
 		if _, err := km.SignDigest(ctx, generated.KMSKeyReference, []byte("not 32 bytes")); err == nil {
 			t.Fatal("a digest that is not SHA-256 sized must be refused")
 		}

@@ -186,10 +186,10 @@ func (k *KeyManager) holdToken(ctx context.Context, secret *vaultapi.Secret) {
 	}
 }
 
-func (k *KeyManager) GenerateKey(ctx context.Context, keyType keymanager.KeyType) (*keymanager.GeneratedKey, error) {
+func (k *KeyManager) GenerateKey(ctx context.Context, keyType keymanager.KeyType, rsaBits int) (*keymanager.GeneratedKey, error) {
 	name := uuid.NewString()
 
-	vaultType, err := toVaultKeyType(keyType)
+	vaultType, err := toVaultKeyType(keyType, rsaBits)
 	if err != nil {
 		return nil, err
 	}
@@ -360,10 +360,13 @@ func (k *KeyManager) path(op, name string) string {
 	return fmt.Sprintf("%s/%s/%s", k.mountPath, op, name)
 }
 
-func toVaultKeyType(t keymanager.KeyType) (string, error) {
+func toVaultKeyType(t keymanager.KeyType, rsaBits int) (string, error) {
 	switch t {
 	case keymanager.KeyTypeRSA:
-		return "rsa-2048", nil
+		if !keymanager.ValidRSABits(rsaBits) {
+			return "", fmt.Errorf("vault keymanager: unsupported RSA key size %d", rsaBits)
+		}
+		return fmt.Sprintf("rsa-%d", keymanager.RSABitsOrDefault(rsaBits)), nil
 	case keymanager.KeyTypeEC:
 		return "ecdsa-p256", nil
 	default:

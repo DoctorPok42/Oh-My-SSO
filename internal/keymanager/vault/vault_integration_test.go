@@ -39,7 +39,7 @@ func TestVaultIntegration_GenerateAndSign(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			generated, err := km.GenerateKey(ctx, tt.keyType)
+			generated, err := km.GenerateKey(ctx, tt.keyType, 0)
 			if err != nil {
 				t.Fatalf("GenerateKey: %v", err)
 			}
@@ -60,6 +60,36 @@ func TestVaultIntegration_GenerateAndSign(t *testing.T) {
 			}
 			verifySignature(t, tt.keyType, generated.PublicKeyPEM, payload, sig)
 		})
+	}
+}
+
+func TestVaultIntegration_RSAKeySize(t *testing.T) {
+	addr := os.Getenv("VAULT_ADDR")
+	token := os.Getenv("VAULT_TOKEN")
+	if addr == "" || token == "" {
+		t.Skip("VAULT_ADDR / VAULT_TOKEN not set — skipping Vault integration test")
+	}
+	km, err := vault.New(vault.Config{Address: addr, Token: token})
+	if err != nil {
+		t.Fatalf("vault.New: %v", err)
+	}
+
+	for bits, want := range map[int]int{0: 2048, 3072: 3072, 4096: 4096} {
+		generated, err := km.GenerateKey(context.Background(), keymanager.KeyTypeRSA, bits)
+		if err != nil {
+			t.Fatalf("GenerateKey(rsa, %d): %v", bits, err)
+		}
+		block, _ := pem.Decode([]byte(generated.PublicKeyPEM))
+		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := pub.(*rsa.PublicKey).N.BitLen(); got != want {
+			t.Errorf("rsa, %d bits asked: Vault made a %d-bit key, want %d", bits, got, want)
+		}
+	}
+	if _, err := km.GenerateKey(context.Background(), keymanager.KeyTypeRSA, 1024); err == nil {
+		t.Error("1024 bits must be refused")
 	}
 }
 

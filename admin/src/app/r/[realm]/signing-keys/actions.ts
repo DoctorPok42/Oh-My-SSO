@@ -5,7 +5,15 @@ import type { RotateResult, SigningKey } from "@/lib/types";
 
 export async function rotateKey(
   realm: string,
-  body: { purpose: string; key_type: string; grace_hours: number; compromised: boolean; reason: string },
+  body: {
+    purpose: string;
+    key_type: string;
+    /** 2048, 3072 or 4096; 0: the size of the current key. */
+    rsa_bits: number;
+    grace_hours: number;
+    compromised: boolean;
+    reason: string;
+  },
 ) {
   return act(() => api<RotateResult>(apiPath(["realms", realm, "signing-keys", "rotate"]), { method: "POST", body }));
 }

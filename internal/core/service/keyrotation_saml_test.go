@@ -184,8 +184,8 @@ func TestSAMLKey_RefusedInputs(t *testing.T) {
 // hashOnlyKM hides SignDigest: a KeyManager with only Sign.
 type hashOnlyKM struct{ km keymanager.KeyManager }
 
-func (h hashOnlyKM) GenerateKey(ctx context.Context, t keymanager.KeyType) (*keymanager.GeneratedKey, error) {
-	return h.km.GenerateKey(ctx, t)
+func (h hashOnlyKM) GenerateKey(ctx context.Context, t keymanager.KeyType, rsaBits int) (*keymanager.GeneratedKey, error) {
+	return h.km.GenerateKey(ctx, t, rsaBits)
 }
 func (h hashOnlyKM) Sign(ctx context.Context, ref string, payload []byte) ([]byte, error) {
 	return h.km.Sign(ctx, ref, payload)

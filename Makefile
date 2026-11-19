@@ -217,9 +217,9 @@ oidc-rotate-secret:
 keys-list:
 	$(IDP) keys list --realm $(realm)
 
-## keys-rotate: Rotate the JWT signing key of a realm
+## keys-rotate: Rotate the JWT signing key of a realm (make keys-rotate realm=demo [bits=3072])
 keys-rotate:
-	$(IDP) keys rotate --realm $(realm)
+	$(IDP) keys rotate --realm $(realm) $(if $(bits),--bits $(bits))
 
 ## keys-retire: Retire the keys whose grace period ended
 keys-retire:

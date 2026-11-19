@@ -510,7 +510,7 @@ func (f *coreFixture) addKey(t *testing.T, kt domain.SigningKeyType, purpose dom
 	if kt == domain.SigningKeyEC {
 		kmType = keymanager.KeyTypeEC
 	}
-	gen, err := f.km.GenerateKey(context.Background(), kmType)
+	gen, err := f.km.GenerateKey(context.Background(), kmType, 0)
 	require.NoError(t, err)
 	k := &domain.SigningKey{
 		ID: "id-" + kid, RealmID: realmA, KeyType: kt, Purpose: purpose, Status: status,

@@ -622,3 +622,34 @@ func claimsRealm(t *testing.T, e *adminTestEnv, name string) string {
 	require.NoError(t, err)
 	return r.ID
 }
+
+// The rotation endpoint takes the RSA key size (rsa_bits) and refuses the ones
+// no wallet creates, or a size for an EC key.
+func TestAdmin_Integration_RotateKeySize(t *testing.T) {
+	e := setupAdminTestEnv(t)
+	res, err := e.admin.Bootstrap(context.Background(), service.BootstrapInput{AdminEmail: "root@example.test",
+		AdminConsoleURL: adminConsoleURL, Actor: "cli:test@host"})
+	require.NoError(t, err)
+	e.activate(t, res.ActivationURL)
+	console := &oauth2.Config{ClientID: "sso-admin", ClientSecret: res.ClientSecret,
+		RedirectURL: adminConsoleURL + "/auth/callback", Scopes: []string{"openid", "profile", "email", "offline_access"},
+		Endpoint: oauth2.Endpoint{AuthURL: e.idp.URL + "/r/master/oidc/authorize", TokenURL: e.idp.URL + "/r/master/oidc/token",
+			AuthStyle: oauth2.AuthStyleInHeader}}
+	var secret string
+	at := e.signIn(t, console, "root", &secret).AccessToken
+	const rotate = "/api/v1/realms/master/signing-keys/rotate"
+
+	for name, body := range map[string]map[string]any{
+		"unsupported size":     {"rsa_bits": 1024},
+		"negative size":        {"rsa_bits": -1},
+		"a size for an EC key": {"key_type": "EC", "rsa_bits": 3072},
+	} {
+		status, out := e.call(t, at, http.MethodPost, rotate, body)
+		require.Equal(t, http.StatusBadRequest, status, "%s: %v", name, out)
+		require.Equal(t, "invalid_rsa_bits", out["error"], name)
+	}
+
+	status, out := e.call(t, at, http.MethodPost, rotate, map[string]any{"rsa_bits": 3072})
+	require.Equal(t, http.StatusOK, status, "%v", out)
+	require.Equal(t, "RSA", out["new_key"].(map[string]any)["key_type"])
+}

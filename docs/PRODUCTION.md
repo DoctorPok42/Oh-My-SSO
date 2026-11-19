@@ -366,7 +366,9 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   cookie of a past session): someone who only knows the identifier can no longer keep its owner out. A known device
   that typed the wrong passwords itself has its own counter and stays locked too. The "account locked" e-mail, the
   console status and **Unlock** are unchanged; unlocking lifts the lock everywhere.
-- **Key rotation**: `docker compose run --rm idp keys rotate --realm <realm>`, wait for tokens to expire, then
+- **Key rotation**: the signing key of each realm is rotated by itself once it is `key_rotation_interval_days` old
+  (Settings > Security; 90 by default, 0 = never) and the old one is retired after its grace period. By hand:
+  `docker compose run --rm idp keys rotate --realm <realm> [--bits 3072]`, wait for tokens to expire, then
   `keys retire`. SAML: `keys rotate --purpose saml_signing`, share the new metadata with service providers, then
   `keys activate --purpose saml_signing`.
 - **Break-glass** (lost admin access or console secret):
