@@ -172,6 +172,11 @@ type AdminDeps struct {
 	Outbox repository.EmailOutboxRepository
 	// EmailVerification: "send a verification e-mail". nil: refused.
 	EmailVerification *EmailVerificationService
+	// Rights: the time of the last change of the master realm, which the
+	// Admin API compares with its tokens (adminapi.RightsEpoch). A bulk job
+	// in master records each of its items, as a request would. nil: not
+	// recorded (outside idp-admin, no bulk jobs).
+	Rights RightsRecorder
 
 	// PublicURL of cmd/idp: base of activation links.
 	PublicURL string
@@ -185,6 +190,12 @@ type AdminDeps struct {
 
 	Now    func() time.Time
 	Logger *slog.Logger
+}
+
+// RightsRecorder records a change of the master realm at t; the time never
+// moves backwards.
+type RightsRecorder interface {
+	Changed(ctx context.Context, t time.Time) error
 }
 
 // AdminService implements the Admin API operations.

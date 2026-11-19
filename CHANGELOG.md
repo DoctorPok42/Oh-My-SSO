@@ -5,6 +5,38 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
 
 ## [Unreleased]
 
+## [1.0.0-rc.4] - 2026-11-19
+
+Administrators of the `master` realm sign in with a passkey or a security key only.
+
+### Manual steps
+- Every account of the `master` realm now needs a passkey or a security key. An administrator with only an
+  authenticator app (TOTP) types its code at the next sign-in, then must add a passkey or a security key before the
+  admin console opens: check that each administrator has a device for it before updating. WebAuthn only works over
+  HTTPS (or `localhost`), with `WEBAUTHN_RP_ID` and `WEBAUTHN_RP_ORIGINS` set. An administrator who loses their only
+  key gets a new account with `idp-admin recover admin`: backup codes are not enough in `master` any more.
+
+### Changed
+- `master` realm: a phishing-resistant second factor (passkey or security key) is always required, whatever its
+  settings, for sign-in, the admin console and step-up (audit F-19). The e-mail alert on a sign-in from a new device
+  was already on by default there (security e-mails are turned on by the bootstrap).
+- `idp doctor` checks WebAuthn: `WEBAUTHN_RP_ID` and `WEBAUTHN_RP_ORIGINS` against `PUBLIC_URL`, and the stored MFA
+  policies of `master` that allow no passkey or security key (they fail every sign-in they apply to; run it before
+  and after the update).
+- In `master`, a client or role MFA policy whose list of methods has no passkey or security key is refused when it
+  is saved (`the master realm only accepts passkeys and security keys`). It could only fail every sign-in with a
+  policy conflict.
+
+### Fixed
+- The bulk reset of second factors reads which accounts have one in a single query, not one per account.
+- Bulk add or removal of a group or a role: one read of the selection's memberships instead of one per account, and
+  each account's link to that group or role is written alone. Before, the whole list was rewritten, which could undo a
+  change made to the same account at the same time. The audit entries of these bulk actions now say
+  `{"group_id": ..., "added": true|false}` (or `role_id`) instead of the account's full `group_ids` / `role_ids`.
+- A bulk action in the `master` realm runs after its request has answered: an administrator's token issued while it
+  ran could keep a permission one of its items took away. Each item now records a change of rights before and after
+  it, as a request does; when Valkey cannot record it, the item is refused (`rights_paused`) and left unchanged.
+
 ## [1.0.0-rc.3] - 2026-11-19
 
 Automatic signing key rotation and RSA key sizes.

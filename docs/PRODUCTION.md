@@ -94,7 +94,7 @@ cp .env.example .env && chmod 600 .env
 | --- | --- |
 | `APP_ENV` | `production` |
 | `PUBLIC_URL` | `https://sso.example.com`. The console's issuer is `PUBLIC_URL/r/master` |
-| `WEBAUTHN_RP_ID`, `WEBAUTHN_RP_ORIGINS` | `sso.example.com`, `https://sso.example.com`. Changing the RP ID later invalidates every registered passkey: choose it once |
+| `WEBAUTHN_RP_ID`, `WEBAUTHN_RP_ORIGINS` | `sso.example.com`, `https://sso.example.com`. **Required**: the master realm accepts only passkeys and security keys. Changing the RP ID later invalidates every registered passkey: choose it once |
 | `POSTGRES_PASSWORD`, `POSTGRES_HOST` | `openssl rand -hex 32`, `postgres`. `DATABASE_URL` is built from them |
 | `VALKEY_ADDR`, `VALKEY_PASSWORD` | `valkey:6379`, `openssl rand -hex 32`. The `valkey` service of `compose.yml` takes the same password |
 | `KEYMANAGER_BACKEND`, `OVHKMS_*` | `ovhkms` and the KMS access (section 2); delete the `VAULT_*` lines |
@@ -387,7 +387,8 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   applies the migrations, without the backup `deploy.sh` takes): database and schema version, clock drift against PostgreSQL, Valkey, the key
   manager (a real signature with the master realm's key), SMTP (connection, STARTTLS and AUTH, nothing sent), SPF and
   DKIM of the `SMTP_FROM` domain (DKIM only under the usual selectors), `PUBLIC_URL` (the master realm's discovery
-  answers with the same issuer, TLS certificate valid for 14 more days), `TRUSTED_PROXIES`, the GeoIP database.
+  answers with the same issuer, TLS certificate valid for 14 more days), `TRUSTED_PROXIES`, WebAuthn (RP ID and
+  origins against `PUBLIC_URL`, and the MFA policies of master that allow no passkey), the GeoIP database.
   Run it after each change of `.env`, and when something fails.
 - **Metrics**: `METRICS_ADDR=:9100` serves Prometheus `GET /metrics` on that port of `idp` and `idp-admin`, outside
   the public server: scrape it from a Prometheus on their Docker network, never through nginx. Metrics:
@@ -413,6 +414,8 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
 - [ ] `ADMIN_API_ALLOWED_CIDRS` = the console only; console restricted (VPN / allow-list)
 - [ ] Master realm: IP allowlist set to the administrators' networks (Settings > Security), your own address in it
 - [ ] SMTP with TLS, `mail test` received, alerts enabled on each realm
-- [ ] `WEBAUTHN_RP_ID` final
+- [ ] `WEBAUTHN_RP_ID` final, with `WEBAUTHN_RP_ORIGINS` = `PUBLIC_URL`: every account of the master realm signs in with a
+  passkey or a security key only, so without them nobody can open the console (`idp doctor` checks this, and the
+  MFA policies of master). A lost key is replaced with `idp-admin recover admin`: backup codes do not work there
 - [ ] `IMAGE_*` pinned to a commit sha, the same one for `idp`, `idp-admin` and `migrate`
 - [ ] `dev seed`, the test SAML SP, default passwords and `dev-root-token` all gone

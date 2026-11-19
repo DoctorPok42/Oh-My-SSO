@@ -108,6 +108,7 @@ func openMFAEnv(ctx context.Context, realmName string) (*mfaEnv, error) {
 	env.realm = realm
 	env.users = entstore.NewUserRepository(client)
 	env.policy = service.NewMFAPolicyService(service.MFAPolicyDeps{
+		Realms:   entstore.NewRealmRepository(client),
 		Settings: entstore.NewInstanceSettingsRepository(client),
 		Clients:  entstore.NewClientRepository(client),
 		Roles:    entstore.NewRoleRepository(client),

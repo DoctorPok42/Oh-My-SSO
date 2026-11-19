@@ -150,7 +150,8 @@ func NewKeyManager() (keymanager.KeyManager, string, error) {
 func Passkeys() service.PasskeyProvider {
 	rpID := os.Getenv("WEBAUTHN_RP_ID")
 	if rpID == "" {
-		slog.Info("passkeys: disabled (set WEBAUTHN_RP_ID and WEBAUTHN_RP_ORIGINS to enable them)")
+		// master accepts only passkeys and security keys: its accounts cannot sign in.
+		slog.Warn("passkeys: disabled (set WEBAUTHN_RP_ID and WEBAUTHN_RP_ORIGINS to enable them): the accounts of the master realm cannot sign in")
 		return nil
 	}
 	var origins []string

@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -243,6 +245,29 @@ func TestAdmin_Integration_BulkGuards(t *testing.T) {
 	requireBulk(t, status, out, 0, 1, 0)
 	require.Equal(t, "self_change", bulkItem(t, out, root)["code"])
 
+	// Another administrator can be taken out of the administrators; you
+	// cannot. Only that link goes: a second pass finds nothing to remove.
+	status, out = e.call(t, at, http.MethodPost, master+"/users", map[string]any{"email": "second@example.test", "send_email": false})
+	require.Equal(t, http.StatusCreated, status, "%v", out)
+	second := out["user"].(map[string]any)["id"].(string)
+	status, groups := e.call(t, at, http.MethodGet, master+"/groups", nil)
+	require.Equal(t, http.StatusOK, status)
+	var admins string
+	for _, g := range groups["items"].([]any) {
+		if g.(map[string]any)["name"] == "admins" {
+			admins = g.(map[string]any)["id"].(string)
+		}
+	}
+	status, out = e.call(t, at, http.MethodPut, master+"/users/"+second+"/groups", map[string]any{"group_ids": []string{admins}})
+	require.Equal(t, http.StatusOK, status, "%v", out)
+	removeAdmins := map[string]any{"action": "remove_group", "ids": []string{root, second}, "group_id": admins}
+	status, out = e.call(t, at, http.MethodPost, master+"/users/bulk", removeAdmins)
+	requireBulk(t, status, out, 1, 1, 0)
+	require.Equal(t, "self_change", bulkItem(t, out, root)["code"])
+	status, out = e.call(t, at, http.MethodPost, master+"/users/bulk", removeAdmins)
+	requireBulk(t, status, out, 0, 2, 0)
+	require.Equal(t, "not_member", bulkItem(t, out, second)["code"])
+
 	// And so is the session the call comes from.
 	status, sessions := e.call(t, at, http.MethodGet, master+"/sessions", nil)
 	require.Equal(t, http.StatusOK, status)
@@ -376,4 +401,69 @@ func TestAdmin_Integration_BulkWithoutEmail(t *testing.T) {
 	status, out = e.call(t, at, http.MethodPost, bulkUsers, map[string]any{"action": "resend_invite", "ids": []string{bob}})
 	requireBulk(t, status, out, 0, 1, 0)
 	require.Equal(t, "email_disabled", bulkItem(t, out, bob)["code"])
+}
+
+// fakeRights is a RightsRecorder that counts its calls, and fails on demand
+// (Valkey unreachable).
+type fakeRights struct {
+	mu    sync.Mutex
+	calls int
+	fail  bool
+}
+
+func (r *fakeRights) Changed(context.Context, time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.calls++
+	if r.fail {
+		return errors.New("valkey unreachable")
+	}
+	return nil
+}
+
+func (r *fakeRights) state() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.calls
+}
+
+func (r *fakeRights) setFail(fail bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.fail = fail
+}
+
+// A bulk job in master runs after its request has answered: each item
+// records a change of rights before and after it, as a request would, so that
+// a token issued meanwhile is not trusted with what the job takes away.
+func TestAdmin_Integration_BulkRecordsRightsChanges(t *testing.T) {
+	rights := &fakeRights{}
+	e, at := userImportEnv(t, func(d *service.AdminDeps) { d.Rights = rights })
+	const master = "/api/v1/realms/master"
+
+	ids := make([]string, 2)
+	for i := range ids {
+		status, out := e.call(t, at, http.MethodPost, master+"/users", map[string]any{"email": fmt.Sprintf("ops%d@example.test", i), "send_email": false})
+		require.Equal(t, http.StatusCreated, status, "%v", out)
+		ids[i] = out["user"].(map[string]any)["id"].(string)
+	}
+	before := rights.state()
+	status, out := e.call(t, at, http.MethodPost, master+"/users/bulk", map[string]any{"action": "suspend", "ids": ids})
+	requireBulk(t, status, out, 2, 0, 0)
+	require.Equal(t, before+4, rights.state(), "before and after each of the 2 items")
+
+	// Another realm holds no rights to the console: nothing recorded.
+	status, out = e.call(t, at, http.MethodPost, bulkUsers, map[string]any{"action": "suspend", "ids": []string{e.invite(t, at, "dana")}})
+	requireBulk(t, status, out, 1, 0, 0)
+	require.Equal(t, before+4, rights.state())
+
+	// Cannot be recorded: the item is refused and left as it was.
+	rights.setFail(true)
+	reactivate := map[string]any{"action": "reactivate", "ids": ids[:1]}
+	status, out = e.call(t, at, http.MethodPost, master+"/users/bulk", reactivate)
+	requireBulk(t, status, out, 0, 1, 0)
+	require.Equal(t, "rights_paused", bulkItem(t, out, ids[0])["code"])
+	rights.setFail(false)
+	status, out = e.call(t, at, http.MethodPost, master+"/users/bulk", reactivate)
+	requireBulk(t, status, out, 1, 0, 0) // still suspended until now, not "already active"
 }

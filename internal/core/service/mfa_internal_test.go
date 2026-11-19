@@ -113,6 +113,19 @@ func TestResolveMFARequirement(t *testing.T) {
 			wantErr: ErrMFAPolicyConflict,
 		},
 		{
+			name:         "master realm: required, phishing-resistant factors only, even with MFA off in the settings",
+			in:           mfaPolicyInput{AdminRealm: true, Settings: &domain.InstanceSettings{}},
+			wantRequired: true, wantAllowed: methods(domain.MfaMethodWebAuthn, passkey), wantSources: []string{"realm:master"},
+		},
+		{
+			name: "master realm: a client allowing TOTP does not relax it",
+			in: mfaPolicyInput{
+				AdminRealm: true,
+				Client:     &domain.ClientApp{ClientID: "sso-admin", MFAPolicy: domain.ClientAppMFARequired, MFAAllowedMethods: methods(totp, passkey)},
+			},
+			wantRequired: true, wantAllowed: methods(passkey), wantSources: []string{"realm:master", "client:sso-admin"},
+		},
+		{
 			name:       "step-up flag of a role is reported even if MFA is not required",
 			in:         mfaPolicyInput{RolePolicies: []*domain.MfaPolicy{{RoleID: "r1", StepUpForSensitiveActions: true}}},
 			wantStepUp: true,

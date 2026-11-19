@@ -26,6 +26,14 @@ type AdminRepository interface {
 	Memberships(ctx context.Context, userIDs []string) (map[string]Memberships, error)
 	SetUserGroups(ctx context.Context, userID string, groupIDs []string) error
 	SetUserRoles(ctx context.Context, userID string, roleIDs []string) error
+	// AddUserGroup, AddUserRole, RemoveUserGroup, RemoveUserRole: one link,
+	// and a link already there (or already gone) is no error. Unlike the
+	// Set* methods they leave the user's other links alone, so a change made
+	// at the same time is never written over.
+	AddUserGroup(ctx context.Context, userID, groupID string) error
+	RemoveUserGroup(ctx context.Context, userID, groupID string) error
+	AddUserRole(ctx context.Context, userID, roleID string) error
+	RemoveUserRole(ctx context.Context, userID, roleID string) error
 	// ActiveGroupMemberIDs: members of the group whose account is active.
 	ActiveGroupMemberIDs(ctx context.Context, groupID string) ([]string, error)
 	// GroupMemberCounts / RoleMemberCounts: number of (not deleted) users

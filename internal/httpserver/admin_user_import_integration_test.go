@@ -32,8 +32,7 @@ func userImportEnv(t *testing.T, options ...func(*service.AdminDeps)) (e *adminT
 		RedirectURL: adminConsoleURL + "/auth/callback", Scopes: []string{"openid", "profile", "email", "offline_access"},
 		Endpoint: oauth2.Endpoint{AuthURL: e.idp.URL + "/r/master/oidc/authorize", TokenURL: e.idp.URL + "/r/master/oidc/token",
 			AuthStyle: oauth2.AuthStyleInHeader}}
-	var secret string
-	at = e.signIn(t, console, "root", &secret).AccessToken
+	at = e.signIn(t, console, "root").AccessToken
 
 	status, out := e.call(t, at, http.MethodPost, "/api/v1/realms", map[string]any{"name": "demo", "display_name": "Demo Corp"})
 	require.Equal(t, http.StatusCreated, status, "%v", out)
