@@ -418,6 +418,8 @@ export type Settings = {
   mfa_required_globally: boolean;
   mfa_step_up_max_age_minutes: number;
   key_rotation_grace_hours: number;
+  /** Age (days) at which the signing key is rotated automatically; 0: never. */
+  key_rotation_interval_days: number;
   /** The most items one bulk action may touch (1 to 500). */
   bulk_limit: number;
   /** How long ended sessions, tokens, links, sign-in attempts… are kept before they are deleted (7 to 3650 days). */

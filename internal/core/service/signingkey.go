@@ -26,6 +26,10 @@ var (
 	// ErrSAMLKeyMustBeRSA: RSA-SHA256 is the only signature algorithm every
 	// SAML service provider supports, so saml_signing keys are RSA.
 	ErrSAMLKeyMustBeRSA = errors.New("service: saml_signing keys must be RSA")
+	// ErrInvalidRSABits: the size is not one the wallets create (2048, 3072, 4096).
+	ErrInvalidRSABits = errors.New("service: RSA key size must be 2048, 3072 or 4096")
+	// ErrRSABitsNeedsRSA: a size was given for an EC key.
+	ErrRSABitsNeedsRSA = errors.New("service: a key size only applies to RSA keys")
 )
 
 const samlCertificateValidity = 10 * 365 * 24 * time.Hour
@@ -35,6 +39,8 @@ type GenerateSigningKeyParams struct {
 	KeyType domain.SigningKeyType
 	Purpose domain.SigningKeyPurpose
 	Status domain.SigningKeyStatus
+	// RSABits is the size of an RSA key: 2048, 3072 or 4096 (0: 2048).
+	RSABits int
 	// Now is the clock used for the certificate dates (nil: time.Now).
 	Now func() time.Time
 }
@@ -50,6 +56,9 @@ func GenerateSigningKey(
 	if err != nil {
 		return nil, err
 	}
+	if err := checkRSABits(params.KeyType, params.RSABits); err != nil {
+		return nil, err
+	}
 	saml := params.Purpose == domain.SigningKeyPurposeSAMLSigning
 	if saml {
 		if params.KeyType != domain.SigningKeyRSA {
@@ -61,7 +70,7 @@ func GenerateSigningKey(
 		}
 	}
 
-	generated, err := km.GenerateKey(ctx, kmType)
+	generated, err := km.GenerateKey(ctx, kmType, params.RSABits)
 	if err != nil {
 		return nil, fmt.Errorf("generate signing key: %w", err)
 	}
@@ -138,6 +147,31 @@ func selfSignedCertificate(ctx context.Context, ds keymanager.DigestSigner, key 
 		return "", err
 	}
 	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})), nil
+}
+
+// checkRSABits: 0 or a supported size, and only for an RSA key.
+func checkRSABits(t domain.SigningKeyType, bits int) error {
+	if !keymanager.ValidRSABits(bits) {
+		return ErrInvalidRSABits
+	}
+	if bits != 0 && t != domain.SigningKeyRSA {
+		return ErrRSABitsNeedsRSA
+	}
+	return nil
+}
+
+// rsaBitsOf is the size of an RSA public key, 0 when it is not one of the
+// supported sizes or not RSA (the wallet default then applies).
+func rsaBitsOf(publicKeyPEM string) int {
+	pub, err := parsePublicKeyPEM(publicKeyPEM)
+	if err != nil {
+		return 0
+	}
+	rsaPub, ok := pub.(*rsa.PublicKey)
+	if !ok || !keymanager.ValidRSABits(rsaPub.N.BitLen()) {
+		return 0
+	}
+	return rsaPub.N.BitLen()
 }
 
 func parsePublicKeyPEM(s string) (crypto.PublicKey, error) {

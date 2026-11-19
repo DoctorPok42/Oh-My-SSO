@@ -141,6 +141,7 @@ func keysRotate(ctx context.Context, args []string, out io.Writer) error {
 	realmName := fs.String("realm", "", "realm name (required)")
 	purpose := fs.String("purpose", string(domain.SigningKeyPurposeJWT), "jwt_signing (OIDC) or saml_signing (SAML, two-step rotation)")
 	keyType := fs.String("type", "", "type of the new key: RSA or EC (default: same as the current key, RSA if none)")
+	bits := fs.Int("bits", 0, "size of a new RSA key: 2048, 3072 or 4096 (default: same as the current key, 2048 if none)")
 	grace := fs.Duration("grace", 0, "grace period of the old key, e.g. 48h (default: the realm's key_rotation_grace_hours)")
 	reason := fs.String("reason", "", "free text written to KeyRotationLog (required with --compromised)")
 	compromised := fs.Bool("compromised", false, "EMERGENCY: retire every previous key now, without grace period")
@@ -177,6 +178,7 @@ func keysRotate(ctx context.Context, args []string, out io.Writer) error {
 		RealmID:     env.realm.ID,
 		Purpose:     domain.SigningKeyPurpose(*purpose),
 		KeyType:     domain.SigningKeyType(*keyType),
+		RSABits:     *bits,
 		Grace:       *grace,
 		Compromised: *compromised,
 		TriggeredBy: cliActor(),

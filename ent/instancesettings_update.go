@@ -293,6 +293,47 @@ func (_u *InstanceSettingsUpdate) AddKeyRotationGraceHours(v int) *InstanceSetti
 	return _u
 }
 
+// SetKeyRotationIntervalDays sets the "key_rotation_interval_days" field.
+func (_u *InstanceSettingsUpdate) SetKeyRotationIntervalDays(v int) *InstanceSettingsUpdate {
+	_u.mutation.ResetKeyRotationIntervalDays()
+	_u.mutation.SetKeyRotationIntervalDays(v)
+	return _u
+}
+
+// SetNillableKeyRotationIntervalDays sets the "key_rotation_interval_days" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableKeyRotationIntervalDays(v *int) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetKeyRotationIntervalDays(*v)
+	}
+	return _u
+}
+
+// AddKeyRotationIntervalDays adds value to the "key_rotation_interval_days" field.
+func (_u *InstanceSettingsUpdate) AddKeyRotationIntervalDays(v int) *InstanceSettingsUpdate {
+	_u.mutation.AddKeyRotationIntervalDays(v)
+	return _u
+}
+
+// SetKeyRotationClaimedUntil sets the "key_rotation_claimed_until" field.
+func (_u *InstanceSettingsUpdate) SetKeyRotationClaimedUntil(v time.Time) *InstanceSettingsUpdate {
+	_u.mutation.SetKeyRotationClaimedUntil(v)
+	return _u
+}
+
+// SetNillableKeyRotationClaimedUntil sets the "key_rotation_claimed_until" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableKeyRotationClaimedUntil(v *time.Time) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetKeyRotationClaimedUntil(*v)
+	}
+	return _u
+}
+
+// ClearKeyRotationClaimedUntil clears the value of the "key_rotation_claimed_until" field.
+func (_u *InstanceSettingsUpdate) ClearKeyRotationClaimedUntil() *InstanceSettingsUpdate {
+	_u.mutation.ClearKeyRotationClaimedUntil()
+	return _u
+}
+
 // SetMfaStepUpMaxAgeMinutes sets the "mfa_step_up_max_age_minutes" field.
 func (_u *InstanceSettingsUpdate) SetMfaStepUpMaxAgeMinutes(v int) *InstanceSettingsUpdate {
 	_u.mutation.ResetMfaStepUpMaxAgeMinutes()
@@ -702,6 +743,18 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if value, ok := _u.mutation.AddedKeyRotationGraceHours(); ok {
 		_spec.AddField(instancesettings.FieldKeyRotationGraceHours, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.KeyRotationIntervalDays(); ok {
+		_spec.SetField(instancesettings.FieldKeyRotationIntervalDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedKeyRotationIntervalDays(); ok {
+		_spec.AddField(instancesettings.FieldKeyRotationIntervalDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.KeyRotationClaimedUntil(); ok {
+		_spec.SetField(instancesettings.FieldKeyRotationClaimedUntil, field.TypeTime, value)
+	}
+	if _u.mutation.KeyRotationClaimedUntilCleared() {
+		_spec.ClearField(instancesettings.FieldKeyRotationClaimedUntil, field.TypeTime)
+	}
 	if value, ok := _u.mutation.MfaStepUpMaxAgeMinutes(); ok {
 		_spec.SetField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)
 	}
@@ -1054,6 +1107,47 @@ func (_u *InstanceSettingsUpdateOne) SetNillableKeyRotationGraceHours(v *int) *I
 // AddKeyRotationGraceHours adds value to the "key_rotation_grace_hours" field.
 func (_u *InstanceSettingsUpdateOne) AddKeyRotationGraceHours(v int) *InstanceSettingsUpdateOne {
 	_u.mutation.AddKeyRotationGraceHours(v)
+	return _u
+}
+
+// SetKeyRotationIntervalDays sets the "key_rotation_interval_days" field.
+func (_u *InstanceSettingsUpdateOne) SetKeyRotationIntervalDays(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.ResetKeyRotationIntervalDays()
+	_u.mutation.SetKeyRotationIntervalDays(v)
+	return _u
+}
+
+// SetNillableKeyRotationIntervalDays sets the "key_rotation_interval_days" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableKeyRotationIntervalDays(v *int) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetKeyRotationIntervalDays(*v)
+	}
+	return _u
+}
+
+// AddKeyRotationIntervalDays adds value to the "key_rotation_interval_days" field.
+func (_u *InstanceSettingsUpdateOne) AddKeyRotationIntervalDays(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.AddKeyRotationIntervalDays(v)
+	return _u
+}
+
+// SetKeyRotationClaimedUntil sets the "key_rotation_claimed_until" field.
+func (_u *InstanceSettingsUpdateOne) SetKeyRotationClaimedUntil(v time.Time) *InstanceSettingsUpdateOne {
+	_u.mutation.SetKeyRotationClaimedUntil(v)
+	return _u
+}
+
+// SetNillableKeyRotationClaimedUntil sets the "key_rotation_claimed_until" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableKeyRotationClaimedUntil(v *time.Time) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetKeyRotationClaimedUntil(*v)
+	}
+	return _u
+}
+
+// ClearKeyRotationClaimedUntil clears the value of the "key_rotation_claimed_until" field.
+func (_u *InstanceSettingsUpdateOne) ClearKeyRotationClaimedUntil() *InstanceSettingsUpdateOne {
+	_u.mutation.ClearKeyRotationClaimedUntil()
 	return _u
 }
 
@@ -1495,6 +1589,18 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.AddedKeyRotationGraceHours(); ok {
 		_spec.AddField(instancesettings.FieldKeyRotationGraceHours, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.KeyRotationIntervalDays(); ok {
+		_spec.SetField(instancesettings.FieldKeyRotationIntervalDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedKeyRotationIntervalDays(); ok {
+		_spec.AddField(instancesettings.FieldKeyRotationIntervalDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.KeyRotationClaimedUntil(); ok {
+		_spec.SetField(instancesettings.FieldKeyRotationClaimedUntil, field.TypeTime, value)
+	}
+	if _u.mutation.KeyRotationClaimedUntilCleared() {
+		_spec.ClearField(instancesettings.FieldKeyRotationClaimedUntil, field.TypeTime)
 	}
 	if value, ok := _u.mutation.MfaStepUpMaxAgeMinutes(); ok {
 		_spec.SetField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)

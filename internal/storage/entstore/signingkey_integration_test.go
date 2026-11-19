@@ -2,6 +2,8 @@ package entstore_test
 
 import (
 	"context"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -99,6 +101,59 @@ func TestInstanceSettings_KeyRotationGraceHours(t *testing.T) {
 	s, err = repo.Update(ctx, s.ID, repository.UpdateInstanceSettingsParams{KeyRotationGraceHours: &hours})
 	require.NoError(t, err)
 	require.Equal(t, 72, s.KeyRotationGraceHours)
+}
+
+func TestInstanceSettings_KeyRotationInterval_AndClaim(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	realm := newTestRealm(t, ctx, client)
+	repo := entstore.NewInstanceSettingsRepository(client)
+
+	// No settings row: nothing to claim.
+	now := time.Now().Truncate(time.Microsecond) // Postgres precision
+	ok, err := repo.ClaimKeyRotation(ctx, realm.ID, now, now.Add(15*time.Minute))
+	require.NoError(t, err)
+	require.False(t, ok)
+
+	s, err := repo.Create(ctx, repository.CreateInstanceSettingsParams{RealmID: realm.ID})
+	require.NoError(t, err)
+	require.Equal(t, 90, s.KeyRotationIntervalDays, "column default")
+
+	days := 30
+	s, err = repo.Update(ctx, s.ID, repository.UpdateInstanceSettingsParams{KeyRotationIntervalDays: &days})
+	require.NoError(t, err)
+	require.Equal(t, 30, s.KeyRotationIntervalDays)
+
+	before, err := repo.GetByRealmID(ctx, realm.ID)
+	require.NoError(t, err)
+
+	// Of several instances claiming at once, exactly one wins.
+	var wins atomic.Int32
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if ok, err := repo.ClaimKeyRotation(ctx, realm.ID, now, now.Add(15*time.Minute)); err == nil && ok {
+				wins.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	require.EqualValues(t, 1, wins.Load())
+
+	// A claim is not a settings change: "Last change" must not move.
+	after, err := repo.GetByRealmID(ctx, realm.ID)
+	require.NoError(t, err)
+	require.True(t, before.UpdatedAt.Equal(after.UpdatedAt), "updated_at moved: %s -> %s", before.UpdatedAt, after.UpdatedAt)
+
+	// Held until its deadline, free after it.
+	ok, err = repo.ClaimKeyRotation(ctx, realm.ID, now.Add(14*time.Minute), now.Add(30*time.Minute))
+	require.NoError(t, err)
+	require.False(t, ok)
+	ok, err = repo.ClaimKeyRotation(ctx, realm.ID, now.Add(16*time.Minute), now.Add(31*time.Minute))
+	require.NoError(t, err)
+	require.True(t, ok)
 }
 
 // The whole rotation, on Postgres: service + Ent repositories + local_dev KMS.

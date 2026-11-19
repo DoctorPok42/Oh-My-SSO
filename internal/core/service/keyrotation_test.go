@@ -25,18 +25,35 @@ const (
 // rotSettings returns a fixed InstanceSettings (or an error).
 type rotSettings struct {
 	repository.InstanceSettingsRepository
-	graceHours int
-	err        error
+	graceHours   int
+	intervalDays int
+	err          error
+	claimedUntil time.Time // ClaimKeyRotation: held until then
+	created      int       // calls to Create
 }
 
 func (f *rotSettings) GetByRealmID(_ context.Context, realmID string) (*domain.InstanceSettings, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
-	if f.graceHours == 0 {
+	if f.graceHours == 0 && f.intervalDays == 0 {
 		return nil, repository.ErrNotFound
 	}
-	return &domain.InstanceSettings{RealmID: realmID, KeyRotationGraceHours: f.graceHours}, nil
+	return &domain.InstanceSettings{RealmID: realmID, KeyRotationGraceHours: f.graceHours, KeyRotationIntervalDays: f.intervalDays}, nil
+}
+
+// Create gives the realm the column defaults (90 days), like the real table.
+func (f *rotSettings) Create(context.Context, repository.CreateInstanceSettingsParams) (*domain.InstanceSettings, error) {
+	f.intervalDays, f.created = 90, f.created+1
+	return &domain.InstanceSettings{KeyRotationIntervalDays: 90}, nil
+}
+
+func (f *rotSettings) ClaimKeyRotation(_ context.Context, _ string, now, until time.Time) (bool, error) {
+	if now.Before(f.claimedUntil) {
+		return false, nil
+	}
+	f.claimedUntil = until
+	return true, nil
 }
 
 // failingLogs fails every write: used to check partial failures.
@@ -58,7 +75,12 @@ type rotFixture struct {
 	core     *service.IdentityCoreService
 }
 
-func newRotFixture(t *testing.T) *rotFixture {
+func newRotFixture(t *testing.T) *rotFixture { return newRotFixtureOn(t, "local_dev") }
+
+// newRotFixtureOn names the backend stored on the keys. The key manager is
+// always the in-process local_dev one; RotateDue refuses the name "local_dev"
+// (its keys would not be shared between servers), so its tests use another.
+func newRotFixtureOn(t *testing.T, backend string) *rotFixture {
 	t.Helper()
 	f := &rotFixture{now: time.Date(2026, 10, 16, 9, 0, 0, 0, time.UTC)}
 	clock := func() time.Time { return f.now }
@@ -66,7 +88,7 @@ func newRotFixture(t *testing.T) *rotFixture {
 	f.logs = memstore.NewKeyRotationLogs(clock)
 	f.settings = &rotSettings{}
 	f.km = localdev.New("test")
-	f.rot = service.NewKeyRotationService(f.keys, f.logs, f.settings, f.km, "local_dev",
+	f.rot = service.NewKeyRotationService(f.keys, f.logs, f.settings, f.km, backend,
 		service.WithKeyRotationClock(clock))
 	// Signer and PublicKeys only need the keys and the KeyManager.
 	f.core = service.NewIdentityCore(service.IdentityCoreDeps{SigningKeys: f.keys, KeyManager: f.km},
@@ -343,7 +365,7 @@ func TestRotate_ConcurrentRotationsNewestWins(t *testing.T) {
 
 	// Rotation B already created its key a bit "in the future" of rotation A
 	// (both run at the same time; B's key happens to be the most recent).
-	gen, err := f.km.GenerateKey(context.Background(), "rsa")
+	gen, err := f.km.GenerateKey(context.Background(), "rsa", 0)
 	require.NoError(t, err)
 	f.keys.Add(&domain.SigningKey{ID: "kb", RealmID: rotRealm, Kid: "kid-b", KeyType: domain.SigningKeyRSA,
 		Purpose: domain.SigningKeyPurposeJWT, Status: domain.SigningKeyActive, KMSKeyReference: gen.KMSKeyReference,
@@ -397,4 +419,100 @@ func TestVerificationKeys(t *testing.T) {
 		kids = append(kids, k.Kid)
 	}
 	require.Equal(t, []string{"new-active", "in-grace", "old-active", "legacy-rotating"}, kids)
+}
+
+func TestRotateDue(t *testing.T) {
+	ctx := context.Background()
+	day := 24 * time.Hour
+
+	t.Run("a key older than the interval is rotated, as the system", func(t *testing.T) {
+		f := newRotFixtureOn(t, "vault")
+		f.settings.intervalDays = 90
+		first := f.rotate(t, service.RotateInput{}).NewKey
+		f.advance(91 * day)
+
+		rotated, err := f.rot.RotateDue(ctx, rotRealm)
+		require.NoError(t, err)
+		require.True(t, rotated)
+
+		require.NotEqual(t, first.Kid, f.signerKid(t), "a new key signs")
+		require.Equal(t, domain.SigningKeyRotating, f.key(t, first.Kid).Status, "the old one enters its grace period")
+		logs := f.logs.All()
+		created := logs[len(logs)-2] // then "rotated" for the old key
+		require.Equal(t, domain.KeyRotationCreated, created.Action)
+		require.Equal(t, "system", created.TriggeredBy)
+		require.Contains(t, created.Reason, "90 days")
+	})
+
+	// Same setup (a first key, then time passes), one reason not to rotate each.
+	for _, c := range []struct {
+		name     string
+		backend  string
+		interval int  // key_rotation_interval_days
+		grace    int  // a settings row exists even with interval 0
+		days     int  // age of the key
+		claimed  bool // another instance holds the claim
+	}{
+		{name: "a younger key is left alone", backend: "vault", interval: 90, days: 89},
+		{name: "0 turns it off", backend: "vault", grace: 24, days: 1000},
+		{name: "local_dev keys are never rotated by itself", backend: "local_dev", interval: 90, days: 1000},
+		{name: "another instance holds the claim: this one does not rotate", backend: "vault", interval: 90, days: 91, claimed: true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			f := newRotFixtureOn(t, c.backend)
+			f.settings.intervalDays, f.settings.graceHours = c.interval, c.grace
+			first := f.rotate(t, service.RotateInput{}).NewKey
+			f.advance(time.Duration(c.days) * day)
+			if c.claimed {
+				f.settings.claimedUntil = f.now.Add(time.Minute)
+			}
+
+			rotated, err := f.rot.RotateDue(ctx, rotRealm)
+			require.NoError(t, err)
+			require.False(t, rotated)
+			require.Equal(t, first.Kid, f.signerKid(t))
+		})
+	}
+
+	t.Run("no key: nothing to do (an empty realm gets its first key elsewhere)", func(t *testing.T) {
+		f := newRotFixtureOn(t, "vault")
+		f.settings.intervalDays = 90
+		rotated, err := f.rot.RotateDue(ctx, rotRealm)
+		require.NoError(t, err)
+		require.False(t, rotated)
+	})
+
+	t.Run("a realm without a settings row gets one, with the 90-day default", func(t *testing.T) {
+		f := newRotFixtureOn(t, "vault")
+		first := f.rotate(t, service.RotateInput{}).NewKey // no settings row yet
+		require.Zero(t, f.settings.created)
+		f.advance(91 * day)
+
+		rotated, err := f.rot.RotateDue(ctx, rotRealm)
+		require.NoError(t, err)
+		require.True(t, rotated)
+		require.Equal(t, 1, f.settings.created)
+		require.NotEqual(t, first.Kid, f.signerKid(t))
+	})
+
+	t.Run("two ticks in a row rotate once", func(t *testing.T) {
+		f := newRotFixtureOn(t, "vault")
+		f.settings.intervalDays = 90
+		f.rotate(t, service.RotateInput{})
+		f.advance(91 * day)
+
+		rotated, err := f.rot.RotateDue(ctx, rotRealm)
+		require.NoError(t, err)
+		require.True(t, rotated)
+		rotated, err = f.rot.RotateDue(ctx, rotRealm)
+		require.NoError(t, err)
+		require.False(t, rotated)
+	})
+
+	t.Run("a settings read error is returned", func(t *testing.T) {
+		f := newRotFixtureOn(t, "vault")
+		f.settings.err = errors.New("db down")
+		_, err := f.rot.RotateDue(ctx, rotRealm)
+		require.ErrorContains(t, err, "db down")
+	})
 }

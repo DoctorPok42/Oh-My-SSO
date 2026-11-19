@@ -137,6 +137,16 @@ func KeyRotationGraceHours(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldKeyRotationGraceHours, v))
 }
 
+// KeyRotationIntervalDays applies equality check predicate on the "key_rotation_interval_days" field. It's identical to KeyRotationIntervalDaysEQ.
+func KeyRotationIntervalDays(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldKeyRotationIntervalDays, v))
+}
+
+// KeyRotationClaimedUntil applies equality check predicate on the "key_rotation_claimed_until" field. It's identical to KeyRotationClaimedUntilEQ.
+func KeyRotationClaimedUntil(v time.Time) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldKeyRotationClaimedUntil, v))
+}
+
 // MfaStepUpMaxAgeMinutes applies equality check predicate on the "mfa_step_up_max_age_minutes" field. It's identical to MfaStepUpMaxAgeMinutesEQ.
 func MfaStepUpMaxAgeMinutes(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldMfaStepUpMaxAgeMinutes, v))
@@ -764,6 +774,96 @@ func KeyRotationGraceHoursLT(v int) predicate.InstanceSettings {
 // KeyRotationGraceHoursLTE applies the LTE predicate on the "key_rotation_grace_hours" field.
 func KeyRotationGraceHoursLTE(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldLTE(FieldKeyRotationGraceHours, v))
+}
+
+// KeyRotationIntervalDaysEQ applies the EQ predicate on the "key_rotation_interval_days" field.
+func KeyRotationIntervalDaysEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldKeyRotationIntervalDays, v))
+}
+
+// KeyRotationIntervalDaysNEQ applies the NEQ predicate on the "key_rotation_interval_days" field.
+func KeyRotationIntervalDaysNEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldKeyRotationIntervalDays, v))
+}
+
+// KeyRotationIntervalDaysIn applies the In predicate on the "key_rotation_interval_days" field.
+func KeyRotationIntervalDaysIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldKeyRotationIntervalDays, vs...))
+}
+
+// KeyRotationIntervalDaysNotIn applies the NotIn predicate on the "key_rotation_interval_days" field.
+func KeyRotationIntervalDaysNotIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldKeyRotationIntervalDays, vs...))
+}
+
+// KeyRotationIntervalDaysGT applies the GT predicate on the "key_rotation_interval_days" field.
+func KeyRotationIntervalDaysGT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldKeyRotationIntervalDays, v))
+}
+
+// KeyRotationIntervalDaysGTE applies the GTE predicate on the "key_rotation_interval_days" field.
+func KeyRotationIntervalDaysGTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldKeyRotationIntervalDays, v))
+}
+
+// KeyRotationIntervalDaysLT applies the LT predicate on the "key_rotation_interval_days" field.
+func KeyRotationIntervalDaysLT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldKeyRotationIntervalDays, v))
+}
+
+// KeyRotationIntervalDaysLTE applies the LTE predicate on the "key_rotation_interval_days" field.
+func KeyRotationIntervalDaysLTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldKeyRotationIntervalDays, v))
+}
+
+// KeyRotationClaimedUntilEQ applies the EQ predicate on the "key_rotation_claimed_until" field.
+func KeyRotationClaimedUntilEQ(v time.Time) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldKeyRotationClaimedUntil, v))
+}
+
+// KeyRotationClaimedUntilNEQ applies the NEQ predicate on the "key_rotation_claimed_until" field.
+func KeyRotationClaimedUntilNEQ(v time.Time) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldKeyRotationClaimedUntil, v))
+}
+
+// KeyRotationClaimedUntilIn applies the In predicate on the "key_rotation_claimed_until" field.
+func KeyRotationClaimedUntilIn(vs ...time.Time) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldKeyRotationClaimedUntil, vs...))
+}
+
+// KeyRotationClaimedUntilNotIn applies the NotIn predicate on the "key_rotation_claimed_until" field.
+func KeyRotationClaimedUntilNotIn(vs ...time.Time) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldKeyRotationClaimedUntil, vs...))
+}
+
+// KeyRotationClaimedUntilGT applies the GT predicate on the "key_rotation_claimed_until" field.
+func KeyRotationClaimedUntilGT(v time.Time) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldKeyRotationClaimedUntil, v))
+}
+
+// KeyRotationClaimedUntilGTE applies the GTE predicate on the "key_rotation_claimed_until" field.
+func KeyRotationClaimedUntilGTE(v time.Time) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldKeyRotationClaimedUntil, v))
+}
+
+// KeyRotationClaimedUntilLT applies the LT predicate on the "key_rotation_claimed_until" field.
+func KeyRotationClaimedUntilLT(v time.Time) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldKeyRotationClaimedUntil, v))
+}
+
+// KeyRotationClaimedUntilLTE applies the LTE predicate on the "key_rotation_claimed_until" field.
+func KeyRotationClaimedUntilLTE(v time.Time) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldKeyRotationClaimedUntil, v))
+}
+
+// KeyRotationClaimedUntilIsNil applies the IsNil predicate on the "key_rotation_claimed_until" field.
+func KeyRotationClaimedUntilIsNil() predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIsNull(FieldKeyRotationClaimedUntil))
+}
+
+// KeyRotationClaimedUntilNotNil applies the NotNil predicate on the "key_rotation_claimed_until" field.
+func KeyRotationClaimedUntilNotNil() predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotNull(FieldKeyRotationClaimedUntil))
 }
 
 // MfaStepUpMaxAgeMinutesEQ applies the EQ predicate on the "mfa_step_up_max_age_minutes" field.

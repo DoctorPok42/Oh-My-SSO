@@ -68,14 +68,19 @@ func New(cfg Config) (*KeyManager, error) {
 	}, nil
 }
 
-func (k *KeyManager) GenerateKey(ctx context.Context, keyType keymanager.KeyType) (*keymanager.GeneratedKey, error) {
+func (k *KeyManager) GenerateKey(ctx context.Context, keyType keymanager.KeyType, rsaBits int) (*keymanager.GeneratedKey, error) {
 	ops := []types.CryptographicUsages{types.Sign, types.Verify}
 
 	var resp *types.GetServiceKeyResponse
 	var err error
 	switch keyType {
 	case keymanager.KeyTypeRSA:
-		resp, err = k.client.GenerateRSAKeyPair(ctx, k.okmsID, types.N2048, "sso-signing-key", types.SOFTWARE, "", ops)
+		if !keymanager.ValidRSABits(rsaBits) {
+			return nil, fmt.Errorf("ovhkms keymanager: unsupported RSA key size %d", rsaBits)
+		}
+		// KeySizes is the number of bits itself (N2048 = 2048...).
+		size := types.KeySizes(keymanager.RSABitsOrDefault(rsaBits))
+		resp, err = k.client.GenerateRSAKeyPair(ctx, k.okmsID, size, "sso-signing-key", types.SOFTWARE, "", ops)
 	case keymanager.KeyTypeEC:
 		resp, err = k.client.GenerateECKeyPair(ctx, k.okmsID, types.P256, "sso-signing-key", types.SOFTWARE, "", ops)
 	default:

@@ -50,6 +50,13 @@ func (InstanceSettings) Fields() []ent.Field {
 		// stays in the JWKS so tokens it signed can still be verified. Must
 		// be longer than the longest token lifetime plus the JWKS cache time.
 		field.Int("key_rotation_grace_hours").Default(24),
+		// The jwt_signing key is rotated automatically once it is this old
+		// (1 to 3650 days); 0 turns automatic rotation off.
+		field.Int("key_rotation_interval_days").Default(90),
+		// Held by the instance that is rotating the key, so that only one
+		// does it (see InstanceSettingsRepository.ClaimKeyRotation). Past
+		// value or nil: free.
+		field.Time("key_rotation_claimed_until").Optional().Nillable(),
 		// How long a second-factor verification counts as "recent" for
 		// sensitive actions (step-up), e.g. rotating a signing key or
 		// removing an MFA factor.

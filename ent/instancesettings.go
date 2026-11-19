@@ -50,6 +50,10 @@ type InstanceSettings struct {
 	NotificationEmailEnabled bool `json:"notification_email_enabled,omitempty"`
 	// KeyRotationGraceHours holds the value of the "key_rotation_grace_hours" field.
 	KeyRotationGraceHours int `json:"key_rotation_grace_hours,omitempty"`
+	// KeyRotationIntervalDays holds the value of the "key_rotation_interval_days" field.
+	KeyRotationIntervalDays int `json:"key_rotation_interval_days,omitempty"`
+	// KeyRotationClaimedUntil holds the value of the "key_rotation_claimed_until" field.
+	KeyRotationClaimedUntil *time.Time `json:"key_rotation_claimed_until,omitempty"`
 	// MfaStepUpMaxAgeMinutes holds the value of the "mfa_step_up_max_age_minutes" field.
 	MfaStepUpMaxAgeMinutes int `json:"mfa_step_up_max_age_minutes,omitempty"`
 	// MfaTrustedDeviceEnabled holds the value of the "mfa_trusted_device_enabled" field.
@@ -117,11 +121,11 @@ func (*InstanceSettings) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case instancesettings.FieldRememberMeEnabled, instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled, instancesettings.FieldMfaTrustedDeviceEnabled, instancesettings.FieldSuspiciousLoginEmailEnabled:
 			values[i] = new(sql.NullBool)
-		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldMfaTrustedDeviceDays, instancesettings.FieldPasswordResetTTLMinutes, instancesettings.FieldInviteTTLHours, instancesettings.FieldBulkLimit, instancesettings.FieldExpiredDataRetentionDays, instancesettings.FieldAuditLogRetentionDays:
+		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldKeyRotationIntervalDays, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldMfaTrustedDeviceDays, instancesettings.FieldPasswordResetTTLMinutes, instancesettings.FieldInviteTTLHours, instancesettings.FieldBulkLimit, instancesettings.FieldExpiredDataRetentionDays, instancesettings.FieldAuditLogRetentionDays:
 			values[i] = new(sql.NullInt64)
 		case instancesettings.FieldID, instancesettings.FieldRealmID, instancesettings.FieldManagedBy, instancesettings.FieldDefaultLocale, instancesettings.FieldMailFromName, instancesettings.FieldMailFromAddress, instancesettings.FieldMailReplyTo, instancesettings.FieldMailLogoURL, instancesettings.FieldUpdatedBy:
 			values[i] = new(sql.NullString)
-		case instancesettings.FieldUpdatedAt:
+		case instancesettings.FieldKeyRotationClaimedUntil, instancesettings.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -235,6 +239,19 @@ func (_m *InstanceSettings) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field key_rotation_grace_hours", values[i])
 			} else if value.Valid {
 				_m.KeyRotationGraceHours = int(value.Int64)
+			}
+		case instancesettings.FieldKeyRotationIntervalDays:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field key_rotation_interval_days", values[i])
+			} else if value.Valid {
+				_m.KeyRotationIntervalDays = int(value.Int64)
+			}
+		case instancesettings.FieldKeyRotationClaimedUntil:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field key_rotation_claimed_until", values[i])
+			} else if value.Valid {
+				_m.KeyRotationClaimedUntil = new(time.Time)
+				*_m.KeyRotationClaimedUntil = value.Time
 			}
 		case instancesettings.FieldMfaStepUpMaxAgeMinutes:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -417,6 +434,14 @@ func (_m *InstanceSettings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("key_rotation_grace_hours=")
 	builder.WriteString(fmt.Sprintf("%v", _m.KeyRotationGraceHours))
+	builder.WriteString(", ")
+	builder.WriteString("key_rotation_interval_days=")
+	builder.WriteString(fmt.Sprintf("%v", _m.KeyRotationIntervalDays))
+	builder.WriteString(", ")
+	if v := _m.KeyRotationClaimedUntil; v != nil {
+		builder.WriteString("key_rotation_claimed_until=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("mfa_step_up_max_age_minutes=")
 	builder.WriteString(fmt.Sprintf("%v", _m.MfaStepUpMaxAgeMinutes))

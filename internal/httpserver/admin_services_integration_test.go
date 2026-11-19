@@ -135,6 +135,8 @@ func TestAdminService_Integration(t *testing.T) {
 		for name, patch := range map[string]service.SettingsPatch{
 			"password length":      {MinPasswordLength: ptr(3)},
 			"key grace":            {KeyRotationGraceHours: ptr(0)},
+			"key interval < 0":     {KeyRotationIntervalDays: ptr(-1)},
+			"key interval too big": {KeyRotationIntervalDays: ptr(service.MaxKeyRotationIntervalDays + 1)},
 			"ip entry":             {IPAllowlist: ptr([]string{"not-an-ip"})},
 			"locale":               {DefaultLocale: ptr("xx-nowhere")},
 			"remember idle>max":    {RememberMeIdleDays: ptr(40), RememberMeMaxDays: ptr(30)},
@@ -160,11 +162,12 @@ func TestAdminService_Integration(t *testing.T) {
 			SessionIdleMinutes: ptr(45), SessionMaxHours: ptr(12), RememberMeEnabled: ptr(true), RememberMeIdleDays: ptr(3),
 			RememberMeMaxDays: ptr(20), LockoutThreshold: ptr(4), LockoutDurationMinutes: ptr(15),
 			IPAllowlist: ptr([]string{"10.0.0.0/8", " ", "192.0.2.7"}), MFARequiredGlobally: ptr(true), MFAStepUpMaxAgeMinutes: ptr(15),
-			KeyRotationGraceHours: ptr(48), NotificationEmailEnabled: ptr(false), SuspiciousLoginEmailEnabled: ptr(false),
+			KeyRotationGraceHours: ptr(48), KeyRotationIntervalDays: ptr(60), NotificationEmailEnabled: ptr(false), SuspiciousLoginEmailEnabled: ptr(false),
 			DefaultLocale: ptr("fr"), AuditLogRetentionDays: ptr(365),
 		})
 		require.NoError(t, err)
 		require.Equal(t, 14, after.MinPasswordLength)
+		require.Equal(t, 60, after.KeyRotationIntervalDays)
 		require.Equal(t, 365, after.AuditLogRetentionDays)
 		require.Equal(t, []string{"10.0.0.0/8", "192.0.2.7"}, after.IPAllowlist)
 		require.Equal(t, "fr", after.DefaultLocale)

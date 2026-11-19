@@ -320,3 +320,23 @@ func TestJWKS_NotMountedWithoutOption(t *testing.T) {
 	srv.Router().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/acme/.well-known/jwks.json", nil))
 	require.Equal(t, http.StatusNotFound, rec.Code)
 }
+
+// Every size a rotation may ask for ends up in the JWKS, and the new key signs
+// tokens that a client verifies from the published JSON only.
+func TestJWKS_RSAKeySizes(t *testing.T) {
+	for _, bits := range []int{3072, 4096} {
+		t.Run(fmt.Sprint(bits), func(t *testing.T) {
+			f := newJWKSFixture(t)
+			res, err := f.rot.Rotate(context.Background(), service.RotateInput{RealmID: f.realm.ID, TriggeredBy: "test", RSABits: bits})
+			require.NoError(t, err)
+
+			set := f.fetchJWKS(t)
+			jwk, ok := set.Find(res.NewKey.Kid)
+			require.True(t, ok, "the new key is published")
+			pub, err := jwk.PublicKey()
+			require.NoError(t, err)
+			require.Equal(t, bits, pub.(*rsa.PublicKey).N.BitLen())
+			require.NoError(t, verifyJWT(f.signJWT(t, "alice"), set))
+		})
+	}
+}

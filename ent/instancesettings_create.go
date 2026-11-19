@@ -216,6 +216,34 @@ func (_c *InstanceSettingsCreate) SetNillableKeyRotationGraceHours(v *int) *Inst
 	return _c
 }
 
+// SetKeyRotationIntervalDays sets the "key_rotation_interval_days" field.
+func (_c *InstanceSettingsCreate) SetKeyRotationIntervalDays(v int) *InstanceSettingsCreate {
+	_c.mutation.SetKeyRotationIntervalDays(v)
+	return _c
+}
+
+// SetNillableKeyRotationIntervalDays sets the "key_rotation_interval_days" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableKeyRotationIntervalDays(v *int) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetKeyRotationIntervalDays(*v)
+	}
+	return _c
+}
+
+// SetKeyRotationClaimedUntil sets the "key_rotation_claimed_until" field.
+func (_c *InstanceSettingsCreate) SetKeyRotationClaimedUntil(v time.Time) *InstanceSettingsCreate {
+	_c.mutation.SetKeyRotationClaimedUntil(v)
+	return _c
+}
+
+// SetNillableKeyRotationClaimedUntil sets the "key_rotation_claimed_until" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableKeyRotationClaimedUntil(v *time.Time) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetKeyRotationClaimedUntil(*v)
+	}
+	return _c
+}
+
 // SetMfaStepUpMaxAgeMinutes sets the "mfa_step_up_max_age_minutes" field.
 func (_c *InstanceSettingsCreate) SetMfaStepUpMaxAgeMinutes(v int) *InstanceSettingsCreate {
 	_c.mutation.SetMfaStepUpMaxAgeMinutes(v)
@@ -546,6 +574,10 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultKeyRotationGraceHours
 		_c.mutation.SetKeyRotationGraceHours(v)
 	}
+	if _, ok := _c.mutation.KeyRotationIntervalDays(); !ok {
+		v := instancesettings.DefaultKeyRotationIntervalDays
+		_c.mutation.SetKeyRotationIntervalDays(v)
+	}
 	if _, ok := _c.mutation.MfaStepUpMaxAgeMinutes(); !ok {
 		v := instancesettings.DefaultMfaStepUpMaxAgeMinutes
 		_c.mutation.SetMfaStepUpMaxAgeMinutes(v)
@@ -660,6 +692,9 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.KeyRotationGraceHours(); !ok {
 		return &ValidationError{Name: "key_rotation_grace_hours", err: errors.New(`ent: missing required field "InstanceSettings.key_rotation_grace_hours"`)}
+	}
+	if _, ok := _c.mutation.KeyRotationIntervalDays(); !ok {
+		return &ValidationError{Name: "key_rotation_interval_days", err: errors.New(`ent: missing required field "InstanceSettings.key_rotation_interval_days"`)}
 	}
 	if _, ok := _c.mutation.MfaStepUpMaxAgeMinutes(); !ok {
 		return &ValidationError{Name: "mfa_step_up_max_age_minutes", err: errors.New(`ent: missing required field "InstanceSettings.mfa_step_up_max_age_minutes"`)}
@@ -804,6 +839,14 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.KeyRotationGraceHours(); ok {
 		_spec.SetField(instancesettings.FieldKeyRotationGraceHours, field.TypeInt, value)
 		_node.KeyRotationGraceHours = value
+	}
+	if value, ok := _c.mutation.KeyRotationIntervalDays(); ok {
+		_spec.SetField(instancesettings.FieldKeyRotationIntervalDays, field.TypeInt, value)
+		_node.KeyRotationIntervalDays = value
+	}
+	if value, ok := _c.mutation.KeyRotationClaimedUntil(); ok {
+		_spec.SetField(instancesettings.FieldKeyRotationClaimedUntil, field.TypeTime, value)
+		_node.KeyRotationClaimedUntil = &value
 	}
 	if value, ok := _c.mutation.MfaStepUpMaxAgeMinutes(); ok {
 		_spec.SetField(instancesettings.FieldMfaStepUpMaxAgeMinutes, field.TypeInt, value)

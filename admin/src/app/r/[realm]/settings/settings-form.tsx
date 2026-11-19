@@ -296,6 +296,14 @@ export function SettingsForm({
                     t("settings.rotation.grace", "Default key rotation grace (hours)"),
                     t("settings.rotation.grace_hint", "How long a rotated signing key stays published."),
                   )}
+                  {num(
+                    "key_rotation_interval_days",
+                    t("settings.rotation.interval", "Automatic key rotation (days)"),
+                    t(
+                      "settings.rotation.interval_hint",
+                      "The key that signs tokens is rotated by itself when it reaches this age. 0: no automatic rotation.",
+                    ),
+                  )}
                 </div>
               </Card>
             </div>
