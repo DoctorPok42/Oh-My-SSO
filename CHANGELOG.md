@@ -5,6 +5,10 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
 
 ## [Unreleased]
 
+## [1.0.0-rc.2] - 2026-11-19
+
+Logs, metrics and diagnostics.
+
 ### Manual steps
 - `compose.yml`: copy the `x-logging` block of `compose.example.yml` and its `logging: *logging` line into each
   service, then `docker compose up -d` (it recreates the containers). `idp` now writes one line per request, and
