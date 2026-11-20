@@ -83,16 +83,22 @@ export async function signInOnIdP(page: Page, a: Account, consoleURL: string) {
   }
   // The page opens the passkey prompt by itself, or waits for "Continue"
   // (a step-up, or a ticked "don't ask again"): click it when it is offered.
-  for (let i = 0; i < 40 && !page.url().startsWith(consoleURL); i++) {
-    if (
-      (await passkey.isVisible()) &&
-      (await passkey.isEnabled()) &&
-      (await passkey.innerText()).trim() === "Continue"
-    ) {
-      await passkey.click().catch(() => undefined);
-    }
-    await page.waitForTimeout(250);
-  }
+  await expect
+    .poll(
+      async () => {
+        if (
+          !page.url().startsWith(consoleURL) &&
+          (await passkey.isVisible()) &&
+          (await passkey.isEnabled()) &&
+          (await passkey.innerText()).trim() === "Continue"
+        ) {
+          await passkey.click().catch(() => undefined);
+        }
+        return page.url().startsWith(consoleURL);
+      },
+      { intervals: [250], timeout: 10_000 },
+    )
+    .toBe(true);
   await back;
   await keepKey(page, a);
 }
