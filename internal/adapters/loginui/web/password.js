@@ -15,6 +15,7 @@
     password_too_long: t("password.js.error.password_too_long", "This password is too long."),
     password_matches_identity: t("password.js.error.password_matches_identity", "Your password must not be your username or e-mail."),
     password_compromised: t("password.js.error.password_compromised", "This password is too common or appeared in a data breach. Choose another one."),
+    password_reused: t("password.js.error.password_reused", "You used this password recently. Choose another one."),
     password_unchanged: t("password.js.error.password_unchanged", "Choose a password different from the current one."),
     passwords_differ: t("password.js.error.passwords_differ", "The two passwords are not the same."),
   };

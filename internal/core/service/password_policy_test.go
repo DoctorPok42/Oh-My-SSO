@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -89,6 +90,50 @@ func TestPasswordPolicy(t *testing.T) {
 		p.Breach = &fakeBreach{err: errors.New("timeout")}
 		require.NoError(t, p.Validate(ctx, "r", "a leaked passphrase", user))
 		require.ErrorIs(t, p.Validate(ctx, "r", "password1234", user), service.ErrPasswordCompromised, "the local list still applies")
+	})
+
+	t.Run("history: the last N passwords are refused, the current one included", func(t *testing.T) {
+		u := &domain.User{
+			RealmID: "r", Username: "erin", PasswordHash: legacyHash(t, "current passphrase"),
+			PasswordHistory: []string{legacyHash(t, "previous passphrase"), legacyHash(t, "oldest passphrase")},
+		}
+		p := service.NewPasswordPolicyService(&memSettings{s: &domain.InstanceSettings{PasswordHistoryCount: 2}})
+		require.ErrorIs(t, p.Validate(ctx, "r", "current passphrase", u), service.ErrPasswordReused)
+		require.ErrorIs(t, p.Validate(ctx, "r", "previous passphrase", u), service.ErrPasswordReused)
+		require.NoError(t, p.Validate(ctx, "r", "oldest passphrase", u), "the 3rd one is beyond the last 2")
+		require.NoError(t, p.Validate(ctx, "r", "a fresh passphrase", u))
+
+		off := service.NewPasswordPolicyService(&memSettings{s: &domain.InstanceSettings{}})
+		require.NoError(t, off.Validate(ctx, "r", "previous passphrase", u), "off by default")
+	})
+
+	t.Run("history: what a change keeps", func(t *testing.T) {
+		u := &domain.User{RealmID: "r", PasswordHash: "h3", PasswordHistory: []string{"h2", "h1"}}
+		now := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+
+		upd := service.NewPasswordPolicyService(&memSettings{s: &domain.InstanceSettings{PasswordHistoryCount: 3}}).PasswordChange(ctx, u, "h4", now)
+		require.Equal(t, "h4", *upd.PasswordHash)
+		require.Equal(t, now, *upd.PasswordChangedAt)
+		require.Equal(t, []string{"h3", "h2"}, *upd.PasswordHistory, "with h4 itself: the last 3")
+
+		off := service.NewPasswordPolicyService(&memSettings{s: &domain.InstanceSettings{}}).PasswordChange(ctx, u, "h4", now)
+		require.NotNil(t, off.PasswordHistory)
+		require.Empty(t, *off.PasswordHistory, "off: what was kept is dropped")
+
+		first := service.NewPasswordPolicyService(&memSettings{s: &domain.InstanceSettings{PasswordHistoryCount: 3}}).PasswordChange(ctx, &domain.User{RealmID: "r"}, "h1", now)
+		require.Empty(t, *first.PasswordHistory, "no password before: nothing to keep")
+	})
+
+	t.Run("expiry", func(t *testing.T) {
+		now := time.Now()
+		changed := func(daysAgo int) *domain.User {
+			return &domain.User{RealmID: "r", PasswordChangedAt: now.AddDate(0, 0, -daysAgo)}
+		}
+		p := service.NewPasswordPolicyService(&memSettings{s: &domain.InstanceSettings{PasswordExpiryDays: 90}})
+		require.False(t, p.PasswordExpired(ctx, changed(89), now))
+		require.True(t, p.PasswordExpired(ctx, changed(91), now))
+		require.False(t, p.PasswordExpired(ctx, &domain.User{RealmID: "r"}, now), "no change time known: never expires")
+		require.False(t, service.NewPasswordPolicyService(nil).PasswordExpired(ctx, changed(1000), now), "0: never")
 	})
 
 	t.Run("the error carries the limits", func(t *testing.T) {

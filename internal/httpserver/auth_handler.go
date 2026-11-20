@@ -32,8 +32,8 @@ const (
 type loginRequest struct {
 	Identifier string `json:"identifier"`
 	Password   string `json:"password"`
-	ClientID string `json:"client_id,omitempty"`
-	EntityID string `json:"entity_id,omitempty"`
+	ClientID   string `json:"client_id,omitempty"`
+	EntityID   string `json:"entity_id,omitempty"`
 	// RememberMe: "Keep me signed in" is ticked. Ignored when the realm
 	// does not offer it.
 	RememberMe bool `json:"remember_me,omitempty"`
@@ -115,6 +115,32 @@ func (s *Server) rememberPasswordChoice(r *http.Request, realmID string, user *d
 	})
 }
 
+// writeLoginError answers a refused password sign-in. The states below the
+// password (timeout, forced or expired password) are only returned after a
+// correct password: saying so reveals nothing to someone who does not know it,
+// and the attempt is given back.
+func (s *Server) writeLoginError(w http.ResponseWriter, r *http.Request, attempt ratelimit.Reservation, err error) {
+	var locked *service.AccountLockedError
+	switch {
+	case errors.As(err, &locked):
+		writeRetryAfter(w, locked.Until)
+	case errors.Is(err, service.ErrTimeoutActive):
+		s.releaseLogin(r, attempt)
+		writeTimeoutError(w, err)
+	case errors.Is(err, service.ErrPasswordChangeRequired):
+		s.releaseLogin(r, attempt)
+		writeError(w, http.StatusForbidden, "password_change_required")
+	case errors.Is(err, service.ErrPasswordExpired):
+		s.releaseLogin(r, attempt)
+		writeError(w, http.StatusForbidden, "password_expired")
+	case errors.Is(err, service.ErrInvalidCredentials),
+		errors.Is(err, service.ErrAccountNotActive):
+		writeError(w, http.StatusUnauthorized, "invalid_credentials")
+	default:
+		writeError(w, http.StatusInternalServerError, "internal_error")
+	}
+}
+
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	realm := realmFromContext(r)
 
@@ -159,24 +185,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		DeviceFingerprint: service.DeviceFingerprint(deviceIDFromRequest(r)),
 	})
 	if err != nil {
-		var locked *service.AccountLockedError
-		switch {
-		case errors.As(err, &locked):
-			writeRetryAfter(w, locked.Until)
-		case errors.Is(err, service.ErrTimeoutActive):
-			// Only returned after a correct password: saying so reveals
-			// nothing to someone who does not know it.
-			s.releaseLogin(r, attempt)
-			writeTimeoutError(w, err)
-		case errors.Is(err, service.ErrPasswordChangeRequired):
-			s.releaseLogin(r, attempt)
-			writeError(w, http.StatusForbidden, "password_change_required")
-		case errors.Is(err, service.ErrInvalidCredentials),
-			errors.Is(err, service.ErrAccountNotActive):
-			writeError(w, http.StatusUnauthorized, "invalid_credentials")
-		default:
-			writeError(w, http.StatusInternalServerError, "internal_error")
-		}
+		s.writeLoginError(w, r, attempt, err)
 		return
 	}
 	s.releaseLogin(r, attempt)

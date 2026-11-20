@@ -23,6 +23,8 @@ const (
 	FieldMinPasswordLength = "min_password_length"
 	// FieldPasswordExpiryDays holds the string denoting the password_expiry_days field in the database.
 	FieldPasswordExpiryDays = "password_expiry_days"
+	// FieldPasswordHistoryCount holds the string denoting the password_history_count field in the database.
+	FieldPasswordHistoryCount = "password_history_count"
 	// FieldPasswordBreachCheckEnabled holds the string denoting the password_breach_check_enabled field in the database.
 	FieldPasswordBreachCheckEnabled = "password_breach_check_enabled"
 	// FieldSessionIdleMinutes holds the string denoting the session_idle_minutes field in the database.
@@ -103,6 +105,7 @@ var Columns = []string{
 	FieldManagedBy,
 	FieldMinPasswordLength,
 	FieldPasswordExpiryDays,
+	FieldPasswordHistoryCount,
 	FieldPasswordBreachCheckEnabled,
 	FieldSessionIdleMinutes,
 	FieldSessionMaxHours,
@@ -154,6 +157,8 @@ var (
 	DefaultMinPasswordLength int
 	// DefaultPasswordExpiryDays holds the default value on creation for the "password_expiry_days" field.
 	DefaultPasswordExpiryDays int
+	// DefaultPasswordHistoryCount holds the default value on creation for the "password_history_count" field.
+	DefaultPasswordHistoryCount int
 	// DefaultPasswordBreachCheckEnabled holds the default value on creation for the "password_breach_check_enabled" field.
 	DefaultPasswordBreachCheckEnabled bool
 	// DefaultSessionIdleMinutes holds the default value on creation for the "session_idle_minutes" field.
@@ -242,6 +247,11 @@ func ByMinPasswordLength(opts ...sql.OrderTermOption) OrderOption {
 // ByPasswordExpiryDays orders the results by the password_expiry_days field.
 func ByPasswordExpiryDays(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPasswordExpiryDays, opts...).ToFunc()
+}
+
+// ByPasswordHistoryCount orders the results by the password_history_count field.
+func ByPasswordHistoryCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPasswordHistoryCount, opts...).ToFunc()
 }
 
 // ByPasswordBreachCheckEnabled orders the results by the password_breach_check_enabled field.

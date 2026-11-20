@@ -86,6 +86,27 @@ func (_u *InstanceSettingsUpdate) AddPasswordExpiryDays(v int) *InstanceSettings
 	return _u
 }
 
+// SetPasswordHistoryCount sets the "password_history_count" field.
+func (_u *InstanceSettingsUpdate) SetPasswordHistoryCount(v int) *InstanceSettingsUpdate {
+	_u.mutation.ResetPasswordHistoryCount()
+	_u.mutation.SetPasswordHistoryCount(v)
+	return _u
+}
+
+// SetNillablePasswordHistoryCount sets the "password_history_count" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillablePasswordHistoryCount(v *int) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetPasswordHistoryCount(*v)
+	}
+	return _u
+}
+
+// AddPasswordHistoryCount adds value to the "password_history_count" field.
+func (_u *InstanceSettingsUpdate) AddPasswordHistoryCount(v int) *InstanceSettingsUpdate {
+	_u.mutation.AddPasswordHistoryCount(v)
+	return _u
+}
+
 // SetPasswordBreachCheckEnabled sets the "password_breach_check_enabled" field.
 func (_u *InstanceSettingsUpdate) SetPasswordBreachCheckEnabled(v bool) *InstanceSettingsUpdate {
 	_u.mutation.SetPasswordBreachCheckEnabled(v)
@@ -695,6 +716,12 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if value, ok := _u.mutation.AddedPasswordExpiryDays(); ok {
 		_spec.AddField(instancesettings.FieldPasswordExpiryDays, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.PasswordHistoryCount(); ok {
+		_spec.SetField(instancesettings.FieldPasswordHistoryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedPasswordHistoryCount(); ok {
+		_spec.AddField(instancesettings.FieldPasswordHistoryCount, field.TypeInt, value)
+	}
 	if value, ok := _u.mutation.PasswordBreachCheckEnabled(); ok {
 		_spec.SetField(instancesettings.FieldPasswordBreachCheckEnabled, field.TypeBool, value)
 	}
@@ -917,6 +944,27 @@ func (_u *InstanceSettingsUpdateOne) SetNillablePasswordExpiryDays(v *int) *Inst
 // AddPasswordExpiryDays adds value to the "password_expiry_days" field.
 func (_u *InstanceSettingsUpdateOne) AddPasswordExpiryDays(v int) *InstanceSettingsUpdateOne {
 	_u.mutation.AddPasswordExpiryDays(v)
+	return _u
+}
+
+// SetPasswordHistoryCount sets the "password_history_count" field.
+func (_u *InstanceSettingsUpdateOne) SetPasswordHistoryCount(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.ResetPasswordHistoryCount()
+	_u.mutation.SetPasswordHistoryCount(v)
+	return _u
+}
+
+// SetNillablePasswordHistoryCount sets the "password_history_count" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillablePasswordHistoryCount(v *int) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetPasswordHistoryCount(*v)
+	}
+	return _u
+}
+
+// AddPasswordHistoryCount adds value to the "password_history_count" field.
+func (_u *InstanceSettingsUpdateOne) AddPasswordHistoryCount(v int) *InstanceSettingsUpdateOne {
+	_u.mutation.AddPasswordHistoryCount(v)
 	return _u
 }
 
@@ -1558,6 +1606,12 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.AddedPasswordExpiryDays(); ok {
 		_spec.AddField(instancesettings.FieldPasswordExpiryDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.PasswordHistoryCount(); ok {
+		_spec.SetField(instancesettings.FieldPasswordHistoryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedPasswordHistoryCount(); ok {
+		_spec.AddField(instancesettings.FieldPasswordHistoryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.PasswordBreachCheckEnabled(); ok {
 		_spec.SetField(instancesettings.FieldPasswordBreachCheckEnabled, field.TypeBool, value)

@@ -60,6 +60,26 @@ func (_c *UserCreate) SetNillablePasswordHash(v *string) *UserCreate {
 	return _c
 }
 
+// SetPasswordChangedAt sets the "password_changed_at" field.
+func (_c *UserCreate) SetPasswordChangedAt(v time.Time) *UserCreate {
+	_c.mutation.SetPasswordChangedAt(v)
+	return _c
+}
+
+// SetNillablePasswordChangedAt sets the "password_changed_at" field if the given value is not nil.
+func (_c *UserCreate) SetNillablePasswordChangedAt(v *time.Time) *UserCreate {
+	if v != nil {
+		_c.SetPasswordChangedAt(*v)
+	}
+	return _c
+}
+
+// SetPasswordHistory sets the "password_history" field.
+func (_c *UserCreate) SetPasswordHistory(v []string) *UserCreate {
+	_c.mutation.SetPasswordHistory(v)
+	return _c
+}
+
 // SetMustChangePassword sets the "must_change_password" field.
 func (_c *UserCreate) SetMustChangePassword(v bool) *UserCreate {
 	_c.mutation.SetMustChangePassword(v)
@@ -474,6 +494,10 @@ func (_c *UserCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *UserCreate) defaults() {
+	if _, ok := _c.mutation.PasswordChangedAt(); !ok {
+		v := user.DefaultPasswordChangedAt()
+		_c.mutation.SetPasswordChangedAt(v)
+	}
 	if _, ok := _c.mutation.MustChangePassword(); !ok {
 		v := user.DefaultMustChangePassword
 		_c.mutation.SetMustChangePassword(v)
@@ -521,6 +545,9 @@ func (_c *UserCreate) check() error {
 		if err := user.UsernameValidator(v); err != nil {
 			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "User.username": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.PasswordChangedAt(); !ok {
+		return &ValidationError{Name: "password_changed_at", err: errors.New(`ent: missing required field "User.password_changed_at"`)}
 	}
 	if _, ok := _c.mutation.MustChangePassword(); !ok {
 		return &ValidationError{Name: "must_change_password", err: errors.New(`ent: missing required field "User.must_change_password"`)}
@@ -598,6 +625,14 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.PasswordHash(); ok {
 		_spec.SetField(user.FieldPasswordHash, field.TypeString, value)
 		_node.PasswordHash = value
+	}
+	if value, ok := _c.mutation.PasswordChangedAt(); ok {
+		_spec.SetField(user.FieldPasswordChangedAt, field.TypeTime, value)
+		_node.PasswordChangedAt = value
+	}
+	if value, ok := _c.mutation.PasswordHistory(); ok {
+		_spec.SetField(user.FieldPasswordHistory, field.TypeJSON, value)
+		_node.PasswordHistory = value
 	}
 	if value, ok := _c.mutation.MustChangePassword(); ok {
 		_spec.SetField(user.FieldMustChangePassword, field.TypeBool, value)

@@ -5,22 +5,25 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
 
 ## [Unreleased]
 
-Passwords are checked against the most common ones and against Have I Been Pwned.
+## [1.0.0-rc.5] - 2026-11-20
+
+Passwords are checked against common and breached ones, and a realm can keep a history and expire them.
 
 ### Manual steps
-- New passwords set by reset, change or admin are refused when they are among the 100,000 most common passwords,
-  always. The check against Have I Been Pwned is on by default for every realm: the server must reach
-  `api.pwnedpasswords.com` over HTTPS, or the check goes unused (passwords are still accepted, with a warning in the
-  logs). To keep the server off the Internet, run `idp settings set --realm <realm> --password-breach-check=false`
-  on each realm.
+- The Have I Been Pwned check is on for every realm: allow outbound HTTPS to `api.pwnedpasswords.com`, or turn it
+  off with `idp settings set --realm <realm> --password-breach-check=false` (passwords are accepted when it does not
+  answer).
+- Every realm refuses the last 5 passwords of an account, starting from this update. Turn it off with
+  `--password-history 0`.
+- Password expiry stays off until a realm sets it, and needs e-mail.
 
 ### Added
-- Local list of the 100,000 most common passwords, embedded in the binary: no network needed.
-- Have I Been Pwned check (k-anonymity: only the first 5 characters of the SHA-1 hash are sent), per realm: setting
-  `password_breach_check_enabled`, on by default; a switch in the admin console (Settings > Security) and
-  `--password-breach-check` in `idp settings set`.
-- New error `password_compromised` on the password endpoints, translated in the console, the account pages and the
-  reset page.
+- The 100,000 most common passwords are always refused (embedded list, no network).
+- Have I Been Pwned check (k-anonymity), per realm, on by default; error `password_compromised`.
+- Password history, per realm (`password_history_count`, 5 by default, 10 at most); error `password_reused`.
+- Password expiry, per realm (`password_expiry_days`, 0 = never): an expired password is refused at sign-in
+  (`password_expired`) and replaced with "Forgot password". Existing passwords count as changed on update day.
+- Console (Settings > Security) and `idp settings` show these settings.
 
 ## [1.0.0-rc.4] - 2026-11-19
 

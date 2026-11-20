@@ -30,8 +30,11 @@ func (InstanceSettings) Fields() []ent.Field {
 		field.String("realm_id").NotEmpty().Immutable(),
 		field.String("managed_by").GoType(InstanceSettingsManagedBy("")).Default(string(InstanceSettingsManagedByUI)),
 		field.Int("min_password_length").Default(12),
-		// Not enforced yet: only 0 (never) is accepted.
+		// 0: passwords never expire.
 		field.Int("password_expiry_days").Default(0),
+		// A new password must differ from the last N ones (the current one
+		// included); 0: off. 5 by default.
+		field.Int("password_history_count").Default(5),
 		// On by default; it sends a 5-character hash prefix to Have I Been Pwned.
 		field.Bool("password_breach_check_enabled").Default(true),
 		field.Int("session_idle_minutes").Default(10),

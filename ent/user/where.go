@@ -81,6 +81,11 @@ func PasswordHash(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldPasswordHash, v))
 }
 
+// PasswordChangedAt applies equality check predicate on the "password_changed_at" field. It's identical to PasswordChangedAtEQ.
+func PasswordChangedAt(v time.Time) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldPasswordChangedAt, v))
+}
+
 // MustChangePassword applies equality check predicate on the "must_change_password" field. It's identical to MustChangePasswordEQ.
 func MustChangePassword(v bool) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldMustChangePassword, v))
@@ -350,6 +355,56 @@ func PasswordHashEqualFold(v string) predicate.User {
 // PasswordHashContainsFold applies the ContainsFold predicate on the "password_hash" field.
 func PasswordHashContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldPasswordHash, v))
+}
+
+// PasswordChangedAtEQ applies the EQ predicate on the "password_changed_at" field.
+func PasswordChangedAtEQ(v time.Time) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldPasswordChangedAt, v))
+}
+
+// PasswordChangedAtNEQ applies the NEQ predicate on the "password_changed_at" field.
+func PasswordChangedAtNEQ(v time.Time) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldPasswordChangedAt, v))
+}
+
+// PasswordChangedAtIn applies the In predicate on the "password_changed_at" field.
+func PasswordChangedAtIn(vs ...time.Time) predicate.User {
+	return predicate.User(sql.FieldIn(FieldPasswordChangedAt, vs...))
+}
+
+// PasswordChangedAtNotIn applies the NotIn predicate on the "password_changed_at" field.
+func PasswordChangedAtNotIn(vs ...time.Time) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldPasswordChangedAt, vs...))
+}
+
+// PasswordChangedAtGT applies the GT predicate on the "password_changed_at" field.
+func PasswordChangedAtGT(v time.Time) predicate.User {
+	return predicate.User(sql.FieldGT(FieldPasswordChangedAt, v))
+}
+
+// PasswordChangedAtGTE applies the GTE predicate on the "password_changed_at" field.
+func PasswordChangedAtGTE(v time.Time) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldPasswordChangedAt, v))
+}
+
+// PasswordChangedAtLT applies the LT predicate on the "password_changed_at" field.
+func PasswordChangedAtLT(v time.Time) predicate.User {
+	return predicate.User(sql.FieldLT(FieldPasswordChangedAt, v))
+}
+
+// PasswordChangedAtLTE applies the LTE predicate on the "password_changed_at" field.
+func PasswordChangedAtLTE(v time.Time) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldPasswordChangedAt, v))
+}
+
+// PasswordHistoryIsNil applies the IsNil predicate on the "password_history" field.
+func PasswordHistoryIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldPasswordHistory))
+}
+
+// PasswordHistoryNotNil applies the NotNil predicate on the "password_history" field.
+func PasswordHistoryNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldPasswordHistory))
 }
 
 // MustChangePasswordEQ applies the EQ predicate on the "must_change_password" field.

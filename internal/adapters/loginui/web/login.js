@@ -50,6 +50,7 @@
     unknown_client: t("login.js.error.unknown_client", "This application is not available."),
     access_suspended: t("login.js.error.access_suspended", "Your access is temporarily suspended. Contact your administrator."),
     password_change_required: t("login.js.error.password_change_required", "Your administrator requires a new password. Use the link sent by e-mail, or \"Forgot password\"."),
+    password_expired: t("login.js.error.password_expired", "Your password has expired. Choose a new one with \"Forgot password\"."),
     client_unavailable: t("login.js.error.client_unavailable", "This application is temporarily unavailable. Try again later."),
     network_not_allowed: t("login.js.error.network_not_allowed", "Your organization does not allow signing in from this network. Connect from an authorized network (office, VPN), or contact your administrator."),
   };

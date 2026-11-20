@@ -129,7 +129,8 @@ func TestAdminService_Integration(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "en", before.DefaultLocale)
 		require.Equal(t, service.DefaultAuditLogRetentionDays, before.AuditLogRetentionDays, "one year until the realm changes it")
-		require.Zero(t, before.PasswordExpiryDays, "not enforced: never expires")
+		require.Zero(t, before.PasswordExpiryDays, "never expires until the realm asks")
+		require.Equal(t, service.DefaultPasswordHistoryCount, before.PasswordHistoryCount, "on until the realm turns it off")
 		require.NotEmpty(t, svc.Languages())
 
 		for name, patch := range map[string]service.SettingsPatch{
@@ -145,8 +146,10 @@ func TestAdminService_Integration(t *testing.T) {
 			"idle<step-up":         {RememberMeEnabled: ptr(false), SessionIdleMinutes: ptr(2), MFAStepUpMaxAgeMinutes: nil},
 			"audit retention":      {AuditLogRetentionDays: ptr(7)},
 			"audit retention < 0":  {AuditLogRetentionDays: ptr(-1)},
-			// Not enforced yet: only 0 (never).
-			"password expiry": {PasswordExpiryDays: ptr(30)},
+			// This server has no e-mail: nobody could replace an expired password.
+			"password expiry":       {PasswordExpiryDays: ptr(30)},
+			"password history > 10": {PasswordHistoryCount: ptr(service.MaxPasswordHistoryCount + 1)},
+			"password history < 0":  {PasswordHistoryCount: ptr(-1)},
 		} {
 			_, err := svc.UpdateSettings(ctx, root, demo, patch)
 			require.Error(t, err, name)
@@ -158,7 +161,7 @@ func TestAdminService_Integration(t *testing.T) {
 		wantAdminError(t, err, service.AdminRefused, "system_realm")
 
 		after, err := svc.UpdateSettings(ctx, root, demo, service.SettingsPatch{
-			MinPasswordLength: ptr(14), PasswordExpiryDays: ptr(0), PasswordResetTTLMinutes: ptr(20), InviteTTLHours: ptr(48),
+			MinPasswordLength: ptr(14), PasswordExpiryDays: ptr(0), PasswordHistoryCount: ptr(5), PasswordResetTTLMinutes: ptr(20), InviteTTLHours: ptr(48),
 			SessionIdleMinutes: ptr(45), SessionMaxHours: ptr(12), RememberMeEnabled: ptr(true), RememberMeIdleDays: ptr(3),
 			RememberMeMaxDays: ptr(20), LockoutThreshold: ptr(4), LockoutDurationMinutes: ptr(15),
 			IPAllowlist: ptr([]string{"10.0.0.0/8", " ", "192.0.2.7"}), MFARequiredGlobally: ptr(true), MFAStepUpMaxAgeMinutes: ptr(15),
@@ -167,6 +170,7 @@ func TestAdminService_Integration(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 14, after.MinPasswordLength)
+		require.Equal(t, 5, after.PasswordHistoryCount)
 		require.Equal(t, 60, after.KeyRotationIntervalDays)
 		require.Equal(t, 365, after.AuditLogRetentionDays)
 		require.Equal(t, []string{"10.0.0.0/8", "192.0.2.7"}, after.IPAllowlist)

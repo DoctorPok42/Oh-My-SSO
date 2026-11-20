@@ -21,6 +21,9 @@ const (
 	// LoginFailurePasswordChangeRequired: right password, but an administrator
 	// forced a reset that was not done yet.
 	LoginFailurePasswordChangeRequired LoginAttemptFailureReason = "password_change_required"
+	// LoginFailurePasswordExpired: right password, older than the realm's
+	// password expiry.
+	LoginFailurePasswordExpired LoginAttemptFailureReason = "password_expired"
 )
 
 // LoginFailurePasskeyRejected: a sign-in without password whose passkey or

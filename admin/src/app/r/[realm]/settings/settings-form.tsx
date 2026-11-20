@@ -237,8 +237,22 @@ export function SettingsForm({
                   onChange={setBreach}
                   locked={locked}
                 />
-                {/* Not enforced yet: no expiry field. */}
-                {/* Not enforced yet: no expiry field. */}
+                {num(
+                  "password_history_count",
+                  t("settings.password.history", "Password history"),
+                  t(
+                    "settings.password.history_hint",
+                    "A new password must differ from the last N (0: off, 10 at most). Each one remembered costs a hash check when a password is chosen.",
+                  ),
+                )}
+                {num(
+                  "password_expiry_days",
+                  t("settings.password.expiry", "Password expiry (days)"),
+                  t(
+                    "settings.password.expiry_hint",
+                    '0: never (advised by NIST SP 800-63B). From 1 to 3650: older passwords are refused at sign-in, and replaced with "Forgot password". Needs e-mail.',
+                  ),
+                )}
                 {num(
                   "password_reset_ttl_minutes",
                   t("settings.password.reset_ttl", "Reset link validity (minutes)"),

@@ -13,7 +13,6 @@ import (
 	"sso.internal/sso/internal/ratelimit"
 )
 
-
 const (
 	routeForgotPassword = "auth.forgot_password"
 	routeResetPassword  = "auth.reset_password"
@@ -175,6 +174,8 @@ func passwordPolicyCode(err *service.PasswordPolicyError) string {
 		return "password_matches_identity"
 	case errors.Is(err, service.ErrPasswordCompromised):
 		return "password_compromised"
+	case errors.Is(err, service.ErrPasswordReused):
+		return "password_reused"
 	case errors.Is(err, service.ErrPasswordUnchanged):
 		return "password_unchanged"
 	default:

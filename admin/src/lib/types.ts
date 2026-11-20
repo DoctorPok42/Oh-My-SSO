@@ -403,8 +403,10 @@ export type MfaPolicies = {
 export type Settings = {
   managed_by: ManagedBy;
   min_password_length: number;
-  /** Not enforced yet: only 0 (never). */
+  /** Days before a password must be replaced; 0: never. Needs e-mail. */
   password_expiry_days: number;
+  /** A new password must differ from the last N; 0: off (10 at most), 5 by default. */
+  password_history_count: number;
   /** New passwords are checked against Have I Been Pwned (k-anonymity). */
   password_breach_check_enabled: boolean;
   password_reset_ttl_minutes: number;

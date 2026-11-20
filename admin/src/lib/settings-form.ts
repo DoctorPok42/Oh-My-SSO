@@ -7,6 +7,8 @@ export type SettingsPatch = Partial<
   Pick<
     Settings,
     | "min_password_length"
+    | "password_expiry_days"
+    | "password_history_count"
     | "password_breach_check_enabled"
     | "password_reset_ttl_minutes"
     | "invite_ttl_hours"
@@ -70,6 +72,8 @@ export type MailForm = Record<MailKey, string>;
 
 export const NUMBERS = [
   "min_password_length",
+  "password_history_count",
+  "password_expiry_days",
   "password_reset_ttl_minutes",
   "invite_ttl_hours",
   "session_idle_minutes",
@@ -99,6 +103,8 @@ const SECTION_FIELDS: Record<SettingsSection, readonly string[]> = {
   security: [
     "min_password_length",
     "password_breach_check_enabled",
+    "password_history_count",
+    "password_expiry_days",
     "password_reset_ttl_minutes",
     "invite_ttl_hours",
     "lockout_threshold",

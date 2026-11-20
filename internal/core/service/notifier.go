@@ -41,6 +41,7 @@ func DefaultInstanceSettings(realmID string) *domain.InstanceSettings {
 		InviteTTLHours:             defaultInviteTTLHours,
 		SessionIdleMinutes:         int(defaultSessionIdleTimeout / time.Minute),
 		SessionMaxHours:            int(defaultSessionMaxLifetime / time.Hour),
+		PasswordHistoryCount:       DefaultPasswordHistoryCount,
 		PasswordBreachCheckEnabled: true,
 		RememberMeEnabled:          true,
 		RememberMeIdleDays:         defaultRememberMeIdleDays,

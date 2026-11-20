@@ -70,6 +70,20 @@ func (_c *InstanceSettingsCreate) SetNillablePasswordExpiryDays(v *int) *Instanc
 	return _c
 }
 
+// SetPasswordHistoryCount sets the "password_history_count" field.
+func (_c *InstanceSettingsCreate) SetPasswordHistoryCount(v int) *InstanceSettingsCreate {
+	_c.mutation.SetPasswordHistoryCount(v)
+	return _c
+}
+
+// SetNillablePasswordHistoryCount sets the "password_history_count" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillablePasswordHistoryCount(v *int) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetPasswordHistoryCount(*v)
+	}
+	return _c
+}
+
 // SetPasswordBreachCheckEnabled sets the "password_breach_check_enabled" field.
 func (_c *InstanceSettingsCreate) SetPasswordBreachCheckEnabled(v bool) *InstanceSettingsCreate {
 	_c.mutation.SetPasswordBreachCheckEnabled(v)
@@ -548,6 +562,10 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultPasswordExpiryDays
 		_c.mutation.SetPasswordExpiryDays(v)
 	}
+	if _, ok := _c.mutation.PasswordHistoryCount(); !ok {
+		v := instancesettings.DefaultPasswordHistoryCount
+		_c.mutation.SetPasswordHistoryCount(v)
+	}
 	if _, ok := _c.mutation.PasswordBreachCheckEnabled(); !ok {
 		v := instancesettings.DefaultPasswordBreachCheckEnabled
 		_c.mutation.SetPasswordBreachCheckEnabled(v)
@@ -680,6 +698,9 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.PasswordExpiryDays(); !ok {
 		return &ValidationError{Name: "password_expiry_days", err: errors.New(`ent: missing required field "InstanceSettings.password_expiry_days"`)}
+	}
+	if _, ok := _c.mutation.PasswordHistoryCount(); !ok {
+		return &ValidationError{Name: "password_history_count", err: errors.New(`ent: missing required field "InstanceSettings.password_history_count"`)}
 	}
 	if _, ok := _c.mutation.PasswordBreachCheckEnabled(); !ok {
 		return &ValidationError{Name: "password_breach_check_enabled", err: errors.New(`ent: missing required field "InstanceSettings.password_breach_check_enabled"`)}
@@ -816,6 +837,10 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.PasswordExpiryDays(); ok {
 		_spec.SetField(instancesettings.FieldPasswordExpiryDays, field.TypeInt, value)
 		_node.PasswordExpiryDays = value
+	}
+	if value, ok := _c.mutation.PasswordHistoryCount(); ok {
+		_spec.SetField(instancesettings.FieldPasswordHistoryCount, field.TypeInt, value)
+		_node.PasswordHistoryCount = value
 	}
 	if value, ok := _c.mutation.PasswordBreachCheckEnabled(); ok {
 		_spec.SetField(instancesettings.FieldPasswordBreachCheckEnabled, field.TypeBool, value)

@@ -43,7 +43,7 @@ func (r *auditedLoginAttempts) Create(ctx context.Context, p repository.CreateLo
 	case domain.LoginFailureMfaFailed:
 		action, level = audit.AuthMFAFailed, domain.AuditLogWarning
 	case domain.LoginFailureAccountLocked, domain.LoginFailureTimeoutActive, domain.LoginFailurePasskeyRejected,
-		domain.LoginFailurePasswordChangeRequired:
+		domain.LoginFailurePasswordChangeRequired, domain.LoginFailurePasswordExpired:
 		level = domain.AuditLogWarning
 	}
 	details := map[string]interface{}{"reason": string(p.FailureReason)}

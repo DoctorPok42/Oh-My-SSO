@@ -21,11 +21,14 @@ var (
 	ErrInvalidCredentials = errors.New("core: invalid credentials")
 	ErrAccountNotActive   = errors.New("core: account not active")
 	ErrTimeoutActive      = errors.New("core: an active timeout blocks this user or client")
-	ErrAccountLocked       = errors.New("core: too many failed sign-ins, try again later")
+	ErrAccountLocked      = errors.New("core: too many failed sign-ins, try again later")
 	// ErrPasswordChangeRequired: the password is right, but an administrator
 	// forced a reset. It only changes through the link sent by e-mail: whoever
 	// holds a stolen password must not be able to replace it.
 	ErrPasswordChangeRequired = errors.New("core: an administrator requires a new password")
+	// ErrPasswordExpired: the password is right but older than the realm
+	// allows. Same rule: it only changes through a link sent by e-mail.
+	ErrPasswordExpired     = errors.New("core: the password has expired")
 	ErrSessionInvalid      = errors.New("core: session invalid")
 	ErrForbidden           = errors.New("core: forbidden")
 	ErrMFANotImplemented   = errors.New("core: mfa verification not configured")
@@ -71,7 +74,6 @@ func TimeoutOnClient(err error) bool {
 	var te *TimeoutError
 	return errors.As(err, &te) && te.OnClient
 }
-
 
 type Credentials struct {
 	RealmID    string
@@ -315,7 +317,6 @@ type SessionParticipant struct {
 	SubjectFormat string
 }
 
-
 type ConsentItem struct {
 	Scope       string // stored in Consent.scopes, e.g. "email" or "saml_profile"
 	Title       string // plain language, e.g. "Your e-mail address"
@@ -383,7 +384,6 @@ type IdentityCore interface {
 	// session: callers decide what a successful verification unlocks.
 	VerifyMFA(ctx context.Context, userID string, ch MFAChallenge) (bool, error)
 
-
 	CreateSession(ctx context.Context, userID string, ac AuthContext) (*IssuedSession, error)
 	// ValidateSession is the front-channel check: the browser is there and
 	// sends its cookie (raw token). It refreshes the activity timestamp.
@@ -399,7 +399,6 @@ type IdentityCore interface {
 	// entry. A session that is already over is not an error.
 	Logout(ctx context.Context, req LogoutRequest) error
 
-
 	// KnownAccounts returns the accounts to show on a device: the current
 	// session's first, then the remembered ones, most recently used first.
 	// Disabled or deleted accounts are never shown.
@@ -408,13 +407,11 @@ type IdentityCore interface {
 	// SignedIn false). ErrSessionInvalid if the session is over.
 	SessionAccount(ctx context.Context, sessionID string) (*Account, error)
 
-
 	// IssueIdentityAssertion checks the session, the user's right to access
 	// the client, active timeouts and the MFA policy (*MFARequiredError),
 	// then builds the neutral assertion.
 	// An empty requestedScopes means "all effective scopes".
 	IssueIdentityAssertion(ctx context.Context, sessionID, clientRef string, requestedScopes []string) (*IdentityAssertion, error)
-
 
 	CheckConsent(ctx context.Context, c ConsentCheck) (*ConsentDecision, error)
 	// GrantConsent stores the approval for the session's user: the new
@@ -424,10 +421,8 @@ type IdentityCore interface {
 	// DenyConsent records a refusal in the AuditLog.
 	DenyConsent(ctx context.Context, d ConsentDenial) error
 
-
 	GetEffectivePermissions(ctx context.Context, userID, clientRef string) ([]*domain.Permission, error)
 	IsAuthorizedForClient(ctx context.Context, userID, clientRef string) (bool, error)
-
 
 	// RevokeToken is idempotent: an unknown jti is not an error.
 	RevokeToken(ctx context.Context, jti string) error
@@ -456,13 +451,11 @@ type IdentityCore interface {
 	// RevokeTokenFamily revokes every token of a family. Idempotent.
 	RevokeTokenFamily(ctx context.Context, familyID string) error
 
-
 	RegisterSessionParticipant(ctx context.Context, p SessionParticipant) (*domain.Token, error)
 	// SessionParticipants returns the participant records of a session that
 	// are not revoked yet, oldest first. Call it BEFORE RevokeSession, which
 	// revokes them.
 	SessionParticipants(ctx context.Context, sessionID string) ([]*domain.Token, error)
-
 
 	LookupClient(ctx context.Context, realmID string, protocol domain.ClientAppProtocol, protocolID string) (*ProtocolClient, error)
 	ClientByRef(ctx context.Context, clientRef string) (*ProtocolClient, error)
@@ -470,7 +463,6 @@ type IdentityCore interface {
 	// constant time. Wrong secret, or a client without a secret (public):
 	// ErrInvalidClientSecret.
 	AuthenticateClient(ctx context.Context, clientRef, secret string) error
-
 
 	// Signer returns the newest active key of the realm for that purpose.
 	// For saml_signing it is also a DigestSigner.

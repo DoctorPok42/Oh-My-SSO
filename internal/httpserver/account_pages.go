@@ -54,7 +54,7 @@ func (s *Server) profilePage(w http.ResponseWriter, r *http.Request, a *acct) ac
 		Layout:   s.accountLayout(w, r, a, "profile", titleProfile),
 		Username: a.user.Username, Email: a.user.Email, EmailVerified: a.user.EmailVerifiedAt != nil,
 		CanVerifyEmail: s.canVerifyEmail(a.user),
-		GivenName: given, FamilyName: family,
+		GivenName:      given, FamilyName: family,
 		Languages: s.languageOptions(r),
 	}
 }
@@ -312,6 +312,8 @@ func (s *Server) handleAccountPasswordSave(w http.ResponseWriter, r *http.Reques
 			fail(http.StatusUnprocessableEntity, loc.T("account.password.error.identity", "The new password must not be your username or e-mail address."))
 		case errors.Is(err, service.ErrPasswordCompromised):
 			fail(http.StatusUnprocessableEntity, loc.T("account.password.error.compromised", "This password is too common or appeared in a data breach. Choose another one."))
+		case errors.Is(err, service.ErrPasswordReused):
+			fail(http.StatusUnprocessableEntity, loc.T("account.password.error.reused", "You used this password recently. Choose another one."))
 		default:
 			fail(http.StatusUnprocessableEntity, loc.T("account.password.error.refused", "This password cannot be used."))
 		}
@@ -736,13 +738,14 @@ func (s *Server) handleAccountRevokeApp(w http.ResponseWriter, r *http.Request) 
 // --- history -------------------------------------------------------------------
 
 var signInResults = map[domain.LoginAttemptFailureReason]i18n.Text{
-	domain.LoginFailureInvalidCredentials: i18n.M("account.signin.wrong_password", "Wrong password"),
-	domain.LoginFailureAccountLocked:      i18n.M("account.signin.locked", "Blocked: account locked"),
-	domain.LoginFailureMfaFailed:          i18n.M("account.signin.wrong_second_step", "Wrong second step"),
-	domain.LoginFailureTimeoutActive:      i18n.M("account.signin.suspended", "Blocked: access suspended"),
-	domain.LoginFailureAccessDenied:       i18n.M("account.signin.refused", "Refused by the application"),
-	domain.LoginFailurePasskeyRejected:    i18n.M("account.signin.passkey_refused", "Passkey refused"),
+	domain.LoginFailureInvalidCredentials:     i18n.M("account.signin.wrong_password", "Wrong password"),
+	domain.LoginFailureAccountLocked:          i18n.M("account.signin.locked", "Blocked: account locked"),
+	domain.LoginFailureMfaFailed:              i18n.M("account.signin.wrong_second_step", "Wrong second step"),
+	domain.LoginFailureTimeoutActive:          i18n.M("account.signin.suspended", "Blocked: access suspended"),
+	domain.LoginFailureAccessDenied:           i18n.M("account.signin.refused", "Refused by the application"),
+	domain.LoginFailurePasskeyRejected:        i18n.M("account.signin.passkey_refused", "Passkey refused"),
 	domain.LoginFailurePasswordChangeRequired: i18n.M("account.signin.password_change_required", "Blocked: a new password is required"),
+	domain.LoginFailurePasswordExpired:        i18n.M("account.signin.password_expired", "Blocked: the password has expired"),
 }
 
 func (s *Server) handleAccountHistory(w http.ResponseWriter, r *http.Request) {

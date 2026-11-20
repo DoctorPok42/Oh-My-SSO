@@ -16972,6 +16972,8 @@ type InstanceSettingsMutation struct {
 	addmin_password_length         *int
 	password_expiry_days           *int
 	addpassword_expiry_days        *int
+	password_history_count         *int
+	addpassword_history_count      *int
 	password_breach_check_enabled  *bool
 	session_idle_minutes           *int
 	addsession_idle_minutes        *int
@@ -17312,6 +17314,62 @@ func (m *InstanceSettingsMutation) AddedPasswordExpiryDays() (r int, exists bool
 func (m *InstanceSettingsMutation) ResetPasswordExpiryDays() {
 	m.password_expiry_days = nil
 	m.addpassword_expiry_days = nil
+}
+
+// SetPasswordHistoryCount sets the "password_history_count" field.
+func (m *InstanceSettingsMutation) SetPasswordHistoryCount(i int) {
+	m.password_history_count = &i
+	m.addpassword_history_count = nil
+}
+
+// PasswordHistoryCount returns the value of the "password_history_count" field in the mutation.
+func (m *InstanceSettingsMutation) PasswordHistoryCount() (r int, exists bool) {
+	v := m.password_history_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPasswordHistoryCount returns the old "password_history_count" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldPasswordHistoryCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPasswordHistoryCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPasswordHistoryCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPasswordHistoryCount: %w", err)
+	}
+	return oldValue.PasswordHistoryCount, nil
+}
+
+// AddPasswordHistoryCount adds i to the "password_history_count" field.
+func (m *InstanceSettingsMutation) AddPasswordHistoryCount(i int) {
+	if m.addpassword_history_count != nil {
+		*m.addpassword_history_count += i
+	} else {
+		m.addpassword_history_count = &i
+	}
+}
+
+// AddedPasswordHistoryCount returns the value that was added to the "password_history_count" field in this mutation.
+func (m *InstanceSettingsMutation) AddedPasswordHistoryCount() (r int, exists bool) {
+	v := m.addpassword_history_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPasswordHistoryCount resets all changes to the "password_history_count" field.
+func (m *InstanceSettingsMutation) ResetPasswordHistoryCount() {
+	m.password_history_count = nil
+	m.addpassword_history_count = nil
 }
 
 // SetPasswordBreachCheckEnabled sets the "password_breach_check_enabled" field.
@@ -18810,7 +18868,7 @@ func (m *InstanceSettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstanceSettingsMutation) Fields() []string {
-	fields := make([]string, 0, 34)
+	fields := make([]string, 0, 35)
 	if m.realm != nil {
 		fields = append(fields, instancesettings.FieldRealmID)
 	}
@@ -18822,6 +18880,9 @@ func (m *InstanceSettingsMutation) Fields() []string {
 	}
 	if m.password_expiry_days != nil {
 		fields = append(fields, instancesettings.FieldPasswordExpiryDays)
+	}
+	if m.password_history_count != nil {
+		fields = append(fields, instancesettings.FieldPasswordHistoryCount)
 	}
 	if m.password_breach_check_enabled != nil {
 		fields = append(fields, instancesettings.FieldPasswordBreachCheckEnabled)
@@ -18929,6 +18990,8 @@ func (m *InstanceSettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.MinPasswordLength()
 	case instancesettings.FieldPasswordExpiryDays:
 		return m.PasswordExpiryDays()
+	case instancesettings.FieldPasswordHistoryCount:
+		return m.PasswordHistoryCount()
 	case instancesettings.FieldPasswordBreachCheckEnabled:
 		return m.PasswordBreachCheckEnabled()
 	case instancesettings.FieldSessionIdleMinutes:
@@ -19006,6 +19069,8 @@ func (m *InstanceSettingsMutation) OldField(ctx context.Context, name string) (e
 		return m.OldMinPasswordLength(ctx)
 	case instancesettings.FieldPasswordExpiryDays:
 		return m.OldPasswordExpiryDays(ctx)
+	case instancesettings.FieldPasswordHistoryCount:
+		return m.OldPasswordHistoryCount(ctx)
 	case instancesettings.FieldPasswordBreachCheckEnabled:
 		return m.OldPasswordBreachCheckEnabled(ctx)
 	case instancesettings.FieldSessionIdleMinutes:
@@ -19102,6 +19167,13 @@ func (m *InstanceSettingsMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPasswordExpiryDays(v)
+		return nil
+	case instancesettings.FieldPasswordHistoryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPasswordHistoryCount(v)
 		return nil
 	case instancesettings.FieldPasswordBreachCheckEnabled:
 		v, ok := value.(bool)
@@ -19327,6 +19399,9 @@ func (m *InstanceSettingsMutation) AddedFields() []string {
 	if m.addpassword_expiry_days != nil {
 		fields = append(fields, instancesettings.FieldPasswordExpiryDays)
 	}
+	if m.addpassword_history_count != nil {
+		fields = append(fields, instancesettings.FieldPasswordHistoryCount)
+	}
 	if m.addsession_idle_minutes != nil {
 		fields = append(fields, instancesettings.FieldSessionIdleMinutes)
 	}
@@ -19384,6 +19459,8 @@ func (m *InstanceSettingsMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedMinPasswordLength()
 	case instancesettings.FieldPasswordExpiryDays:
 		return m.AddedPasswordExpiryDays()
+	case instancesettings.FieldPasswordHistoryCount:
+		return m.AddedPasswordHistoryCount()
 	case instancesettings.FieldSessionIdleMinutes:
 		return m.AddedSessionIdleMinutes()
 	case instancesettings.FieldSessionMaxHours:
@@ -19436,6 +19513,13 @@ func (m *InstanceSettingsMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddPasswordExpiryDays(v)
+		return nil
+	case instancesettings.FieldPasswordHistoryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPasswordHistoryCount(v)
 		return nil
 	case instancesettings.FieldSessionIdleMinutes:
 		v, ok := value.(int)
@@ -19601,6 +19685,9 @@ func (m *InstanceSettingsMutation) ResetField(name string) error {
 		return nil
 	case instancesettings.FieldPasswordExpiryDays:
 		m.ResetPasswordExpiryDays()
+		return nil
+	case instancesettings.FieldPasswordHistoryCount:
+		m.ResetPasswordHistoryCount()
 		return nil
 	case instancesettings.FieldPasswordBreachCheckEnabled:
 		m.ResetPasswordBreachCheckEnabled()
@@ -36672,6 +36759,9 @@ type UserMutation struct {
 	id                               *string
 	username                         *string
 	password_hash                    *string
+	password_changed_at              *time.Time
+	password_history                 *[]string
+	appendpassword_history           []string
 	must_change_password             *bool
 	email                            *string
 	email_verified_at                *time.Time
@@ -36955,6 +37045,107 @@ func (m *UserMutation) PasswordHashCleared() bool {
 func (m *UserMutation) ResetPasswordHash() {
 	m.password_hash = nil
 	delete(m.clearedFields, user.FieldPasswordHash)
+}
+
+// SetPasswordChangedAt sets the "password_changed_at" field.
+func (m *UserMutation) SetPasswordChangedAt(t time.Time) {
+	m.password_changed_at = &t
+}
+
+// PasswordChangedAt returns the value of the "password_changed_at" field in the mutation.
+func (m *UserMutation) PasswordChangedAt() (r time.Time, exists bool) {
+	v := m.password_changed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPasswordChangedAt returns the old "password_changed_at" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldPasswordChangedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPasswordChangedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPasswordChangedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPasswordChangedAt: %w", err)
+	}
+	return oldValue.PasswordChangedAt, nil
+}
+
+// ResetPasswordChangedAt resets all changes to the "password_changed_at" field.
+func (m *UserMutation) ResetPasswordChangedAt() {
+	m.password_changed_at = nil
+}
+
+// SetPasswordHistory sets the "password_history" field.
+func (m *UserMutation) SetPasswordHistory(s []string) {
+	m.password_history = &s
+	m.appendpassword_history = nil
+}
+
+// PasswordHistory returns the value of the "password_history" field in the mutation.
+func (m *UserMutation) PasswordHistory() (r []string, exists bool) {
+	v := m.password_history
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPasswordHistory returns the old "password_history" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldPasswordHistory(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPasswordHistory is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPasswordHistory requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPasswordHistory: %w", err)
+	}
+	return oldValue.PasswordHistory, nil
+}
+
+// AppendPasswordHistory adds s to the "password_history" field.
+func (m *UserMutation) AppendPasswordHistory(s []string) {
+	m.appendpassword_history = append(m.appendpassword_history, s...)
+}
+
+// AppendedPasswordHistory returns the list of values that were appended to the "password_history" field in this mutation.
+func (m *UserMutation) AppendedPasswordHistory() ([]string, bool) {
+	if len(m.appendpassword_history) == 0 {
+		return nil, false
+	}
+	return m.appendpassword_history, true
+}
+
+// ClearPasswordHistory clears the value of the "password_history" field.
+func (m *UserMutation) ClearPasswordHistory() {
+	m.password_history = nil
+	m.appendpassword_history = nil
+	m.clearedFields[user.FieldPasswordHistory] = struct{}{}
+}
+
+// PasswordHistoryCleared returns if the "password_history" field was cleared in this mutation.
+func (m *UserMutation) PasswordHistoryCleared() bool {
+	_, ok := m.clearedFields[user.FieldPasswordHistory]
+	return ok
+}
+
+// ResetPasswordHistory resets all changes to the "password_history" field.
+func (m *UserMutation) ResetPasswordHistory() {
+	m.password_history = nil
+	m.appendpassword_history = nil
+	delete(m.clearedFields, user.FieldPasswordHistory)
 }
 
 // SetMustChangePassword sets the "must_change_password" field.
@@ -38301,7 +38492,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 19)
 	if m.realm != nil {
 		fields = append(fields, user.FieldRealmID)
 	}
@@ -38310,6 +38501,12 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.password_hash != nil {
 		fields = append(fields, user.FieldPasswordHash)
+	}
+	if m.password_changed_at != nil {
+		fields = append(fields, user.FieldPasswordChangedAt)
+	}
+	if m.password_history != nil {
+		fields = append(fields, user.FieldPasswordHistory)
 	}
 	if m.must_change_password != nil {
 		fields = append(fields, user.FieldMustChangePassword)
@@ -38367,6 +38564,10 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Username()
 	case user.FieldPasswordHash:
 		return m.PasswordHash()
+	case user.FieldPasswordChangedAt:
+		return m.PasswordChangedAt()
+	case user.FieldPasswordHistory:
+		return m.PasswordHistory()
 	case user.FieldMustChangePassword:
 		return m.MustChangePassword()
 	case user.FieldEmail:
@@ -38410,6 +38611,10 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldUsername(ctx)
 	case user.FieldPasswordHash:
 		return m.OldPasswordHash(ctx)
+	case user.FieldPasswordChangedAt:
+		return m.OldPasswordChangedAt(ctx)
+	case user.FieldPasswordHistory:
+		return m.OldPasswordHistory(ctx)
 	case user.FieldMustChangePassword:
 		return m.OldMustChangePassword(ctx)
 	case user.FieldEmail:
@@ -38467,6 +38672,20 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPasswordHash(v)
+		return nil
+	case user.FieldPasswordChangedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPasswordChangedAt(v)
+		return nil
+	case user.FieldPasswordHistory:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPasswordHistory(v)
 		return nil
 	case user.FieldMustChangePassword:
 		v, ok := value.(bool)
@@ -38626,6 +38845,9 @@ func (m *UserMutation) ClearedFields() []string {
 	if m.FieldCleared(user.FieldPasswordHash) {
 		fields = append(fields, user.FieldPasswordHash)
 	}
+	if m.FieldCleared(user.FieldPasswordHistory) {
+		fields = append(fields, user.FieldPasswordHistory)
+	}
 	if m.FieldCleared(user.FieldEmailVerifiedAt) {
 		fields = append(fields, user.FieldEmailVerifiedAt)
 	}
@@ -38664,6 +38886,9 @@ func (m *UserMutation) ClearField(name string) error {
 	case user.FieldPasswordHash:
 		m.ClearPasswordHash()
 		return nil
+	case user.FieldPasswordHistory:
+		m.ClearPasswordHistory()
+		return nil
 	case user.FieldEmailVerifiedAt:
 		m.ClearEmailVerifiedAt()
 		return nil
@@ -38701,6 +38926,12 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldPasswordHash:
 		m.ResetPasswordHash()
+		return nil
+	case user.FieldPasswordChangedAt:
+		m.ResetPasswordChangedAt()
+		return nil
+	case user.FieldPasswordHistory:
+		m.ResetPasswordHistory()
 		return nil
 	case user.FieldMustChangePassword:
 		m.ResetMustChangePassword()

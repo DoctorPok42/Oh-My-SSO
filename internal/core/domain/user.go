@@ -25,7 +25,12 @@ type User struct {
 	RealmID      string
 	Username     string
 	PasswordHash string
-	Email        string
+	// PasswordChangedAt: when the password last changed (a new password,
+	// not a rehash). The realm's password expiry counts from it.
+	PasswordChangedAt time.Time
+	// PasswordHistory: hashes of the previous passwords, newest first.
+	PasswordHistory []string
+	Email           string
 	// EmailVerifiedAt: when the user proved they read Email (a link e-mailed
 	// to it was used), or an administrator said so; nil otherwise. Cleared
 	// whenever Email changes. The OIDC claim email_verified.
