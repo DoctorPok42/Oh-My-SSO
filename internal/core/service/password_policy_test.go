@@ -2,10 +2,7 @@ package service_test
 
 import (
 	"context"
-	"crypto/sha1" //nolint:gosec // the Pwned Passwords range API is keyed by SHA-1
-	"fmt"
-	"net/http"
-	"net/http/httptest"
+	"errors"
 	"strings"
 	"testing"
 
@@ -55,9 +52,8 @@ func TestPasswordPolicy(t *testing.T) {
 		require.NoError(t, p.Validate(ctx, "r", "erin's own long passphrase", user))
 	})
 
-	t.Run("the breach check is on by default, but never without a settings store", func(t *testing.T) {
+	t.Run("the breach check is on by default", func(t *testing.T) {
 		require.True(t, service.DefaultInstanceSettings("r").PasswordBreachCheckEnabled)
-		require.Empty(t, service.NewPasswordPolicyService(nil).PwnedPasswordsURL)
 	})
 
 	t.Run("common passwords are refused, whatever the case", func(t *testing.T) {
@@ -67,47 +63,30 @@ func TestPasswordPolicy(t *testing.T) {
 		require.NoError(t, p.Validate(ctx, "r", "qwertyuiop1234567", user))
 	})
 
-	t.Run("Have I Been Pwned, only when the realm turns it on", func(t *testing.T) {
-		const leaked, padded = "a leaked passphrase", "a padded passphrase"
-		var paths, padding []string
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			paths = append(paths, r.URL.Path)
-			padding = append(padding, r.Header.Get("Add-Padding"))
-			for _, line := range []struct {
-				pw    string
-				count int
-			}{{leaked, 42}, {padded, 0}} {
-				sum := fmt.Sprintf("%X", sha1.Sum([]byte(line.pw)))
-				fmt.Fprintf(w, "%s:%d\r\n", sum[5:], line.count)
-			}
-		}))
-		defer srv.Close()
+	t.Run("the breach checker, only when the realm turns it on", func(t *testing.T) {
+		fake := &fakeBreach{pwned: map[string]bool{"a leaked passphrase": true}}
 		newPolicy := func(on bool) *service.PasswordPolicyService {
 			p := service.NewPasswordPolicyService(&memSettings{s: &domain.InstanceSettings{PasswordBreachCheckEnabled: on}})
-			p.PwnedPasswordsURL = srv.URL + "/range/"
+			p.Breach = fake
 			return p
 		}
 
-		require.NoError(t, newPolicy(false).Validate(ctx, "r", leaked, user))
-		require.Empty(t, paths, "off: nothing leaves the server")
+		require.NoError(t, newPolicy(false).Validate(ctx, "r", "a leaked passphrase", user))
+		require.Zero(t, fake.calls, "off: nothing is asked")
 
 		p := newPolicy(true)
-		require.ErrorIs(t, p.Validate(ctx, "r", leaked, user), service.ErrPasswordCompromised)
-		require.NoError(t, p.Validate(ctx, "r", padded, user), "a padding line (count 0) is not a breach")
+		require.ErrorIs(t, p.Validate(ctx, "r", "a leaked passphrase", user), service.ErrPasswordCompromised)
 		require.NoError(t, p.Validate(ctx, "r", "never seen anywhere", user))
-		require.Len(t, paths, 3)
-		sum := fmt.Sprintf("%X", sha1.Sum([]byte(leaked)))
-		require.Equal(t, "/range/"+sum[:5], paths[0], "only the 5 first hex digits are sent")
-		require.Equal(t, []string{"true", "true", "true"}, padding)
+		require.Equal(t, 2, fake.calls)
+
+		// No checker (unit tests, tools): the realm setting alone asks nothing.
+		none := service.NewPasswordPolicyService(&memSettings{s: &domain.InstanceSettings{PasswordBreachCheckEnabled: true}})
+		require.NoError(t, none.Validate(ctx, "r", "a leaked passphrase", user))
 	})
 
-	t.Run("Have I Been Pwned down: the password is accepted", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusServiceUnavailable)
-		}))
-		defer srv.Close()
+	t.Run("the breach checker down: the password is accepted", func(t *testing.T) {
 		p := service.NewPasswordPolicyService(&memSettings{s: &domain.InstanceSettings{PasswordBreachCheckEnabled: true}})
-		p.PwnedPasswordsURL = srv.URL + "/range/"
+		p.Breach = &fakeBreach{err: errors.New("timeout")}
 		require.NoError(t, p.Validate(ctx, "r", "a leaked passphrase", user))
 		require.ErrorIs(t, p.Validate(ctx, "r", "password1234", user), service.ErrPasswordCompromised, "the local list still applies")
 	})
@@ -120,4 +99,16 @@ func TestPasswordPolicy(t *testing.T) {
 		require.Equal(t, 12, perr.MinLength)
 		require.Equal(t, service.MaxPasswordLength, perr.MaxLength)
 	})
+}
+
+// fakeBreach is a PasswordBreachChecker: pwned says which passwords leaked.
+type fakeBreach struct {
+	pwned map[string]bool
+	err   error
+	calls int
+}
+
+func (f *fakeBreach) Pwned(_ context.Context, password string) (bool, error) {
+	f.calls++
+	return f.pwned[password], f.err
 }

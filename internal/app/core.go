@@ -19,6 +19,7 @@ import (
 	"sso.internal/sso/internal/keymanager"
 	"sso.internal/sso/internal/logging"
 	"sso.internal/sso/internal/notify"
+	"sso.internal/sso/internal/pwnedpasswords"
 	"sso.internal/sso/internal/ratelimit"
 	"sso.internal/sso/internal/storage/entstore"
 )
@@ -259,6 +260,7 @@ func BuildCore() *Core {
 	})
 
 	passwordPolicy := service.NewPasswordPolicyService(c.Settings)
+	passwordPolicy.Breach = pwnedpasswords.New()
 	c.PasswordReset = service.NewPasswordResetService(service.PasswordResetDeps{
 		Tx:       c.Tx,
 		Users:    c.Users,

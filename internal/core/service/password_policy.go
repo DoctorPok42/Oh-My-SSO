@@ -1,18 +1,13 @@
 package service
 
 import (
-	"bufio"
 	"context"
-	"crypto/sha1" //nolint:gosec // the Pwned Passwords range API is keyed by SHA-1
 	_ "embed"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 	"strings"
 	"sync"
-	"time"
 	"unicode/utf8"
 
 	"sso.internal/sso/internal/core/domain"
@@ -36,11 +31,11 @@ var commonPasswords = sync.OnceValue(func() map[string]struct{} {
 	return set
 })
 
-// DefaultPwnedPasswordsURL is the Have I Been Pwned range API; the 5
-// first hex digits of the password's SHA-1 are appended to it.
-const DefaultPwnedPasswordsURL = "https://api.pwnedpasswords.com/range/"
-
-var pwnedClient = &http.Client{Timeout: 3 * time.Second}
+// PasswordBreachChecker tells whether a password appeared in a data breach.
+// It is a port: the adapter is internal/pwnedpasswords (Have I Been Pwned).
+type PasswordBreachChecker interface {
+	Pwned(ctx context.Context, password string) (bool, error)
+}
 
 const (
 	// MaxPasswordLength in characters. NIST asks for at least 64.
@@ -72,19 +67,15 @@ func (e *PasswordPolicyError) Unwrap() error { return e.Err }
 // PasswordPolicyService checks new passwords against the realm's policy.
 type PasswordPolicyService struct {
 	settings *settingsCache
-	// PwnedPasswordsURL: DefaultPwnedPasswordsURL; tests point it elsewhere,
-	// empty turns the check off.
-	PwnedPasswordsURL string
+	// Breach: nil turns the breach check off whatever the realm says (unit
+	// tests, tools); the server wires the Have I Been Pwned adapter.
+	Breach PasswordBreachChecker
 }
 
 // NewPasswordPolicyService reads the policy from InstanceSettings. settings
 // may be nil: then the defaults apply (12 characters minimum).
 func NewPasswordPolicyService(settings repository.InstanceSettingsRepository) *PasswordPolicyService {
-	p := &PasswordPolicyService{settings: newSettingsCache(settings, slog.Default()), PwnedPasswordsURL: DefaultPwnedPasswordsURL}
-	if settings == nil {
-		p.PwnedPasswordsURL = "" // no settings store (unit tests, tools): never call the network
-	}
-	return p
+	return &PasswordPolicyService{settings: newSettingsCache(settings, slog.Default())}
 }
 
 // MinLength returns the minimum length of a new password in this realm.
@@ -128,8 +119,8 @@ func (p *PasswordPolicyService) Validate(ctx context.Context, realmID, password 
 	if _, common := commonPasswords()[strings.ToLower(password)]; common {
 		return fail(ErrPasswordCompromised)
 	}
-	if p.PwnedPasswordsURL != "" && p.settings.get(ctx, realmID).PasswordBreachCheckEnabled {
-		pwned, err := p.pwned(ctx, password)
+	if p.Breach != nil && p.settings.get(ctx, realmID).PasswordBreachCheckEnabled {
+		pwned, err := p.Breach.Pwned(ctx, password)
 		if err != nil {
 			// Fail open: the local list above already refused the most common ones.
 			slog.WarnContext(ctx, "password policy: Have I Been Pwned did not answer, password accepted", "realm_id", realmID, "error", err)
@@ -138,34 +129,4 @@ func (p *PasswordPolicyService) Validate(ctx context.Context, realmID, password 
 		}
 	}
 	return nil
-}
-
-// pwned asks Have I Been Pwned whether password appeared in a breach. Only
-// the 5 first hex digits of its SHA-1 leave the server (k-anonymity), and
-// padding hides the size of the answer.
-func (p *PasswordPolicyService) pwned(ctx context.Context, password string) (bool, error) {
-	sum := fmt.Sprintf("%X", sha1.Sum([]byte(password))) //nolint:gosec // see the import
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.PwnedPasswordsURL+sum[:5], nil)
-	if err != nil {
-		return false, err
-	}
-	req.Header.Set("Add-Padding", "true")
-	req.Header.Set("User-Agent", "Oh-My-SSO") // the API refuses requests without one
-	resp, err := pwnedClient.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("pwned passwords: HTTP %d", resp.StatusCode)
-	}
-	sc := bufio.NewScanner(io.LimitReader(resp.Body, 4<<20))
-	for sc.Scan() {
-		// "SUFFIX:COUNT"; padding lines have a count of 0.
-		suffix, count, _ := strings.Cut(sc.Text(), ":")
-		if strings.EqualFold(suffix, sum[5:]) {
-			return strings.TrimSpace(count) != "0", nil
-		}
-	}
-	return false, sc.Err()
 }
