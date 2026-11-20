@@ -14,7 +14,8 @@ type InstanceSettings struct {
 	RealmID                     string
 	ManagedBy                   InstanceSettingsManagedBy
 	MinPasswordLength           int
-	PasswordExpiryDays          int
+	PasswordExpiryDays          int  // 0: never
+	PasswordHistoryCount        int  // a new password must differ from the last N; 0: off
 	PasswordBreachCheckEnabled  bool // check new passwords against Have I Been Pwned
 	SessionIdleMinutes          int
 	SessionMaxHours             int

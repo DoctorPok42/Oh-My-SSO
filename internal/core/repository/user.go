@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"sso.internal/sso/internal/core/domain"
 )
@@ -33,7 +34,11 @@ type UpdateUserParams struct {
 	Username     *string
 	Email        *string
 	PasswordHash *string
-	Status       *domain.UserStatus
+	// PasswordChangedAt and PasswordHistory go with a new password (not a
+	// rehash of the same one): see domain.User.
+	PasswordChangedAt *time.Time
+	PasswordHistory   *[]string
+	Status            *domain.UserStatus
 	// MustChangePassword: see domain.User.
 	MustChangePassword *bool
 	// EmailVerified: true marks the address verified now (kept if it already

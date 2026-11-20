@@ -286,6 +286,9 @@ func TestAccount_ChangePassword(t *testing.T) {
 	require.NoError(t, err, "the new password works")
 	_, err = auth.AuthenticateLocal(ctx, service.AuthenticateLocalParams{RealmID: acctRealm, Identifier: "dana", Password: alicePassword})
 	require.ErrorIs(t, err, service.ErrInvalidCredentials, "the old one does not")
+	dana, err := f.users.GetByRealmAndUsername(ctx, acctRealm, "dana")
+	require.NoError(t, err)
+	require.Equal(t, f.clock.Now(), dana.PasswordChangedAt, "the expiry counts from the change")
 
 	sess, _ := f.sessions.GetByID(ctx, current.ID)
 	require.Equal(t, domain.SessionActive, sess.Status, "the session in use stays")

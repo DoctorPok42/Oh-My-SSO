@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"sso.internal/sso/ent/consent"
 	"sso.internal/sso/ent/emailoutbox"
@@ -72,6 +73,38 @@ func (_u *UserUpdate) SetNillablePasswordHash(v *string) *UserUpdate {
 // ClearPasswordHash clears the value of the "password_hash" field.
 func (_u *UserUpdate) ClearPasswordHash() *UserUpdate {
 	_u.mutation.ClearPasswordHash()
+	return _u
+}
+
+// SetPasswordChangedAt sets the "password_changed_at" field.
+func (_u *UserUpdate) SetPasswordChangedAt(v time.Time) *UserUpdate {
+	_u.mutation.SetPasswordChangedAt(v)
+	return _u
+}
+
+// SetNillablePasswordChangedAt sets the "password_changed_at" field if the given value is not nil.
+func (_u *UserUpdate) SetNillablePasswordChangedAt(v *time.Time) *UserUpdate {
+	if v != nil {
+		_u.SetPasswordChangedAt(*v)
+	}
+	return _u
+}
+
+// SetPasswordHistory sets the "password_history" field.
+func (_u *UserUpdate) SetPasswordHistory(v []string) *UserUpdate {
+	_u.mutation.SetPasswordHistory(v)
+	return _u
+}
+
+// AppendPasswordHistory appends value to the "password_history" field.
+func (_u *UserUpdate) AppendPasswordHistory(v []string) *UserUpdate {
+	_u.mutation.AppendPasswordHistory(v)
+	return _u
+}
+
+// ClearPasswordHistory clears the value of the "password_history" field.
+func (_u *UserUpdate) ClearPasswordHistory() *UserUpdate {
+	_u.mutation.ClearPasswordHistory()
 	return _u
 }
 
@@ -809,6 +842,20 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.PasswordHashCleared() {
 		_spec.ClearField(user.FieldPasswordHash, field.TypeString)
 	}
+	if value, ok := _u.mutation.PasswordChangedAt(); ok {
+		_spec.SetField(user.FieldPasswordChangedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.PasswordHistory(); ok {
+		_spec.SetField(user.FieldPasswordHistory, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedPasswordHistory(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, user.FieldPasswordHistory, value)
+		})
+	}
+	if _u.mutation.PasswordHistoryCleared() {
+		_spec.ClearField(user.FieldPasswordHistory, field.TypeJSON)
+	}
 	if value, ok := _u.mutation.MustChangePassword(); ok {
 		_spec.SetField(user.FieldMustChangePassword, field.TypeBool, value)
 	}
@@ -1466,6 +1513,38 @@ func (_u *UserUpdateOne) SetNillablePasswordHash(v *string) *UserUpdateOne {
 // ClearPasswordHash clears the value of the "password_hash" field.
 func (_u *UserUpdateOne) ClearPasswordHash() *UserUpdateOne {
 	_u.mutation.ClearPasswordHash()
+	return _u
+}
+
+// SetPasswordChangedAt sets the "password_changed_at" field.
+func (_u *UserUpdateOne) SetPasswordChangedAt(v time.Time) *UserUpdateOne {
+	_u.mutation.SetPasswordChangedAt(v)
+	return _u
+}
+
+// SetNillablePasswordChangedAt sets the "password_changed_at" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillablePasswordChangedAt(v *time.Time) *UserUpdateOne {
+	if v != nil {
+		_u.SetPasswordChangedAt(*v)
+	}
+	return _u
+}
+
+// SetPasswordHistory sets the "password_history" field.
+func (_u *UserUpdateOne) SetPasswordHistory(v []string) *UserUpdateOne {
+	_u.mutation.SetPasswordHistory(v)
+	return _u
+}
+
+// AppendPasswordHistory appends value to the "password_history" field.
+func (_u *UserUpdateOne) AppendPasswordHistory(v []string) *UserUpdateOne {
+	_u.mutation.AppendPasswordHistory(v)
+	return _u
+}
+
+// ClearPasswordHistory clears the value of the "password_history" field.
+func (_u *UserUpdateOne) ClearPasswordHistory() *UserUpdateOne {
+	_u.mutation.ClearPasswordHistory()
 	return _u
 }
 
@@ -2232,6 +2311,20 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if _u.mutation.PasswordHashCleared() {
 		_spec.ClearField(user.FieldPasswordHash, field.TypeString)
+	}
+	if value, ok := _u.mutation.PasswordChangedAt(); ok {
+		_spec.SetField(user.FieldPasswordChangedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.PasswordHistory(); ok {
+		_spec.SetField(user.FieldPasswordHistory, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedPasswordHistory(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, user.FieldPasswordHistory, value)
+		})
+	}
+	if _u.mutation.PasswordHistoryCleared() {
+		_spec.ClearField(user.FieldPasswordHistory, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.MustChangePassword(); ok {
 		_spec.SetField(user.FieldMustChangePassword, field.TypeBool, value)

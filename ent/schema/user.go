@@ -33,6 +33,12 @@ func (User) Fields() []ent.Field {
 		field.String("realm_id").NotEmpty().Immutable(),
 		field.String("username").NotEmpty(),
 		field.String("password_hash").Optional(),
+		// password_changed_at: when password_hash last got a new password (not
+		// a rehash of the same one). The realm's password expiry counts from it.
+		field.Time("password_changed_at").Default(func() time.Time { return time.Now() }),
+		// password_history: hashes of the previous passwords, newest first,
+		// only as many as the realm's password_history_count needs.
+		field.JSON("password_history", []string{}).Optional(),
 		// must_change_password: an administrator forced a password reset.
 		// Signing in with the password is refused until it changes.
 		field.Bool("must_change_password").Default(false),

@@ -32,8 +32,8 @@ const (
 type loginRequest struct {
 	Identifier string `json:"identifier"`
 	Password   string `json:"password"`
-	ClientID string `json:"client_id,omitempty"`
-	EntityID string `json:"entity_id,omitempty"`
+	ClientID   string `json:"client_id,omitempty"`
+	EntityID   string `json:"entity_id,omitempty"`
 	// RememberMe: "Keep me signed in" is ticked. Ignored when the realm
 	// does not offer it.
 	RememberMe bool `json:"remember_me,omitempty"`
@@ -171,6 +171,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, service.ErrPasswordChangeRequired):
 			s.releaseLogin(r, attempt)
 			writeError(w, http.StatusForbidden, "password_change_required")
+		case errors.Is(err, service.ErrPasswordExpired):
+			s.releaseLogin(r, attempt)
+			writeError(w, http.StatusForbidden, "password_expired")
 		case errors.Is(err, service.ErrInvalidCredentials),
 			errors.Is(err, service.ErrAccountNotActive):
 			writeError(w, http.StatusUnauthorized, "invalid_credentials")

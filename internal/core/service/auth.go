@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"sso.internal/sso/internal/core"
 	"sso.internal/sso/internal/core/domain"
@@ -15,10 +16,11 @@ import (
 
 // Aliases of the core errors: same variables, so errors.Is matches both names.
 var (
-	ErrInvalidCredentials = core.ErrInvalidCredentials
-	ErrAccountNotActive   = core.ErrAccountNotActive
+	ErrInvalidCredentials     = core.ErrInvalidCredentials
+	ErrAccountNotActive       = core.ErrAccountNotActive
 	ErrPasswordChangeRequired = core.ErrPasswordChangeRequired
-	ErrTimeoutActive      = core.ErrTimeoutActive
+	ErrPasswordExpired        = core.ErrPasswordExpired
+	ErrTimeoutActive          = core.ErrTimeoutActive
 )
 
 type AuthService struct {
@@ -26,6 +28,8 @@ type AuthService struct {
 	loginAttempts repository.LoginAttemptRepository
 	timeouts      TimeoutChecker
 	lockout       *LockoutService
+	policy        *PasswordPolicyService // nil: passwords never expire
+	now           func() time.Time
 	logger        *slog.Logger
 }
 
@@ -45,8 +49,14 @@ func WithLockout(l *LockoutService) AuthOption {
 	return func(s *AuthService) { s.lockout = l }
 }
 
+// WithPasswordExpiry refuses a sign-in with a password older than the
+// realm's password_expiry_days (ErrPasswordExpired).
+func WithPasswordExpiry(p *PasswordPolicyService) AuthOption {
+	return func(s *AuthService) { s.policy = p }
+}
+
 func NewAuthService(users repository.UserRepository, loginAttempts repository.LoginAttemptRepository, opts ...AuthOption) *AuthService {
-	s := &AuthService{users: users, loginAttempts: loginAttempts, timeouts: NoActiveTimeouts{}, logger: slog.Default()}
+	s := &AuthService{users: users, loginAttempts: loginAttempts, timeouts: NoActiveTimeouts{}, now: time.Now, logger: slog.Default()}
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -141,6 +151,10 @@ func (s *AuthService) AuthenticateLocal(ctx context.Context, p AuthenticateLocal
 	if user.MustChangePassword {
 		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, domain.LoginFailurePasswordChangeRequired)
 		return nil, ErrPasswordChangeRequired
+	}
+	if s.policy != nil && s.policy.PasswordExpired(ctx, user, s.now()) {
+		s.recordAttempt(ctx, p, user, domain.LoginAttemptFailure, domain.LoginFailurePasswordExpired)
+		return nil, ErrPasswordExpired
 	}
 
 	s.upgradePasswordHash(ctx, user, p.Password)

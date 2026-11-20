@@ -11,7 +11,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-
 type testClock struct {
 	mu sync.Mutex
 	t  time.Time
@@ -95,6 +94,12 @@ func (m *memUsers) Update(_ context.Context, id string, p repository.UpdateUserP
 	}
 	if p.PasswordHash != nil {
 		u.PasswordHash = *p.PasswordHash
+	}
+	if p.PasswordChangedAt != nil {
+		u.PasswordChangedAt = *p.PasswordChangedAt
+	}
+	if p.PasswordHistory != nil {
+		u.PasswordHistory = *p.PasswordHistory
 	}
 	if p.Status != nil {
 		u.Status = *p.Status

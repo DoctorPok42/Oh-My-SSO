@@ -28,6 +28,8 @@ type InstanceSettings struct {
 	MinPasswordLength int `json:"min_password_length,omitempty"`
 	// PasswordExpiryDays holds the value of the "password_expiry_days" field.
 	PasswordExpiryDays int `json:"password_expiry_days,omitempty"`
+	// PasswordHistoryCount holds the value of the "password_history_count" field.
+	PasswordHistoryCount int `json:"password_history_count,omitempty"`
 	// PasswordBreachCheckEnabled holds the value of the "password_breach_check_enabled" field.
 	PasswordBreachCheckEnabled bool `json:"password_breach_check_enabled,omitempty"`
 	// SessionIdleMinutes holds the value of the "session_idle_minutes" field.
@@ -123,7 +125,7 @@ func (*InstanceSettings) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case instancesettings.FieldPasswordBreachCheckEnabled, instancesettings.FieldRememberMeEnabled, instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled, instancesettings.FieldMfaTrustedDeviceEnabled, instancesettings.FieldSuspiciousLoginEmailEnabled:
 			values[i] = new(sql.NullBool)
-		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldKeyRotationIntervalDays, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldMfaTrustedDeviceDays, instancesettings.FieldPasswordResetTTLMinutes, instancesettings.FieldInviteTTLHours, instancesettings.FieldBulkLimit, instancesettings.FieldExpiredDataRetentionDays, instancesettings.FieldAuditLogRetentionDays:
+		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldPasswordHistoryCount, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldKeyRotationIntervalDays, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldMfaTrustedDeviceDays, instancesettings.FieldPasswordResetTTLMinutes, instancesettings.FieldInviteTTLHours, instancesettings.FieldBulkLimit, instancesettings.FieldExpiredDataRetentionDays, instancesettings.FieldAuditLogRetentionDays:
 			values[i] = new(sql.NullInt64)
 		case instancesettings.FieldID, instancesettings.FieldRealmID, instancesettings.FieldManagedBy, instancesettings.FieldDefaultLocale, instancesettings.FieldMailFromName, instancesettings.FieldMailFromAddress, instancesettings.FieldMailReplyTo, instancesettings.FieldMailLogoURL, instancesettings.FieldUpdatedBy:
 			values[i] = new(sql.NullString)
@@ -173,6 +175,12 @@ func (_m *InstanceSettings) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field password_expiry_days", values[i])
 			} else if value.Valid {
 				_m.PasswordExpiryDays = int(value.Int64)
+			}
+		case instancesettings.FieldPasswordHistoryCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field password_history_count", values[i])
+			} else if value.Valid {
+				_m.PasswordHistoryCount = int(value.Int64)
 			}
 		case instancesettings.FieldPasswordBreachCheckEnabled:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -409,6 +417,9 @@ func (_m *InstanceSettings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("password_expiry_days=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PasswordExpiryDays))
+	builder.WriteString(", ")
+	builder.WriteString("password_history_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PasswordHistoryCount))
 	builder.WriteString(", ")
 	builder.WriteString("password_breach_check_enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PasswordBreachCheckEnabled))

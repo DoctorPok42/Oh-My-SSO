@@ -21,6 +21,10 @@ const (
 	FieldUsername = "username"
 	// FieldPasswordHash holds the string denoting the password_hash field in the database.
 	FieldPasswordHash = "password_hash"
+	// FieldPasswordChangedAt holds the string denoting the password_changed_at field in the database.
+	FieldPasswordChangedAt = "password_changed_at"
+	// FieldPasswordHistory holds the string denoting the password_history field in the database.
+	FieldPasswordHistory = "password_history"
 	// FieldMustChangePassword holds the string denoting the must_change_password field in the database.
 	FieldMustChangePassword = "must_change_password"
 	// FieldEmail holds the string denoting the email field in the database.
@@ -172,6 +176,8 @@ var Columns = []string{
 	FieldRealmID,
 	FieldUsername,
 	FieldPasswordHash,
+	FieldPasswordChangedAt,
+	FieldPasswordHistory,
 	FieldMustChangePassword,
 	FieldEmail,
 	FieldEmailVerifiedAt,
@@ -212,6 +218,8 @@ var (
 	RealmIDValidator func(string) error
 	// UsernameValidator is a validator for the "username" field. It is called by the builders before save.
 	UsernameValidator func(string) error
+	// DefaultPasswordChangedAt holds the default value on creation for the "password_changed_at" field.
+	DefaultPasswordChangedAt func() time.Time
 	// DefaultMustChangePassword holds the default value on creation for the "must_change_password" field.
 	DefaultMustChangePassword bool
 	// EmailValidator is a validator for the "email" field. It is called by the builders before save.
@@ -255,6 +263,11 @@ func ByUsername(opts ...sql.OrderTermOption) OrderOption {
 // ByPasswordHash orders the results by the password_hash field.
 func ByPasswordHash(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPasswordHash, opts...).ToFunc()
+}
+
+// ByPasswordChangedAt orders the results by the password_changed_at field.
+func ByPasswordChangedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPasswordChangedAt, opts...).ToFunc()
 }
 
 // ByMustChangePassword orders the results by the must_change_password field.

@@ -36,6 +36,7 @@ describe("settings form", () => {
     managed_by: "ui",
     min_password_length: 12,
     password_expiry_days: 0,
+    password_history_count: 0,
     password_breach_check_enabled: false,
     password_reset_ttl_minutes: 30,
     invite_ttl_hours: 4,
@@ -71,6 +72,8 @@ describe("settings form", () => {
   } satisfies Settings;
   const form = {
     min_password_length: "12",
+    password_history_count: "0",
+    password_expiry_days: "0",
     password_reset_ttl_minutes: "30",
     invite_ttl_hours: "4",
     session_idle_minutes: "30",
@@ -105,6 +108,18 @@ describe("settings form", () => {
       suspicious_login_email_enabled: true,
       password_breach_check_enabled: true,
     });
+  });
+
+  it("sends the password history and expiry", () => {
+    const toggles = { notif: true, suspicious: false, remember: true, breach: false };
+    expect(
+      settingsDiff(
+        before,
+        { ...form, password_history_count: "5", password_expiry_days: "365" },
+        "10.0.0.0/8",
+        toggles,
+      ),
+    ).toEqual({ password_history_count: 5, password_expiry_days: 365 });
   });
 
   it("sends the keep-me-signed-in switch and its durations", () => {

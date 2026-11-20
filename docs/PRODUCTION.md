@@ -287,9 +287,11 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   Over https, the IdP's security cookies (session, sign-in steps, device, OIDC/SAML binding) are named
   `__Host-<name>-<realm>`, with `Path=/` and no `Domain`: a neighbouring subdomain can no longer plant a session of
   its choice. Upgrading signs nobody out: the former cookies (`sso_session`, `sso_device`...) are still read by this
-  version and replaced at the browser's next visit; the next version stops reading them. Password expiry is not
-  available yet: the console no longer shows it, the Admin API accepts only `password_expiry_days: 0`, and the
-  upgrade sets the former default (90 days, never applied) back to 0.
+  version and replaced at the browser's next visit; the next version stops reading them. Password expiry is off
+  (`password_expiry_days: 0`) until a realm sets it, in the console or the Admin API, and only when e-mail is
+  configured: an expired password is refused at sign-in and replaced with "Forgot password". An earlier upgrade set
+  the former default (90 days, never applied) back to 0, and passwords count as changed on the day of the upgrade
+  that brought the expiry: no realm starts expiring passwords on upgrade.
   **Valkey password**: from this version, `idp` and `idp-admin` refuse to start in production without
   `VALKEY_PASSWORD`. Before deploying it, set `VALKEY_PASSWORD=<openssl rand -hex 32>` in `.env` and copy the
   `command`, `environment` and `healthcheck` of the `valkey` service of `compose.example.yml` into `compose.yml`;

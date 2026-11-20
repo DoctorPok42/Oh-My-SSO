@@ -50,6 +50,7 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 	builder = builder.
 		SetNillableMinPasswordLength(p.MinPasswordLength).
 		SetNillablePasswordExpiryDays(p.PasswordExpiryDays).
+		SetNillablePasswordHistoryCount(p.PasswordHistoryCount).
 		SetNillablePasswordBreachCheckEnabled(p.PasswordBreachCheckEnabled).
 		SetNillableSessionIdleMinutes(p.SessionIdleMinutes).
 		SetNillableSessionMaxHours(p.SessionMaxHours).
@@ -129,6 +130,7 @@ func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings 
 		ManagedBy:                   domain.InstanceSettingsManagedBy(e.ManagedBy),
 		MinPasswordLength:           e.MinPasswordLength,
 		PasswordExpiryDays:          e.PasswordExpiryDays,
+		PasswordHistoryCount:        e.PasswordHistoryCount,
 		PasswordBreachCheckEnabled:  e.PasswordBreachCheckEnabled,
 		SessionIdleMinutes:          e.SessionIdleMinutes,
 		SessionMaxHours:             e.SessionMaxHours,

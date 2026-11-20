@@ -18,7 +18,6 @@ import (
 	"sso.internal/sso/internal/i18n"
 )
 
-
 var realmNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,62}$`)
 
 // RealmView is a realm in the realm switcher and on the realms page.
@@ -172,12 +171,12 @@ func (s *AdminService) UpdateRealm(ctx context.Context, actor AdminActor, name s
 	return realmView(updated), nil
 }
 
-
 // SettingsView: the Settings screen. Every value, defaults included.
 type SettingsView struct {
 	ManagedBy                   string    `json:"managed_by"`
 	MinPasswordLength           int       `json:"min_password_length"`
-	PasswordExpiryDays          int       `json:"password_expiry_days"`
+	PasswordExpiryDays          int       `json:"password_expiry_days"`   // 0: never
+	PasswordHistoryCount        int       `json:"password_history_count"` // 0: off
 	PasswordBreachCheckEnabled  bool      `json:"password_breach_check_enabled"`
 	PasswordResetTTLMinutes     int       `json:"password_reset_ttl_minutes"`
 	InviteTTLHours              int       `json:"invite_ttl_hours"`
@@ -203,7 +202,7 @@ type SettingsView struct {
 	BulkLimit                   int       `json:"bulk_limit"`
 	ExpiredDataRetentionDays    int       `json:"expired_data_retention_days"`
 	AuditLogRetentionDays       int       `json:"audit_log_retention_days"` // 0: kept forever
-	UpdatedAt                  time.Time `json:"updated_at"`
+	UpdatedAt                   time.Time `json:"updated_at"`
 	UpdatedBy                   string    `json:"updated_by"`
 }
 
@@ -232,7 +231,7 @@ func (s *AdminService) GetSettings(ctx context.Context, realm *domain.Realm) (*S
 	}
 	return &SettingsView{
 		ManagedBy: string(st.ManagedBy), MinPasswordLength: st.MinPasswordLength, PasswordExpiryDays: st.PasswordExpiryDays,
-		PasswordBreachCheckEnabled: st.PasswordBreachCheckEnabled,
+		PasswordHistoryCount: st.PasswordHistoryCount, PasswordBreachCheckEnabled: st.PasswordBreachCheckEnabled,
 		InviteTTLHours: st.InviteTTLHours, PasswordResetTTLMinutes: st.PasswordResetTTLMinutes, SessionIdleMinutes: st.SessionIdleMinutes,
 		SessionMaxHours: st.SessionMaxHours, RememberMeEnabled: st.RememberMeEnabled, RememberMeIdleDays: st.RememberMeIdleDays,
 		RememberMeMaxDays: st.RememberMeMaxDays, LockoutThreshold: st.LockoutThreshold, LockoutDurationMinutes: st.LockoutDurationMinutes,
@@ -249,6 +248,7 @@ func (s *AdminService) GetSettings(ctx context.Context, realm *domain.Realm) (*S
 type SettingsPatch struct {
 	MinPasswordLength           *int
 	PasswordExpiryDays          *int
+	PasswordHistoryCount        *int
 	PasswordBreachCheckEnabled  *bool
 	PasswordResetTTLMinutes     *int
 	InviteTTLHours              *int
@@ -291,6 +291,8 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		lo, hi int
 	}{
 		{"min_password_length", p.MinPasswordLength, 8, MaxPasswordLength},
+		{"password_expiry_days", p.PasswordExpiryDays, 0, MaxPasswordExpiryDays},
+		{"password_history_count", p.PasswordHistoryCount, 0, MaxPasswordHistoryCount},
 		{"password_reset_ttl_minutes", p.PasswordResetTTLMinutes, 5, 24 * 60},
 		{"invite_ttl_hours", p.InviteTTLHours, 1, 30 * 24},
 		{"session_idle_minutes", p.SessionIdleMinutes, 1, 7 * 24 * 60},
@@ -309,9 +311,10 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 			return nil, err
 		}
 	}
-	// Not enforced yet: only 0 (never) is accepted.
-	if v := p.PasswordExpiryDays; v != nil && *v != 0 {
-		return nil, adminInvalid("password_expiry_days", i18n.M("admin.error.password_expiry_unavailable", "password expiry is not available yet: only 0 (never) is accepted"))
+	// An expired password is replaced through a link sent by e-mail: without
+	// e-mail, nobody could get out of it.
+	if v := p.PasswordExpiryDays; v != nil && *v != 0 && !s.d.EmailEnabled {
+		return nil, adminInvalid("password_expiry_days", i18n.M("admin.error.password_expiry_needs_email", "password expiry needs e-mail: an expired password is replaced through a link sent by e-mail, which is not configured on this server"))
 	}
 	if v := p.AuditLogRetentionDays; v != nil && !validAuditLogRetention(*v) {
 		return nil, adminInvalid("audit_log_retention_days", i18n.M("admin.error.audit_retention", "audit_log_retention_days must be 0 (keep forever) or between {lo} and {hi}", "lo", MinAuditLogRetentionDays, "hi", MaxAuditLogRetentionDays))
@@ -369,7 +372,8 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 	by := actor.By()
 	upd := repository.UpdateInstanceSettingsParams{
 		MinPasswordLength: p.MinPasswordLength, PasswordExpiryDays: p.PasswordExpiryDays, PasswordBreachCheckEnabled: p.PasswordBreachCheckEnabled,
-		InviteTTLHours: p.InviteTTLHours, PasswordResetTTLMinutes: p.PasswordResetTTLMinutes, SessionIdleMinutes: p.SessionIdleMinutes,
+		PasswordHistoryCount: p.PasswordHistoryCount,
+		InviteTTLHours:       p.InviteTTLHours, PasswordResetTTLMinutes: p.PasswordResetTTLMinutes, SessionIdleMinutes: p.SessionIdleMinutes,
 		SessionMaxHours: p.SessionMaxHours, RememberMeEnabled: p.RememberMeEnabled,
 		RememberMeIdleDays: p.RememberMeIdleDays, RememberMeMaxDays: p.RememberMeMaxDays, LockoutThreshold: p.LockoutThreshold,
 		LockoutDurationMinutes: p.LockoutDurationMinutes, IPAllowlist: allow,
@@ -393,7 +397,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 func settingsChanges(p SettingsPatch) map[string]interface{} {
 	out := map[string]interface{}{}
 	ints := map[string]*int{
-		"min_password_length": p.MinPasswordLength, "password_expiry_days": p.PasswordExpiryDays,
+		"min_password_length": p.MinPasswordLength, "password_expiry_days": p.PasswordExpiryDays, "password_history_count": p.PasswordHistoryCount,
 		"invite_ttl_hours": p.InviteTTLHours, "password_reset_ttl_minutes": p.PasswordResetTTLMinutes, "session_idle_minutes": p.SessionIdleMinutes,
 		"session_max_hours": p.SessionMaxHours, "remember_me_idle_days": p.RememberMeIdleDays,
 		"remember_me_max_days": p.RememberMeMaxDays, "lockout_threshold": p.LockoutThreshold,

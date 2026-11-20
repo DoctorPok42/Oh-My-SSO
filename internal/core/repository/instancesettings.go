@@ -26,6 +26,7 @@ type UpdateInstanceSettingsParams struct {
 	ManagedBy                   *domain.InstanceSettingsManagedBy
 	MinPasswordLength           *int
 	PasswordExpiryDays          *int
+	PasswordHistoryCount        *int
 	PasswordBreachCheckEnabled  *bool
 	SessionIdleMinutes          *int
 	SessionMaxHours             *int

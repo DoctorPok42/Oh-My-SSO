@@ -592,6 +592,7 @@ var (
 		{Name: "managed_by", Type: field.TypeString, Default: "ui"},
 		{Name: "min_password_length", Type: field.TypeInt, Default: 12},
 		{Name: "password_expiry_days", Type: field.TypeInt, Default: 0},
+		{Name: "password_history_count", Type: field.TypeInt, Default: 5},
 		{Name: "password_breach_check_enabled", Type: field.TypeBool, Default: true},
 		{Name: "session_idle_minutes", Type: field.TypeInt, Default: 10},
 		{Name: "session_max_hours", Type: field.TypeInt, Default: 8},
@@ -632,7 +633,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instance_settings_realms_instance_settings",
-				Columns:    []*schema.Column{InstanceSettingsColumns[34]},
+				Columns:    []*schema.Column{InstanceSettingsColumns[35]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -1251,6 +1252,8 @@ var (
 		{Name: "id", Type: field.TypeString, Unique: true},
 		{Name: "username", Type: field.TypeString},
 		{Name: "password_hash", Type: field.TypeString, Nullable: true},
+		{Name: "password_changed_at", Type: field.TypeTime},
+		{Name: "password_history", Type: field.TypeJSON, Nullable: true},
 		{Name: "must_change_password", Type: field.TypeBool, Default: false},
 		{Name: "email", Type: field.TypeString},
 		{Name: "email_verified_at", Type: field.TypeTime, Nullable: true},
@@ -1275,7 +1278,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "users_realms_users",
-				Columns:    []*schema.Column{UsersColumns[17]},
+				Columns:    []*schema.Column{UsersColumns[19]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -1284,12 +1287,12 @@ var (
 			{
 				Name:    "user_realm_id_username",
 				Unique:  true,
-				Columns: []*schema.Column{UsersColumns[17], UsersColumns[1]},
+				Columns: []*schema.Column{UsersColumns[19], UsersColumns[1]},
 			},
 			{
 				Name:    "user_realm_id_email",
 				Unique:  true,
-				Columns: []*schema.Column{UsersColumns[17], UsersColumns[4]},
+				Columns: []*schema.Column{UsersColumns[19], UsersColumns[6]},
 			},
 		},
 	}

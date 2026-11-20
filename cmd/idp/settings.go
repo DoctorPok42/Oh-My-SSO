@@ -16,11 +16,10 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-
 const settingsUsage = `usage:
   idp settings show --realm <name>
   idp settings set  --realm <name> [--notification-email=true|false] [--suspicious-login-email=true|false]
-                    [--min-password-length <n>] [--password-breach-check=true|false]
+                    [--min-password-length <n>] [--password-breach-check=true|false] [--password-history <n>]
                     [--lockout-threshold <n>] [--lockout-duration <duration>]
                     [--password-reset-ttl <duration>]
                     [--remember-me=true|false] [--remember-me-idle-days <n>] [--remember-me-max-days <n>]
@@ -29,6 +28,8 @@ const settingsUsage = `usage:
 --remember-me offers "Keep me signed in" on the sign-in page (days: 1 to 365).
 --password-breach-check sends the first 5 characters of the password's SHA-1 to
 api.pwnedpasswords.com (k-anonymity); leave it off on a server without Internet.
+--password-history <n>: a new password must differ from the last n (0 = off, 10 at most).
+The password expiry is set in the admin console: it needs e-mail.
 `
 
 func runSettingsCommand(args []string) int {
@@ -94,6 +95,8 @@ func printSettings(out io.Writer, s *domain.InstanceSettings) {
 	fmt.Fprintf(out, "suspicious sign-in e-mails:  %t\n", s.SuspiciousLoginEmailEnabled)
 	fmt.Fprintf(out, "min password length:         %d\n", s.MinPasswordLength)
 	fmt.Fprintf(out, "breached password check:     %t (Have I Been Pwned)\n", s.PasswordBreachCheckEnabled)
+	fmt.Fprintf(out, "password history:            %d (0 = off)\n", s.PasswordHistoryCount)
+	fmt.Fprintf(out, "password expiry:             %d days (0 = never)\n", s.PasswordExpiryDays)
 	fmt.Fprintf(out, "lockout threshold:           %d (0 = off)\n", s.LockoutThreshold)
 	fmt.Fprintf(out, "lockout duration:            %d min (doubles on repeat, max 24 h)\n", s.LockoutDurationMinutes)
 	allow := "(none: sign-in from any address)"
@@ -115,6 +118,7 @@ func settingsSet(ctx context.Context, args []string, out io.Writer) error {
 	susp := fs.String("suspicious-login-email", "", "true|false: e-mail on unusual sign-ins")
 	minLen := fs.Int("min-password-length", -1, "minimum length of new passwords (8 at least)")
 	breach := fs.String("password-breach-check", "", "true|false: refuse passwords found by Have I Been Pwned")
+	history := fs.Int("password-history", -1, "a new password must differ from the last n (0 = off)")
 	threshold := fs.Int("lockout-threshold", -1, "wrong passwords before a lock (0 = off)")
 	duration := fs.Duration("lockout-duration", 0, "first lock duration, e.g. 15m")
 	resetTTL := fs.Duration("password-reset-ttl", 0, "validity of reset links, e.g. 30m")
@@ -141,6 +145,12 @@ func settingsSet(ctx context.Context, args []string, out io.Writer) error {
 			return usageError{"--min-password-length must be at least 8 (NIST SP 800-63B)"}
 		}
 		p.MinPasswordLength = minLen
+	}
+	if *history >= 0 {
+		if *history > service.MaxPasswordHistoryCount {
+			return usageError{fmt.Sprintf("--password-history must be at most %d", service.MaxPasswordHistoryCount)}
+		}
+		p.PasswordHistoryCount = history
 	}
 	if *threshold >= 0 {
 		p.LockoutThreshold = threshold

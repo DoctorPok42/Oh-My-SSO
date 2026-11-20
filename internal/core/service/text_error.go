@@ -37,6 +37,8 @@ func passwordText(pe *PasswordPolicyError) i18n.Text {
 		return i18n.M("admin.error.password_identity", "the password must not be the username or e-mail")
 	case errors.Is(pe.Err, ErrPasswordCompromised):
 		return i18n.M("admin.error.password_compromised", "this password is too common or appeared in a data breach")
+	case errors.Is(pe.Err, ErrPasswordReused):
+		return i18n.M("admin.error.password_reused", "this password was used recently")
 	}
 	return i18n.M("admin.error.password_refused", "this password cannot be used")
 }

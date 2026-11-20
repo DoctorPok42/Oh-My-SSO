@@ -26,6 +26,10 @@ type User struct {
 	Username string `json:"username,omitempty"`
 	// PasswordHash holds the value of the "password_hash" field.
 	PasswordHash string `json:"password_hash,omitempty"`
+	// PasswordChangedAt holds the value of the "password_changed_at" field.
+	PasswordChangedAt time.Time `json:"password_changed_at,omitempty"`
+	// PasswordHistory holds the value of the "password_history" field.
+	PasswordHistory []string `json:"password_history,omitempty"`
 	// MustChangePassword holds the value of the "must_change_password" field.
 	MustChangePassword bool `json:"must_change_password,omitempty"`
 	// Email holds the value of the "email" field.
@@ -217,7 +221,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldProfile:
+		case user.FieldPasswordHistory, user.FieldProfile:
 			values[i] = new([]byte)
 		case user.FieldMustChangePassword:
 			values[i] = new(sql.NullBool)
@@ -225,7 +229,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case user.FieldID, user.FieldRealmID, user.FieldUsername, user.FieldPasswordHash, user.FieldEmail, user.FieldStatus:
 			values[i] = new(sql.NullString)
-		case user.FieldEmailVerifiedAt, user.FieldCreatedAt, user.FieldUpdatedAt, user.FieldDeletedAt, user.FieldLastLoginAt, user.FieldLastFailedLoginAt, user.FieldLockedUntil, user.FieldLastLockedAt:
+		case user.FieldPasswordChangedAt, user.FieldEmailVerifiedAt, user.FieldCreatedAt, user.FieldUpdatedAt, user.FieldDeletedAt, user.FieldLastLoginAt, user.FieldLastFailedLoginAt, user.FieldLockedUntil, user.FieldLastLockedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -265,6 +269,20 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field password_hash", values[i])
 			} else if value.Valid {
 				_m.PasswordHash = value.String
+			}
+		case user.FieldPasswordChangedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field password_changed_at", values[i])
+			} else if value.Valid {
+				_m.PasswordChangedAt = value.Time
+			}
+		case user.FieldPasswordHistory:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field password_history", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.PasswordHistory); err != nil {
+					return fmt.Errorf("unmarshal field password_history: %w", err)
+				}
 			}
 		case user.FieldMustChangePassword:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -467,6 +485,12 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("password_hash=")
 	builder.WriteString(_m.PasswordHash)
+	builder.WriteString(", ")
+	builder.WriteString("password_changed_at=")
+	builder.WriteString(_m.PasswordChangedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("password_history=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PasswordHistory))
 	builder.WriteString(", ")
 	builder.WriteString("must_change_password=")
 	builder.WriteString(fmt.Sprintf("%v", _m.MustChangePassword))

@@ -16,7 +16,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-
 var (
 	// ErrResetTokenInvalid covers unknown, expired and already used tokens,
 	// and inactive accounts: the page only needs "ask for a new link".
@@ -34,7 +33,7 @@ type PasswordResetService struct {
 	policy   *PasswordPolicyService
 	lockout  *LockoutService // optional: a reset also unlocks the account
 	notifier Notifier
-	audit    repository.AuditLogRepository // optional
+	audit    repository.AuditLogRepository          // optional
 	verify   repository.EmailVerificationRepository // optional
 	settings *settingsCache
 	now      func() time.Time
@@ -61,7 +60,7 @@ type PasswordResetDeps struct {
 	// marks the address verified (B-13). Optional.
 	Verifications repository.EmailVerificationRepository
 	Now           func() time.Time // optional (tests)
-	Logger   *slog.Logger                          // optional
+	Logger        *slog.Logger     // optional
 }
 
 func NewPasswordResetService(d PasswordResetDeps) *PasswordResetService {
@@ -287,10 +286,12 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 		return ErrResetTokenInvalid
 	}
 
-	if err := s.policy.Validate(ctx, user.RealmID, in.NewPassword, user); err != nil {
+	// Before the policy: the current password is also in the history, and "the
+	// same one" tells more than "used recently".
+	if err := s.refuseSamePassword(ctx, user, in.NewPassword); err != nil {
 		return err
 	}
-	if err := s.refuseSamePassword(ctx, user, in.NewPassword); err != nil {
+	if err := s.policy.Validate(ctx, user.RealmID, in.NewPassword, user); err != nil {
 		return err
 	}
 	// Hash before using up the token: if hashing failed, the link would be
@@ -316,7 +317,9 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 			return ErrResetTokenInvalid // another request used it a moment ago
 		}
 		changeDone := false // a forced reset ends here, in the same write as the password
-		if _, err := s.users.Update(ctx, user.ID, repository.UpdateUserParams{PasswordHash: &hash, MustChangePassword: &changeDone}); err != nil {
+		change := s.policy.PasswordChange(ctx, user, hash, now)
+		change.MustChangePassword = &changeDone
+		if _, err := s.users.Update(ctx, user.ID, change); err != nil {
 			return fmt.Errorf("password reset: update password: %w", err)
 		}
 		if revocation, err = s.sessions.RevokeUserSessionsInStore(ctx, user.ID, domain.SessionRevokedPasswordReset); err != nil {

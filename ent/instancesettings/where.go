@@ -87,6 +87,11 @@ func PasswordExpiryDays(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldPasswordExpiryDays, v))
 }
 
+// PasswordHistoryCount applies equality check predicate on the "password_history_count" field. It's identical to PasswordHistoryCountEQ.
+func PasswordHistoryCount(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldPasswordHistoryCount, v))
+}
+
 // PasswordBreachCheckEnabled applies equality check predicate on the "password_breach_check_enabled" field. It's identical to PasswordBreachCheckEnabledEQ.
 func PasswordBreachCheckEnabled(v bool) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldPasswordBreachCheckEnabled, v))
@@ -459,6 +464,46 @@ func PasswordExpiryDaysLT(v int) predicate.InstanceSettings {
 // PasswordExpiryDaysLTE applies the LTE predicate on the "password_expiry_days" field.
 func PasswordExpiryDaysLTE(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldLTE(FieldPasswordExpiryDays, v))
+}
+
+// PasswordHistoryCountEQ applies the EQ predicate on the "password_history_count" field.
+func PasswordHistoryCountEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldPasswordHistoryCount, v))
+}
+
+// PasswordHistoryCountNEQ applies the NEQ predicate on the "password_history_count" field.
+func PasswordHistoryCountNEQ(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldPasswordHistoryCount, v))
+}
+
+// PasswordHistoryCountIn applies the In predicate on the "password_history_count" field.
+func PasswordHistoryCountIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldIn(FieldPasswordHistoryCount, vs...))
+}
+
+// PasswordHistoryCountNotIn applies the NotIn predicate on the "password_history_count" field.
+func PasswordHistoryCountNotIn(vs ...int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNotIn(FieldPasswordHistoryCount, vs...))
+}
+
+// PasswordHistoryCountGT applies the GT predicate on the "password_history_count" field.
+func PasswordHistoryCountGT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGT(FieldPasswordHistoryCount, v))
+}
+
+// PasswordHistoryCountGTE applies the GTE predicate on the "password_history_count" field.
+func PasswordHistoryCountGTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldGTE(FieldPasswordHistoryCount, v))
+}
+
+// PasswordHistoryCountLT applies the LT predicate on the "password_history_count" field.
+func PasswordHistoryCountLT(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLT(FieldPasswordHistoryCount, v))
+}
+
+// PasswordHistoryCountLTE applies the LTE predicate on the "password_history_count" field.
+func PasswordHistoryCountLTE(v int) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldLTE(FieldPasswordHistoryCount, v))
 }
 
 // PasswordBreachCheckEnabledEQ applies the EQ predicate on the "password_breach_check_enabled" field.

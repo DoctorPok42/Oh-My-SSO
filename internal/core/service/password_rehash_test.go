@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/argon2"
@@ -60,6 +61,23 @@ func TestAuthenticateLocal_UpgradesAnOldHash(t *testing.T) {
 	// Same password, new hash: the next sign-ins work and change nothing.
 	require.NoError(t, signIn(auth, rehashPassword))
 	require.Equal(t, upgraded, users.get("u-erin").PasswordHash)
+}
+
+func TestAuthenticateLocal_ExpiredPassword(t *testing.T) {
+	users := newMemUsers(&domain.User{
+		ID: "u-erin", RealmID: resetRealm, Username: "erin", Email: "erin@example.test",
+		PasswordHash: legacyHash(t, rehashPassword), Status: domain.UserActive,
+		PasswordChangedAt: time.Now().AddDate(0, 0, -31),
+	})
+	settings := &memSettings{s: &domain.InstanceSettings{PasswordExpiryDays: 30}}
+	auth := service.NewAuthService(users, &fakeLoginAttemptRepo{}, service.WithPasswordExpiry(service.NewPasswordPolicyService(settings)))
+
+	require.ErrorIs(t, signIn(auth, "wrong-password"), service.ErrInvalidCredentials, "said only to who knows the password")
+	require.ErrorIs(t, signIn(auth, rehashPassword), service.ErrPasswordExpired)
+
+	settings.s = &domain.InstanceSettings{PasswordExpiryDays: 60}
+	auth = service.NewAuthService(users, &fakeLoginAttemptRepo{}, service.WithPasswordExpiry(service.NewPasswordPolicyService(settings)))
+	require.NoError(t, signIn(auth, rehashPassword), "31 days old, 60 allowed")
 }
 
 func TestAuthenticateLocal_CurrentHashIsLeftAlone(t *testing.T) {

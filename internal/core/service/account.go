@@ -256,11 +256,17 @@ func (s *AccountService) ChangePassword(ctx context.Context, in ChangePasswordIn
 	if !swapped {
 		return nil, ErrWrongPassword
 	}
-	if user.MustChangePassword { // signed in with a passkey: the forced reset ends here too
+	// The hash is already written (compare-and-swap above): the change time,
+	// the history and the end of a forced reset (signed in with a passkey)
+	// follow.
+	change := s.d.Policy.PasswordChange(ctx, user, hash, s.d.Now())
+	change.PasswordHash = nil
+	if user.MustChangePassword {
 		changeDone := false
-		if _, err := s.d.Users.Update(ctx, user.ID, repository.UpdateUserParams{MustChangePassword: &changeDone}); err != nil {
-			return nil, fmt.Errorf("change password: %w", err)
-		}
+		change.MustChangePassword = &changeDone
+	}
+	if _, err := s.d.Users.Update(ctx, user.ID, change); err != nil {
+		return nil, fmt.Errorf("change password: %w", err)
 	}
 	n, err := s.d.Sessions.RevokeOthers(ctx, user.ID, in.SessionID, domain.SessionRevokedPasswordChanged)
 	if err != nil {

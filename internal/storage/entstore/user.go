@@ -90,6 +90,12 @@ func (r *entUserRepository) Update(ctx context.Context, id string, p repository.
 	if p.PasswordHash != nil {
 		builder = builder.SetPasswordHash(*p.PasswordHash)
 	}
+	if p.PasswordChangedAt != nil {
+		builder = builder.SetPasswordChangedAt(*p.PasswordChangedAt)
+	}
+	if p.PasswordHistory != nil {
+		builder = builder.SetPasswordHistory(*p.PasswordHistory)
+	}
 	if p.Status != nil {
 		builder = builder.SetStatus(entschema.UserStatus(*p.Status))
 	}
@@ -215,12 +221,15 @@ func toDomainUser(e *ent.User) *domain.User {
 		EmailVerifiedAt: e.EmailVerifiedAt,
 		PasswordHash:    e.PasswordHash,
 		CreatedAt:       e.CreatedAt,
-		UpdatedAt:       e.UpdatedAt,
-		DeletedAt:       e.DeletedAt,
-		Status:          domain.UserStatus(e.Status),
-		LastLoginAt:     e.LastLoginAt,
-		Profile:         e.Profile,
-		Lockout:         lockoutFromEnt(e),
+
+		PasswordChangedAt: e.PasswordChangedAt,
+		PasswordHistory:   e.PasswordHistory,
+		UpdatedAt:         e.UpdatedAt,
+		DeletedAt:         e.DeletedAt,
+		Status:            domain.UserStatus(e.Status),
+		LastLoginAt:       e.LastLoginAt,
+		Profile:           e.Profile,
+		Lockout:           lockoutFromEnt(e),
 
 		MustChangePassword: e.MustChangePassword,
 	}

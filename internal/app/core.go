@@ -207,11 +207,14 @@ func BuildCore() *Core {
 	// Failed sign-ins go to the audit log too (auth.login_failed, auth.mfa_failed).
 	loginAttempts := service.AuditedLoginAttempts(entstore.NewLoginAttemptRepository(client), c.Audit, nil)
 
+	passwordPolicy := service.NewPasswordPolicyService(c.Settings)
+	passwordPolicy.Breach = pwnedpasswords.New()
 	c.Auth = service.NewAuthService(
 		c.Users,
 		loginAttempts,
 		service.WithTimeoutChecker(c.Timeouts),
 		service.WithLockout(c.Lockout),
+		service.WithPasswordExpiry(passwordPolicy),
 	)
 
 	c.RBAC = service.NewRBACService(entstore.NewAccessRepository(client), c.Audit)
@@ -259,8 +262,6 @@ func BuildCore() *Core {
 		Memory: c.KnownAccounts,
 	})
 
-	passwordPolicy := service.NewPasswordPolicyService(c.Settings)
-	passwordPolicy.Breach = pwnedpasswords.New()
 	c.PasswordReset = service.NewPasswordResetService(service.PasswordResetDeps{
 		Tx:       c.Tx,
 		Users:    c.Users,
