@@ -405,6 +405,8 @@ export type Settings = {
   min_password_length: number;
   /** Not enforced yet: only 0 (never). */
   password_expiry_days: number;
+  /** New passwords are checked against Have I Been Pwned (k-anonymity). */
+  password_breach_check_enabled: boolean;
   password_reset_ttl_minutes: number;
   invite_ttl_hours: number;
   session_idle_minutes: number;

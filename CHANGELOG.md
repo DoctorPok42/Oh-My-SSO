@@ -5,6 +5,23 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
 
 ## [Unreleased]
 
+Passwords are checked against the most common ones and against Have I Been Pwned.
+
+### Manual steps
+- New passwords set by reset, change or admin are refused when they are among the 100,000 most common passwords,
+  always. The check against Have I Been Pwned is on by default for every realm: the server must reach
+  `api.pwnedpasswords.com` over HTTPS, or the check goes unused (passwords are still accepted, with a warning in the
+  logs). To keep the server off the Internet, run `idp settings set --realm <realm> --password-breach-check=false`
+  on each realm.
+
+### Added
+- Local list of the 100,000 most common passwords, embedded in the binary: no network needed.
+- Have I Been Pwned check (k-anonymity: only the first 5 characters of the SHA-1 hash are sent), per realm: setting
+  `password_breach_check_enabled`, on by default; a switch in the admin console (Settings > Security) and
+  `--password-breach-check` in `idp settings set`.
+- New error `password_compromised` on the password endpoints, translated in the console, the account pages and the
+  reset page.
+
 ## [1.0.0-rc.4] - 2026-11-19
 
 Administrators of the `master` realm sign in with a passkey or a security key only.

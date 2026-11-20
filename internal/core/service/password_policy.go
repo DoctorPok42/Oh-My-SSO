@@ -2,16 +2,40 @@ package service
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
 
+// commonPasswordsTxt: the NCSC list of the 100,000 passwords most seen in
+// Have I Been Pwned (via SecLists, MIT), lower-cased, minus those shorter
+// than 8 characters (the length floor refuses them already).
+//
+//go:embed common_passwords.txt
+var commonPasswordsTxt string
+
+var commonPasswords = sync.OnceValue(func() map[string]struct{} {
+	set := make(map[string]struct{}, 50000)
+	for _, line := range strings.Split(commonPasswordsTxt, "\n") {
+		if line = strings.TrimSuffix(line, "\r"); line != "" { // CRLF in a Windows checkout
+			set[strings.ToLower(line)] = struct{}{}
+		}
+	}
+	return set
+})
+
+// PasswordBreachChecker tells whether a password appeared in a data breach.
+// It is a port: the adapter is internal/pwnedpasswords (Have I Been Pwned).
+type PasswordBreachChecker interface {
+	Pwned(ctx context.Context, password string) (bool, error)
+}
 
 const (
 	// MaxPasswordLength in characters. NIST asks for at least 64.
@@ -24,6 +48,7 @@ var (
 	ErrPasswordTooShort        = errors.New("service: password is too short")
 	ErrPasswordTooLong         = errors.New("service: password is too long")
 	ErrPasswordMatchesIdentity = errors.New("service: password must not be the username or e-mail")
+	ErrPasswordCompromised     = errors.New("service: password is too common or appeared in a data breach")
 )
 
 // PasswordPolicyError tells which rule failed, with the limits to show to
@@ -42,6 +67,9 @@ func (e *PasswordPolicyError) Unwrap() error { return e.Err }
 // PasswordPolicyService checks new passwords against the realm's policy.
 type PasswordPolicyService struct {
 	settings *settingsCache
+	// Breach: nil turns the breach check off whatever the realm says (unit
+	// tests, tools); the server wires the Have I Been Pwned adapter.
+	Breach PasswordBreachChecker
 }
 
 // NewPasswordPolicyService reads the policy from InstanceSettings. settings
@@ -86,6 +114,18 @@ func (p *PasswordPolicyService) Validate(ctx context.Context, realmID, password 
 			if own != "" && strings.EqualFold(strings.TrimSpace(password), own) {
 				return fail(ErrPasswordMatchesIdentity)
 			}
+		}
+	}
+	if _, common := commonPasswords()[strings.ToLower(password)]; common {
+		return fail(ErrPasswordCompromised)
+	}
+	if p.Breach != nil && p.settings.get(ctx, realmID).PasswordBreachCheckEnabled {
+		pwned, err := p.Breach.Pwned(ctx, password)
+		if err != nil {
+			// Fail open: the local list above already refused the most common ones.
+			slog.WarnContext(ctx, "password policy: Have I Been Pwned did not answer, password accepted", "realm_id", realmID, "error", err)
+		} else if pwned {
+			return fail(ErrPasswordCompromised)
 		}
 	}
 	return nil

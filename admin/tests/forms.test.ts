@@ -36,6 +36,7 @@ describe("settings form", () => {
     managed_by: "ui",
     min_password_length: 12,
     password_expiry_days: 0,
+    password_breach_check_enabled: false,
     password_reset_ttl_minutes: 30,
     invite_ttl_hours: 4,
     session_idle_minutes: 30,
@@ -86,7 +87,7 @@ describe("settings form", () => {
   };
 
   it("sends nothing when nothing changed", () => {
-    const toggles = { notif: true, suspicious: false, remember: true };
+    const toggles = { notif: true, suspicious: false, remember: true, breach: false };
     expect(settingsDiff(before, form, "10.0.0.0/8\n", toggles)).toEqual({});
   });
 
@@ -96,11 +97,13 @@ describe("settings form", () => {
         notif: true,
         suspicious: true,
         remember: true,
+        breach: true,
       }),
     ).toEqual({
       min_password_length: 14,
       ip_allowlist: ["10.0.0.0/8", "192.168.1.1"],
       suspicious_login_email_enabled: true,
+      password_breach_check_enabled: true,
     });
   });
 
@@ -110,24 +113,25 @@ describe("settings form", () => {
         notif: true,
         suspicious: false,
         remember: false,
+        breach: false,
       }),
     ).toEqual({ remember_me_enabled: false, remember_me_idle_days: 14 });
   });
 
   it("sends the bulk limit when it changed", () => {
-    const toggles = { notif: true, suspicious: false, remember: true };
+    const toggles = { notif: true, suspicious: false, remember: true, breach: false };
     expect(settingsDiff(before, { ...form, bulk_limit: "250" }, "10.0.0.0/8", toggles)).toEqual({ bulk_limit: 250 });
   });
 
   it("sends the data retention when it changed", () => {
-    const toggles = { notif: true, suspicious: false, remember: true };
+    const toggles = { notif: true, suspicious: false, remember: true, breach: false };
     expect(settingsDiff(before, { ...form, expired_data_retention_days: "365" }, "10.0.0.0/8", toggles)).toEqual({
       expired_data_retention_days: 365,
     });
   });
 
   it("sends the audit log retention when it changed, back to forever included", () => {
-    const toggles = { notif: true, suspicious: false, remember: true };
+    const toggles = { notif: true, suspicious: false, remember: true, breach: false };
     expect(settingsDiff(before, { ...form, audit_log_retention_days: "365" }, "10.0.0.0/8", toggles)).toEqual({
       audit_log_retention_days: 365,
     });
@@ -153,13 +157,13 @@ describe("settings form", () => {
   });
 
   it("sends the default language when it changed", () => {
-    const toggles = { notif: true, suspicious: false, remember: true };
+    const toggles = { notif: true, suspicious: false, remember: true, breach: false };
     expect(settingsDiff(before, form, "10.0.0.0/8", toggles, "en")).toEqual({});
     expect(settingsDiff(before, form, "10.0.0.0/8", toggles, "fr")).toEqual({ default_locale: "fr" });
   });
 
   it("sends the e-mail sender fields that changed, empty ones included", () => {
-    const toggles = { notif: true, suspicious: false, remember: true };
+    const toggles = { notif: true, suspicious: false, remember: true, breach: false };
     const blank = { mail_from_name: "", mail_from_address: "", mail_reply_to: "", mail_logo_url: "" };
     expect(settingsDiff(before, form, "10.0.0.0/8", toggles, "en", blank)).toEqual({});
     expect(

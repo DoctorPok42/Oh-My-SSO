@@ -20,12 +20,15 @@ import (
 const settingsUsage = `usage:
   idp settings show --realm <name>
   idp settings set  --realm <name> [--notification-email=true|false] [--suspicious-login-email=true|false]
-                    [--min-password-length <n>] [--lockout-threshold <n>] [--lockout-duration <duration>]
+                    [--min-password-length <n>] [--password-breach-check=true|false]
+                    [--lockout-threshold <n>] [--lockout-duration <duration>]
                     [--password-reset-ttl <duration>]
                     [--remember-me=true|false] [--remember-me-idle-days <n>] [--remember-me-max-days <n>]
 
 --lockout-threshold 0 turns the account lockout off. Durations: 15m, 1h...
 --remember-me offers "Keep me signed in" on the sign-in page (days: 1 to 365).
+--password-breach-check sends the first 5 characters of the password's SHA-1 to
+api.pwnedpasswords.com (k-anonymity); leave it off on a server without Internet.
 `
 
 func runSettingsCommand(args []string) int {
@@ -90,6 +93,7 @@ func printSettings(out io.Writer, s *domain.InstanceSettings) {
 	fmt.Fprintf(out, "notification e-mails:        %t\n", s.NotificationEmailEnabled)
 	fmt.Fprintf(out, "suspicious sign-in e-mails:  %t\n", s.SuspiciousLoginEmailEnabled)
 	fmt.Fprintf(out, "min password length:         %d\n", s.MinPasswordLength)
+	fmt.Fprintf(out, "breached password check:     %t (Have I Been Pwned)\n", s.PasswordBreachCheckEnabled)
 	fmt.Fprintf(out, "lockout threshold:           %d (0 = off)\n", s.LockoutThreshold)
 	fmt.Fprintf(out, "lockout duration:            %d min (doubles on repeat, max 24 h)\n", s.LockoutDurationMinutes)
 	allow := "(none: sign-in from any address)"
@@ -110,6 +114,7 @@ func settingsSet(ctx context.Context, args []string, out io.Writer) error {
 	notif := fs.String("notification-email", "", "true|false: security alert e-mails")
 	susp := fs.String("suspicious-login-email", "", "true|false: e-mail on unusual sign-ins")
 	minLen := fs.Int("min-password-length", -1, "minimum length of new passwords (8 at least)")
+	breach := fs.String("password-breach-check", "", "true|false: refuse passwords found by Have I Been Pwned")
 	threshold := fs.Int("lockout-threshold", -1, "wrong passwords before a lock (0 = off)")
 	duration := fs.Duration("lockout-duration", 0, "first lock duration, e.g. 15m")
 	resetTTL := fs.Duration("password-reset-ttl", 0, "validity of reset links, e.g. 30m")
@@ -126,6 +131,9 @@ func settingsSet(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	}
 	if p.SuspiciousLoginEmailEnabled, err = optionalBool("suspicious-login-email", *susp); err != nil {
+		return err
+	}
+	if p.PasswordBreachCheckEnabled, err = optionalBool("password-breach-check", *breach); err != nil {
 		return err
 	}
 	if *minLen >= 0 {

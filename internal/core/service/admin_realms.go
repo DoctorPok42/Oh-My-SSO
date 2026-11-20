@@ -178,6 +178,7 @@ type SettingsView struct {
 	ManagedBy                   string    `json:"managed_by"`
 	MinPasswordLength           int       `json:"min_password_length"`
 	PasswordExpiryDays          int       `json:"password_expiry_days"`
+	PasswordBreachCheckEnabled  bool      `json:"password_breach_check_enabled"`
 	PasswordResetTTLMinutes     int       `json:"password_reset_ttl_minutes"`
 	InviteTTLHours              int       `json:"invite_ttl_hours"`
 	SessionIdleMinutes          int       `json:"session_idle_minutes"`
@@ -231,6 +232,7 @@ func (s *AdminService) GetSettings(ctx context.Context, realm *domain.Realm) (*S
 	}
 	return &SettingsView{
 		ManagedBy: string(st.ManagedBy), MinPasswordLength: st.MinPasswordLength, PasswordExpiryDays: st.PasswordExpiryDays,
+		PasswordBreachCheckEnabled: st.PasswordBreachCheckEnabled,
 		InviteTTLHours: st.InviteTTLHours, PasswordResetTTLMinutes: st.PasswordResetTTLMinutes, SessionIdleMinutes: st.SessionIdleMinutes,
 		SessionMaxHours: st.SessionMaxHours, RememberMeEnabled: st.RememberMeEnabled, RememberMeIdleDays: st.RememberMeIdleDays,
 		RememberMeMaxDays: st.RememberMeMaxDays, LockoutThreshold: st.LockoutThreshold, LockoutDurationMinutes: st.LockoutDurationMinutes,
@@ -247,6 +249,7 @@ func (s *AdminService) GetSettings(ctx context.Context, realm *domain.Realm) (*S
 type SettingsPatch struct {
 	MinPasswordLength           *int
 	PasswordExpiryDays          *int
+	PasswordBreachCheckEnabled  *bool
 	PasswordResetTTLMinutes     *int
 	InviteTTLHours              *int
 	SessionIdleMinutes          *int
@@ -365,7 +368,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 	}
 	by := actor.By()
 	upd := repository.UpdateInstanceSettingsParams{
-		MinPasswordLength: p.MinPasswordLength, PasswordExpiryDays: p.PasswordExpiryDays,
+		MinPasswordLength: p.MinPasswordLength, PasswordExpiryDays: p.PasswordExpiryDays, PasswordBreachCheckEnabled: p.PasswordBreachCheckEnabled,
 		InviteTTLHours: p.InviteTTLHours, PasswordResetTTLMinutes: p.PasswordResetTTLMinutes, SessionIdleMinutes: p.SessionIdleMinutes,
 		SessionMaxHours: p.SessionMaxHours, RememberMeEnabled: p.RememberMeEnabled,
 		RememberMeIdleDays: p.RememberMeIdleDays, RememberMeMaxDays: p.RememberMeMaxDays, LockoutThreshold: p.LockoutThreshold,
@@ -406,6 +409,7 @@ func settingsChanges(p SettingsPatch) map[string]interface{} {
 	bools := map[string]*bool{
 		"mfa_required_globally": p.MFARequiredGlobally, "notification_email_enabled": p.NotificationEmailEnabled,
 		"suspicious_login_email_enabled": p.SuspiciousLoginEmailEnabled, "remember_me_enabled": p.RememberMeEnabled,
+		"password_breach_check_enabled": p.PasswordBreachCheckEnabled,
 	}
 	for k, v := range bools {
 		if v != nil {

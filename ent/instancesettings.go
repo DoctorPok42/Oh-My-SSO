@@ -28,6 +28,8 @@ type InstanceSettings struct {
 	MinPasswordLength int `json:"min_password_length,omitempty"`
 	// PasswordExpiryDays holds the value of the "password_expiry_days" field.
 	PasswordExpiryDays int `json:"password_expiry_days,omitempty"`
+	// PasswordBreachCheckEnabled holds the value of the "password_breach_check_enabled" field.
+	PasswordBreachCheckEnabled bool `json:"password_breach_check_enabled,omitempty"`
 	// SessionIdleMinutes holds the value of the "session_idle_minutes" field.
 	SessionIdleMinutes int `json:"session_idle_minutes,omitempty"`
 	// SessionMaxHours holds the value of the "session_max_hours" field.
@@ -119,7 +121,7 @@ func (*InstanceSettings) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case instancesettings.FieldIPAllowlist:
 			values[i] = new([]byte)
-		case instancesettings.FieldRememberMeEnabled, instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled, instancesettings.FieldMfaTrustedDeviceEnabled, instancesettings.FieldSuspiciousLoginEmailEnabled:
+		case instancesettings.FieldPasswordBreachCheckEnabled, instancesettings.FieldRememberMeEnabled, instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled, instancesettings.FieldMfaTrustedDeviceEnabled, instancesettings.FieldSuspiciousLoginEmailEnabled:
 			values[i] = new(sql.NullBool)
 		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldKeyRotationIntervalDays, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldMfaTrustedDeviceDays, instancesettings.FieldPasswordResetTTLMinutes, instancesettings.FieldInviteTTLHours, instancesettings.FieldBulkLimit, instancesettings.FieldExpiredDataRetentionDays, instancesettings.FieldAuditLogRetentionDays:
 			values[i] = new(sql.NullInt64)
@@ -171,6 +173,12 @@ func (_m *InstanceSettings) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field password_expiry_days", values[i])
 			} else if value.Valid {
 				_m.PasswordExpiryDays = int(value.Int64)
+			}
+		case instancesettings.FieldPasswordBreachCheckEnabled:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field password_breach_check_enabled", values[i])
+			} else if value.Valid {
+				_m.PasswordBreachCheckEnabled = value.Bool
 			}
 		case instancesettings.FieldSessionIdleMinutes:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -401,6 +409,9 @@ func (_m *InstanceSettings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("password_expiry_days=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PasswordExpiryDays))
+	builder.WriteString(", ")
+	builder.WriteString("password_breach_check_enabled=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PasswordBreachCheckEnabled))
 	builder.WriteString(", ")
 	builder.WriteString("session_idle_minutes=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SessionIdleMinutes))

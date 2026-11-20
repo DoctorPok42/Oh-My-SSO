@@ -86,6 +86,20 @@ func (_u *InstanceSettingsUpdate) AddPasswordExpiryDays(v int) *InstanceSettings
 	return _u
 }
 
+// SetPasswordBreachCheckEnabled sets the "password_breach_check_enabled" field.
+func (_u *InstanceSettingsUpdate) SetPasswordBreachCheckEnabled(v bool) *InstanceSettingsUpdate {
+	_u.mutation.SetPasswordBreachCheckEnabled(v)
+	return _u
+}
+
+// SetNillablePasswordBreachCheckEnabled sets the "password_breach_check_enabled" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillablePasswordBreachCheckEnabled(v *bool) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetPasswordBreachCheckEnabled(*v)
+	}
+	return _u
+}
+
 // SetSessionIdleMinutes sets the "session_idle_minutes" field.
 func (_u *InstanceSettingsUpdate) SetSessionIdleMinutes(v int) *InstanceSettingsUpdate {
 	_u.mutation.ResetSessionIdleMinutes()
@@ -681,6 +695,9 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if value, ok := _u.mutation.AddedPasswordExpiryDays(); ok {
 		_spec.AddField(instancesettings.FieldPasswordExpiryDays, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.PasswordBreachCheckEnabled(); ok {
+		_spec.SetField(instancesettings.FieldPasswordBreachCheckEnabled, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.SessionIdleMinutes(); ok {
 		_spec.SetField(instancesettings.FieldSessionIdleMinutes, field.TypeInt, value)
 	}
@@ -900,6 +917,20 @@ func (_u *InstanceSettingsUpdateOne) SetNillablePasswordExpiryDays(v *int) *Inst
 // AddPasswordExpiryDays adds value to the "password_expiry_days" field.
 func (_u *InstanceSettingsUpdateOne) AddPasswordExpiryDays(v int) *InstanceSettingsUpdateOne {
 	_u.mutation.AddPasswordExpiryDays(v)
+	return _u
+}
+
+// SetPasswordBreachCheckEnabled sets the "password_breach_check_enabled" field.
+func (_u *InstanceSettingsUpdateOne) SetPasswordBreachCheckEnabled(v bool) *InstanceSettingsUpdateOne {
+	_u.mutation.SetPasswordBreachCheckEnabled(v)
+	return _u
+}
+
+// SetNillablePasswordBreachCheckEnabled sets the "password_breach_check_enabled" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillablePasswordBreachCheckEnabled(v *bool) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetPasswordBreachCheckEnabled(*v)
+	}
 	return _u
 }
 
@@ -1527,6 +1558,9 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.AddedPasswordExpiryDays(); ok {
 		_spec.AddField(instancesettings.FieldPasswordExpiryDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.PasswordBreachCheckEnabled(); ok {
+		_spec.SetField(instancesettings.FieldPasswordBreachCheckEnabled, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.SessionIdleMinutes(); ok {
 		_spec.SetField(instancesettings.FieldSessionIdleMinutes, field.TypeInt, value)

@@ -15,6 +15,7 @@ type InstanceSettings struct {
 	ManagedBy                   InstanceSettingsManagedBy
 	MinPasswordLength           int
 	PasswordExpiryDays          int
+	PasswordBreachCheckEnabled  bool // check new passwords against Have I Been Pwned
 	SessionIdleMinutes          int
 	SessionMaxHours             int
 	RememberMeEnabled           bool

@@ -873,6 +873,8 @@
   "settings.notifications.suspicious": "Alertes de connexion suspecte",
   "settings.notifications.suspicious_hint": "Connexion depuis un lieu ou un appareil inhabituel.",
   "settings.notifications.title": "Notifications",
+  "settings.password.breach_check": "Refuser les mots de passe compromis",
+  "settings.password.breach_check_hint": "Vérifie les nouveaux mots de passe auprès de Have I Been Pwned : seuls les 5 premiers caractères de leur empreinte SHA-1 quittent le serveur. Les 100 000 mots de passe les plus courants sont toujours refusés.",
   "settings.password.description": "Les mots de passe sont hachés avec Argon2id ; ces règles s'appliquent quand l'un d'eux est choisi.",
   "settings.password.invite_ttl": "Validité du lien d'invitation (heures)",
   "settings.password.invite_ttl_hint": "De 1 à 720. S'applique aux nouvelles invitations et aux liens d'activation renvoyés.",

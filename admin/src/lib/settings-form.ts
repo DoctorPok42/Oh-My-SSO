@@ -7,6 +7,7 @@ export type SettingsPatch = Partial<
   Pick<
     Settings,
     | "min_password_length"
+    | "password_breach_check_enabled"
     | "password_reset_ttl_minutes"
     | "invite_ttl_hours"
     | "session_idle_minutes"
@@ -97,6 +98,7 @@ const SECTION_FIELDS: Record<SettingsSection, readonly string[]> = {
   general: ["default_locale", "bulk_limit", "expired_data_retention_days"],
   security: [
     "min_password_length",
+    "password_breach_check_enabled",
     "password_reset_ttl_minutes",
     "invite_ttl_hours",
     "lockout_threshold",
@@ -126,6 +128,7 @@ export type SettingsToggles = {
   notif: boolean;
   suspicious: boolean;
   remember: boolean;
+  breach: boolean;
 };
 
 /** The changed fields only (PATCH). */
@@ -148,6 +151,7 @@ export function settingsDiff(
   if (toggles.suspicious !== before.suspicious_login_email_enabled)
     patch.suspicious_login_email_enabled = toggles.suspicious;
   if (toggles.remember !== before.remember_me_enabled) patch.remember_me_enabled = toggles.remember;
+  if (toggles.breach !== before.password_breach_check_enabled) patch.password_breach_check_enabled = toggles.breach;
   if (locale && locale !== (before.default_locale || "en")) patch.default_locale = locale;
   if (mail) {
     // An empty field is a valid value (back to the server default), so it
