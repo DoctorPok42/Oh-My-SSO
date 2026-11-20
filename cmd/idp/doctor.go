@@ -22,8 +22,12 @@ import (
 	"sso.internal/sso/ent/migrate/migrations"
 	"sso.internal/sso/internal/app"
 	"sso.internal/sso/internal/clientip"
+	"sso.internal/sso/internal/core/domain"
+	"sso.internal/sso/internal/core/repository"
+	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/geoip"
 	"sso.internal/sso/internal/keymanager"
+	"sso.internal/sso/internal/passkey"
 	"sso.internal/sso/internal/storage/entstore"
 )
 
@@ -89,6 +93,7 @@ func runDoctor(args []string, out io.Writer) int {
 		{"DKIM", d.dkim},
 		{"Public URL", d.publicURL},
 		{"Proxies", d.proxies},
+		{"WebAuthn", d.webauthn},
 		{"GeoIP", checkGeoIP},
 	}
 	failed, warned := 0, 0
@@ -383,6 +388,115 @@ func proxiesResult(raw string, res clientip.Resolver, https bool) result {
 			"and every request seems to come from it (shared rate limits, audit addresses)")
 	}
 	return pass("%s", strings.TrimPrefix(res.String(), "client ip: "))
+}
+
+// webauthn: the accounts of the master realm sign in with a passkey or a
+// security key only, so a WebAuthn setting that is wrong shuts the
+// administrators out. The stored MFA policies of master are read too: one
+// that allows no such factor fails every sign-in it applies to.
+func (d *doctor) webauthn(ctx context.Context) result {
+	var origins []string
+	for _, o := range strings.Split(os.Getenv("WEBAUTHN_RP_ORIGINS"), ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			origins = append(origins, o)
+		}
+	}
+	r := webauthnResult(os.Getenv("WEBAUTHN_RP_ID"), origins, strings.TrimRight(os.Getenv("PUBLIC_URL"), "/"),
+		os.Getenv("APP_ENV") == "production")
+	if r.status != "OK" {
+		return r
+	}
+	if d.db == nil {
+		return warn("settings fine, the stored MFA policies of master are not checked: needs the database")
+	}
+	conflicts, err := masterPolicyConflicts(ctx, d.db)
+	switch {
+	case err != nil:
+		return fail("read the MFA policies of master: %v", err)
+	case len(conflicts) > 0:
+		return fail("these policies of master allow no passkey or security key, so they fail every sign-in they apply to "+
+			"(add passkey to their methods in the console): %s", strings.Join(conflicts, ", "))
+	}
+	return r
+}
+
+// webauthnResult checks the settings alone (see webauthn).
+func webauthnResult(rpID string, origins []string, publicURL string, prod bool) result {
+	if rpID == "" {
+		return fail("WEBAUTHN_RP_ID is not set: passkeys are off, and the accounts of the master realm cannot sign in")
+	}
+	if _, err := passkey.New(passkey.Config{RPID: rpID, RPOrigins: origins}); err != nil {
+		return fail("WEBAUTHN_RP_ID / WEBAUTHN_RP_ORIGINS: %v (the servers refuse to start)", err)
+	}
+	for _, o := range origins {
+		u, err := url.Parse(o)
+		if err != nil || u.Host == "" || (u.Scheme != "https" && u.Scheme != "http") {
+			return fail("WEBAUTHN_RP_ORIGINS has %q: expected scheme://host[:port], like https://sso.example.com", o)
+		}
+		// Browsers offer WebAuthn on https pages, and on http only for localhost.
+		if u.Scheme == "http" && u.Hostname() != "localhost" && prod {
+			return fail("WEBAUTHN_RP_ORIGINS has %s: browsers refuse WebAuthn on plain http", o)
+		}
+	}
+	u, err := url.Parse(publicURL)
+	if publicURL == "" || err != nil || u.Host == "" {
+		return pass("RP ID %s (PUBLIC_URL is not usable: the origins are not compared with it)", rpID)
+	}
+	if host := u.Hostname(); host != rpID && !strings.HasSuffix(host, "."+rpID) {
+		return fail("WEBAUTHN_RP_ID %s is neither the host of PUBLIC_URL (%s) nor a parent domain of it: the browser refuses every passkey", rpID, host)
+	}
+	origin := u.Scheme + "://" + u.Host
+	if !slices.Contains(origins, origin) {
+		return fail("WEBAUTHN_RP_ORIGINS does not list %s, where the login pages are served: the server refuses every passkey", origin)
+	}
+	return pass("RP ID %s, origin %s", rpID, origin)
+}
+
+// masterPolicyConflicts names the clients and roles of master whose MFA
+// policy lists methods without any passkey or security key.
+func masterPolicyConflicts(ctx context.Context, db *sql.DB) ([]string, error) {
+	client := ent.NewClient(ent.Driver(entstore.NewDriver(db)))
+	realm, err := entstore.NewRealmRepository(client).GetByName(ctx, service.MasterRealmName)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, nil // not bootstrapped yet
+	}
+	if err != nil {
+		return nil, err
+	}
+	clients, err := entstore.NewClientRepository(client).ListByRealm(ctx, realm.ID)
+	if err != nil {
+		return nil, err
+	}
+	policies, err := entstore.NewMfaPolicyRepository(client).ListByRealm(ctx, realm.ID)
+	if err != nil {
+		return nil, err
+	}
+	roles := entstore.NewRoleRepository(client)
+	var out []string
+	for _, c := range clients {
+		if !c.IsDeleted() && !allowsPhishingResistant(c.MFAAllowedMethods) {
+			out = append(out, "client "+c.Name)
+		}
+	}
+	for _, p := range policies {
+		if allowsPhishingResistant(p.AllowedMethods) {
+			continue
+		}
+		name := p.RoleID
+		if r, err := roles.GetByID(ctx, p.RoleID); err == nil {
+			name = r.Name
+		}
+		out = append(out, "role "+name)
+	}
+	return out, nil
+}
+
+// allowsPhishingResistant: an empty list allows any method, which master
+// narrows to passkeys and security keys by itself.
+func allowsPhishingResistant(methods []domain.MfaMethodType) bool {
+	return len(methods) == 0 || slices.ContainsFunc(methods, func(m domain.MfaMethodType) bool {
+		return slices.Contains(service.PhishingResistantMethods, m)
+	})
 }
 
 func checkGeoIP(context.Context) result {

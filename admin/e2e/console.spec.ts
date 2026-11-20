@@ -229,7 +229,8 @@ test("bulk: suspend a selection, what cannot change is reported", async ({ page,
   // The result leads to the entries of the operation.
   await summary.getByRole("link", { name: /audit/ }).click();
   await expect(page).toHaveURL(/\/audit\?operation=op_/);
-  await expect(page.getByRole("row", { name: /user\.updated|User updated/ }).first()).toBeVisible();
+  // One entry per operation: the items are gathered in it (see finishBulkJob).
+  await expect(page.getByRole("row", { name: /bulk\.completed/ }).first()).toBeVisible();
 });
 
 test("bulk: deleting asks for a word, and the selection survives the pages", async ({ page }) => {
@@ -374,7 +375,8 @@ test("bulk: the size of a selection is a setting of the realm", async ({ page, b
   await setLimit("1");
 
   await page.goto(r("users?q=example.test"));
-  await page.getByRole("checkbox", { name: "Select all on this page" }).check();
+  // Capped at the limit, so the box stays partly checked: click, not check().
+  await page.getByRole("checkbox", { name: "Select all on this page" }).click();
   const bar = page.getByRole("toolbar", { name: "Actions on the selection" });
   await expect(bar.getByText("1 user selected")).toBeVisible();
   await bar.getByRole("button", { name: "Clear selection" }).click();
@@ -484,7 +486,7 @@ test("step-up: once the second factor is too old, changes ask for it again", asy
   await page.getByRole("button", { name: "Reactivate" }).click();
   const confirmIt = page.getByRole("dialog", { name: "Confirm it's you" });
   await confirmIt.getByRole("link", { name: "Continue" }).click();
-  await expect(page.locator("#identifier")).toBeVisible();
+  await page.waitForURL((u) => u.href.startsWith(account().idp)); // the IdP asks again
   await signInOnIdP(page, account(), baseURL!);
   await page
     .getByRole("alertdialog", { name: "Reactivate 1 user?" })
@@ -499,8 +501,8 @@ test("step-up: once the second factor is too old, changes ask for it again", asy
   const dialog = page.getByRole("dialog", { name: "Confirm it's you" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("link", { name: "Continue" }).click();
-  // prompt=login: password AND code again, even with a live IdP session.
-  await expect(page.locator("#identifier")).toBeVisible();
+  // prompt=login: the sign-in again, even with a live IdP session.
+  await page.waitForURL((u) => u.href.startsWith(account().idp));
   await signInOnIdP(page, account(), baseURL!);
   // Back where the admin was, with the drawer open (?new=1).
   await expect(page).toHaveURL(/\/clients\?new=1$/);

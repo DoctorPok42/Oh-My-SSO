@@ -29,6 +29,8 @@ import (
 	"sso.internal/sso/internal/core/service"
 	"sso.internal/sso/internal/httpserver"
 	localdev "sso.internal/sso/internal/keymanager/local_dev"
+	"sso.internal/sso/internal/passkey"
+	"sso.internal/sso/internal/passkey/passkeytest"
 	"sso.internal/sso/internal/storage/entstore"
 )
 
@@ -81,6 +83,7 @@ type adminTestEnv struct {
 	devices  repository.TrustedDeviceRepository
 	ent      *ent.Client
 	timeouts *service.TimeoutService
+	keys     map[string]*passkeytest.Authenticator // passkey of each master account, by username (see signIn)
 }
 
 func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *adminTestEnv {
@@ -118,15 +121,22 @@ func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *admin
 
 	devices := entstore.NewTrustedDeviceRepository(client)
 	trusted := service.NewTrustedDeviceService(service.TrustedDeviceDeps{Devices: devices, Settings: settings, Audit: audit, Now: clock.Now})
-	sessions := service.NewSessionService(entstore.NewSessionRepository(client), settings, tokens,
-		valkeycache.NewSessionCache(valkeyClient), service.WithClock(clock.Now), service.WithRevocationObserver(trusted))
-	policy := service.NewMFAPolicyService(service.MFAPolicyDeps{Settings: settings, Clients: clients, Roles: roles,
+	sessionRepo := entstore.NewSessionRepository(client)
+	// As in app.BuildCore, so that a sign-in from a new device alerts the account.
+	loginSecurity := service.NewLoginSecurityService(service.LoginSecurityDeps{Sessions: sessionRepo,
+		Methods: entstore.NewMfaMethodRepository(client), Audit: audit, Notifier: notifier, Synchronous: true})
+	sessions := service.NewSessionService(sessionRepo, settings, tokens,
+		valkeycache.NewSessionCache(valkeyClient), service.WithClock(clock.Now), service.WithRevocationObserver(trusted),
+		service.WithLoginObserver(loginSecurity))
+	policy := service.NewMFAPolicyService(service.MFAPolicyDeps{Realms: realms, Settings: settings, Clients: clients, Roles: roles,
 		Policies: entstore.NewMfaPolicyRepository(client), Access: access, Audit: audit, Now: clock.Now})
+	passkeys, err := passkey.New(passkey.Config{RPID: "sso.test", RPOrigins: []string{passkeyTestOrigin}})
+	require.NoError(t, err)
 	mfa := service.NewMFAService(service.MFADeps{
 		Users: users, Methods: entstore.NewMfaMethodRepository(client), BackupCodes: entstore.NewMfaBackupCodeRepository(client),
 		Sessions: sessions, Policy: policy, Envelope: service.NewEnvelopeService(signingKeys, km, "local_dev"),
 		Store: valkeycache.NewMFAStore(valkeyClient), Limiter: limiter, LoginAttempts: attempts, Audit: audit,
-		Realms: realms, Clients: clients, Now: clock.Now, Notifier: notifier,
+		Realms: realms, Clients: clients, Passkeys: passkeys, Now: clock.Now, Notifier: notifier,
 	})
 	timeouts := service.NewTimeoutService(service.TimeoutDeps{Timeouts: entstore.NewTimeoutRepository(client), Users: users,
 		Groups: groups, Clients: clients, Tokens: tokens, Sessions: sessions, Audit: audit, Now: clock.Now})
@@ -184,7 +194,7 @@ func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *admin
 
 	return &adminTestEnv{idp: ts, api: api, admin: admin, sessions: sessions, audit: audit, users: users,
 		clock: clock, notifier: notifier, oidc: &oidcTestEnv{ts: ts, clock: clock, realmURL: ts.URL + "/r/master"},
-		valkey: valkeyClient, devices: devices, ent: client, timeouts: timeouts}
+		valkey: valkeyClient, devices: devices, ent: client, timeouts: timeouts, keys: map[string]*passkeytest.Authenticator{}}
 }
 
 // call sends one Admin API request with the admin's access token. A bulk
@@ -241,9 +251,10 @@ func (e *adminTestEnv) send(t *testing.T, token, method, path string, body any) 
 }
 
 // signIn runs the admin console's login: OIDC code flow + PKCE on the
-// master realm. firstTime: the account has no factor yet, the login page
-// asks for a TOTP enrollment (MFA is required in master).
-func (e *adminTestEnv) signIn(t *testing.T, cfg *oauth2.Config, username string, totpSecret *string, opts ...oauth2.AuthCodeOption) *oauth2.Token {
+// master realm. The first time for an account, the login page asks for a
+// second factor, and master only takes a passkey or a security key: the
+// passkey enrolled then is kept in e.keys for the next sign-ins.
+func (e *adminTestEnv) signIn(t *testing.T, cfg *oauth2.Config, username string, opts ...oauth2.AuthCodeOption) *oauth2.Token {
 	t.Helper()
 	b := e.oidc.newBrowser(t)
 	verifier := oauth2.GenerateVerifier()
@@ -253,17 +264,20 @@ func (e *adminTestEnv) signIn(t *testing.T, cfg *oauth2.Config, username string,
 
 	status, body := b.postJSON(e.oidc.realmURL+"/auth/login", map[string]any{"identifier": username, "password": adminPassword, "client_id": "sso-admin"})
 	require.Equal(t, http.StatusOK, status, "%v", body)
-	if *totpSecret == "" {
+	key := e.keys[username]
+	if key == nil {
 		require.Equal(t, "mfa_enrollment_required", body["status"])
-		status, out := b.postJSON(e.oidc.realmURL+"/account/mfa/totp", map[string]string{"name": "phone"})
-		require.Equal(t, http.StatusCreated, status, "%v", out)
-		*totpSecret = out["secret"].(string)
-		status, out = b.postJSON(e.oidc.realmURL+"/account/mfa/totp/"+out["method_id"].(string)+"/confirm",
-			map[string]string{"code": e.oidc.totpCode(t, *totpSecret)})
-		require.Equal(t, http.StatusOK, status, "%v", out)
+		require.Equal(t, []any{"webauthn", "passkey"}, body["allowed_methods"])
+		key = passkeytest.New(passkeyTestOrigin)
+		e.keys[username] = key
+		e.oidc.registerPasskey(t, b, key, "passkey")
 	} else {
 		require.Equal(t, "mfa_required", body["status"])
-		status, out := b.postJSON(e.oidc.realmURL+"/auth/mfa/verify", map[string]string{"method": "totp", "code": e.oidc.totpCode(t, *totpSecret)})
+		status, opts := b.postJSON(e.oidc.realmURL+"/auth/mfa/webauthn/options", map[string]any{})
+		require.Equal(t, http.StatusOK, status, "%v", opts)
+		cred, err := key.Get(rawJSON(t, opts))
+		require.NoError(t, err)
+		status, out := b.postJSON(e.oidc.realmURL+"/auth/mfa/webauthn/verify", json.RawMessage(cred))
 		require.Equal(t, http.StatusOK, status, "%v", out)
 	}
 	code := codeFromRedirect(t, b.get(loginURL), cfg.RedirectURL, "st")
@@ -321,8 +335,7 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	require.ErrorIs(t, err, service.ErrAlreadyBootstrapped)
 
 	console := e.consoleConfig(res.ClientSecret)
-	var secret string
-	tok := e.signIn(t, console, "root", &secret)
+	tok := e.signIn(t, console, "root")
 	at := tok.AccessToken
 
 	status, me := e.call(t, at, http.MethodGet, "/api/v1/me", nil)
@@ -437,8 +450,16 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	require.Equal(t, "step_up_required", out["error"])
 
 	// The console sends the admin through the login page again (prompt=login).
-	e.clock.Advance(30 * time.Second) // next TOTP window
-	tok = e.signIn(t, console, "root", &secret, oauth2.SetAuthURLParam("prompt", "login"))
+	tok = e.signIn(t, console, "root", oauth2.SetAuthURLParam("prompt", "login"))
+	// A second browser is a device the account never used: the administrator
+	// is alerted (the security e-mails are on in master since the bootstrap).
+	alerted := false
+	for _, kind := range []domain.NotificationKind{domain.NotificationNewDeviceLogin, domain.NotificationSuspiciousLogin} {
+		for _, ev := range e.notifier.kinds(kind) {
+			alerted = alerted || (ev.NewDevice && ev.RealmID == claimsRealm(t, e, "master") && ev.UserID == jwtClaims(t, tok.AccessToken)["sub"])
+		}
+	}
+	require.True(t, alerted, "an administrator signing in from a new device is alerted: %v", e.notifier.events)
 	status, out = e.call(t, tok.AccessToken, http.MethodPost, "/api/v1/realms/demo/groups", map[string]any{"name": "contractors"})
 	require.Equal(t, http.StatusCreated, status, "%v", out)
 
@@ -447,6 +468,7 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	status, out = e.call(t, tok.AccessToken, http.MethodGet, "/api/v1/realms/master/settings", nil)
 	require.Equal(t, http.StatusOK, status, "%v", out)
 	require.Equal(t, false, out["remember_me_enabled"])
+	require.Equal(t, true, out["notification_email_enabled"], "security e-mails (sign-in from a new device...) are on in master")
 	status, out = e.call(t, tok.AccessToken, http.MethodGet, "/api/v1/realms/demo/settings", nil)
 	require.Equal(t, http.StatusOK, status, "%v", out)
 	require.Equal(t, true, out["remember_me_enabled"])
@@ -492,6 +514,36 @@ func TestAdmin_Integration_DefinitionOfDone(t *testing.T) {
 	require.True(t, found)
 }
 
+// An account of master with an authenticator app alone gets no code for the
+// admin console: only a passkey or a security key opens it (audit F-19).
+func TestAdmin_Integration_MasterNeedsPhishingResistantFactor(t *testing.T) {
+	e := setupAdminTestEnv(t)
+	res, err := e.admin.Bootstrap(context.Background(), service.BootstrapInput{AdminEmail: "root@example.test",
+		AdminConsoleURL: adminConsoleURL, Actor: "cli:test@host"})
+	require.NoError(t, err)
+	e.activate(t, res.ActivationURL)
+	console := e.consoleConfig(res.ClientSecret)
+
+	b := e.oidc.newBrowser(t)
+	verifier := oauth2.GenerateVerifier()
+	loginURL := b.get(console.AuthCodeURL("st", oauth2.S256ChallengeOption(verifier))).Request.URL.String()
+	status, body := b.postJSON(e.oidc.realmURL+"/auth/login", map[string]any{"identifier": "root", "password": adminPassword, "client_id": "sso-admin"})
+	require.Equal(t, http.StatusOK, status, "%v", body)
+	require.Equal(t, "mfa_enrollment_required", body["status"])
+
+	status, out := b.postJSON(e.oidc.realmURL+"/account/mfa/totp", map[string]string{"name": "phone"})
+	require.Equal(t, http.StatusCreated, status, "%v", out)
+	status, out = b.postJSON(e.oidc.realmURL+"/account/mfa/totp/"+out["method_id"].(string)+"/confirm",
+		map[string]string{"code": e.oidc.totpCode(t, out["secret"].(string))})
+	require.Equal(t, http.StatusOK, status, "%v", out)
+	require.Equal(t, http.StatusOK, b.get(loginURL).StatusCode, "TOTP alone: the login page again, no code")
+
+	e.oidc.registerPasskey(t, b, passkeytest.New(passkeyTestOrigin), "passkey")
+	code := codeFromRedirect(t, b.get(loginURL), console.RedirectURL, "st")
+	_, err = console.Exchange(context.WithValue(context.Background(), oauth2.HTTPClient, e.idp.Client()), code, oauth2.VerifierOption(verifier))
+	require.NoError(t, err)
+}
+
 func TestAdmin_Integration_RightsFromToken(t *testing.T) {
 	e := setupAdminTestEnv(t)
 	ctx := context.Background()
@@ -504,8 +556,7 @@ func TestAdmin_Integration_RightsFromToken(t *testing.T) {
 		RedirectURL: adminConsoleURL + "/auth/callback", Scopes: []string{"openid", "profile", "email", "offline_access"},
 		Endpoint: oauth2.Endpoint{AuthURL: e.idp.URL + "/r/master/oidc/authorize", TokenURL: e.idp.URL + "/r/master/oidc/token",
 			AuthStyle: oauth2.AuthStyleInHeader}}
-	var rootSecret string
-	root := e.signIn(t, console, "root", &rootSecret).AccessToken
+	root := e.signIn(t, console, "root").AccessToken
 
 	// alice: a second administrator.
 	status, out := e.call(t, root, http.MethodPost, "/api/v1/realms/master/users", map[string]any{
@@ -525,8 +576,7 @@ func TestAdmin_Integration_RightsFromToken(t *testing.T) {
 	status, out = e.call(t, root, http.MethodPut, "/api/v1/realms/master/users/"+aliceID+"/groups",
 		map[string]any{"group_ids": []string{adminsID}})
 	require.Equal(t, http.StatusOK, status, "%v", out)
-	var aliceSecret string
-	aliceTok := e.signIn(t, console, "alice", &aliceSecret)
+	aliceTok := e.signIn(t, console, "alice")
 	alice := aliceTok.AccessToken
 
 	// The access token carries the permissions; the ID token never does.
@@ -636,8 +686,7 @@ func TestAdmin_Integration_RotateKeySize(t *testing.T) {
 		AdminConsoleURL: adminConsoleURL, Actor: "cli:test@host"})
 	require.NoError(t, err)
 	e.activate(t, res.ActivationURL)
-	var secret string
-	at := e.signIn(t, e.consoleConfig(res.ClientSecret), "root", &secret).AccessToken
+	at := e.signIn(t, e.consoleConfig(res.ClientSecret), "root").AccessToken
 	const rotate = "/api/v1/realms/master/signing-keys/rotate"
 
 	for name, body := range map[string]map[string]any{

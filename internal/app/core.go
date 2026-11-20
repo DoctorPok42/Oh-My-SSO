@@ -225,6 +225,7 @@ func BuildCore() *Core {
 	)
 
 	c.MFAPolicy = service.NewMFAPolicyService(service.MFAPolicyDeps{
+		Realms:   c.Realms,
 		Settings: c.Settings,
 		Clients:  c.Clients,
 		Roles:    c.Roles,
@@ -428,7 +429,9 @@ func (n SyncNotifier) Notify(ctx context.Context, e domain.NotificationEvent) {
 	}
 }
 
-func (c *Core) AdminService() *service.AdminService {
+// AdminService: rights records the changes of the master realm made by bulk
+// jobs (the Admin API's RightsEpoch).
+func (c *Core) AdminService(rights service.RightsRecorder) *service.AdminService {
 	return service.NewAdminService(service.AdminDeps{
 		Tx:     c.Tx,
 		Realms: c.Realms, Users: c.Users, Clients: c.Clients, Scopes: c.Scopes, Roles: c.Roles, Groups: c.Groups,
@@ -445,5 +448,6 @@ func (c *Core) AdminService() *service.AdminService {
 		Outbox:            entstore.NewEmailOutboxRepository(c.Ent),
 		EmailVerification: c.EmailVerification,
 		ConsoleURL:        os.Getenv("ADMIN_PANEL_URL"),
+		Rights:            rights,
 	})
 }

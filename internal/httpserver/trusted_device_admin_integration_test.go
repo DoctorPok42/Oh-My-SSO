@@ -28,8 +28,7 @@ func TestAdmin_Integration_TrustedDevices(t *testing.T) {
 		RedirectURL: adminConsoleURL + "/auth/callback", Scopes: []string{"openid", "profile", "email", "offline_access"},
 		Endpoint: oauth2.Endpoint{AuthURL: e.idp.URL + "/r/master/oidc/authorize", TokenURL: e.idp.URL + "/r/master/oidc/token",
 			AuthStyle: oauth2.AuthStyleInHeader}}
-	var secret string
-	at := e.signIn(t, console, "root", &secret).AccessToken
+	at := e.signIn(t, console, "root").AccessToken
 
 	status, out := e.call(t, at, http.MethodPost, "/api/v1/realms", map[string]any{"name": "demo"})
 	require.Equal(t, http.StatusCreated, status, "%v", out)

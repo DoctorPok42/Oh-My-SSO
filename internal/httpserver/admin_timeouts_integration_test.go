@@ -29,8 +29,7 @@ func TestAdmin_Integration_Timeouts(t *testing.T) {
 		RedirectURL: adminConsoleURL + "/auth/callback", Scopes: []string{"openid", "profile", "email", "offline_access"},
 		Endpoint: oauth2.Endpoint{AuthURL: e.idp.URL + "/r/master/oidc/authorize", TokenURL: e.idp.URL + "/r/master/oidc/token",
 			AuthStyle: oauth2.AuthStyleInHeader}}
-	var secret string
-	at := e.signIn(t, console, "root", &secret).AccessToken
+	at := e.signIn(t, console, "root").AccessToken
 
 	status, me := e.call(t, at, http.MethodGet, "/api/v1/me", nil)
 	require.Equal(t, http.StatusOK, status, "%v", me)

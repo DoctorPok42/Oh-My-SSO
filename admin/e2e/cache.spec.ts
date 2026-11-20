@@ -74,7 +74,7 @@ test("admin console: a change shows at once on a page kept by the browser", asyn
   const group = page.getByRole("dialog", { name: "New group" });
   await group.getByLabel("Name", { exact: true }).fill(name);
   await group.getByRole("button", { name: "Create group" }).click();
-  await expect(page.getByRole("cell", { name })).toBeVisible();
+  await expect(page.getByRole("cell", { name, exact: true })).toBeVisible();
 
   // The server's cache and the browser's both saw the change.
   await sections.getByRole("link", { name: "Audit Log", exact: true }).click();
@@ -85,20 +85,17 @@ test("account console: a tab comes from memory, and a change empties it", async 
   const a = account();
   const context = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
   const page = await context.newPage();
+  const { loadKey, keepKey } = await import("./helpers");
+  await loadKey(page, a);
   const base = `${a.idp}/r/master/account`;
   await page.goto(base);
   await page.locator("#identifier").fill(a.email);
   await page.locator("#password").fill(a.password);
   await page.locator("#password-submit").click();
+  // The passkey prompt opens by itself after the password, and is answered.
   const tabs = page.getByRole("navigation", { name: "Account sections" });
-  const { totpCode } = await import("./helpers");
-  const code = page.locator("#code");
-  await expect(code.or(tabs).first()).toBeVisible();
-  if (await code.isVisible()) {
-    await code.fill(await totpCode(a.totpSecret));
-    await page.locator("#code-form button[type=submit]").click();
-  }
   await expect(tabs).toBeVisible();
+  await keepKey(page, a);
 
   const fetched: string[] = [];
   page.on("request", (r) => {

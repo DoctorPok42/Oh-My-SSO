@@ -310,3 +310,37 @@ func TestAdminRepository_Integration(t *testing.T) {
 		require.NotEmpty(t, realms)
 	})
 }
+
+// One link at a time: the user's other links stay, a link already there (or
+// already gone) is no error, a group or user that does not exist is one.
+func TestAdminRepository_Integration_Links(t *testing.T) {
+	f := newRBACFixture(t)
+	admin := entstore.NewAdminRepository(f.client)
+	ctx := f.ctx
+	alice := f.user()
+	staff, ops := f.group(), f.group()
+	support, audit := f.role(), f.role()
+
+	require.NoError(t, admin.SetUserGroups(ctx, alice.ID, []string{staff.ID}))
+	require.NoError(t, admin.SetUserRoles(ctx, alice.ID, []string{support.ID}))
+
+	require.NoError(t, admin.AddUserGroup(ctx, alice.ID, ops.ID))
+	require.NoError(t, admin.AddUserGroup(ctx, alice.ID, ops.ID), "adding an existing link is no error")
+	require.NoError(t, admin.AddUserRole(ctx, alice.ID, audit.ID))
+	require.NoError(t, admin.AddUserRole(ctx, alice.ID, audit.ID))
+	m, err := admin.Memberships(ctx, []string{alice.ID})
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{staff.ID, ops.ID}, m[alice.ID].GroupIDs)
+	require.ElementsMatch(t, []string{support.ID, audit.ID}, m[alice.ID].RoleIDs)
+
+	require.NoError(t, admin.RemoveUserGroup(ctx, alice.ID, staff.ID))
+	require.NoError(t, admin.RemoveUserGroup(ctx, alice.ID, staff.ID), "removing a missing link is no error")
+	require.NoError(t, admin.RemoveUserRole(ctx, alice.ID, support.ID))
+	m, err = admin.Memberships(ctx, []string{alice.ID})
+	require.NoError(t, err)
+	require.Equal(t, []string{ops.ID}, m[alice.ID].GroupIDs)
+	require.Equal(t, []string{audit.ID}, m[alice.ID].RoleIDs)
+
+	require.Error(t, admin.AddUserGroup(ctx, alice.ID, uuid.NewString()), "a group that does not exist")
+	require.Error(t, admin.AddUserGroup(ctx, uuid.NewString(), ops.ID), "a user that does not exist")
+}

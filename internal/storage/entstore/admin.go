@@ -201,6 +201,24 @@ func (r *entAdminRepository) SetUserRoles(ctx context.Context, userID string, ro
 	return mapNotFound(r.client.User.UpdateOneID(userID).ClearRoles().AddRoleIDs(roleIDs...).Exec(ctx))
 }
 
+// The Add* methods insert with ON CONFLICT DO NOTHING (ent's way for edges):
+// an existing link is no error.
+func (r *entAdminRepository) AddUserGroup(ctx context.Context, userID, groupID string) error {
+	return mapNotFound(r.client.User.UpdateOneID(userID).AddGroupIDs(groupID).Exec(ctx))
+}
+
+func (r *entAdminRepository) RemoveUserGroup(ctx context.Context, userID, groupID string) error {
+	return mapNotFound(r.client.User.UpdateOneID(userID).RemoveGroupIDs(groupID).Exec(ctx))
+}
+
+func (r *entAdminRepository) AddUserRole(ctx context.Context, userID, roleID string) error {
+	return mapNotFound(r.client.User.UpdateOneID(userID).AddRoleIDs(roleID).Exec(ctx))
+}
+
+func (r *entAdminRepository) RemoveUserRole(ctx context.Context, userID, roleID string) error {
+	return mapNotFound(r.client.User.UpdateOneID(userID).RemoveRoleIDs(roleID).Exec(ctx))
+}
+
 func (r *entAdminRepository) ActiveGroupMemberIDs(ctx context.Context, groupID string) ([]string, error) {
 	return r.client.Group.Query().
 		Where(group.ID(groupID)).

@@ -700,6 +700,21 @@ func TestAdminService_Integration(t *testing.T) {
 		_, err = svc.SetUserGroups(ctx, aliceActor, master, rootUser.ID, nil)
 		wantAdminError(t, err, service.AdminRefused, "last_admin")
 
+		// The same guard holds in a bulk action: the item is skipped, and the
+		// last administrator keeps the group.
+		job, err := svc.BulkUsers(ctx, aliceActor, master, service.BulkInput{Action: service.BulkRemoveGroup,
+			IDs: []string{rootUser.ID}, GroupID: admins}, nil)
+		require.NoError(t, err)
+		require.Eventually(t, func() bool {
+			job, err = svc.GetBulkJob(ctx, aliceActor, master, job.ID, nil)
+			return err == nil && job.Status != domain.BulkJobRunning
+		}, 30*time.Second, 10*time.Millisecond)
+		require.Equal(t, 1, job.Skipped, "%+v", job)
+		require.Equal(t, "last_admin", job.Items[0].Code)
+		held, err := svc.GetUser(ctx, master, rootUser.ID)
+		require.NoError(t, err)
+		require.Len(t, held.Groups, 1, "root is still an administrator")
+
 		// Nobody locks themselves out.
 		wantAdminError(t, svc.DeleteUser(ctx, root, master, rootUser.ID), service.AdminRefused, "self_change")
 		_, err = svc.UpdateUser(ctx, root, master, rootUser.ID, service.UpdateUserInput{Status: ptr(domain.UserSuspended)})

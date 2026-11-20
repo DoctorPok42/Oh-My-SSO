@@ -12,7 +12,54 @@ import (
 	"time"
 
 	"sso.internal/sso/internal/clientip"
+	"sso.internal/sso/internal/core/domain"
 )
+
+func TestWebAuthnResult(t *testing.T) {
+	for _, c := range []struct {
+		name, rpID, origins, publicURL, appEnv, want, detail string
+	}{
+		{"all right", "sso.example.com", "https://sso.example.com", "https://sso.example.com", "production", "OK", "RP ID sso.example.com"},
+		{"parent domain", "example.com", "https://sso.example.com", "https://sso.example.com/", "production", "OK", ""},
+		{"dev on localhost", "localhost", "http://localhost:8080", "http://localhost:8080", "development", "OK", ""},
+		{"no RP ID", "", "", "https://sso.example.com", "production", "FAIL", "cannot sign in"},
+		{"no origin", "sso.example.com", "", "https://sso.example.com", "production", "FAIL", "WEBAUTHN_RP_ORIGINS"},
+		{"origin without scheme", "sso.example.com", "sso.example.com", "https://sso.example.com", "production", "FAIL", "scheme://host"},
+		{"plain http in production", "sso.example.com", "http://sso.example.com", "http://sso.example.com", "production", "FAIL", "plain http"},
+		{"RP ID of another site", "other.test", "https://sso.example.com", "https://sso.example.com", "production", "FAIL", "neither the host"},
+		{"suffix without a dot", "ample.com", "https://sso.example.com", "https://sso.example.com", "production", "FAIL", "neither the host"},
+		{"origin missing", "sso.example.com", "https://other.example.com", "https://sso.example.com", "production", "FAIL", "does not list https://sso.example.com"},
+		{"port counts", "localhost", "http://localhost:8080", "http://localhost:9090", "development", "FAIL", "does not list"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			var origins []string
+			if c.origins != "" {
+				origins = strings.Split(c.origins, ",")
+			}
+			got := webauthnResult(c.rpID, origins, c.publicURL, c.appEnv == "production")
+			if got.status != c.want || !strings.Contains(got.detail, c.detail) {
+				t.Fatalf("got %s %q, want %s containing %q", got.status, got.detail, c.want, c.detail)
+			}
+		})
+	}
+}
+
+func TestAllowsPhishingResistant(t *testing.T) {
+	for _, c := range []struct {
+		methods []domain.MfaMethodType
+		want    bool
+	}{
+		{nil, true}, // any method: master narrows it itself
+		{[]domain.MfaMethodType{domain.MfaMethodPasskey}, true},
+		{[]domain.MfaMethodType{domain.MfaMethodTOTP, domain.MfaMethodWebAuthn}, true},
+		{[]domain.MfaMethodType{domain.MfaMethodTOTP}, false},
+		{[]domain.MfaMethodType{domain.MfaMethodTOTP, domain.MfaMethodBackupCodes}, false},
+	} {
+		if got := allowsPhishingResistant(c.methods); got != c.want {
+			t.Errorf("allowsPhishingResistant(%v) = %v, want %v", c.methods, got, c.want)
+		}
+	}
+}
 
 func TestPublicURL(t *testing.T) {
 	// This deployment: its discovery announces its own address as issuer.

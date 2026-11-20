@@ -229,8 +229,31 @@ func (s *AdminService) runBulk(ctx context.Context, actor AdminActor, realm *dom
 		}
 		return nil, err
 	}
-	go s.runBulkJob(job, loc, step)
+	go s.runBulkJob(job, loc, s.recordingRights(realm, step))
 	return bulkJobView(job, loc), nil
+}
+
+// recordingRights: in the master realm, each item is a change of rights, like
+// a request (adminapi's recordRightsChange). The time moves before the item,
+// so that a token issued while it runs is not trusted, or the item is refused
+// when it cannot; and after, so that the change is seen from then on. The
+// request that started the job only covers what happened before its answer.
+func (s *AdminService) recordingRights(realm *domain.Realm, step bulkStep) bulkStep {
+	if !isMaster(realm) || s.d.Rights == nil {
+		return step
+	}
+	return func(ctx context.Context, id string) (string, error) {
+		if err := s.d.Rights.Changed(ctx, s.d.Now()); err != nil {
+			s.d.Logger.ErrorContext(ctx, "bulk action: cannot record a change of the master realm", "item", id, "error", err)
+			return "", adminText(AdminRefused, "rights_paused", "", i18n.M("admin.error.rights_paused", "changes to the master realm are paused: Valkey is unreachable"))
+		}
+		defer func() {
+			if err := s.d.Rights.Changed(ctx, s.d.Now()); err != nil {
+				s.d.Logger.ErrorContext(ctx, "bulk action: cannot record the end of a change of the master realm", "item", id, "error", err)
+			}
+		}()
+		return step(ctx, id)
+	}
 }
 
 // runBulkJob does the work of one job. It owns one s.bulks.wg slot.
@@ -497,7 +520,7 @@ func (s *AdminService) BulkUsers(ctx context.Context, actor AdminActor, realm *d
 	if err != nil {
 		return nil, err
 	}
-	step, err := s.userBulkStep(ctx, actor, realm, in)
+	step, err := s.userBulkStep(ctx, actor, realm, in, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -521,104 +544,26 @@ func (s *AdminService) onUsers(actor AdminActor, realm *domain.Realm, step userS
 
 // userBulkStep checks what the whole request needs (a request that cannot
 // work is refused, not skipped item by item) and chooses the action.
-func (s *AdminService) userBulkStep(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput) (userStep, error) {
+func (s *AdminService) userBulkStep(ctx context.Context, actor AdminActor, realm *domain.Realm, in BulkInput, userIDs []string) (userStep, error) {
 	switch in.Action {
 	case BulkSuspend:
-		return func(ctx context.Context, u *domain.User) error {
-			if u.Status == domain.UserSuspended {
-				return bulkSkip("already_suspended", i18n.M("admin.error.bulk_already_suspended", "already suspended"))
-			}
-			return s.setUserStatus(ctx, actor, realm, u, domain.UserSuspended)
-		}, nil
+		return s.statusStep(actor, realm, domain.UserSuspended, "already_suspended", i18n.M("admin.error.bulk_already_suspended", "already suspended")), nil
 	case BulkReactivate:
-		return func(ctx context.Context, u *domain.User) error {
-			if u.Status == domain.UserActive {
-				return bulkSkip("already_active", i18n.M("admin.error.bulk_already_active", "already active"))
-			}
-			return s.setUserStatus(ctx, actor, realm, u, domain.UserActive)
-		}, nil
+		return s.statusStep(actor, realm, domain.UserActive, "already_active", i18n.M("admin.error.bulk_already_active", "already active")), nil
 	case BulkUnlock:
-		return func(ctx context.Context, u *domain.User) error {
-			if !u.Lockout.LockedAt(s.d.Now()) {
-				return bulkSkip("not_locked", i18n.M("admin.error.bulk_not_locked", "not locked"))
-			}
-			return s.UnlockUser(ctx, actor, realm, u.ID)
-		}, nil
+		return s.unlockStep(actor, realm), nil
 	case BulkForcePasswordReset:
 		return func(ctx context.Context, u *domain.User) error {
 			return s.forcePasswordReset(ctx, actor, realm, u)
 		}, nil
 	case BulkResetMFA:
-		reason := strings.TrimSpace(in.Reason)
-		if reason == "" {
-			return nil, adminInvalid("reason", i18n.M("admin.error.reason_required", "a reason is required (it goes to the audit log)"))
-		}
-		return func(ctx context.Context, u *domain.User) error {
-			enrolled, err := s.d.Admin.UsersWithActiveMFA(ctx, []string{u.ID})
-			if err != nil {
-				return err
-			}
-			if !enrolled[u.ID] {
-				return bulkSkip("no_mfa", i18n.M("admin.error.bulk_no_mfa", "no second factor enrolled"))
-			}
-			_, err = s.ResetUserMFA(ctx, actor, realm, u.ID, reason)
-			return err
-		}, nil
+		return s.resetMFAStep(ctx, actor, realm, in.Reason, userIDs)
 	case BulkAddGroup, BulkRemoveGroup:
-		ids, err := s.checkGroupIDs(ctx, realm.ID, []string{in.GroupID})
-		if err != nil {
-			return nil, err
-		}
-		add := in.Action == BulkAddGroup
-		return func(ctx context.Context, u *domain.User) error {
-			m, err := s.d.Admin.Memberships(ctx, []string{u.ID})
-			if err != nil {
-				return err
-			}
-			next, err := toggleMembership(m[u.ID].GroupIDs, ids[0], add,
-				bulkSkip("already_member", i18n.M("admin.error.bulk_already_member", "already in this group")),
-				bulkSkip("not_member", i18n.M("admin.error.bulk_not_member", "not in this group")))
-			if err != nil {
-				return err
-			}
-			_, err = s.SetUserGroups(ctx, actor, realm, u.ID, next)
-			return err
-		}, nil
+		return s.groupStep(ctx, actor, realm, in.GroupID, in.Action == BulkAddGroup, userIDs)
 	case BulkAddRole, BulkRemoveRole:
-		ids, err := s.checkRoleIDs(ctx, realm.ID, []string{in.RoleID})
-		if err != nil {
-			return nil, err
-		}
-		add := in.Action == BulkAddRole
-		return func(ctx context.Context, u *domain.User) error {
-			m, err := s.d.Admin.Memberships(ctx, []string{u.ID})
-			if err != nil {
-				return err
-			}
-			next, err := toggleMembership(m[u.ID].RoleIDs, ids[0], add,
-				bulkSkip("already_assigned", i18n.M("admin.error.bulk_already_assigned", "already has this role")),
-				bulkSkip("not_assigned", i18n.M("admin.error.bulk_not_assigned", "does not hold this role directly")))
-			if err != nil {
-				return err
-			}
-			_, err = s.SetUserRoles(ctx, actor, realm, u.ID, next)
-			return err
-		}, nil
+		return s.roleStep(ctx, actor, realm, in.RoleID, in.Action == BulkAddRole, userIDs)
 	case BulkResendInvite:
-		return func(ctx context.Context, u *domain.User) error {
-			if !s.d.EmailEnabled {
-				return bulkEmailDisabled()
-			}
-			res, err := s.ResendActivation(ctx, actor, realm, u.ID, true)
-			if err != nil {
-				return err
-			}
-			if !res.Emailed {
-				// The link exists but nobody got it: a bulk answer never carries links.
-				return bulkSkip("email_not_sent", i18n.M("admin.error.bulk_email_not_sent", "the e-mail could not be queued, try again"))
-			}
-			return nil
-		}, nil
+		return s.resendInviteStep(actor, realm), nil
 	case BulkDelete:
 		return func(ctx context.Context, u *domain.User) error {
 			return s.DeleteUser(ctx, actor, realm, u.ID)
@@ -627,25 +572,151 @@ func (s *AdminService) userBulkStep(ctx context.Context, actor AdminActor, realm
 	return nil, bulkUnknownAction()
 }
 
+// statusStep moves a user to a status, skipping those already there.
+func (s *AdminService) statusStep(actor AdminActor, realm *domain.Realm, to domain.UserStatus, skipCode string, skipText i18n.Text) userStep {
+	return func(ctx context.Context, u *domain.User) error {
+		if u.Status == to {
+			return bulkSkip(skipCode, skipText)
+		}
+		return s.setUserStatus(ctx, actor, realm, u, to)
+	}
+}
+
+func (s *AdminService) unlockStep(actor AdminActor, realm *domain.Realm) userStep {
+	return func(ctx context.Context, u *domain.User) error {
+		if !u.Lockout.LockedAt(s.d.Now()) {
+			return bulkSkip("not_locked", i18n.M("admin.error.bulk_not_locked", "not locked"))
+		}
+		return s.UnlockUser(ctx, actor, realm, u.ID)
+	}
+}
+
+func (s *AdminService) resetMFAStep(ctx context.Context, actor AdminActor, realm *domain.Realm, reason string, userIDs []string) (userStep, error) {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return nil, adminInvalid("reason", i18n.M("admin.error.reason_required", "a reason is required (it goes to the audit log)"))
+	}
+	// One query for the whole selection. A factor removed while the job
+	// runs only makes its reset a no-op.
+	enrolled, err := s.d.Admin.UsersWithActiveMFA(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	return func(ctx context.Context, u *domain.User) error {
+		if !enrolled[u.ID] {
+			return bulkSkip("no_mfa", i18n.M("admin.error.bulk_no_mfa", "no second factor enrolled"))
+		}
+		_, err := s.ResetUserMFA(ctx, actor, realm, u.ID, reason)
+		return err
+	}, nil
+}
+
+func (s *AdminService) resendInviteStep(actor AdminActor, realm *domain.Realm) userStep {
+	return func(ctx context.Context, u *domain.User) error {
+		if !s.d.EmailEnabled {
+			return bulkEmailDisabled()
+		}
+		res, err := s.ResendActivation(ctx, actor, realm, u.ID, true)
+		if err != nil {
+			return err
+		}
+		if !res.Emailed {
+			// The link exists but nobody got it: a bulk answer never carries links.
+			return bulkSkip("email_not_sent", i18n.M("admin.error.bulk_email_not_sent", "the e-mail could not be queued, try again"))
+		}
+		return nil
+	}
+}
+
+// groupStep adds or removes the selection from one group.
+func (s *AdminService) groupStep(ctx context.Context, actor AdminActor, realm *domain.Realm, rawGroupID string, add bool, userIDs []string) (userStep, error) {
+	ids, err := s.checkGroupIDs(ctx, realm.ID, []string{rawGroupID})
+	if err != nil {
+		return nil, err
+	}
+	groupID := ids[0]
+	// Removing someone from the administrators of master: the guard
+	// reads, at each item, how many are left.
+	guarded := false
+	if isMaster(realm) && !add {
+		admins, err := s.d.Groups.GetByRealmAndName(ctx, realm.ID, AdminGroupName)
+		if err != nil && !errors.Is(err, repository.ErrNotFound) {
+			return nil, err
+		}
+		guarded = err == nil && admins.ID == groupID
+	}
+	// One read for the whole selection tells whom to skip. The write
+	// touches this group's link only: a change made meanwhile stays (an
+	// account added meanwhile only shows as done, not as skipped).
+	current, err := s.d.Admin.Memberships(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	return func(ctx context.Context, u *domain.User) error {
+		member := slices.Contains(current[u.ID].GroupIDs, groupID)
+		if add && member {
+			return bulkSkip("already_member", i18n.M("admin.error.bulk_already_member", "already in this group"))
+		}
+		if !add && !member {
+			return bulkSkip("not_member", i18n.M("admin.error.bulk_not_member", "not in this group"))
+		}
+		if err := s.writeGroupLink(ctx, actor, realm, u.ID, groupID, add, guarded); err != nil {
+			return err
+		}
+		s.auditAdmin(ctx, actor, realm.ID, audit.UserGroupsChanged, "User", u.ID, domain.AuditLogInfo,
+			map[string]interface{}{"group_id": groupID, "added": add})
+		return nil
+	}, nil
+}
+
+func (s *AdminService) writeGroupLink(ctx context.Context, actor AdminActor, realm *domain.Realm, userID, groupID string, add, guarded bool) error {
+	if add {
+		return s.d.Admin.AddUserGroup(ctx, userID, groupID)
+	}
+	if guarded {
+		if err := s.guardAdminRemoval(ctx, actor, realm, userID, i18n.M("admin.error.self_change.group", "you cannot remove yourself from {group}", "group", AdminGroupName)); err != nil {
+			return err
+		}
+	}
+	return s.d.Admin.RemoveUserGroup(ctx, userID, groupID)
+}
+
+// roleStep adds or removes one directly assigned role for the selection.
+func (s *AdminService) roleStep(ctx context.Context, actor AdminActor, realm *domain.Realm, rawRoleID string, add bool, userIDs []string) (userStep, error) {
+	ids, err := s.checkRoleIDs(ctx, realm.ID, []string{rawRoleID})
+	if err != nil {
+		return nil, err
+	}
+	roleID := ids[0]
+	current, err := s.d.Admin.Memberships(ctx, userIDs) // as for groups above
+	if err != nil {
+		return nil, err
+	}
+	return func(ctx context.Context, u *domain.User) error {
+		holds := slices.Contains(current[u.ID].RoleIDs, roleID)
+		if add && holds {
+			return bulkSkip("already_assigned", i18n.M("admin.error.bulk_already_assigned", "already has this role"))
+		}
+		if !add && !holds {
+			return bulkSkip("not_assigned", i18n.M("admin.error.bulk_not_assigned", "does not hold this role directly"))
+		}
+		write := s.d.Admin.RemoveUserRole
+		if add {
+			write = s.d.Admin.AddUserRole
+		}
+		if err := write(ctx, u.ID, roleID); err != nil {
+			return err
+		}
+		s.auditAdmin(ctx, actor, realm.ID, audit.UserRolesChanged, "User", u.ID, domain.AuditLogInfo,
+			map[string]interface{}{"role_id": roleID, "added": add})
+		return nil
+	}, nil
+}
+
 func bulkSkip(code string, t i18n.Text) error { return adminRefused(code, t) }
 
 func bulkEmailDisabled() error {
 	return bulkSkip("email_disabled", i18n.M("admin.error.bulk_email_disabled", "e-mail is not configured on this server"))
-}
-
-// toggleMembership is the new list of a user's groups or roles, or the given
-// error when the action changes nothing.
-func toggleMembership(current []string, id string, add bool, already, absent error) ([]string, error) {
-	has := slices.Contains(current, id)
-	switch {
-	case add && has:
-		return nil, already
-	case !add && !has:
-		return nil, absent
-	case add:
-		return append(slices.Clone(current), id), nil
-	}
-	return slices.DeleteFunc(slices.Clone(current), func(x string) bool { return x == id }), nil
 }
 
 func (s *AdminService) setUserStatus(ctx context.Context, actor AdminActor, realm *domain.Realm, u *domain.User, status domain.UserStatus) error {

@@ -1,8 +1,7 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import * as OTPAuth from "otpauth";
-import { account, signInOnIdP, totpCode, type Account } from "./helpers";
+import { account, addPasskey, signInOnIdP, type Account } from "./helpers";
 
 // ONE-OFF CHECK (not delivered): an admin who may read only part of the
 // console. The console's client is managed by config, so the group is allowed
@@ -21,7 +20,15 @@ const DB = (process.env.E2E_DATABASE_URL ?? "postgres://sso:sso@localhost:5432/s
   "$1",
 );
 
-const sql = (q: string) => execSync(`docker exec -i postgres psql -U sso -d ${DB} -At`, { input: q, encoding: "utf8" });
+// The dev stack's PostgreSQL, reached as e2e/run.sh does (the test runs from admin/).
+const sql = (q: string) =>
+  execSync(
+    `docker compose -f ../compose.example.yml -p oh-my-sso-dev --profile dev exec -T dev-postgres psql -U sso -d ${DB} -At`,
+    {
+      input: q,
+      encoding: "utf8",
+    },
+  );
 
 let limited: Page;
 
@@ -43,18 +50,7 @@ async function activate(page: Page, activation: string, a: Account) {
   await page.locator("#confirm").fill(a.password);
   await page.locator("#reset-form button[type=submit]").click();
   await expect(page.locator("#done")).toBeVisible();
-  await page.goto(`${a.idp}/r/master/account/security/totp`);
-  await page.locator("#identifier").fill(a.email);
-  await page.locator("#password").fill(a.password);
-  await page.locator("#password-submit").click();
-  await page.locator("#totp-name").fill("e2e");
-  await page.locator("#totp-start button[type=submit]").click();
-  await expect(page.locator("#totp-secret")).not.toBeEmpty();
-  a.totpSecret = (await page.locator("#totp-secret").innerText()).replace(/\s+/g, "");
-  OTPAuth.Secret.fromBase32(a.totpSecret);
-  await page.locator("#totp-code").fill(await totpCode(a.totpSecret));
-  await page.locator("#totp-form button[type=submit]").click();
-  await expect(page.locator("#codes li").first()).toBeVisible();
+  await addPasskey(page, a);
 }
 
 const sections = (page: Page) => page.getByRole("navigation", { name: "Sections", exact: true }).getByRole("link");
@@ -73,7 +69,7 @@ test.beforeAll(async ({ browser, baseURL }) => {
   await permissions.getByRole("button", { name: "client_scope:read" }).click();
   await permissions.getByRole("button", { name: "access:read" }).click();
   await group.getByRole("button", { name: "Create group" }).click();
-  await expect(admin.getByRole("cell", { name: GROUP })).toBeVisible();
+  await expect(admin.getByRole("cell", { name: GROUP, exact: true })).toBeVisible();
 
   sql(`INSERT INTO client_groups (id, granted_at, client_app_id, group_id)
        SELECT gen_random_uuid()::text, now(), c.id, g.id FROM client_apps c, groups g
@@ -95,7 +91,6 @@ test.beforeAll(async ({ browser, baseURL }) => {
   const a: Account = {
     email: EMAIL,
     password: "e2e-Limited-Horse-Battery-Staple",
-    totpSecret: "",
     idp: new URL(activation).origin,
   };
   const setup = await browser.newContext({ storageState: { cookies: [], origins: [] } });

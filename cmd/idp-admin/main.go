@@ -101,7 +101,8 @@ func serve() {
 		}
 	}
 
-	admin, rights := c.AdminService(), valkeycache.NewRightsEpoch(c.Valkey)
+	rights := valkeycache.NewRightsEpoch(c.Valkey)
+	admin := c.AdminService(rights)
 	syncAdminCatalogue(admin, rights)
 	c.StartTimeoutEnforcer()
 	c.ServeMetrics()

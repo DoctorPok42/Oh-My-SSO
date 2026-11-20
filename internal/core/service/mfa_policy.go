@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"sso.internal/sso/internal/core/audit"
@@ -58,12 +59,17 @@ func (r MFARequirement) Allows(t domain.MfaMethodType) bool {
 // mfaPolicyInput gathers everything the decision depends on.
 type mfaPolicyInput struct {
 	Settings      *domain.InstanceSettings // nil: realm defaults (nothing required)
+	AdminRealm    bool                     // the user belongs to the master realm
 	Client        *domain.ClientApp        // nil: login on the IdP itself
 	RolePolicies  []*domain.MfaPolicy      // policies of the user's ACTIVE roles
 	RoleNames     map[string]string        // role id -> name (for Sources)
 	UserCreatedAt time.Time
 	Now           time.Time
 }
+
+// PhishingResistantMethods: the factors bound to the site's origin, the only
+// ones the accounts of the master realm may use.
+var PhishingResistantMethods = []domain.MfaMethodType{domain.MfaMethodWebAuthn, domain.MfaMethodPasskey}
 
 func resolveMFARequirement(in mfaPolicyInput) (MFARequirement, error) {
 	var req MFARequirement
@@ -87,6 +93,14 @@ func resolveMFARequirement(in mfaPolicyInput) (MFARequirement, error) {
 	if in.Settings != nil && in.Settings.MFARequiredGlobally {
 		req.Required = true
 		req.Sources = append(req.Sources, "realm")
+	}
+
+	// An account of master administers the whole instance: a phishing-
+	// resistant factor, always, whatever the settings say (audit F-19).
+	if in.AdminRealm {
+		req.Required = true
+		req.Sources = append(req.Sources, "realm:"+MasterRealmName)
+		restrict(PhishingResistantMethods)
 	}
 
 	if c := in.Client; c != nil {
@@ -198,6 +212,8 @@ func validateMFAMethods(methods []domain.MfaMethodType) error {
 
 
 type MFAPolicyService struct {
+	realms   repository.RealmRepository
+	masters  sync.Map // realm id -> bool: is it master (a realm never changes that)
 	settings repository.InstanceSettingsRepository
 	clients  repository.ClientRepository
 	roles    repository.RoleRepository
@@ -208,6 +224,9 @@ type MFAPolicyService struct {
 }
 
 type MFAPolicyDeps struct {
+	// Realms tells the master realm apart (phishing-resistant factor only).
+	// nil: no realm is treated as master, for tests that do not need it.
+	Realms   repository.RealmRepository
 	Settings repository.InstanceSettingsRepository
 	Clients  repository.ClientRepository
 	Roles    repository.RoleRepository
@@ -219,6 +238,7 @@ type MFAPolicyDeps struct {
 
 func NewMFAPolicyService(d MFAPolicyDeps) *MFAPolicyService {
 	s := &MFAPolicyService{
+		realms:   d.Realms,
 		settings: d.Settings,
 		clients:  d.Clients,
 		roles:    d.Roles,
@@ -268,14 +288,54 @@ func (s *MFAPolicyService) requirementWith(ctx context.Context, user *domain.Use
 		}
 	}
 
+	admin, err := s.isMasterRealm(ctx, user.RealmID)
+	if err != nil {
+		return MFARequirement{}, err
+	}
+
 	return resolveMFARequirement(mfaPolicyInput{
 		Settings:      settings,
+		AdminRealm:    admin,
 		Client:        client,
 		RolePolicies:  rolePolicies,
 		RoleNames:     names,
 		UserCreatedAt: user.CreatedAt,
 		Now:           s.now(),
 	})
+}
+
+// isMasterRealm: the realm is master. Asked on every check, so it is read once
+// per realm. Without Realms, no realm is master.
+func (s *MFAPolicyService) isMasterRealm(ctx context.Context, realmID string) (bool, error) {
+	if s.realms == nil {
+		return false, nil
+	}
+	if v, ok := s.masters.Load(realmID); ok {
+		return v.(bool), nil
+	}
+	realm, err := s.realms.GetByID(ctx, realmID)
+	if err != nil {
+		return false, fmt.Errorf("mfa policy: load realm: %w", err)
+	}
+	s.masters.Store(realmID, isMaster(realm))
+	return isMaster(realm), nil
+}
+
+// checkMasterMethods refuses, in master, a list of methods that leaves out
+// passkeys and security keys: master accepts nothing else, so nobody could
+// ever sign in under such a policy (ErrMFAPolicyConflict at each sign-in).
+func (s *MFAPolicyService) checkMasterMethods(ctx context.Context, realmID string, methods []domain.MfaMethodType) error {
+	if len(methods) == 0 {
+		return nil
+	}
+	master, err := s.isMasterRealm(ctx, realmID)
+	if err != nil || !master {
+		return err
+	}
+	if !slices.ContainsFunc(methods, func(m domain.MfaMethodType) bool { return slices.Contains(PhishingResistantMethods, m) }) {
+		return newTextError(ErrInvalidMFAPolicy, i18n.M("admin.error.mfa_master_methods", "the master realm only accepts passkeys and security keys: the list must include one of them"))
+	}
+	return nil
 }
 
 // StepUpMaxAge is how long a second-factor verification counts as recent.
@@ -399,6 +459,9 @@ func (s *MFAPolicyService) SetClientPolicy(ctx context.Context, in SetClientMFAP
 	if err := validateMFAMethods(in.AllowedMethods); err != nil {
 		return nil, err
 	}
+	if err := s.checkMasterMethods(ctx, in.RealmID, in.AllowedMethods); err != nil {
+		return nil, err
+	}
 
 	client, err := s.clients.GetByID(ctx, in.ClientRef)
 	if err != nil {
@@ -442,6 +505,9 @@ type SetRoleMFAPolicyInput struct {
 
 func (s *MFAPolicyService) SetRolePolicy(ctx context.Context, in SetRoleMFAPolicyInput) (*domain.MfaPolicy, error) {
 	if err := validateMFAMethods(in.AllowedMethods); err != nil {
+		return nil, err
+	}
+	if err := s.checkMasterMethods(ctx, in.RealmID, in.AllowedMethods); err != nil {
 		return nil, err
 	}
 	if in.EnrollmentGraceDays < 0 || in.EnrollmentGraceDays > 365 {

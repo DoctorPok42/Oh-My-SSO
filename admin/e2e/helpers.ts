@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { expect, type Page } from "@playwright/test";
-import * as OTPAuth from "otpauth";
+import { expect, type CDPSession, type Page } from "@playwright/test";
 
 // Shared by the global setup and the tests.
 
@@ -9,7 +8,17 @@ export const STATE_DIR = path.join(import.meta.dirname, ".state");
 export const STORAGE = path.join(STATE_DIR, "admin.json");
 const ACCOUNT = path.join(STATE_DIR, "account.json");
 
-export type Account = { email: string; password: string; totpSecret: string; idp: string };
+/** A passkey as Chromium's virtual authenticator exports it (CDP WebAuthn.Credential). */
+export type Key = {
+  credentialId: string;
+  isResidentCredential: boolean;
+  rpId?: string;
+  privateKey: string;
+  userHandle?: string;
+  signCount: number;
+};
+
+export type Account = { email: string; password: string; key?: Key; idp: string };
 
 export function saveAccount(a: Account) {
   fs.mkdirSync(STATE_DIR, { recursive: true });
@@ -20,45 +29,100 @@ export function account(): Account {
   return JSON.parse(fs.readFileSync(ACCOUNT, "utf8")) as Account;
 }
 
-/**
- * A fresh TOTP code. The IdP refuses a code twice (replay protection), so
- * when the current one was already used, wait for the next 30 s period.
- */
-export async function totpCode(secret: string): Promise<string> {
-  const totp = new OTPAuth.TOTP({ secret: OTPAuth.Secret.fromBase32(secret), digits: 6, period: 30 });
-  const last = path.join(STATE_DIR, "totp-last.txt");
-  const used = fs.existsSync(last) ? fs.readFileSync(last, "utf8") : "";
-  let code = totp.generate();
-  while (code === used) {
-    await new Promise((r) => setTimeout(r, 1000));
-    code = totp.generate();
-  }
-  fs.writeFileSync(last, code);
-  return code;
+// The accounts of master need a passkey or a security key, never an
+// authenticator app alone: Chromium's virtual authenticator plays the device
+// and answers every prompt at once. It lives with its page, so each page
+// gets its own, loaded with the account's key when there is one.
+const authenticators = new WeakMap<Page, { cdp: CDPSession; id: string }>();
+
+/** Puts a virtual authenticator in page (before the IdP asks for it), holding a's key if any. */
+export async function loadKey(page: Page, a: Account) {
+  if (authenticators.has(page)) return;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  const { authenticatorId } = await cdp.send("WebAuthn.addVirtualAuthenticator", {
+    options: {
+      protocol: "ctap2",
+      transport: "internal",
+      hasResidentKey: true,
+      hasUserVerification: true,
+      isUserVerified: true,
+      automaticPresenceSimulation: true,
+    },
+  });
+  if (a.key) await cdp.send("WebAuthn.addCredential", { authenticatorId, credential: a.key });
+  authenticators.set(page, { cdp, id: authenticatorId });
 }
 
-/** Signs in on the IdP's page (password, then the authenticator code), back to the console. */
+/**
+ * Keeps a's key as the authenticator of page holds it now: the IdP refuses a
+ * signature counter that goes back (a cloned key), so the next page must
+ * start from this one. The shared account is written back for later tests.
+ */
+export async function keepKey(page: Page, a: Account) {
+  const auth = authenticators.get(page);
+  if (!auth) return;
+  const { credentials } = await auth.cdp.send("WebAuthn.getCredentials", { authenticatorId: auth.id });
+  a.key = credentials[0];
+  if (fs.existsSync(ACCOUNT) && account().email === a.email) saveAccount(a);
+}
+
+/** Signs in on the IdP's page (password, then the passkey), back to the console. */
 export async function signInOnIdP(page: Page, a: Account, consoleURL: string) {
+  await loadKey(page, a);
   await page.waitForURL((u) => u.href.startsWith(a.idp));
+  const back = page.waitForURL((u) => u.href.startsWith(consoleURL));
   const identifier = page.locator("#identifier");
-  const code = page.locator("#code");
-  await expect(identifier.or(code).first()).toBeVisible();
-  if (await identifier.isVisible()) {
+  const passkey = page.locator("#passkey-btn");
+  // With a session already, there is no password form, only the passkey step.
+  await Promise.race([back, identifier.waitFor().catch(() => undefined), passkey.waitFor().catch(() => undefined)]);
+  if (!page.url().startsWith(consoleURL) && (await identifier.isVisible())) {
     await identifier.fill(a.email);
     await page.locator("#password").fill(a.password);
     await page.locator("#password-form button[type=submit]").click();
   }
-  await expect(code).toBeVisible();
-  await code.fill(await totpCode(a.totpSecret));
-  await page.locator("#code-form button[type=submit]").click();
-  await page.waitForURL((u) => u.href.startsWith(consoleURL));
+  // The page opens the passkey prompt by itself, or waits for "Continue"
+  // (a step-up, or a ticked "don't ask again"): click it when it is offered.
+  await expect
+    .poll(
+      async () => {
+        if (
+          !page.url().startsWith(consoleURL) &&
+          (await passkey.isVisible()) &&
+          (await passkey.isEnabled()) &&
+          (await passkey.innerText()).trim() === "Continue"
+        ) {
+          await passkey.click().catch(() => undefined);
+        }
+        return page.url().startsWith(consoleURL);
+      },
+      { intervals: [250], timeout: 10_000 },
+    )
+    .toBe(true);
+  await back;
+  await keepKey(page, a);
 }
 
 /** The DS "Confirm it's you" dialog, if changes are locked: full step-up round trip. */
 export async function stepUpIfAsked(page: Page, consoleURL: string) {
   const dialog = page.getByRole("dialog", { name: "Confirm it's you" });
   if (await dialog.isVisible().catch(() => false)) {
+    const a = account();
+    await loadKey(page, a); // before the IdP's page opens its prompt
     await dialog.getByRole("link", { name: "Continue" }).click();
-    await signInOnIdP(page, account(), consoleURL);
+    await signInOnIdP(page, a, consoleURL);
   }
+}
+
+/** Adds a passkey from the account console of the IdP (its sign-in page first), as a fresh account of master must. */
+export async function addPasskey(page: Page, a: Account) {
+  await loadKey(page, a);
+  await page.goto(`${a.idp}/r/master/account/security/passkey`);
+  await page.locator("#identifier").fill(a.email);
+  await page.locator("#password").fill(a.password);
+  await page.locator("#password-submit").click();
+  await page.locator("#passkey-name").fill("e2e");
+  await page.locator("#passkey-add").click();
+  await expect(page.locator("#codes li").first()).toBeVisible();
+  await keepKey(page, a);
 }
