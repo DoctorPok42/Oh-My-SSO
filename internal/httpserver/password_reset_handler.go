@@ -173,6 +173,8 @@ func passwordPolicyCode(err *service.PasswordPolicyError) string {
 		return "password_too_long"
 	case errors.Is(err, service.ErrPasswordMatchesIdentity):
 		return "password_matches_identity"
+	case errors.Is(err, service.ErrPasswordCompromised):
+		return "password_compromised"
 	case errors.Is(err, service.ErrPasswordUnchanged):
 		return "password_unchanged"
 	default:

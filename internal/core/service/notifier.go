@@ -20,7 +20,6 @@ type NopNotifier struct{}
 
 func (NopNotifier) Notify(context.Context, domain.NotificationEvent) {}
 
-
 const (
 	defaultMinPasswordLength       = 12
 	defaultLockoutThreshold        = 5
@@ -34,20 +33,21 @@ const (
 // changes them.
 func DefaultInstanceSettings(realmID string) *domain.InstanceSettings {
 	return &domain.InstanceSettings{
-		RealmID:                  realmID,
-		MinPasswordLength:        defaultMinPasswordLength,
-		LockoutThreshold:         defaultLockoutThreshold,
-		LockoutDurationMinutes:   defaultLockoutDurationMinutes,
-		PasswordResetTTLMinutes:  defaultPasswordResetTTLMinutes,
-		InviteTTLHours:           defaultInviteTTLHours,
-		SessionIdleMinutes:       int(defaultSessionIdleTimeout / time.Minute),
-		SessionMaxHours:          int(defaultSessionMaxLifetime / time.Hour),
-		RememberMeEnabled:        true,
-		RememberMeIdleDays:       defaultRememberMeIdleDays,
-		RememberMeMaxDays:        defaultRememberMeMaxDays,
-		BulkLimit:                DefaultBulkLimit,
-		ExpiredDataRetentionDays: DefaultRetentionDays,
-		AuditLogRetentionDays:    DefaultAuditLogRetentionDays,
+		RealmID:                    realmID,
+		MinPasswordLength:          defaultMinPasswordLength,
+		LockoutThreshold:           defaultLockoutThreshold,
+		LockoutDurationMinutes:     defaultLockoutDurationMinutes,
+		PasswordResetTTLMinutes:    defaultPasswordResetTTLMinutes,
+		InviteTTLHours:             defaultInviteTTLHours,
+		SessionIdleMinutes:         int(defaultSessionIdleTimeout / time.Minute),
+		SessionMaxHours:            int(defaultSessionMaxLifetime / time.Hour),
+		PasswordBreachCheckEnabled: true,
+		RememberMeEnabled:          true,
+		RememberMeIdleDays:         defaultRememberMeIdleDays,
+		RememberMeMaxDays:          defaultRememberMeMaxDays,
+		BulkLimit:                  DefaultBulkLimit,
+		ExpiredDataRetentionDays:   DefaultRetentionDays,
+		AuditLogRetentionDays:      DefaultAuditLogRetentionDays,
 	}
 }
 

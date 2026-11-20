@@ -70,6 +70,20 @@ func (_c *InstanceSettingsCreate) SetNillablePasswordExpiryDays(v *int) *Instanc
 	return _c
 }
 
+// SetPasswordBreachCheckEnabled sets the "password_breach_check_enabled" field.
+func (_c *InstanceSettingsCreate) SetPasswordBreachCheckEnabled(v bool) *InstanceSettingsCreate {
+	_c.mutation.SetPasswordBreachCheckEnabled(v)
+	return _c
+}
+
+// SetNillablePasswordBreachCheckEnabled sets the "password_breach_check_enabled" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillablePasswordBreachCheckEnabled(v *bool) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetPasswordBreachCheckEnabled(*v)
+	}
+	return _c
+}
+
 // SetSessionIdleMinutes sets the "session_idle_minutes" field.
 func (_c *InstanceSettingsCreate) SetSessionIdleMinutes(v int) *InstanceSettingsCreate {
 	_c.mutation.SetSessionIdleMinutes(v)
@@ -534,6 +548,10 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultPasswordExpiryDays
 		_c.mutation.SetPasswordExpiryDays(v)
 	}
+	if _, ok := _c.mutation.PasswordBreachCheckEnabled(); !ok {
+		v := instancesettings.DefaultPasswordBreachCheckEnabled
+		_c.mutation.SetPasswordBreachCheckEnabled(v)
+	}
 	if _, ok := _c.mutation.SessionIdleMinutes(); !ok {
 		v := instancesettings.DefaultSessionIdleMinutes
 		_c.mutation.SetSessionIdleMinutes(v)
@@ -662,6 +680,9 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.PasswordExpiryDays(); !ok {
 		return &ValidationError{Name: "password_expiry_days", err: errors.New(`ent: missing required field "InstanceSettings.password_expiry_days"`)}
+	}
+	if _, ok := _c.mutation.PasswordBreachCheckEnabled(); !ok {
+		return &ValidationError{Name: "password_breach_check_enabled", err: errors.New(`ent: missing required field "InstanceSettings.password_breach_check_enabled"`)}
 	}
 	if _, ok := _c.mutation.SessionIdleMinutes(); !ok {
 		return &ValidationError{Name: "session_idle_minutes", err: errors.New(`ent: missing required field "InstanceSettings.session_idle_minutes"`)}
@@ -795,6 +816,10 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.PasswordExpiryDays(); ok {
 		_spec.SetField(instancesettings.FieldPasswordExpiryDays, field.TypeInt, value)
 		_node.PasswordExpiryDays = value
+	}
+	if value, ok := _c.mutation.PasswordBreachCheckEnabled(); ok {
+		_spec.SetField(instancesettings.FieldPasswordBreachCheckEnabled, field.TypeBool, value)
+		_node.PasswordBreachCheckEnabled = value
 	}
 	if value, ok := _c.mutation.SessionIdleMinutes(); ok {
 		_spec.SetField(instancesettings.FieldSessionIdleMinutes, field.TypeInt, value)

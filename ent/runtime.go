@@ -551,108 +551,112 @@ func init() {
 	instancesettingsDescPasswordExpiryDays := instancesettingsFields[4].Descriptor()
 	// instancesettings.DefaultPasswordExpiryDays holds the default value on creation for the password_expiry_days field.
 	instancesettings.DefaultPasswordExpiryDays = instancesettingsDescPasswordExpiryDays.Default.(int)
+	// instancesettingsDescPasswordBreachCheckEnabled is the schema descriptor for password_breach_check_enabled field.
+	instancesettingsDescPasswordBreachCheckEnabled := instancesettingsFields[5].Descriptor()
+	// instancesettings.DefaultPasswordBreachCheckEnabled holds the default value on creation for the password_breach_check_enabled field.
+	instancesettings.DefaultPasswordBreachCheckEnabled = instancesettingsDescPasswordBreachCheckEnabled.Default.(bool)
 	// instancesettingsDescSessionIdleMinutes is the schema descriptor for session_idle_minutes field.
-	instancesettingsDescSessionIdleMinutes := instancesettingsFields[5].Descriptor()
+	instancesettingsDescSessionIdleMinutes := instancesettingsFields[6].Descriptor()
 	// instancesettings.DefaultSessionIdleMinutes holds the default value on creation for the session_idle_minutes field.
 	instancesettings.DefaultSessionIdleMinutes = instancesettingsDescSessionIdleMinutes.Default.(int)
 	// instancesettingsDescSessionMaxHours is the schema descriptor for session_max_hours field.
-	instancesettingsDescSessionMaxHours := instancesettingsFields[6].Descriptor()
+	instancesettingsDescSessionMaxHours := instancesettingsFields[7].Descriptor()
 	// instancesettings.DefaultSessionMaxHours holds the default value on creation for the session_max_hours field.
 	instancesettings.DefaultSessionMaxHours = instancesettingsDescSessionMaxHours.Default.(int)
 	// instancesettingsDescRememberMeEnabled is the schema descriptor for remember_me_enabled field.
-	instancesettingsDescRememberMeEnabled := instancesettingsFields[7].Descriptor()
+	instancesettingsDescRememberMeEnabled := instancesettingsFields[8].Descriptor()
 	// instancesettings.DefaultRememberMeEnabled holds the default value on creation for the remember_me_enabled field.
 	instancesettings.DefaultRememberMeEnabled = instancesettingsDescRememberMeEnabled.Default.(bool)
 	// instancesettingsDescRememberMeIdleDays is the schema descriptor for remember_me_idle_days field.
-	instancesettingsDescRememberMeIdleDays := instancesettingsFields[8].Descriptor()
+	instancesettingsDescRememberMeIdleDays := instancesettingsFields[9].Descriptor()
 	// instancesettings.DefaultRememberMeIdleDays holds the default value on creation for the remember_me_idle_days field.
 	instancesettings.DefaultRememberMeIdleDays = instancesettingsDescRememberMeIdleDays.Default.(int)
 	// instancesettingsDescRememberMeMaxDays is the schema descriptor for remember_me_max_days field.
-	instancesettingsDescRememberMeMaxDays := instancesettingsFields[9].Descriptor()
+	instancesettingsDescRememberMeMaxDays := instancesettingsFields[10].Descriptor()
 	// instancesettings.DefaultRememberMeMaxDays holds the default value on creation for the remember_me_max_days field.
 	instancesettings.DefaultRememberMeMaxDays = instancesettingsDescRememberMeMaxDays.Default.(int)
 	// instancesettingsDescLockoutThreshold is the schema descriptor for lockout_threshold field.
-	instancesettingsDescLockoutThreshold := instancesettingsFields[10].Descriptor()
+	instancesettingsDescLockoutThreshold := instancesettingsFields[11].Descriptor()
 	// instancesettings.DefaultLockoutThreshold holds the default value on creation for the lockout_threshold field.
 	instancesettings.DefaultLockoutThreshold = instancesettingsDescLockoutThreshold.Default.(int)
 	// instancesettingsDescLockoutDurationMinutes is the schema descriptor for lockout_duration_minutes field.
-	instancesettingsDescLockoutDurationMinutes := instancesettingsFields[11].Descriptor()
+	instancesettingsDescLockoutDurationMinutes := instancesettingsFields[12].Descriptor()
 	// instancesettings.DefaultLockoutDurationMinutes holds the default value on creation for the lockout_duration_minutes field.
 	instancesettings.DefaultLockoutDurationMinutes = instancesettingsDescLockoutDurationMinutes.Default.(int)
 	// instancesettingsDescMfaRequiredGlobally is the schema descriptor for mfa_required_globally field.
-	instancesettingsDescMfaRequiredGlobally := instancesettingsFields[13].Descriptor()
+	instancesettingsDescMfaRequiredGlobally := instancesettingsFields[14].Descriptor()
 	// instancesettings.DefaultMfaRequiredGlobally holds the default value on creation for the mfa_required_globally field.
 	instancesettings.DefaultMfaRequiredGlobally = instancesettingsDescMfaRequiredGlobally.Default.(bool)
 	// instancesettingsDescNotificationEmailEnabled is the schema descriptor for notification_email_enabled field.
-	instancesettingsDescNotificationEmailEnabled := instancesettingsFields[14].Descriptor()
+	instancesettingsDescNotificationEmailEnabled := instancesettingsFields[15].Descriptor()
 	// instancesettings.DefaultNotificationEmailEnabled holds the default value on creation for the notification_email_enabled field.
 	instancesettings.DefaultNotificationEmailEnabled = instancesettingsDescNotificationEmailEnabled.Default.(bool)
 	// instancesettingsDescKeyRotationGraceHours is the schema descriptor for key_rotation_grace_hours field.
-	instancesettingsDescKeyRotationGraceHours := instancesettingsFields[15].Descriptor()
+	instancesettingsDescKeyRotationGraceHours := instancesettingsFields[16].Descriptor()
 	// instancesettings.DefaultKeyRotationGraceHours holds the default value on creation for the key_rotation_grace_hours field.
 	instancesettings.DefaultKeyRotationGraceHours = instancesettingsDescKeyRotationGraceHours.Default.(int)
 	// instancesettingsDescKeyRotationIntervalDays is the schema descriptor for key_rotation_interval_days field.
-	instancesettingsDescKeyRotationIntervalDays := instancesettingsFields[16].Descriptor()
+	instancesettingsDescKeyRotationIntervalDays := instancesettingsFields[17].Descriptor()
 	// instancesettings.DefaultKeyRotationIntervalDays holds the default value on creation for the key_rotation_interval_days field.
 	instancesettings.DefaultKeyRotationIntervalDays = instancesettingsDescKeyRotationIntervalDays.Default.(int)
 	// instancesettingsDescMfaStepUpMaxAgeMinutes is the schema descriptor for mfa_step_up_max_age_minutes field.
-	instancesettingsDescMfaStepUpMaxAgeMinutes := instancesettingsFields[18].Descriptor()
+	instancesettingsDescMfaStepUpMaxAgeMinutes := instancesettingsFields[19].Descriptor()
 	// instancesettings.DefaultMfaStepUpMaxAgeMinutes holds the default value on creation for the mfa_step_up_max_age_minutes field.
 	instancesettings.DefaultMfaStepUpMaxAgeMinutes = instancesettingsDescMfaStepUpMaxAgeMinutes.Default.(int)
 	// instancesettingsDescMfaTrustedDeviceEnabled is the schema descriptor for mfa_trusted_device_enabled field.
-	instancesettingsDescMfaTrustedDeviceEnabled := instancesettingsFields[19].Descriptor()
+	instancesettingsDescMfaTrustedDeviceEnabled := instancesettingsFields[20].Descriptor()
 	// instancesettings.DefaultMfaTrustedDeviceEnabled holds the default value on creation for the mfa_trusted_device_enabled field.
 	instancesettings.DefaultMfaTrustedDeviceEnabled = instancesettingsDescMfaTrustedDeviceEnabled.Default.(bool)
 	// instancesettingsDescMfaTrustedDeviceDays is the schema descriptor for mfa_trusted_device_days field.
-	instancesettingsDescMfaTrustedDeviceDays := instancesettingsFields[20].Descriptor()
+	instancesettingsDescMfaTrustedDeviceDays := instancesettingsFields[21].Descriptor()
 	// instancesettings.DefaultMfaTrustedDeviceDays holds the default value on creation for the mfa_trusted_device_days field.
 	instancesettings.DefaultMfaTrustedDeviceDays = instancesettingsDescMfaTrustedDeviceDays.Default.(int)
 	// instancesettingsDescPasswordResetTTLMinutes is the schema descriptor for password_reset_ttl_minutes field.
-	instancesettingsDescPasswordResetTTLMinutes := instancesettingsFields[21].Descriptor()
+	instancesettingsDescPasswordResetTTLMinutes := instancesettingsFields[22].Descriptor()
 	// instancesettings.DefaultPasswordResetTTLMinutes holds the default value on creation for the password_reset_ttl_minutes field.
 	instancesettings.DefaultPasswordResetTTLMinutes = instancesettingsDescPasswordResetTTLMinutes.Default.(int)
 	// instancesettingsDescInviteTTLHours is the schema descriptor for invite_ttl_hours field.
-	instancesettingsDescInviteTTLHours := instancesettingsFields[22].Descriptor()
+	instancesettingsDescInviteTTLHours := instancesettingsFields[23].Descriptor()
 	// instancesettings.DefaultInviteTTLHours holds the default value on creation for the invite_ttl_hours field.
 	instancesettings.DefaultInviteTTLHours = instancesettingsDescInviteTTLHours.Default.(int)
 	// instancesettingsDescSuspiciousLoginEmailEnabled is the schema descriptor for suspicious_login_email_enabled field.
-	instancesettingsDescSuspiciousLoginEmailEnabled := instancesettingsFields[23].Descriptor()
+	instancesettingsDescSuspiciousLoginEmailEnabled := instancesettingsFields[24].Descriptor()
 	// instancesettings.DefaultSuspiciousLoginEmailEnabled holds the default value on creation for the suspicious_login_email_enabled field.
 	instancesettings.DefaultSuspiciousLoginEmailEnabled = instancesettingsDescSuspiciousLoginEmailEnabled.Default.(bool)
 	// instancesettingsDescDefaultLocale is the schema descriptor for default_locale field.
-	instancesettingsDescDefaultLocale := instancesettingsFields[24].Descriptor()
+	instancesettingsDescDefaultLocale := instancesettingsFields[25].Descriptor()
 	// instancesettings.DefaultDefaultLocale holds the default value on creation for the default_locale field.
 	instancesettings.DefaultDefaultLocale = instancesettingsDescDefaultLocale.Default.(string)
 	// instancesettingsDescMailFromName is the schema descriptor for mail_from_name field.
-	instancesettingsDescMailFromName := instancesettingsFields[25].Descriptor()
+	instancesettingsDescMailFromName := instancesettingsFields[26].Descriptor()
 	// instancesettings.DefaultMailFromName holds the default value on creation for the mail_from_name field.
 	instancesettings.DefaultMailFromName = instancesettingsDescMailFromName.Default.(string)
 	// instancesettingsDescMailFromAddress is the schema descriptor for mail_from_address field.
-	instancesettingsDescMailFromAddress := instancesettingsFields[26].Descriptor()
+	instancesettingsDescMailFromAddress := instancesettingsFields[27].Descriptor()
 	// instancesettings.DefaultMailFromAddress holds the default value on creation for the mail_from_address field.
 	instancesettings.DefaultMailFromAddress = instancesettingsDescMailFromAddress.Default.(string)
 	// instancesettingsDescMailReplyTo is the schema descriptor for mail_reply_to field.
-	instancesettingsDescMailReplyTo := instancesettingsFields[27].Descriptor()
+	instancesettingsDescMailReplyTo := instancesettingsFields[28].Descriptor()
 	// instancesettings.DefaultMailReplyTo holds the default value on creation for the mail_reply_to field.
 	instancesettings.DefaultMailReplyTo = instancesettingsDescMailReplyTo.Default.(string)
 	// instancesettingsDescMailLogoURL is the schema descriptor for mail_logo_url field.
-	instancesettingsDescMailLogoURL := instancesettingsFields[28].Descriptor()
+	instancesettingsDescMailLogoURL := instancesettingsFields[29].Descriptor()
 	// instancesettings.DefaultMailLogoURL holds the default value on creation for the mail_logo_url field.
 	instancesettings.DefaultMailLogoURL = instancesettingsDescMailLogoURL.Default.(string)
 	// instancesettingsDescBulkLimit is the schema descriptor for bulk_limit field.
-	instancesettingsDescBulkLimit := instancesettingsFields[29].Descriptor()
+	instancesettingsDescBulkLimit := instancesettingsFields[30].Descriptor()
 	// instancesettings.DefaultBulkLimit holds the default value on creation for the bulk_limit field.
 	instancesettings.DefaultBulkLimit = instancesettingsDescBulkLimit.Default.(int)
 	// instancesettingsDescExpiredDataRetentionDays is the schema descriptor for expired_data_retention_days field.
-	instancesettingsDescExpiredDataRetentionDays := instancesettingsFields[30].Descriptor()
+	instancesettingsDescExpiredDataRetentionDays := instancesettingsFields[31].Descriptor()
 	// instancesettings.DefaultExpiredDataRetentionDays holds the default value on creation for the expired_data_retention_days field.
 	instancesettings.DefaultExpiredDataRetentionDays = instancesettingsDescExpiredDataRetentionDays.Default.(int)
 	// instancesettingsDescAuditLogRetentionDays is the schema descriptor for audit_log_retention_days field.
-	instancesettingsDescAuditLogRetentionDays := instancesettingsFields[31].Descriptor()
+	instancesettingsDescAuditLogRetentionDays := instancesettingsFields[32].Descriptor()
 	// instancesettings.DefaultAuditLogRetentionDays holds the default value on creation for the audit_log_retention_days field.
 	instancesettings.DefaultAuditLogRetentionDays = instancesettingsDescAuditLogRetentionDays.Default.(int)
 	// instancesettingsDescUpdatedAt is the schema descriptor for updated_at field.
-	instancesettingsDescUpdatedAt := instancesettingsFields[32].Descriptor()
+	instancesettingsDescUpdatedAt := instancesettingsFields[33].Descriptor()
 	// instancesettings.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	instancesettings.DefaultUpdatedAt = instancesettingsDescUpdatedAt.Default.(func() time.Time)
 	// instancesettings.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

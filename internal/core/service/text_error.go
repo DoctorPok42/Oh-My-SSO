@@ -35,6 +35,8 @@ func passwordText(pe *PasswordPolicyError) i18n.Text {
 		return i18n.M("admin.error.password_too_long", "the password must be at most {max} characters long", "max", pe.MaxLength)
 	case errors.Is(pe.Err, ErrPasswordMatchesIdentity):
 		return i18n.M("admin.error.password_identity", "the password must not be the username or e-mail")
+	case errors.Is(pe.Err, ErrPasswordCompromised):
+		return i18n.M("admin.error.password_compromised", "this password is too common or appeared in a data breach")
 	}
 	return i18n.M("admin.error.password_refused", "this password cannot be used")
 }

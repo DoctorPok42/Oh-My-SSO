@@ -10,12 +10,14 @@ internet ──443──▶ nginx on the host (TLS) ──▶ 127.0.0.1:8080  id
                                          └──▶ 127.0.0.1:3000  admin  https://admin.example.com  (VPN / IP allow-list)
 
 networks of compose.yml:
-  edge   172.30.20.0/24  idp, idp-admin, admin: egress (OVH KMS, SMTP). Gateway 172.30.20.1 = TRUSTED_PROXIES
+  edge   172.30.20.0/24  idp, idp-admin, admin: egress (OVH KMS, SMTP, api.pwnedpasswords.com). Gateway 172.30.20.1 = TRUSTED_PROXIES
   admin  172.30.10.0/24  internal: admin 172.30.10.10 ──▶ idp-admin 172.30.10.20:8090 (ADMIN_API_ALLOWED_CIDRS)
   data   internal        idp, idp-admin ──▶ postgres, valkey
 ```
 
 Never published: `idp-admin` (8090), PostgreSQL, Valkey. `idp` and the console are published on `127.0.0.1` only.
+
+**Outbound access to `api.pwnedpasswords.com` (HTTPS, port 443).** On by default for every realm, it checks new passwords against Have I Been Pwned. Only the first 5 characters of the password's SHA-1 leave the server (k-anonymity). If the host cannot reach that API, passwords are still accepted: the 100,000 most common passwords stay refused locally, and each attempt logs a warning and waits up to 3 s. To keep the server off the Internet, turn the check off per realm: `docker compose run --rm idp settings set --realm <realm> --password-breach-check=false`.
 
 Two files, in the checkout and never committed (both are in `.gitignore`), hold the whole deployment:
 
@@ -414,6 +416,7 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
 - [ ] `ADMIN_API_ALLOWED_CIDRS` = the console only; console restricted (VPN / allow-list)
 - [ ] Master realm: IP allowlist set to the administrators' networks (Settings > Security), your own address in it
 - [ ] SMTP with TLS, `mail test` received, alerts enabled on each realm
+- [ ] Outbound HTTPS to `api.pwnedpasswords.com` allowed from the `edge` network, or the breach check turned off on each realm (`settings set --password-breach-check=false`, see section 2)
 - [ ] `WEBAUTHN_RP_ID` final, with `WEBAUTHN_RP_ORIGINS` = `PUBLIC_URL`: every account of the master realm signs in with a
   passkey or a security key only, so without them nobody can open the console (`idp doctor` checks this, and the
   MFA policies of master). A lost key is replaced with `idp-admin recover admin`: backup codes do not work there

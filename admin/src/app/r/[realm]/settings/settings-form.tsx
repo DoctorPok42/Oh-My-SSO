@@ -58,6 +58,7 @@ export function SettingsForm({
   const [notif, setNotif] = useState(settings.notification_email_enabled);
   const [suspicious, setSuspicious] = useState(settings.suspicious_login_email_enabled);
   const [remember, setRemember] = useState(settings.remember_me_enabled);
+  const [breach, setBreach] = useState(settings.password_breach_check_enabled);
   const [locale, setLocale] = useState(settings.default_locale || "en");
   const [mail, setMail] = useState(Object.fromEntries(MAIL_FIELDS.map((k) => [k, settings[k] ?? ""])) as MailForm);
   const [error, setError] = useState<{ field?: string; message: string } | null>(null);
@@ -65,7 +66,7 @@ export function SettingsForm({
   const { locked, banner } = useEditLock({ canWrite: writable, managedByConfig: settings.managed_by === "config" });
   const { run, pending } = useAction();
   const testMail = useAction(); // its own spinner, apart from "Save changes"
-  const patch = settingsDiff(settings, form, allowlist, { notif, suspicious, remember }, locale, mail);
+  const patch = settingsDiff(settings, form, allowlist, { notif, suspicious, remember, breach }, locale, mail);
   const dirty = Object.keys(patch).length > 0;
   // The save bar slides up when there is something to save and slides back down
   // when there is not: it stays mounted while its exit animation plays.
@@ -226,6 +227,17 @@ export function SettingsForm({
                     "8 at least. Length beats complexity rules (NIST SP 800-63B).",
                   ),
                 )}
+                <Toggle
+                  label={t("settings.password.breach_check", "Refuse breached passwords")}
+                  hint={t(
+                    "settings.password.breach_check_hint",
+                    "Checks new passwords against Have I Been Pwned: only the first 5 characters of their SHA-1 hash leave the server. The 100,000 most common passwords are always refused.",
+                  )}
+                  checked={breach}
+                  onChange={setBreach}
+                  locked={locked}
+                />
+                {/* Not enforced yet: no expiry field. */}
                 {/* Not enforced yet: no expiry field. */}
                 {num(
                   "password_reset_ttl_minutes",

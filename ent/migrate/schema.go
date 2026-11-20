@@ -592,6 +592,7 @@ var (
 		{Name: "managed_by", Type: field.TypeString, Default: "ui"},
 		{Name: "min_password_length", Type: field.TypeInt, Default: 12},
 		{Name: "password_expiry_days", Type: field.TypeInt, Default: 0},
+		{Name: "password_breach_check_enabled", Type: field.TypeBool, Default: true},
 		{Name: "session_idle_minutes", Type: field.TypeInt, Default: 10},
 		{Name: "session_max_hours", Type: field.TypeInt, Default: 8},
 		{Name: "remember_me_enabled", Type: field.TypeBool, Default: true},
@@ -631,7 +632,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instance_settings_realms_instance_settings",
-				Columns:    []*schema.Column{InstanceSettingsColumns[33]},
+				Columns:    []*schema.Column{InstanceSettingsColumns[34]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},

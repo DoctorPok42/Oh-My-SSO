@@ -87,6 +87,11 @@ func PasswordExpiryDays(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldPasswordExpiryDays, v))
 }
 
+// PasswordBreachCheckEnabled applies equality check predicate on the "password_breach_check_enabled" field. It's identical to PasswordBreachCheckEnabledEQ.
+func PasswordBreachCheckEnabled(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldPasswordBreachCheckEnabled, v))
+}
+
 // SessionIdleMinutes applies equality check predicate on the "session_idle_minutes" field. It's identical to SessionIdleMinutesEQ.
 func SessionIdleMinutes(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldSessionIdleMinutes, v))
@@ -454,6 +459,16 @@ func PasswordExpiryDaysLT(v int) predicate.InstanceSettings {
 // PasswordExpiryDaysLTE applies the LTE predicate on the "password_expiry_days" field.
 func PasswordExpiryDaysLTE(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldLTE(FieldPasswordExpiryDays, v))
+}
+
+// PasswordBreachCheckEnabledEQ applies the EQ predicate on the "password_breach_check_enabled" field.
+func PasswordBreachCheckEnabledEQ(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldPasswordBreachCheckEnabled, v))
+}
+
+// PasswordBreachCheckEnabledNEQ applies the NEQ predicate on the "password_breach_check_enabled" field.
+func PasswordBreachCheckEnabledNEQ(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldPasswordBreachCheckEnabled, v))
 }
 
 // SessionIdleMinutesEQ applies the EQ predicate on the "session_idle_minutes" field.

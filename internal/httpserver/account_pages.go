@@ -310,6 +310,8 @@ func (s *Server) handleAccountPasswordSave(w http.ResponseWriter, r *http.Reques
 			fail(http.StatusUnprocessableEntity, loc.T("account.password.error.too_long", "The new password must be at most {max} characters long.", "max", policy.MaxLength))
 		case errors.Is(err, service.ErrPasswordMatchesIdentity):
 			fail(http.StatusUnprocessableEntity, loc.T("account.password.error.identity", "The new password must not be your username or e-mail address."))
+		case errors.Is(err, service.ErrPasswordCompromised):
+			fail(http.StatusUnprocessableEntity, loc.T("account.password.error.compromised", "This password is too common or appeared in a data breach. Choose another one."))
 		default:
 			fail(http.StatusUnprocessableEntity, loc.T("account.password.error.refused", "This password cannot be used."))
 		}

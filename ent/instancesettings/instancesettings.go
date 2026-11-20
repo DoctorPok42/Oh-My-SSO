@@ -23,6 +23,8 @@ const (
 	FieldMinPasswordLength = "min_password_length"
 	// FieldPasswordExpiryDays holds the string denoting the password_expiry_days field in the database.
 	FieldPasswordExpiryDays = "password_expiry_days"
+	// FieldPasswordBreachCheckEnabled holds the string denoting the password_breach_check_enabled field in the database.
+	FieldPasswordBreachCheckEnabled = "password_breach_check_enabled"
 	// FieldSessionIdleMinutes holds the string denoting the session_idle_minutes field in the database.
 	FieldSessionIdleMinutes = "session_idle_minutes"
 	// FieldSessionMaxHours holds the string denoting the session_max_hours field in the database.
@@ -101,6 +103,7 @@ var Columns = []string{
 	FieldManagedBy,
 	FieldMinPasswordLength,
 	FieldPasswordExpiryDays,
+	FieldPasswordBreachCheckEnabled,
 	FieldSessionIdleMinutes,
 	FieldSessionMaxHours,
 	FieldRememberMeEnabled,
@@ -151,6 +154,8 @@ var (
 	DefaultMinPasswordLength int
 	// DefaultPasswordExpiryDays holds the default value on creation for the "password_expiry_days" field.
 	DefaultPasswordExpiryDays int
+	// DefaultPasswordBreachCheckEnabled holds the default value on creation for the "password_breach_check_enabled" field.
+	DefaultPasswordBreachCheckEnabled bool
 	// DefaultSessionIdleMinutes holds the default value on creation for the "session_idle_minutes" field.
 	DefaultSessionIdleMinutes int
 	// DefaultSessionMaxHours holds the default value on creation for the "session_max_hours" field.
@@ -237,6 +242,11 @@ func ByMinPasswordLength(opts ...sql.OrderTermOption) OrderOption {
 // ByPasswordExpiryDays orders the results by the password_expiry_days field.
 func ByPasswordExpiryDays(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPasswordExpiryDays, opts...).ToFunc()
+}
+
+// ByPasswordBreachCheckEnabled orders the results by the password_breach_check_enabled field.
+func ByPasswordBreachCheckEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPasswordBreachCheckEnabled, opts...).ToFunc()
 }
 
 // BySessionIdleMinutes orders the results by the session_idle_minutes field.
