@@ -118,38 +118,60 @@ func (p *PasswordPolicyService) Validate(ctx context.Context, realmID, password 
 	if n > MaxPasswordLength {
 		return fail(ErrPasswordTooLong)
 	}
-	if user != nil {
-		for _, own := range []string{user.Username, user.Email} {
-			if own != "" && strings.EqualFold(strings.TrimSpace(password), own) {
-				return fail(ErrPasswordMatchesIdentity)
-			}
-		}
+	if user != nil && matchesIdentity(user, password) {
+		return fail(ErrPasswordMatchesIdentity)
 	}
 	if _, common := commonPasswords()[strings.ToLower(password)]; common {
 		return fail(ErrPasswordCompromised)
 	}
 	st := p.settings.get(ctx, realmID)
 	if user != nil {
-		for _, hash := range recentPasswords(user, st.PasswordHistoryCount) {
-			same, err := verifyPassword(ctx, password, hash)
-			if err != nil {
-				return fmt.Errorf("password policy: compare with a previous password: %w", err)
-			}
-			if same {
-				return fail(ErrPasswordReused)
-			}
+		reused, err := usedRecently(ctx, user, password, st.PasswordHistoryCount)
+		if err != nil {
+			return err
+		}
+		if reused {
+			return fail(ErrPasswordReused)
 		}
 	}
-	if p.Breach != nil && st.PasswordBreachCheckEnabled {
-		pwned, err := p.Breach.Pwned(ctx, password)
-		if err != nil {
-			// Fail open: the local list above already refused the most common ones.
-			slog.WarnContext(ctx, "password policy: Have I Been Pwned did not answer, password accepted", "realm_id", realmID, "error", err)
-		} else if pwned {
-			return fail(ErrPasswordCompromised)
-		}
+	if p.Breach != nil && st.PasswordBreachCheckEnabled && p.breached(ctx, realmID, password) {
+		return fail(ErrPasswordCompromised)
 	}
 	return nil
+}
+
+func matchesIdentity(user *domain.User, password string) bool {
+	for _, own := range []string{user.Username, user.Email} {
+		if own != "" && strings.EqualFold(strings.TrimSpace(password), own) {
+			return true
+		}
+	}
+	return false
+}
+
+// usedRecently: password is one of the user's last n passwords.
+func usedRecently(ctx context.Context, user *domain.User, password string, n int) (bool, error) {
+	for _, hash := range recentPasswords(user, n) {
+		same, err := verifyPassword(ctx, password, hash)
+		if err != nil {
+			return false, fmt.Errorf("password policy: compare with a previous password: %w", err)
+		}
+		if same {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// breached asks the checker. Fail open: when it does not answer the password
+// is accepted (the local list already refused the most common ones).
+func (p *PasswordPolicyService) breached(ctx context.Context, realmID, password string) bool {
+	pwned, err := p.Breach.Pwned(ctx, password)
+	if err != nil {
+		slog.WarnContext(ctx, "password policy: Have I Been Pwned did not answer, password accepted", "realm_id", realmID, "error", err)
+		return false
+	}
+	return pwned
 }
 
 // recentPasswords: the hashes of the user's last n passwords, the current

@@ -263,27 +263,10 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 	if in.Token == "" {
 		return ErrResetTokenInvalid
 	}
-	tok, err := s.tokens.GetByTokenHash(ctx, HashResetToken(in.Token))
-	if errors.Is(err, repository.ErrNotFound) {
-		return ErrResetTokenInvalid
-	}
-	if err != nil {
-		return fmt.Errorf("password reset: lookup token: %w", err)
-	}
 	now := s.now()
-	if tok.Used || !now.Before(tok.ExpiresAt) {
-		return ErrResetTokenInvalid
-	}
-	user, err := s.users.GetByID(ctx, tok.UserID)
-	if errors.Is(err, repository.ErrNotFound) {
-		return ErrResetTokenInvalid
-	}
+	tok, user, err := s.usableLink(ctx, in, now)
 	if err != nil {
-		return fmt.Errorf("password reset: load user: %w", err)
-	}
-	// A link of realm A must not work on the pages of realm B.
-	if user.RealmID != in.RealmID || user.Status != domain.UserActive {
-		return ErrResetTokenInvalid
+		return err
 	}
 
 	// Before the policy: the current password is also in the history, and "the
@@ -366,6 +349,33 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, in ResetPasswo
 		UserAgent:  in.UserAgent,
 	})
 	return nil
+}
+
+// usableLink returns the link of in.Token and the active user it belongs to,
+// or ErrResetTokenInvalid.
+func (s *PasswordResetService) usableLink(ctx context.Context, in ResetPasswordInput, now time.Time) (*domain.PasswordResetToken, *domain.User, error) {
+	tok, err := s.tokens.GetByTokenHash(ctx, HashResetToken(in.Token))
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, nil, ErrResetTokenInvalid
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("password reset: lookup token: %w", err)
+	}
+	if tok.Used || !now.Before(tok.ExpiresAt) {
+		return nil, nil, ErrResetTokenInvalid
+	}
+	user, err := s.users.GetByID(ctx, tok.UserID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, nil, ErrResetTokenInvalid
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("password reset: load user: %w", err)
+	}
+	// A link of realm A must not work on the pages of realm B.
+	if user.RealmID != in.RealmID || user.Status != domain.UserActive {
+		return nil, nil, ErrResetTokenInvalid
+	}
+	return tok, user, nil
 }
 
 // refuseSamePassword: a forced reset is there to replace the password, so

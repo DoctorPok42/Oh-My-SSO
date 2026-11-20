@@ -111,6 +111,23 @@ func printSettings(out io.Writer, s *domain.InstanceSettings) {
 	fmt.Fprintf(out, "managed by:                  %s\n", s.ManagedBy)
 }
 
+// setPasswordLimits copies the length and history flags (-1: not given).
+func setPasswordLimits(p *repository.UpdateInstanceSettingsParams, minLen, history int) error {
+	if minLen >= 0 {
+		if minLen < 8 {
+			return usageError{"--min-password-length must be at least 8 (NIST SP 800-63B)"}
+		}
+		p.MinPasswordLength = &minLen
+	}
+	if history >= 0 {
+		if history > service.MaxPasswordHistoryCount {
+			return usageError{fmt.Sprintf("--password-history must be at most %d", service.MaxPasswordHistoryCount)}
+		}
+		p.PasswordHistoryCount = &history
+	}
+	return nil
+}
+
 func settingsSet(ctx context.Context, args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("settings set", flag.ContinueOnError)
 	realmName := fs.String("realm", "", "realm name (required)")
@@ -140,17 +157,8 @@ func settingsSet(ctx context.Context, args []string, out io.Writer) error {
 	if p.PasswordBreachCheckEnabled, err = optionalBool("password-breach-check", *breach); err != nil {
 		return err
 	}
-	if *minLen >= 0 {
-		if *minLen < 8 {
-			return usageError{"--min-password-length must be at least 8 (NIST SP 800-63B)"}
-		}
-		p.MinPasswordLength = minLen
-	}
-	if *history >= 0 {
-		if *history > service.MaxPasswordHistoryCount {
-			return usageError{fmt.Sprintf("--password-history must be at most %d", service.MaxPasswordHistoryCount)}
-		}
-		p.PasswordHistoryCount = history
+	if err := setPasswordLimits(&p, *minLen, *history); err != nil {
+		return err
 	}
 	if *threshold >= 0 {
 		p.LockoutThreshold = threshold
