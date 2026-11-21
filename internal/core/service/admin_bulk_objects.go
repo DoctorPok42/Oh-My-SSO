@@ -107,7 +107,7 @@ func (s *AdminService) AddGroupMembers(ctx context.Context, actor AdminActor, re
 	return s.runBulk(ctx, actor, realm, "add_members", names, loc, func(ctx context.Context, name string) (string, error) {
 		u, err := findUserByIdentifier(ctx, s.d.Users, realm.ID, name)
 		if errors.Is(err, repository.ErrNotFound) {
-			return name, adminNotFound(i18n.M("admin.error.not_found.user", "user not found"))
+			return name, adminNotFound(msgUserNotFound)
 		}
 		if err != nil {
 			return name, err

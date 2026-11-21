@@ -8,6 +8,7 @@ import (
 
 	"sso.internal/sso/ent"
 	"sso.internal/sso/ent/auditlog"
+	"sso.internal/sso/ent/dataexport"
 	"sso.internal/sso/ent/emailoutbox"
 	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/knownaccount"
@@ -149,6 +150,12 @@ func (r *entPurgeRepository) DeleteExpiredTrustedDevices(ctx context.Context, re
 			sql.EQ(t.C(trusteddevice.FieldRealmID), realmID),
 			sql.LT(t.C(trusteddevice.FieldExpiresAt), before),
 		))
+	}))).Exec(ctx)
+}
+
+func (r *entPurgeRepository) DeleteExpiredDataExports(ctx context.Context, before time.Time, limit int) (int, error) {
+	return r.client.DataExport.Delete().Where(predicate.DataExport(batch(dataexport.Table, limit, func(t *sql.SelectTable, s *sql.Selector) {
+		s.Where(sql.LT(t.C(dataexport.FieldExpiresAt), before))
 	}))).Exec(ctx)
 }
 

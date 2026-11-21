@@ -101,6 +101,11 @@ func EmailVerifiedAt(v time.Time) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldEmailVerifiedAt, v))
 }
 
+// PendingEmail applies equality check predicate on the "pending_email" field. It's identical to PendingEmailEQ.
+func PendingEmail(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldPendingEmail, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldCreatedAt, v))
@@ -150,6 +155,11 @@ func LockoutCount(v int) predicate.User {
 // LastLockedAt applies equality check predicate on the "last_locked_at" field. It's identical to LastLockedAtEQ.
 func LastLockedAt(v time.Time) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldLastLockedAt, v))
+}
+
+// DeletionScheduledAt applies equality check predicate on the "deletion_scheduled_at" field. It's identical to DeletionScheduledAtEQ.
+func DeletionScheduledAt(v time.Time) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldDeletionScheduledAt, v))
 }
 
 // RealmIDEQ applies the EQ predicate on the "realm_id" field.
@@ -530,6 +540,81 @@ func EmailVerifiedAtIsNil() predicate.User {
 // EmailVerifiedAtNotNil applies the NotNil predicate on the "email_verified_at" field.
 func EmailVerifiedAtNotNil() predicate.User {
 	return predicate.User(sql.FieldNotNull(FieldEmailVerifiedAt))
+}
+
+// PendingEmailEQ applies the EQ predicate on the "pending_email" field.
+func PendingEmailEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldPendingEmail, v))
+}
+
+// PendingEmailNEQ applies the NEQ predicate on the "pending_email" field.
+func PendingEmailNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldPendingEmail, v))
+}
+
+// PendingEmailIn applies the In predicate on the "pending_email" field.
+func PendingEmailIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldPendingEmail, vs...))
+}
+
+// PendingEmailNotIn applies the NotIn predicate on the "pending_email" field.
+func PendingEmailNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldPendingEmail, vs...))
+}
+
+// PendingEmailGT applies the GT predicate on the "pending_email" field.
+func PendingEmailGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldPendingEmail, v))
+}
+
+// PendingEmailGTE applies the GTE predicate on the "pending_email" field.
+func PendingEmailGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldPendingEmail, v))
+}
+
+// PendingEmailLT applies the LT predicate on the "pending_email" field.
+func PendingEmailLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldPendingEmail, v))
+}
+
+// PendingEmailLTE applies the LTE predicate on the "pending_email" field.
+func PendingEmailLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldPendingEmail, v))
+}
+
+// PendingEmailContains applies the Contains predicate on the "pending_email" field.
+func PendingEmailContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldPendingEmail, v))
+}
+
+// PendingEmailHasPrefix applies the HasPrefix predicate on the "pending_email" field.
+func PendingEmailHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldPendingEmail, v))
+}
+
+// PendingEmailHasSuffix applies the HasSuffix predicate on the "pending_email" field.
+func PendingEmailHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldPendingEmail, v))
+}
+
+// PendingEmailIsNil applies the IsNil predicate on the "pending_email" field.
+func PendingEmailIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldPendingEmail))
+}
+
+// PendingEmailNotNil applies the NotNil predicate on the "pending_email" field.
+func PendingEmailNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldPendingEmail))
+}
+
+// PendingEmailEqualFold applies the EqualFold predicate on the "pending_email" field.
+func PendingEmailEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldPendingEmail, v))
+}
+
+// PendingEmailContainsFold applies the ContainsFold predicate on the "pending_email" field.
+func PendingEmailContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldPendingEmail, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
@@ -1036,6 +1121,56 @@ func LastLockedAtNotNil() predicate.User {
 	return predicate.User(sql.FieldNotNull(FieldLastLockedAt))
 }
 
+// DeletionScheduledAtEQ applies the EQ predicate on the "deletion_scheduled_at" field.
+func DeletionScheduledAtEQ(v time.Time) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldDeletionScheduledAt, v))
+}
+
+// DeletionScheduledAtNEQ applies the NEQ predicate on the "deletion_scheduled_at" field.
+func DeletionScheduledAtNEQ(v time.Time) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldDeletionScheduledAt, v))
+}
+
+// DeletionScheduledAtIn applies the In predicate on the "deletion_scheduled_at" field.
+func DeletionScheduledAtIn(vs ...time.Time) predicate.User {
+	return predicate.User(sql.FieldIn(FieldDeletionScheduledAt, vs...))
+}
+
+// DeletionScheduledAtNotIn applies the NotIn predicate on the "deletion_scheduled_at" field.
+func DeletionScheduledAtNotIn(vs ...time.Time) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldDeletionScheduledAt, vs...))
+}
+
+// DeletionScheduledAtGT applies the GT predicate on the "deletion_scheduled_at" field.
+func DeletionScheduledAtGT(v time.Time) predicate.User {
+	return predicate.User(sql.FieldGT(FieldDeletionScheduledAt, v))
+}
+
+// DeletionScheduledAtGTE applies the GTE predicate on the "deletion_scheduled_at" field.
+func DeletionScheduledAtGTE(v time.Time) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldDeletionScheduledAt, v))
+}
+
+// DeletionScheduledAtLT applies the LT predicate on the "deletion_scheduled_at" field.
+func DeletionScheduledAtLT(v time.Time) predicate.User {
+	return predicate.User(sql.FieldLT(FieldDeletionScheduledAt, v))
+}
+
+// DeletionScheduledAtLTE applies the LTE predicate on the "deletion_scheduled_at" field.
+func DeletionScheduledAtLTE(v time.Time) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldDeletionScheduledAt, v))
+}
+
+// DeletionScheduledAtIsNil applies the IsNil predicate on the "deletion_scheduled_at" field.
+func DeletionScheduledAtIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldDeletionScheduledAt))
+}
+
+// DeletionScheduledAtNotNil applies the NotNil predicate on the "deletion_scheduled_at" field.
+func DeletionScheduledAtNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldDeletionScheduledAt))
+}
+
 // HasRealm applies the HasEdge predicate on the "realm" edge.
 func HasRealm() predicate.User {
 	return predicate.User(func(s *sql.Selector) {
@@ -1327,6 +1462,29 @@ func HasEmailVerificationTokens() predicate.User {
 func HasEmailVerificationTokensWith(preds ...predicate.EmailVerificationToken) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := newEmailVerificationTokensStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasDataExports applies the HasEdge predicate on the "data_exports" edge.
+func HasDataExports() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, DataExportsTable, DataExportsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDataExportsWith applies the HasEdge predicate on the "data_exports" edge with a given conditions (other predicates).
+func HasDataExportsWith(preds ...predicate.DataExport) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newDataExportsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

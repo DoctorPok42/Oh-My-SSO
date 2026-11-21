@@ -23,6 +23,7 @@ const settingsUsage = `usage:
                     [--lockout-threshold <n>] [--lockout-duration <duration>]
                     [--password-reset-ttl <duration>]
                     [--remember-me=true|false] [--remember-me-idle-days <n>] [--remember-me-max-days <n>]
+                    [--account-deletion=true|false] [--email-change=true|false]
 
 --lockout-threshold 0 turns the account lockout off. Durations: 15m, 1h...
 --remember-me offers "Keep me signed in" on the sign-in page (days: 1 to 365).
@@ -30,6 +31,11 @@ const settingsUsage = `usage:
 api.pwnedpasswords.com (k-anonymity); leave it off on a server without Internet.
 --password-history <n>: a new password must differ from the last n (0 = off, 10 at most).
 The password expiry is set in the admin console: it needs e-mail.
+--account-deletion lets users delete their account from the account console (GDPR
+article 17): it is deleted 14 days later. Never in the master realm.
+--email-change lets users change their e-mail address from the account console, once
+the new one is confirmed. An application that matches accounts by address (SAML NameID
+emailAddress, or the email claim instead of sub) then sees a new user.
 `
 
 func runSettingsCommand(args []string) int {
@@ -97,6 +103,8 @@ func printSettings(out io.Writer, s *domain.InstanceSettings) {
 	fmt.Fprintf(out, "breached password check:     %t (Have I Been Pwned)\n", s.PasswordBreachCheckEnabled)
 	fmt.Fprintf(out, "password history:            %d (0 = off)\n", s.PasswordHistoryCount)
 	fmt.Fprintf(out, "password expiry:             %d days (0 = never)\n", s.PasswordExpiryDays)
+	fmt.Fprintf(out, "account deletion by users:   %t\n", s.AccountDeletionEnabled)
+	fmt.Fprintf(out, "e-mail change by users:      %t\n", s.EmailChangeAllowed)
 	fmt.Fprintf(out, "lockout threshold:           %d (0 = off)\n", s.LockoutThreshold)
 	fmt.Fprintf(out, "lockout duration:            %d min (doubles on repeat, max 24 h)\n", s.LockoutDurationMinutes)
 	allow := "(none: sign-in from any address)"
@@ -142,6 +150,8 @@ func settingsSet(ctx context.Context, args []string, out io.Writer) error {
 	remember := fs.String("remember-me", "", `true|false: offer "Keep me signed in"`)
 	rememberIdle := fs.Int("remember-me-idle-days", -1, "a remembered session ends after this many days unused")
 	rememberMax := fs.Int("remember-me-max-days", -1, "a remembered session lasts this many days at most")
+	deletion := fs.String("account-deletion", "", "true|false: users may delete their account (account console)")
+	emailChange := fs.String("email-change", "", "true|false: users may change their e-mail address (account console)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -185,6 +195,20 @@ func settingsSet(ctx context.Context, args []string, out io.Writer) error {
 	}
 	if p.RememberMeMaxDays, err = optionalDays("remember-me-max-days", *rememberMax); err != nil {
 		return err
+	}
+	if p.AccountDeletionEnabled, err = optionalBool("account-deletion", *deletion); err != nil {
+		return err
+	}
+	if p.AccountDeletionEnabled != nil && *p.AccountDeletionEnabled && *realmName == service.MasterRealmName {
+		return errors.New("--account-deletion: accounts of the master realm cannot delete themselves")
+	}
+	if p.EmailChangeAllowed, err = optionalBool("email-change", *emailChange); err != nil {
+		return err
+	}
+	// Like UpdateSettings: the new address is confirmed by e-mail. Turning
+	// it off stays possible.
+	if p.EmailChangeAllowed != nil && *p.EmailChangeAllowed && os.Getenv("SMTP_HOST") == "" && os.Getenv("APP_ENV") != "development" {
+		return errors.New("--email-change: changing one's e-mail address needs e-mail, and SMTP_HOST is not set")
 	}
 	actor := cliActor()
 	p.UpdatedBy = &actor

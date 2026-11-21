@@ -80,6 +80,8 @@ type Core struct {
 	Purge *service.PurgeService
 	// EmailVerification: "confirm your address" e-mails and their links.
 	EmailVerification *service.EmailVerificationService
+	// Erasure deletes an account with what still names it (GDPR article 17).
+	Erasure *service.ErasureService
 
 	stopEnforcer func() // StartTimeoutEnforcer
 }
@@ -135,7 +137,7 @@ func BuildCore() *Core {
 
 	c.EmailVerification = service.NewEmailVerificationService(service.EmailVerificationDeps{
 		Tx: c.Tx, Users: c.Users, Links: entstore.NewEmailVerificationRepository(client),
-		Notifier: c.Notifier, Audit: c.Audit,
+		Notifier: c.Notifier, Audit: c.Audit, Settings: c.Settings,
 	})
 
 	c.Lockout = service.NewLockoutService(service.LockoutDeps{
@@ -185,13 +187,20 @@ func BuildCore() *Core {
 		service.WithRevocationObserver(c.TrustedDevices),
 	)
 
+	c.Erasure = service.NewErasureService(service.ErasureDeps{
+		Users: c.Users, Erasure: entstore.NewErasureRepository(client), Sessions: c.Sessions,
+		SessionRows: sessionRepo, Tokens: c.Tokens, Consents: entstore.NewConsentRepository(client), Clients: c.Clients,
+		Audit: c.Audit,
+	})
+
 	// Timeouts: checked at every sign-in and token, and the targets signed
 	// out when one starts (StartTimeoutEnforcer for the scheduled ones).
 	c.Purge = service.NewPurgeService(service.PurgeDeps{
-		Purge:    entstore.NewPurgeRepository(client),
-		Settings: c.Settings,
-		Realms:   c.Admin.ListRealms,
-		Audit:    c.Audit, // audit_log.purged
+		Purge:        entstore.NewPurgeRepository(client),
+		Settings:     c.Settings,
+		Realms:       c.Admin.ListRealms,
+		Audit:        c.Audit, // audit_log.purged
+		DueDeletions: c.Erasure.DeleteDue,
 	})
 
 	c.Timeouts = service.NewTimeoutService(service.TimeoutDeps{
@@ -294,10 +303,13 @@ func BuildCore() *Core {
 		Tokens:         c.Tokens,
 		LoginAttempts:  entstore.NewLoginAttemptRepository(client),
 		Audit:          c.Audit,
+		MFAMethods:     mfaMethods,
+		DataExports:    entstore.NewDataExportRepository(client),
 		Sessions:       c.Sessions,
 		Consents:       c.Consent,
 		TrustedDevices: c.TrustedDevices,
 		Policy:         passwordPolicy,
+		Erasure:        c.Erasure,
 		Notifier:       c.Notifier,
 		GeoIP:          geo,
 	})
@@ -444,6 +456,7 @@ func (c *Core) AdminService(rights service.RightsRecorder) *service.AdminService
 		PasswordReset: c.PasswordReset, Lockout: c.Lockout, OIDCClients: c.OIDCClients, SAMLClients: c.SAMLClients,
 		Notifier: c.Notifier, PublicURL: c.PublicURL, EmailEnabled: c.EmailEnabled(), KMSBackend: c.KMSBackend,
 		TrustedDevices:    c.TrustedDevices,
+		Erasure:           c.Erasure,
 		Timeouts:          c.Timeouts,
 		Languages:         Languages(),
 		UserImports:       entstore.NewUserImportRepository(c.Ent),

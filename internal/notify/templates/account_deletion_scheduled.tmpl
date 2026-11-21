@@ -1,0 +1,22 @@
+{{define "subject"}}{{t "email.deletion.subject" "Your account will be deleted"}}{{end}}
+
+{{define "text"}}{{template "hello" .}}
+
+{{tp "email.deletion.intro" "You asked for your <strong>{realm}</strong> account to be deleted. It will be deleted for good on <strong>{date}</strong>, with what is kept about you. Until then, applications can no longer use it." "realm" .Realm "date" .DeletionAt}}
+
+{{t "email.deletion.cancel" "Changed your mind? Sign in to your account and cancel the deletion before that date:"}}
+
+{{.DataExportURL}}
+
+{{t "email.deletion.not_you" "If you did not ask for it, sign in now, cancel the deletion and change your password: someone else may be signed in to your account."}}
+{{end}}
+
+{{define "html"}}{{template "badge.warning" (t "email.badge.account" "Account")}}
+{{template "title" (t "email.deletion.subject" "Your account will be deleted")}}
+{{template "hello" .}}
+<p>{{th "email.deletion.intro" "You asked for your <strong>{realm}</strong> account to be deleted. It will be deleted for good on <strong>{date}</strong>, with what is kept about you. Until then, applications can no longer use it." "realm" .Realm "date" .DeletionAt}}</p>
+<p>{{t "email.deletion.cancel" "Changed your mind? Sign in to your account and cancel the deletion before that date:"}}</p>
+{{template "button" (button .DataExportURL (t "email.deletion.button" "Go to my account"))}}
+{{template "link" .DataExportURL}}
+{{template "muted" (t "email.deletion.not_you" "If you did not ask for it, sign in now, cancel the deletion and change your password: someone else may be signed in to your account.")}}
+{{end}}

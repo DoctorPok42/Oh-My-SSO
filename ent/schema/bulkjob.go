@@ -57,7 +57,8 @@ func (BulkJob) Fields() []ent.Field {
 		// Who started it: an administrator of the master realm. Not edges:
 		// the report outlives the account.
 		field.String("requested_by").NotEmpty().Immutable(),
-		field.String("requested_by_name").NotEmpty().Immutable(),
+		// Mutable: erased when that administrator is deleted (GDPR article 17).
+		field.String("requested_by_name").NotEmpty(),
 		field.String("requested_by_realm").NotEmpty().Immutable(),
 
 		// The selection, in the order it is done: what is left to do is

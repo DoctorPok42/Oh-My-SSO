@@ -364,6 +364,7 @@ function UserStatus({ user }: { user: UserSummary }) {
       <StatusBadge status={user.status} />
       {user.locked && <StatusBadge status="locked" />}
       {user.must_change_password && <StatusBadge status="reset_required" />}
+      {user.deletion_scheduled_at && <StatusBadge status="deletion_scheduled" />}
     </span>
   );
 }

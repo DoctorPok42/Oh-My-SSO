@@ -1,0 +1,67 @@
+{{define "content"}}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{t "account.tab.data" "Your data"}}</h1>
+    <p class="page-description">{{t "account.data.description" "What {org} keeps about you, and a copy of it for you." "org" .Org.Display}}</p>
+  </div>
+</div>
+
+<section class="card" aria-labelledby="copy-title">
+  <div class="card-header">
+    <h2 class="card-title" id="copy-title">{{t "account.data.copy.title" "Download a copy of your data"}}</h2>
+    <p class="card-description">{{t "account.data.copy.text" "Your profile, groups and roles, sign-in methods, sessions, connected apps, trusted devices, sign-in history and account activity, in one JSON file that other services can read. It holds no password, second-factor secret or backup code."}}</p>
+  </div>
+  {{- if eq .Status "running"}}
+  <output class="banner banner-warning">{{t "account.data.copy.running" "Your copy is being made, since {time}. We will e-mail you once it is ready: you can leave this page." "time" (when .MadeAt)}}</output>
+  {{- else if eq .Status "ready"}}
+  <output class="banner banner-success">{{t "account.data.copy.ready" "Your copy is ready. You can download it until {time}, then it is deleted." "time" (when .ExpiresAt)}}</output>
+  <div class="actions">
+    <a class="btn" href="{{.Base}}/data/download">{{t "account.data.copy.download" "Download (JSON)"}}</a>
+  </div>
+  {{- else if eq .Status "failed"}}
+  <p class="banner banner-danger" role="alert">{{t "account.data.copy.failed" "Your last copy could not be made. Ask for a new one."}}</p>
+  {{- end}}
+  {{- if ne .Status "running"}}
+  <form class="stack" method="post" action="{{.Base}}/data/export">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="actions">
+      <button type="submit" class="btn{{if eq .Status "ready"}} btn-secondary{{end}}">{{if eq .Status "ready"}}{{t "account.data.copy.again" "Ask for a new copy"}}{{else}}{{t "account.data.copy.ask" "Ask for a copy"}}{{end}}</button>
+    </div>
+  </form>
+  {{- end}}
+  <p class="card-note">{{t "account.data.copy.note" "Making the copy takes a moment. It can be downloaded for {days} days, after confirming it's you." "days" .KeepDays}}</p>
+</section>
+
+{{- if or .DeletionAt .DeletionAllowed}}
+<section class="card" id="deletion" aria-labelledby="deletion-title">
+  <div class="card-header">
+    <h2 class="card-title" id="deletion-title">{{t "account.deletion.title" "Delete your account"}}</h2>
+    {{- if not .DeletionAt}}
+    <p class="card-description">{{t "account.deletion.text" "Your account is deleted {days} days after you ask, with what {org} keeps about you: profile, sign-in methods, sessions, consents, devices, sign-in history. You are signed out everywhere at once and applications can no longer use it; until the deletion you can sign in here and keep it. The history of what was done stays, without your name, e-mail address or network addresses." "days" .DeletionDays "org" .Org.Display}}</p>
+    {{- end}}
+  </div>
+  {{- if .DeletionAt}}
+  <output class="banner banner-danger">{{t "account.deletion.scheduled" "Your account will be deleted on {date}, with what {org} keeps about you. Until then, applications can no longer use it." "date" (when .DeletionAt) "org" .Org.Display}}</output>
+  <form class="stack" method="post" action="{{.Base}}/data/deletion/cancel">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="actions">
+      <button type="submit" class="btn">{{t "account.deletion.cancel" "Keep my account"}}</button>
+    </div>
+  </form>
+  {{- else}}
+  <form class="stack" method="post" action="{{.Base}}/data/deletion">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="check-field">
+      <input class="checkbox" id="deletion-confirm" name="confirm" value="yes" type="checkbox" required>
+      <div><label for="deletion-confirm">{{t "account.deletion.confirm" "I understand that my account and its data will be deleted for good."}}</label></div>
+    </div>
+    {{- with .FormError}}<p class="banner banner-danger" role="alert">{{.}}</p>{{end}}
+    <div class="actions">
+      <button type="submit" class="btn btn-danger">{{t "account.deletion.ask" "Delete my account"}}</button>
+    </div>
+  </form>
+  <p class="card-note">{{t "account.deletion.note" "Download a copy of your data first if you want to keep it."}}</p>
+  {{- end}}
+</section>
+{{- end}}
+{{end}}

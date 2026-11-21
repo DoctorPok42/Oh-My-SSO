@@ -142,7 +142,7 @@ func (a *Adapter) handleLogoutConfirmPage(w http.ResponseWriter, r *http.Request
 		Action:       base + "/oidc/logout/confirm",
 		RequestID:    p.ID,
 		Token:        token,
-		Assets:       base + "/oidc/assets",
+		Assets:       base + assetsPath,
 	})
 }
 

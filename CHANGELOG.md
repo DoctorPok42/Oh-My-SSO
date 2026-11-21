@@ -5,6 +5,31 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
 
 ## [Unreleased]
 
+### Manual steps
+- Deleting an account now erases its names and addresses from the audit log, reports and imports (see Changed).
+  Export the audit log first if the names must be kept.
+- Account deletion and e-mail change by users are off by default: enable them per realm in Settings > General
+  (`--account-deletion=true`, `--email-change=true`). Check first that SAML clients use the persistent NameID.
+
+### Added
+- Users can download a copy of their data as JSON (Your data, GDPR articles 15 and 20). The copy is kept 7 days.
+- Users can ask to delete their account (Your data, GDPR article 17), with a 14-day delay to cancel, per realm.
+  Users can change their e-mail address (Profile), confirmed on the new address, with the old one notified. Both
+  are off by default.
+
+### Changed
+- Deleting an account erases its names and addresses from the audit log, reports and imports, and removes it
+  together with its traces in one transaction.
+
+### Fixed
+
+### Fixed
+- Account console > History > Account activity no longer lists what an administrator did to other accounts, nor
+  what they did about nobody (an import, a bulk action), and no longer shows the name of the administrator who
+  acted on the account.
+- Deleting an account that another server, or its owner's request, deleted a moment before answers "not found",
+  with no second `user.deleted` entry.
+
 ## [1.0.0-rc.5] - 2026-11-20
 
 Passwords are checked against common and breached ones, and a realm can keep a history and expire them.

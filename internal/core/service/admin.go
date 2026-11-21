@@ -15,7 +15,6 @@ import (
 	"sso.internal/sso/internal/i18n"
 )
 
-
 const MasterRealmName = "master"
 
 // AdminActor is the administrator behind an Admin API call.
@@ -93,7 +92,7 @@ func adminRefused(code string, t i18n.Text) error {
 
 var errManagedByConfig = &AdminError{Kind: AdminRefused, Code: "managed_by_config",
 	Message: "this object is managed by the configuration file (or by the system): it is read-only here",
-	Text: i18n.M("admin.error.managed_by_config", "this object is managed by the configuration file (or by the system): it is read-only here")}
+	Text:    i18n.M("admin.error.managed_by_config", "this object is managed by the configuration file (or by the system): it is read-only here")}
 
 // asAdminError turns the errors of the other services into AdminErrors
 // when they are the caller's fault.
@@ -146,17 +145,20 @@ type AdminDeps struct {
 	MfaMethods  repository.MfaMethodRepository
 	Admin       repository.AdminRepository
 
-	Sessions      *SessionService
-	KeyRotation   *KeyRotationService
-	MFA           *MFAService
-	MFAPolicy     *MFAPolicyService
-	PasswordReset *PasswordResetService
-	Lockout       *LockoutService
-	OIDCClients   *OIDCClientService
-	SAMLClients   *SAMLClientService
-	Timeouts      *TimeoutService
-	Notifier      Notifier // nil: no e-mail
+	Sessions       *SessionService
+	KeyRotation    *KeyRotationService
+	MFA            *MFAService
+	MFAPolicy      *MFAPolicyService
+	PasswordReset  *PasswordResetService
+	Lockout        *LockoutService
+	OIDCClients    *OIDCClientService
+	SAMLClients    *SAMLClientService
+	Timeouts       *TimeoutService
+	Notifier       Notifier // nil: no e-mail
 	TrustedDevices *TrustedDeviceService
+	// Erasure deletes an account with what still names it. nil (in-memory
+	// stores of tests): DeleteUser deletes the account's rows only.
+	Erasure *ErasureService
 	// Languages: the languages the IdP can show (default_locale must be one
 	// of them). nil: the embedded ones.
 	Languages *i18n.Bundle
@@ -267,7 +269,6 @@ func (s *AdminService) auditAdminAbout(ctx context.Context, actor AdminActor, re
 	}
 }
 
-
 // RealmByName loads an existing realm (active or not).
 func (s *AdminService) RealmByName(ctx context.Context, name string) (*domain.Realm, error) {
 	r, err := s.d.Realms.GetByName(ctx, name)
@@ -277,10 +278,12 @@ func (s *AdminService) RealmByName(ctx context.Context, name string) (*domain.Re
 	return r, err
 }
 
+var msgUserNotFound = i18n.M("admin.error.not_found.user", "user not found")
+
 func (s *AdminService) userInRealm(ctx context.Context, realmID, userID string) (*domain.User, error) {
 	u, err := s.d.Users.GetByID(ctx, userID)
 	if errors.Is(err, repository.ErrNotFound) || (err == nil && (u.RealmID != realmID || u.DeletedAt != nil)) {
-		return nil, adminNotFound(i18n.M("admin.error.not_found.user", "user not found"))
+		return nil, adminNotFound(msgUserNotFound)
 	}
 	return u, err
 }

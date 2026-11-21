@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"sso.internal/sso/ent/consent"
+	"sso.internal/sso/ent/dataexport"
 	"sso.internal/sso/ent/emailoutbox"
 	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/federatedidentity"
@@ -110,6 +111,20 @@ func (_c *UserCreate) SetEmailVerifiedAt(v time.Time) *UserCreate {
 func (_c *UserCreate) SetNillableEmailVerifiedAt(v *time.Time) *UserCreate {
 	if v != nil {
 		_c.SetEmailVerifiedAt(*v)
+	}
+	return _c
+}
+
+// SetPendingEmail sets the "pending_email" field.
+func (_c *UserCreate) SetPendingEmail(v string) *UserCreate {
+	_c.mutation.SetPendingEmail(v)
+	return _c
+}
+
+// SetNillablePendingEmail sets the "pending_email" field if the given value is not nil.
+func (_c *UserCreate) SetNillablePendingEmail(v *string) *UserCreate {
+	if v != nil {
+		_c.SetPendingEmail(*v)
 	}
 	return _c
 }
@@ -256,6 +271,20 @@ func (_c *UserCreate) SetLastLockedAt(v time.Time) *UserCreate {
 func (_c *UserCreate) SetNillableLastLockedAt(v *time.Time) *UserCreate {
 	if v != nil {
 		_c.SetLastLockedAt(*v)
+	}
+	return _c
+}
+
+// SetDeletionScheduledAt sets the "deletion_scheduled_at" field.
+func (_c *UserCreate) SetDeletionScheduledAt(v time.Time) *UserCreate {
+	_c.mutation.SetDeletionScheduledAt(v)
+	return _c
+}
+
+// SetNillableDeletionScheduledAt sets the "deletion_scheduled_at" field if the given value is not nil.
+func (_c *UserCreate) SetNillableDeletionScheduledAt(v *time.Time) *UserCreate {
+	if v != nil {
+		_c.SetDeletionScheduledAt(*v)
 	}
 	return _c
 }
@@ -459,6 +488,21 @@ func (_c *UserCreate) AddEmailVerificationTokens(v ...*EmailVerificationToken) *
 	return _c.AddEmailVerificationTokenIDs(ids...)
 }
 
+// AddDataExportIDs adds the "data_exports" edge to the DataExport entity by IDs.
+func (_c *UserCreate) AddDataExportIDs(ids ...string) *UserCreate {
+	_c.mutation.AddDataExportIDs(ids...)
+	return _c
+}
+
+// AddDataExports adds the "data_exports" edges to the DataExport entity.
+func (_c *UserCreate) AddDataExports(v ...*DataExport) *UserCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddDataExportIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_c *UserCreate) Mutation() *UserMutation {
 	return _c.mutation
@@ -646,6 +690,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldEmailVerifiedAt, field.TypeTime, value)
 		_node.EmailVerifiedAt = &value
 	}
+	if value, ok := _c.mutation.PendingEmail(); ok {
+		_spec.SetField(user.FieldPendingEmail, field.TypeString, value)
+		_node.PendingEmail = value
+	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -689,6 +737,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.LastLockedAt(); ok {
 		_spec.SetField(user.FieldLastLockedAt, field.TypeTime, value)
 		_node.LastLockedAt = &value
+	}
+	if value, ok := _c.mutation.DeletionScheduledAt(); ok {
+		_spec.SetField(user.FieldDeletionScheduledAt, field.TypeTime, value)
+		_node.DeletionScheduledAt = &value
 	}
 	if nodes := _c.mutation.RealmIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -892,6 +944,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(emailverificationtoken.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.DataExportsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DataExportsTable,
+			Columns: []string{user.DataExportsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dataexport.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

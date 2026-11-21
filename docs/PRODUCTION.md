@@ -347,6 +347,47 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   attempts, remembered accounts and trusted devices unused for that long. Each row is
   deleted by one server (batches of 1000, `FOR UPDATE SKIP LOCKED`); the logs show `purge: expired data deleted` with
   the counts.
+- **Copies of personal data** (account console > Your data, GDPR articles 15 and 20): a user asks for one after
+  confirming it's them; `idp` makes it in the background (profile, groups and roles, second factors without their
+  secrets, sessions, applications and consents, trusted devices, sign-in history, the audit entries about the account,
+  without the names of the administrators who acted on it), keeps it in the database (`data_exports`, one per user)
+  and e-mails a link to the page where it is downloaded, after a new confirmation. The sign-in history and the audit
+  entries keep their 10 000 newest rows each; the document names the lists it cut under `truncated`. The purge deletes it 7 days after it was made, whatever the realm's retention (`purge: data exports
+  deleted`), and deleting the account deletes it at once. Asking for it and downloading it are in the audit log
+  (`user.data_export_requested`, `user.data_exported`) and in the user's account activity.
+- **Deleting an account** (GDPR article 17): whoever deletes it (an administrator, a bulk action, or its owner),
+  the account goes with every row of its own (sessions and tokens, factors, consents, devices, e-mails waiting,
+  copies of its data) and with what still names it elsewhere, in one transaction: its sign-in attempts are deleted;
+  in the audit log the network addresses and browsers of what it did, and of the sign-ins made with its name, are
+  cleared, and its username and e-mail address become `[deleted]` (details included, and in the entries about it,
+  the names and addresses it had or asked for and the recipients of its e-mails); the same in the reports of
+  bulk actions and user imports. The entries keep their action, date and the account's id: what was done stays
+  visible, without saying who. `user.deleted` lists the applications that received the account's data: tell them
+  (article 19). Out of reach: database backups (they expire with their rotation; after a restore, delete again the
+  accounts deleted since the dump), copies already sent elsewhere (e-mails, applications), and the `user.import_finished`
+  entries written before this version, which list the accounts they created without their id: a name or an address
+  that such an account changed since stays there. Kept on purpose: the suspensions (Timeouts) that targeted the
+  account, with the reason an administrator typed (also in the audit log): write reasons without personal data.
+- **Deletion by its owner**, per realm (Settings > General > "Let users delete their account", off by default,
+  never in `master`; `idp settings set --account-deletion`): from the account console (Your data), after
+  confirming it's them. The account is signed out everywhere and deleted 14 days later by the hourly purge (`purge:
+  accounts deleted at their owner's request`); the user is e-mailed the date. In between, applications refuse it
+  (the browser shows why and leads to the account console) and the user may sign in there and keep it; an
+  administrator may cancel too (user drawer). Audit: `user.deletion_requested`, `user.deletion_cancelled`,
+  `user.deleted` (actor system, reason `user_request`).
+- **E-mail change by the user** (GDPR article 16), per realm (Settings > General > "Let users change their e-mail
+  address", off by default; `idp settings set --email-change`): from the account console (Profile), after
+  confirming it's them. A link goes to the new address; the account keeps the old one until it is opened, then
+  switches to the new one, verified, and the old address is e-mailed (`email_changed`). A new request, a
+  verification e-mail or an administrator changing the address cancels a pending change. A password reset link
+  e-mailed to the old address stops working once the address changed, whoever changed it. Needs e-mail: without
+  SMTP the setting cannot be turned on. Audit:
+  `user.email_change_requested`, `user.email_changed`, `user.email_change_cancelled`.
+  **Before turning it on, check how your applications recognize their users.** The OIDC `sub` never changes (it is
+  the account id, or a pairwise value derived from it), nor does a SAML NameID in the persistent format. An
+  application that matches accounts by e-mail address instead (a SAML client with the NameID `emailAddress`, or one
+  that reads the `email` claim rather than `sub`) sees a new user after a change: a second account, or none. Switch
+  those SAML clients to the persistent NameID first (Clients > the client > NameID format).
 - **Audit log retention**: 1 year by default, per realm (Settings > Audit: 30 days to 10 years, or unlimited; any
   value from 30 to 3650 days through the Admin API, `audit_log_retention_days`, 0 = unlimited). **Upgrading applies the
   1-year default to every existing realm**: set Unlimited (or a longer period) before the first purge if older entries

@@ -56,11 +56,14 @@ type AccountDeps struct {
 	Tokens        repository.TokenRepository
 	LoginAttempts repository.LoginAttemptRepository
 	Audit         repository.AuditLogRepository
+	MFAMethods    repository.MfaMethodRepository  // optional: second factors in the copy of the data
+	DataExports   repository.DataExportRepository // optional: without it, no copy of the data
 
 	Sessions       *SessionService
 	Consents       *ConsentService
 	TrustedDevices *TrustedDeviceService
 	Policy         *PasswordPolicyService
+	Erasure        *ErasureService // optional: without it, no account deletion
 
 	Notifier Notifier      // optional: "password changed" e-mail
 	GeoIP    GeoIPResolver // optional: country of an IP address
@@ -71,6 +74,7 @@ type AccountDeps struct {
 type AccountService struct {
 	d        AccountDeps
 	settings *settingsCache
+	exports  *jobRunner // copies of the data being made (account_export.go)
 }
 
 func NewAccountService(d AccountDeps) *AccountService {
@@ -83,7 +87,7 @@ func NewAccountService(d AccountDeps) *AccountService {
 	if d.Notifier == nil {
 		d.Notifier = NopNotifier{}
 	}
-	return &AccountService{d: d, settings: newSettingsCache(d.Settings, d.Logger)}
+	return &AccountService{d: d, settings: newSettingsCache(d.Settings, d.Logger), exports: newJobRunner()}
 }
 
 // AccountEvent: where a change comes from, for the audit log and e-mails.
@@ -288,21 +292,22 @@ func (s *AccountService) ChangePassword(ctx context.Context, in ChangePasswordIn
 // --- sessions --------------------------------------------------------------
 
 // AccountSession is one row of the "Sessions" page.
+// The JSON names are those of the copy of the user's data (account_export.go).
 type AccountSession struct {
-	ID             string
-	Current        bool // the session of this browser
-	IPAddress      string
-	Country        string
-	UserAgent      string
-	AuthMethod     string // RFC 8176: pwd, hwk, swk, otp, mfa
-	MFAVerified    bool
-	MFAMethod      string
-	RememberMe     bool // "Keep me signed in" was ticked
-	TrustedDevice  bool // the second factor was skipped on a trusted device
-	Apps           []string
-	CreatedAt      time.Time
-	LastActivityAt time.Time
-	ExpiresAt      time.Time
+	ID             string    `json:"id"`
+	Current        bool      `json:"-"` // the session of this browser
+	IPAddress      string    `json:"ip_address"`
+	Country        string    `json:"country,omitempty"`
+	UserAgent      string    `json:"user_agent"`
+	AuthMethod     string    `json:"auth_method"` // RFC 8176: pwd, hwk, swk, otp, mfa
+	MFAVerified    bool      `json:"mfa_verified"`
+	MFAMethod      string    `json:"mfa_method,omitempty"`
+	RememberMe     bool      `json:"remember_me"`    // "Keep me signed in" was ticked
+	TrustedDevice  bool      `json:"trusted_device"` // the second factor was skipped on a trusted device
+	Apps           []string  `json:"applications"`
+	CreatedAt      time.Time `json:"created_at"`
+	LastActivityAt time.Time `json:"last_activity_at"`
+	ExpiresAt      time.Time `json:"expires_at"`
 }
 
 // Sessions lists the user's live sessions with the rules of the admin
@@ -425,26 +430,26 @@ func (s *AccountService) RevokeOtherSessions(ctx context.Context, user *domain.U
 // user approved (consent screen), or one holding a live token for one of
 // the user's sessions (applications without a consent screen).
 type AccountApp struct {
-	ClientRef string
-	Name      string
+	ClientRef string `json:"-"`
+	Name      string `json:"name"`
 	// Host: where the application lives (host of its redirect URI or of
 	// its SAML ACS URL), so that a look-alike name can be told apart.
-	Host string
+	Host string `json:"host,omitempty"`
 	// Consent: the user approved it on the consent screen; Scopes and
 	// GrantedAt describe that approval.
-	Consent   bool
-	Scopes    []AppScope
-	GrantedAt time.Time
+	Consent   bool       `json:"consent"`
+	Scopes    []AppScope `json:"scopes,omitempty"`
+	GrantedAt time.Time  `json:"granted_at,omitzero"`
 	// SignedIn: it holds a live token for one of the user's sessions now.
-	SignedIn bool
+	SignedIn bool `json:"signed_in"`
 }
 
 // AppScope: one thing the application may read. Description is the
 // realm's description of a custom scope; the HTTP layer words the standard
 // ones (profile, email, offline_access).
 type AppScope struct {
-	Name        string
-	Description string
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
 }
 
 func (s *AccountService) Apps(ctx context.Context, user *domain.User) ([]AccountApp, error) {
@@ -607,12 +612,12 @@ func (s *AccountService) RevokeTrustedDevices(ctx context.Context, user *domain.
 
 // SignInEntry is one sign-in attempt on the user's account.
 type SignInEntry struct {
-	At        time.Time
-	IPAddress string
-	Country   string
-	UserAgent string
-	Success   bool
-	Reason    domain.LoginAttemptFailureReason
+	At        time.Time                        `json:"at"`
+	IPAddress string                           `json:"ip_address"`
+	Country   string                           `json:"country,omitempty"`
+	UserAgent string                           `json:"user_agent"`
+	Success   bool                             `json:"success"`
+	Reason    domain.LoginAttemptFailureReason `json:"failure_reason,omitempty"`
 }
 
 // SignIns returns one page of the user's sign-in attempts, newest first,
@@ -650,6 +655,8 @@ var AccountActivityActions = []string{
 	audit.MFAMethodEnrolled, audit.MFAMethodRemoved, audit.MFABackupCodesRegenerated,
 	audit.TrustedDeviceAdded,
 	audit.ConsentGranted, audit.ConsentRevoked, audit.KnownAccountForgotten,
+	audit.UserDataExportRequested, audit.UserDataExported, audit.UserDeletionRequested, audit.UserDeletionCancelled,
+	audit.UserEmailChangeRequested, audit.UserEmailChanged, audit.UserEmailChangeCancelled,
 	audit.UserPasswordResetRequested, audit.UserPasswordReset, audit.UserLocked,
 	// by an administrator, about the user
 	audit.UserInvited, audit.UserActivationLinkSent, audit.UserUpdated, audit.UserGroupsChanged, audit.UserRolesChanged,
@@ -658,22 +665,29 @@ var AccountActivityActions = []string{
 
 // ActivityEntry is one entry of the "Account activity" list.
 type ActivityEntry struct {
-	At     time.Time
-	Action string
+	At     time.Time `json:"at"`
+	Action string    `json:"action"`
 	// ByAdmin: an administrator did it (their name and address are not
 	// shown to the user).
-	ByAdmin   bool
-	IPAddress string // empty when ByAdmin
-	UserAgent string // empty when ByAdmin
-	Failed    bool
-	Details   map[string]interface{}
+	ByAdmin   bool                   `json:"by_administrator"`
+	IPAddress string                 `json:"ip_address,omitempty"` // empty when ByAdmin
+	UserAgent string                 `json:"user_agent,omitempty"` // empty when ByAdmin
+	Failed    bool                   `json:"failed"`
+	Details   map[string]interface{} `json:"details,omitempty"`
 }
 
 // Activity returns one page of what happened to the account, newest first,
 // and whether older entries exist.
 func (s *AccountService) Activity(ctx context.Context, user *domain.User, offset, limit int) ([]ActivityEntry, bool, error) {
+	return s.activity(ctx, user, AccountActivityActions, offset, limit)
+}
+
+// activity: Activity with any of these actions (nil: every action). An
+// entry the user wrote about someone else is left out: it is that person's
+// data, not theirs.
+func (s *AccountService) activity(ctx context.Context, user *domain.User, actions []string, offset, limit int) ([]ActivityEntry, bool, error) {
 	rows, _, err := s.d.Admin.SearchAuditLogs(ctx, repository.AuditSearch{
-		RealmID: user.RealmID, UserID: user.ID, Actions: AccountActivityActions,
+		RealmID: user.RealmID, UserID: user.ID, Actions: actions,
 		Page: repository.Page{Offset: offset, Limit: limit + 1, NoTotal: true},
 	})
 	if err != nil {
@@ -685,9 +699,16 @@ func (s *AccountService) Activity(ctx context.Context, user *domain.User, offset
 	}
 	out := make([]ActivityEntry, 0, len(rows))
 	for _, r := range rows {
+		// Only what is about the account: an entry the user wrote as an
+		// administrator about nobody (an import, a bulk action) holds other
+		// people's data. Normalized sets the target of any entry on a user.
+		if r.TargetUserID != user.ID {
+			continue
+		}
 		e := ActivityEntry{At: r.Timestamp, Action: r.Action, Failed: r.Status == domain.AuditLogFailure, Details: r.Details}
 		if r.ActorType == domain.AuditActorAdmin || r.ActorType == domain.AuditActorCLI || (r.UserID != "" && r.UserID != user.ID) {
 			e.ByAdmin = true
+			e.Details = withoutKeys(r.Details, operatorKeys...)
 		} else {
 			e.IPAddress, e.UserAgent = r.IPAddress, r.UserAgent
 		}
@@ -697,6 +718,19 @@ func (s *AccountService) Activity(ctx context.Context, user *domain.User, offset
 		out = append(out, e)
 	}
 	return out, more, nil
+}
+
+// operatorKeys name who acted for the organization (auditAdminAbout,
+// writeCLIAudit): the user sees that an administrator did it, not who.
+var operatorKeys = []string{"admin_username", "admin_realm", "triggered_by"}
+
+// withoutKeys copies m without keys (m is the stored row's: never changed).
+func withoutKeys(m map[string]interface{}, keys ...string) map[string]interface{} {
+	out := maps.Clone(m)
+	for _, k := range keys {
+		delete(out, k)
+	}
+	return out
 }
 
 // --- helpers ---------------------------------------------------------------

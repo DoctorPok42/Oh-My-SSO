@@ -187,4 +187,9 @@ func serve() {
 	// ListenAndServe returns as soon as Shutdown starts: wait for the requests
 	// in flight to end before c.Close takes the database from under them.
 	<-drained
+	// Also before c.Close: a copy of a user's data being made (account
+	// console) ends and is saved, within the container's stop_grace_period.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	c.Account.StopDataExports(ctx)
 }

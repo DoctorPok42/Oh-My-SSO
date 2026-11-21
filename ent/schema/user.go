@@ -47,6 +47,11 @@ func (User) Fields() []ent.Field {
 		// link e-mailed to it was used), or an administrator said so. Cleared
 		// whenever the address changes. The OIDC claim email_verified.
 		field.Time("email_verified_at").Optional().Nillable(),
+		// pending_email: the address the user asked to switch to (account
+		// console), waiting for the link e-mailed to it. email only changes
+		// when that link is used: an application that matches accounts by
+		// address never sees an unproven one. Cleared when email changes.
+		field.String("pending_email").Optional(),
 		field.Time("created_at").Default(func() time.Time { return time.Now() }).Immutable(),
 		field.Time("updated_at").Default(func() time.Time { return time.Now() }).UpdateDefault(func() time.Time { return time.Now() }),
 		field.Time("deleted_at").Optional().Nillable(),
@@ -62,6 +67,10 @@ func (User) Fields() []ent.Field {
 		// Back to 0 after a successful login, an unlock or a password reset.
 		field.Int("lockout_count").Default(0),
 		field.Time("last_locked_at").Optional().Nillable(),
+		// When the account is deleted for good, at the user's request
+		// (account console, GDPR article 17); nil: not asked. Until then
+		// applications refuse it, and the user may cancel.
+		field.Time("deletion_scheduled_at").Optional().Nillable(),
 	}
 }
 
@@ -87,6 +96,7 @@ func (User) Edges() []ent.Edge {
 		edge.To("federated_identities", FederatedIdentity.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("email_outbox", EmailOutbox.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("email_verification_tokens", EmailVerificationToken.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
+		edge.To("data_exports", DataExport.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 	}
 }
 
@@ -94,5 +104,7 @@ func (User) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("realm_id", "username").Unique(),
 		index.Fields("realm_id", "email").Unique(),
+		// The hourly list of the accounts due for deletion.
+		index.Fields("deletion_scheduled_at"),
 	}
 }

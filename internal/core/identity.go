@@ -44,6 +44,11 @@ var (
 	ErrTokenReused = errors.New("core: refresh token reused, token family revoked")
 
 	ErrConsentNotConfigured = errors.New("core: user consent required but not configured")
+
+	// ErrAccountDeletionScheduled: the user asked for their account to be
+	// deleted. Until it is, or until they cancel from the account console,
+	// applications get nothing for it (no assertion, no token).
+	ErrAccountDeletionScheduled = errors.New("core: the account is being deleted")
 )
 
 // TimeoutError is returned when an administrator's timeout blocks a sign-in

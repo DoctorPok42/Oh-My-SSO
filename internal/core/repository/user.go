@@ -44,4 +44,7 @@ type UpdateUserParams struct {
 	// EmailVerified: true marks the address verified now (kept if it already
 	// was), false clears it. Changing Email clears it unless this is set.
 	EmailVerified *bool
+	// PendingEmail: the address the user asked to switch to; "" cancels.
+	// Changing Email cancels it too.
+	PendingEmail *string
 }

@@ -208,8 +208,10 @@ func (s *AdminService) auditViews(ctx context.Context, rows []*domain.AuditLog) 
 			t := &AuditUserRef{ID: r.TargetUserID}
 			if u := byID[r.TargetUserID]; u != nil {
 				t.Username = u.Username
-			} else if name, ok := r.Details["username"].(string); ok {
-				t.Username = name // a deleted account (user.deleted keeps its name)
+			} else if name, ok := r.Details["username"].(string); ok && name != repository.Erased {
+				// An entry written before deletions erased names (GDPR
+				// article 17); since then a deleted account has no name.
+				t.Username = name
 			}
 			v.Target = t
 		}

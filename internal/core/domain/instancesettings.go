@@ -17,6 +17,8 @@ type InstanceSettings struct {
 	PasswordExpiryDays          int  // 0: never
 	PasswordHistoryCount        int  // a new password must differ from the last N; 0: off
 	PasswordBreachCheckEnabled  bool // check new passwords against Have I Been Pwned
+	AccountDeletionEnabled      bool // users may ask for their account to be deleted (account console)
+	EmailChangeAllowed          bool // users may change their e-mail address (account console)
 	SessionIdleMinutes          int
 	SessionMaxHours             int
 	RememberMeEnabled           bool

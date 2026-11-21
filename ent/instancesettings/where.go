@@ -97,6 +97,16 @@ func PasswordBreachCheckEnabled(v bool) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldPasswordBreachCheckEnabled, v))
 }
 
+// AccountDeletionEnabled applies equality check predicate on the "account_deletion_enabled" field. It's identical to AccountDeletionEnabledEQ.
+func AccountDeletionEnabled(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldAccountDeletionEnabled, v))
+}
+
+// EmailChangeAllowed applies equality check predicate on the "email_change_allowed" field. It's identical to EmailChangeAllowedEQ.
+func EmailChangeAllowed(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldEmailChangeAllowed, v))
+}
+
 // SessionIdleMinutes applies equality check predicate on the "session_idle_minutes" field. It's identical to SessionIdleMinutesEQ.
 func SessionIdleMinutes(v int) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldEQ(FieldSessionIdleMinutes, v))
@@ -514,6 +524,26 @@ func PasswordBreachCheckEnabledEQ(v bool) predicate.InstanceSettings {
 // PasswordBreachCheckEnabledNEQ applies the NEQ predicate on the "password_breach_check_enabled" field.
 func PasswordBreachCheckEnabledNEQ(v bool) predicate.InstanceSettings {
 	return predicate.InstanceSettings(sql.FieldNEQ(FieldPasswordBreachCheckEnabled, v))
+}
+
+// AccountDeletionEnabledEQ applies the EQ predicate on the "account_deletion_enabled" field.
+func AccountDeletionEnabledEQ(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldAccountDeletionEnabled, v))
+}
+
+// AccountDeletionEnabledNEQ applies the NEQ predicate on the "account_deletion_enabled" field.
+func AccountDeletionEnabledNEQ(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldAccountDeletionEnabled, v))
+}
+
+// EmailChangeAllowedEQ applies the EQ predicate on the "email_change_allowed" field.
+func EmailChangeAllowedEQ(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldEQ(FieldEmailChangeAllowed, v))
+}
+
+// EmailChangeAllowedNEQ applies the NEQ predicate on the "email_change_allowed" field.
+func EmailChangeAllowedNEQ(v bool) predicate.InstanceSettings {
+	return predicate.InstanceSettings(sql.FieldNEQ(FieldEmailChangeAllowed, v))
 }
 
 // SessionIdleMinutesEQ applies the EQ predicate on the "session_idle_minutes" field.

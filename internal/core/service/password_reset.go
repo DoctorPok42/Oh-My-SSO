@@ -375,6 +375,11 @@ func (s *PasswordResetService) usableLink(ctx context.Context, in ResetPasswordI
 	if user.RealmID != in.RealmID || user.Status != domain.UserActive {
 		return nil, nil, ErrResetTokenInvalid
 	}
+	// A link e-mailed to an address the account no longer has proves
+	// nothing: whoever reads that mailbox may not be the owner any more.
+	if tok.EmailedTo != "" && tok.EmailedTo != user.Email {
+		return nil, nil, ErrResetTokenInvalid
+	}
 	return tok, user, nil
 }
 

@@ -121,6 +121,34 @@ func (_u *InstanceSettingsUpdate) SetNillablePasswordBreachCheckEnabled(v *bool)
 	return _u
 }
 
+// SetAccountDeletionEnabled sets the "account_deletion_enabled" field.
+func (_u *InstanceSettingsUpdate) SetAccountDeletionEnabled(v bool) *InstanceSettingsUpdate {
+	_u.mutation.SetAccountDeletionEnabled(v)
+	return _u
+}
+
+// SetNillableAccountDeletionEnabled sets the "account_deletion_enabled" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableAccountDeletionEnabled(v *bool) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetAccountDeletionEnabled(*v)
+	}
+	return _u
+}
+
+// SetEmailChangeAllowed sets the "email_change_allowed" field.
+func (_u *InstanceSettingsUpdate) SetEmailChangeAllowed(v bool) *InstanceSettingsUpdate {
+	_u.mutation.SetEmailChangeAllowed(v)
+	return _u
+}
+
+// SetNillableEmailChangeAllowed sets the "email_change_allowed" field if the given value is not nil.
+func (_u *InstanceSettingsUpdate) SetNillableEmailChangeAllowed(v *bool) *InstanceSettingsUpdate {
+	if v != nil {
+		_u.SetEmailChangeAllowed(*v)
+	}
+	return _u
+}
+
 // SetSessionIdleMinutes sets the "session_idle_minutes" field.
 func (_u *InstanceSettingsUpdate) SetSessionIdleMinutes(v int) *InstanceSettingsUpdate {
 	_u.mutation.ResetSessionIdleMinutes()
@@ -725,6 +753,12 @@ func (_u *InstanceSettingsUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if value, ok := _u.mutation.PasswordBreachCheckEnabled(); ok {
 		_spec.SetField(instancesettings.FieldPasswordBreachCheckEnabled, field.TypeBool, value)
 	}
+	if value, ok := _u.mutation.AccountDeletionEnabled(); ok {
+		_spec.SetField(instancesettings.FieldAccountDeletionEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.EmailChangeAllowed(); ok {
+		_spec.SetField(instancesettings.FieldEmailChangeAllowed, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.SessionIdleMinutes(); ok {
 		_spec.SetField(instancesettings.FieldSessionIdleMinutes, field.TypeInt, value)
 	}
@@ -978,6 +1012,34 @@ func (_u *InstanceSettingsUpdateOne) SetPasswordBreachCheckEnabled(v bool) *Inst
 func (_u *InstanceSettingsUpdateOne) SetNillablePasswordBreachCheckEnabled(v *bool) *InstanceSettingsUpdateOne {
 	if v != nil {
 		_u.SetPasswordBreachCheckEnabled(*v)
+	}
+	return _u
+}
+
+// SetAccountDeletionEnabled sets the "account_deletion_enabled" field.
+func (_u *InstanceSettingsUpdateOne) SetAccountDeletionEnabled(v bool) *InstanceSettingsUpdateOne {
+	_u.mutation.SetAccountDeletionEnabled(v)
+	return _u
+}
+
+// SetNillableAccountDeletionEnabled sets the "account_deletion_enabled" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableAccountDeletionEnabled(v *bool) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetAccountDeletionEnabled(*v)
+	}
+	return _u
+}
+
+// SetEmailChangeAllowed sets the "email_change_allowed" field.
+func (_u *InstanceSettingsUpdateOne) SetEmailChangeAllowed(v bool) *InstanceSettingsUpdateOne {
+	_u.mutation.SetEmailChangeAllowed(v)
+	return _u
+}
+
+// SetNillableEmailChangeAllowed sets the "email_change_allowed" field if the given value is not nil.
+func (_u *InstanceSettingsUpdateOne) SetNillableEmailChangeAllowed(v *bool) *InstanceSettingsUpdateOne {
+	if v != nil {
+		_u.SetEmailChangeAllowed(*v)
 	}
 	return _u
 }
@@ -1615,6 +1677,12 @@ func (_u *InstanceSettingsUpdateOne) sqlSave(ctx context.Context) (_node *Instan
 	}
 	if value, ok := _u.mutation.PasswordBreachCheckEnabled(); ok {
 		_spec.SetField(instancesettings.FieldPasswordBreachCheckEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.AccountDeletionEnabled(); ok {
+		_spec.SetField(instancesettings.FieldAccountDeletionEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.EmailChangeAllowed(); ok {
+		_spec.SetField(instancesettings.FieldEmailChangeAllowed, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.SessionIdleMinutes(); ok {
 		_spec.SetField(instancesettings.FieldSessionIdleMinutes, field.TypeInt, value)

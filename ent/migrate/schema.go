@@ -362,6 +362,43 @@ var (
 			},
 		},
 	}
+	// DataExportsColumns holds the columns for the "data_exports" table.
+	DataExportsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "realm_id", Type: field.TypeString},
+		{Name: "status", Type: field.TypeString, Default: "running"},
+		{Name: "data", Type: field.TypeBytes, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "finished_at", Type: field.TypeTime, Nullable: true},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeString},
+	}
+	// DataExportsTable holds the schema information for the "data_exports" table.
+	DataExportsTable = &schema.Table{
+		Name:       "data_exports",
+		Columns:    DataExportsColumns,
+		PrimaryKey: []*schema.Column{DataExportsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "data_exports_users_data_exports",
+				Columns:    []*schema.Column{DataExportsColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "dataexport_user_id",
+				Unique:  true,
+				Columns: []*schema.Column{DataExportsColumns[7]},
+			},
+			{
+				Name:    "dataexport_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{DataExportsColumns[6]},
+			},
+		},
+	}
 	// EmailOutboxColumns holds the columns for the "email_outbox" table.
 	EmailOutboxColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
@@ -594,6 +631,8 @@ var (
 		{Name: "password_expiry_days", Type: field.TypeInt, Default: 0},
 		{Name: "password_history_count", Type: field.TypeInt, Default: 5},
 		{Name: "password_breach_check_enabled", Type: field.TypeBool, Default: true},
+		{Name: "account_deletion_enabled", Type: field.TypeBool, Default: false},
+		{Name: "email_change_allowed", Type: field.TypeBool, Default: false},
 		{Name: "session_idle_minutes", Type: field.TypeInt, Default: 10},
 		{Name: "session_max_hours", Type: field.TypeInt, Default: 8},
 		{Name: "remember_me_enabled", Type: field.TypeBool, Default: true},
@@ -633,7 +672,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instance_settings_realms_instance_settings",
-				Columns:    []*schema.Column{InstanceSettingsColumns[35]},
+				Columns:    []*schema.Column{InstanceSettingsColumns[37]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -1257,6 +1296,7 @@ var (
 		{Name: "must_change_password", Type: field.TypeBool, Default: false},
 		{Name: "email", Type: field.TypeString},
 		{Name: "email_verified_at", Type: field.TypeTime, Nullable: true},
+		{Name: "pending_email", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
@@ -1268,6 +1308,7 @@ var (
 		{Name: "locked_until", Type: field.TypeTime, Nullable: true},
 		{Name: "lockout_count", Type: field.TypeInt, Default: 0},
 		{Name: "last_locked_at", Type: field.TypeTime, Nullable: true},
+		{Name: "deletion_scheduled_at", Type: field.TypeTime, Nullable: true},
 		{Name: "realm_id", Type: field.TypeString},
 	}
 	// UsersTable holds the schema information for the "users" table.
@@ -1278,7 +1319,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "users_realms_users",
-				Columns:    []*schema.Column{UsersColumns[19]},
+				Columns:    []*schema.Column{UsersColumns[21]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -1287,12 +1328,17 @@ var (
 			{
 				Name:    "user_realm_id_username",
 				Unique:  true,
-				Columns: []*schema.Column{UsersColumns[19], UsersColumns[1]},
+				Columns: []*schema.Column{UsersColumns[21], UsersColumns[1]},
 			},
 			{
 				Name:    "user_realm_id_email",
 				Unique:  true,
-				Columns: []*schema.Column{UsersColumns[19], UsersColumns[6]},
+				Columns: []*schema.Column{UsersColumns[21], UsersColumns[6]},
+			},
+			{
+				Name:    "user_deletion_scheduled_at",
+				Unique:  false,
+				Columns: []*schema.Column{UsersColumns[20]},
 			},
 		},
 	}
@@ -1461,6 +1507,7 @@ var (
 		ClientScopesTable,
 		ClientScopeMappingsTable,
 		ConsentsTable,
+		DataExportsTable,
 		EmailOutboxTable,
 		EmailVerificationTokensTable,
 		FederatedIdentitiesTable,
@@ -1506,6 +1553,7 @@ func init() {
 	ClientScopeMappingsTable.ForeignKeys[1].RefTable = ClientScopesTable
 	ConsentsTable.ForeignKeys[0].RefTable = ClientAppsTable
 	ConsentsTable.ForeignKeys[1].RefTable = UsersTable
+	DataExportsTable.ForeignKeys[0].RefTable = UsersTable
 	EmailOutboxTable.ForeignKeys[0].RefTable = UsersTable
 	EmailOutboxTable.Annotation = &entsql.Annotation{
 		Table: "email_outbox",

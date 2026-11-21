@@ -78,9 +78,12 @@ type PurgeDeps struct {
 	// Audit receives the audit_log.purged entries: one per realm and day
 	// that deleted audit log entries. Optional; without it the audit log is
 	// purged at every pass.
-	Audit  repository.AuditLogRepository
-	Logger *slog.Logger
-	Now    func() time.Time
+	Audit repository.AuditLogRepository
+	// DueDeletions deletes the accounts whose owner asked for it and whose
+	// time came (ErasureService.DeleteDue). Optional.
+	DueDeletions func(context.Context) (int, error)
+	Logger       *slog.Logger
+	Now          func() time.Time
 }
 
 // PurgeService deletes the data that ended longer ago than the retention
@@ -108,6 +111,7 @@ type PurgeCounts struct {
 	KnownAccounts  int
 	TrustedDevices int
 	Emails         int // e-mails of the outbox
+	DataExports    int // every realm: they expire on their own date
 	AuditLogs      int
 }
 
@@ -117,7 +121,7 @@ func (c PurgeCounts) Total() int {
 
 // ended: the rows of data that had ended (all but the audit log).
 func (c PurgeCounts) ended() int {
-	return c.Sessions + c.Tokens + c.ResetLinks + c.LoginAttempts + c.KnownAccounts + c.TrustedDevices + c.Emails
+	return c.Sessions + c.Tokens + c.ResetLinks + c.LoginAttempts + c.KnownAccounts + c.TrustedDevices + c.Emails + c.DataExports
 }
 
 func (c *PurgeCounts) add(o PurgeCounts) {
@@ -128,6 +132,7 @@ func (c *PurgeCounts) add(o PurgeCounts) {
 	c.KnownAccounts += o.KnownAccounts
 	c.TrustedDevices += o.TrustedDevices
 	c.Emails += o.Emails
+	c.DataExports += o.DataExports
 	c.AuditLogs += o.AuditLogs
 }
 
@@ -198,6 +203,25 @@ func (s *PurgeService) PurgeAll(ctx context.Context) (PurgeCounts, error) {
 	total.LoginAttempts += n
 	if err != nil {
 		errs = append(errs, fmt.Errorf("sign-in attempts of no realm: %w", err))
+	}
+	// A copy of someone's personal data: gone on its date, not after a
+	// retention.
+	n, err = drain(ctx, func(limit int) (int, error) { return s.d.Purge.DeleteExpiredDataExports(ctx, now, limit) })
+	total.DataExports += n
+	if n > 0 {
+		s.d.Logger.InfoContext(ctx, "purge: data exports deleted", "data_exports", n)
+	}
+	if err != nil {
+		errs = append(errs, fmt.Errorf("data exports: %w", err))
+	}
+	if s.d.DueDeletions != nil && ctx.Err() == nil {
+		n, err := s.d.DueDeletions(ctx)
+		if n > 0 {
+			s.d.Logger.InfoContext(ctx, "purge: accounts deleted at their owner's request", "accounts", n)
+		}
+		if err != nil {
+			errs = append(errs, fmt.Errorf("account deletions: %w", err))
+		}
 	}
 	return total, errors.Join(errs...)
 }

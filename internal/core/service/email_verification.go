@@ -47,13 +47,17 @@ type EmailVerificationDeps struct {
 	Links    repository.EmailVerificationRepository
 	Notifier Notifier // nil or NopNotifier: no e-mail, Send refuses
 	Audit    repository.AuditLogRepository
+	// Settings: whether the realm lets users change their address
+	// (email_change.go). Optional: without it, they cannot.
+	Settings repository.InstanceSettingsRepository
 	Now      func() time.Time
 	Logger   *slog.Logger
 }
 
 // EmailVerificationService sends and checks the verification links.
 type EmailVerificationService struct {
-	d EmailVerificationDeps
+	d        EmailVerificationDeps
+	settings *settingsCache
 }
 
 func NewEmailVerificationService(d EmailVerificationDeps) *EmailVerificationService {
@@ -66,7 +70,11 @@ func NewEmailVerificationService(d EmailVerificationDeps) *EmailVerificationServ
 	if d.Logger == nil {
 		d.Logger = slog.Default()
 	}
-	return &EmailVerificationService{d: d}
+	s := &EmailVerificationService{d: d}
+	if d.Settings != nil {
+		s.settings = newSettingsCache(d.Settings, d.Logger)
+	}
+	return s
 }
 
 // Enabled tells whether verification e-mails can leave.
@@ -103,23 +111,52 @@ func (s *EmailVerificationService) Send(ctx context.Context, user *domain.User, 
 	if user.Email == "" || user.Status != domain.UserActive {
 		return time.Time{}, ErrEmailVerificationUnavailable
 	}
-	now := s.d.Now()
-	last, err := s.d.Links.LatestCreatedAt(ctx, user.ID)
+	if err := s.cooldown(ctx, user.ID); err != nil {
+		return time.Time{}, err
+	}
+	// The new link replaces the one of a pending change: that change is
+	// cancelled with it.
+	expires, err := s.mailLink(ctx, user, user.Email, "", by)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("email verification: last link: %w", err)
+		return time.Time{}, err
 	}
-	if !last.IsZero() && now.Sub(last) < emailVerificationCooldown {
-		return time.Time{}, ErrEmailVerificationTooSoon
-	}
+	s.audit(ctx, user, by, audit.UserEmailVerificationSent, map[string]interface{}{
+		"email": user.Email, "expires_at": expires.UTC().Format(time.RFC3339),
+	})
+	return expires, nil
+}
 
+// cooldown: ErrEmailVerificationTooSoon when the account's last link is
+// less than a minute old.
+func (s *EmailVerificationService) cooldown(ctx context.Context, userID string) error {
+	last, err := s.d.Links.LatestCreatedAt(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("email verification: last link: %w", err)
+	}
+	if !last.IsZero() && s.d.Now().Sub(last) < emailVerificationCooldown {
+		return ErrEmailVerificationTooSoon
+	}
+	return nil
+}
+
+// mailLink stores a new link to address (the account's previous links stop
+// working), sets the account's pending address to pending, and e-mails the
+// link to address. It returns when the link expires.
+func (s *EmailVerificationService) mailLink(ctx context.Context, user *domain.User, address, pending string, by VerificationRequester) (time.Time, error) {
+	now := s.d.Now()
 	raw, hash := newResetToken()
 	expires := now.Add(EmailVerificationTTL)
-	err = s.d.Tx.InTx(ctx, func(ctx context.Context) error {
+	err := s.d.Tx.InTx(ctx, func(ctx context.Context) error {
 		if _, err := s.d.Links.DeleteUnusedByUser(ctx, user.ID); err != nil {
 			return fmt.Errorf("email verification: cancel previous links: %w", err)
 		}
+		if pending != user.PendingEmail {
+			if _, err := s.d.Users.Update(ctx, user.ID, repository.UpdateUserParams{PendingEmail: &pending}); err != nil {
+				return fmt.Errorf("email verification: pending address: %w", err)
+			}
+		}
 		if err := s.d.Links.Create(ctx, &domain.EmailVerificationToken{
-			UserID: user.ID, Email: user.Email, TokenHash: hash, ExpiresAt: expires, CreatedAt: now,
+			UserID: user.ID, Email: address, TokenHash: hash, ExpiresAt: expires, CreatedAt: now,
 		}); err != nil {
 			return fmt.Errorf("email verification: store link: %w", err)
 		}
@@ -132,6 +169,9 @@ func (s *EmailVerificationService) Send(ctx context.Context, user *domain.User, 
 		Kind: domain.NotificationEmailVerification, RealmID: user.RealmID, UserID: user.ID,
 		OccurredAt: now, IPAddress: by.IPAddress, UserAgent: by.UserAgent, ResetToken: raw, ExpiresAt: expires,
 	}
+	if address != user.Email {
+		event.To = address
+	}
 	if q, ok := s.d.Notifier.(QueueNotifier); ok {
 		if err := q.NotifyWait(ctx, event); err != nil {
 			s.d.Logger.ErrorContext(ctx, "email verification: e-mail not queued", "user_id", user.ID, "error", err)
@@ -140,9 +180,6 @@ func (s *EmailVerificationService) Send(ctx context.Context, user *domain.User, 
 	} else {
 		s.d.Notifier.Notify(ctx, event)
 	}
-	s.audit(ctx, user, by, audit.UserEmailVerificationSent, map[string]interface{}{
-		"email": user.Email, "expires_at": expires.UTC().Format(time.RFC3339),
-	})
 	return expires, nil
 }
 
@@ -171,9 +208,14 @@ func (s *EmailVerificationService) Verify(ctx context.Context, realmID, token, i
 		return nil, fmt.Errorf("email verification: load user: %w", err)
 	}
 	// A link of realm A does not work on the pages of realm B, and a link
-	// sent to an address the account no longer has proves nothing.
-	if user.RealmID != realmID || user.Status != domain.UserActive || user.Email != tok.Email {
+	// sent to an address the account no longer has proves nothing. A link
+	// sent to the pending address switches the account to it.
+	change := user.PendingEmail != "" && tok.Email == user.PendingEmail && tok.Email != user.Email
+	if user.RealmID != realmID || user.Status != domain.UserActive || (user.Email != tok.Email && !change) {
 		return nil, ErrEmailVerificationInvalid
+	}
+	if change {
+		return s.applyChange(ctx, user, tok, ip, userAgent)
 	}
 	err = s.d.Tx.InTx(ctx, func(ctx context.Context) error {
 		used, err := s.d.Links.Consume(ctx, tok.ID, now)

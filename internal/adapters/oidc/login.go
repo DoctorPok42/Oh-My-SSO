@@ -23,15 +23,15 @@ import (
 	"sso.internal/sso/internal/ssocookie"
 )
 
-
 const (
+	// assetsPath: the pages' assets, under the realm's base (/r/<realm>).
+	assetsPath = "/oidc/assets"
 	// browserCookieName binds a login to the browser that started it (see
 	// bindBrowser). Over https it is a __Host- cookie (internal/ssocookie),
 	// read under this name.
 	browserCookieName = ssocookie.OIDCBrowser
 	browserCookieTTL  = 24 * time.Hour
 )
-
 
 // Without a binding, a login started by an attacker (who then knows the
 // request id) could be finished by a victim the attacker sent to the login
@@ -106,7 +106,6 @@ func (a *Adapter) checkBrowser(next http.Handler) http.Handler {
 	})
 }
 
-
 func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	realm, _ := realmFrom(ctx)
@@ -173,6 +172,16 @@ func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	case errors.Is(err, core.ErrTimeoutActive):
 		a.authError(w, r, ar, oidc.ErrAccessDenied().WithDescription("the access of this user is temporarily suspended"))
+		return
+	case errors.Is(err, core.ErrAccountDeletionScheduled):
+		if ar.hasPrompt(oidc.PromptNone) {
+			a.authError(w, r, ar, oidc.ErrAccessDenied().WithDescription("the account is being deleted"))
+			return
+		}
+		// The page says why, and leads to where the deletion is cancelled.
+		realm, _ := realmFrom(ctx)
+		a.pages.RenderMessage(w, r, http.StatusForbidden, loginui.AccountDeletionMessage(a.pages.Loc(r), "/r/"+realm.Name+"/account/data"),
+			"/r/"+realm.Name+assetsPath)
 		return
 	case errors.Is(err, core.ErrForbidden):
 		a.authError(w, r, ar, oidc.ErrAccessDenied().WithDescription("the user is not allowed to use this application"))
@@ -427,7 +436,7 @@ func (a *Adapter) loginPage(r *http.Request, ar *authRequest, pc *core.ProtocolC
 		ClientParam:  "client_id",
 		ClientID:     pc.App.ClientID,
 		Base:         base,
-		Assets:       base + "/oidc/assets",
+		Assets:       base + assetsPath,
 		Mode:         mode,
 		Methods:      strings.Join(methods, ","),
 		Passkeys:     a.cfg.PasskeysEnabled,
@@ -443,7 +452,6 @@ func (a *Adapter) loginPage(r *http.Request, ar *authRequest, pc *core.ProtocolC
 	page.RememberMe, page.RememberMeDays = loginui.RememberMeOffer(a.core.SessionOptions(r.Context(), realm.ID))
 	return page
 }
-
 
 type message = loginui.Message
 
@@ -467,7 +475,7 @@ func (a *Adapter) handleLoggedOut(w http.ResponseWriter, r *http.Request) {
 func (a *Adapter) renderMessage(w http.ResponseWriter, r *http.Request, status int, m message) {
 	realm, _ := realmFrom(r.Context())
 	m.Back = a.backLink(r)
-	a.pages.RenderMessage(w, r, status, m, "/r/"+realm.Name+"/oidc/assets")
+	a.pages.RenderMessage(w, r, status, m, "/r/"+realm.Name+assetsPath)
 }
 
 // backLink: the way back to the application of the page, when it can be

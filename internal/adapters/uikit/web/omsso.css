@@ -318,6 +318,7 @@ a.logo:hover { text-decoration: none; }
 /* --- Banner (ui/banner.tsx): {x}-soft, {x} text, radius 8, 10×12, 13px,
    the tone's icon before the text. Any inline content works inside. ----- */
 .banner {
+  display: block; /* also on <output>, inline by default */
   position: relative; padding: 10px 12px 10px 36px; border-radius: var(--radius-md);
   font-size: 13px; line-height: 20px; background: var(--info-soft); color: var(--info);
   --icon: var(--icon-info);

@@ -76,6 +76,9 @@
     <a class="nav-tab" href="{{.Base}}/sessions"{{if eq .Active "sessions"}} aria-current="page"{{end}}>{{t "account.tab.sessions" "Sessions"}}</a>
     <a class="nav-tab" href="{{.Base}}/apps"{{if eq .Active "apps"}} aria-current="page"{{end}}>{{t "account.tab.apps" "Connected apps"}}</a>
     <a class="nav-tab" href="{{.Base}}/history"{{if eq .Active "history"}} aria-current="page"{{end}}>{{t "account.tab.history" "History"}}</a>
+    {{- if .DataTab}}
+    <a class="nav-tab" href="{{.Base}}/data"{{if eq .Active "data"}} aria-current="page"{{end}}>{{t "account.tab.data" "Your data"}}</a>
+    {{- end}}
   </div>
 </nav>
 <div class="page">
@@ -88,6 +91,9 @@
 {{/* The inside of <main>: also the answer of an htmx request that replaces
      the whole page content (HX-Retarget: #main). */}}
 {{define "main-inner"}}
+    {{- with .DeletionAt}}
+    <p class="banner banner-danger" role="note">{{t "account.deletion.banner" "Your account will be deleted on {date}. Applications can no longer use it." "date" (when .)}} <a href="{{$.Base}}/data#deletion">{{t "account.deletion.banner_link" "Cancel the deletion"}}</a></p>
+    {{- end}}
     {{- if .MFARequired}}
     <p class="banner banner-warning" role="note">{{t "account.mfa_required.text" "{org} requires a second step when you sign in, and your account has none yet." "org" .Org.Display}} <a href="{{.Base}}/security">{{t "account.mfa_required.link" "Add one to keep access to its applications."}}</a></p>
     {{- end}}

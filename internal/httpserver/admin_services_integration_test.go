@@ -147,7 +147,9 @@ func TestAdminService_Integration(t *testing.T) {
 			"audit retention":      {AuditLogRetentionDays: ptr(7)},
 			"audit retention < 0":  {AuditLogRetentionDays: ptr(-1)},
 			// This server has no e-mail: nobody could replace an expired password.
-			"password expiry":       {PasswordExpiryDays: ptr(30)},
+			"password expiry": {PasswordExpiryDays: ptr(30)},
+			// Nor confirm a new address.
+			"e-mail change":         {EmailChangeAllowed: ptr(true)},
 			"password history > 10": {PasswordHistoryCount: ptr(service.MaxPasswordHistoryCount + 1)},
 			"password history < 0":  {PasswordHistoryCount: ptr(-1)},
 		} {
@@ -159,6 +161,15 @@ func TestAdminService_Integration(t *testing.T) {
 		}
 		_, err = svc.UpdateSettings(ctx, root, master, service.SettingsPatch{MFARequiredGlobally: ptr(false)})
 		wantAdminError(t, err, service.AdminRefused, "system_realm")
+		_, err = svc.UpdateSettings(ctx, root, master, service.SettingsPatch{AccountDeletionEnabled: ptr(true)})
+		wantAdminError(t, err, service.AdminRefused, "system_realm")
+		withDeletion, err := svc.UpdateSettings(ctx, root, demo, service.SettingsPatch{AccountDeletionEnabled: ptr(true)})
+		require.NoError(t, err)
+		require.True(t, withDeletion.AccountDeletionEnabled)
+		_, err = svc.UpdateSettings(ctx, root, demo, service.SettingsPatch{AccountDeletionEnabled: ptr(false)})
+		require.NoError(t, err)
+		_, err = svc.UpdateSettings(ctx, root, demo, service.SettingsPatch{EmailChangeAllowed: ptr(false)})
+		require.NoError(t, err, "turning it off needs no e-mail")
 
 		after, err := svc.UpdateSettings(ctx, root, demo, service.SettingsPatch{
 			MinPasswordLength: ptr(14), PasswordExpiryDays: ptr(0), PasswordHistoryCount: ptr(5), PasswordResetTTLMinutes: ptr(20), InviteTTLHours: ptr(48),
@@ -788,7 +799,10 @@ func TestAdminService_Integration(t *testing.T) {
 		require.True(t, created[0].Actor.Admin)
 		deleted, _, err := svc.SearchAudit(ctx, demo, repository.AuditSearch{Action: audit.UserDeleted, Page: repository.Page{Limit: 10}})
 		require.NoError(t, err)
-		require.Equal(t, "carol", deleted[0].Target.Username, "a deleted account keeps its name in the log")
+		require.NotEmpty(t, deleted[0].Target.ID, "the deleted account keeps its id in the log")
+		require.Empty(t, deleted[0].Target.Username, "but not its name (GDPR article 17)")
+		require.NotContains(t, deleted[0].Details, "username")
+		require.NotContains(t, deleted[0].Details, "email")
 
 		var exported []string
 		n, truncated, err := svc.ExportAudit(ctx, demo, repository.AuditSearch{}, 0, func(v service.AuditView) error {

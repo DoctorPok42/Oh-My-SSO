@@ -530,7 +530,11 @@ func (d *Dispatcher) compose(ctx context.Context, e domain.NotificationEvent) (s
 	if err != nil {
 		return "", "", Data{}, fmt.Errorf("notify: load user: %w", err)
 	}
-	if user.Email == "" {
+	to := user.Email
+	if e.To != "" {
+		to = e.To
+	}
+	if to == "" {
 		return "", "", Data{}, errNoAddress
 	}
 	realm, err := d.realms.GetByID(ctx, e.RealmID)
@@ -547,7 +551,7 @@ func (d *Dispatcher) compose(ctx context.Context, e domain.NotificationEvent) (s
 			data.ApplyRealmSettings(st)
 		}
 	}
-	return user.Email, tmpl, data, nil
+	return to, tmpl, data, nil
 }
 
 // template picks the e-mail for an event, or ok=false when the realm does
@@ -698,6 +702,14 @@ func (d *Dispatcher) data(loc *i18n.Localizer, e domain.NotificationEvent, user 
 	case domain.NotificationEmailVerification:
 		out.VerifyURL = d.link(realm, "/auth/verify-email") + "#token=" + url.QueryEscape(e.ResetToken)
 		out.ExpiresIn = humanDuration(loc, e.ExpiresAt.Sub(e.OccurredAt))
+	case domain.NotificationDataExportReady:
+		out.DataExportURL = d.link(realm, "/account/data")
+		out.ExpiresIn = humanDuration(loc, e.ExpiresAt.Sub(e.OccurredAt))
+	case domain.NotificationAccountDeletionScheduled:
+		out.DataExportURL = d.link(realm, "/account/data")
+		out.DeletionAt = formatTime(loc, e.ExpiresAt)
+	case domain.NotificationEmailChanged:
+		out.NewEmail = user.Email // the account's address once changed
 	case domain.NotificationAdminRecovery:
 		out.RecoveryKind = knownText(loc, recoveryKinds, e.RecoveryKind)
 		out.RecoveryActor = e.RecoveryActor

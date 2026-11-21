@@ -36,7 +36,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-
 const (
 	oidcRealm      = "acme"
 	oidcPassword   = "correct-horse-battery-staple"
@@ -258,7 +257,6 @@ func setupOIDCTestEnv(t *testing.T, opts ...httpserver.Option) *oidcTestEnv {
 	return env
 }
 
-
 type oidcBrowser struct {
 	t  *testing.T
 	c  *http.Client
@@ -412,7 +410,6 @@ func requireInvalidGrant(t *testing.T, err error) {
 	require.ErrorAs(t, err, &re)
 	require.Equal(t, "invalid_grant", re.ErrorCode, "body: %s", re.Body)
 }
-
 
 func TestOIDC_Integration_DefinitionOfDone(t *testing.T) {
 	e := setupOIDCTestEnv(t)
@@ -653,6 +650,34 @@ func TestOIDC_Integration_LoginRules(t *testing.T) {
 	})
 }
 
+// An account waiting for its deletion (its owner asked): applications refuse
+// it, whatever they hold. The browser gets a page that leads to where the
+// deletion is cancelled; prompt=none, access_denied; a refresh token issued
+// before, invalid_grant.
+func TestOIDC_Integration_AccountBeingDeleted(t *testing.T) {
+	e := setupOIDCTestEnv(t)
+	cfg := e.oauth(webClientID, e.webSecret, webRedirectURI, "offline_access")
+	verifier := oauth2.GenerateVerifier()
+	b := e.newBrowser(t)
+	code := e.loginAndGetCode(t, b, cfg, "alice", oauth2.S256ChallengeOption(verifier))
+	tok, err := cfg.Exchange(e.ctx(), code, oauth2.VerifierOption(verifier))
+	require.NoError(t, err)
+	require.NotEmpty(t, tok.RefreshToken)
+
+	at := e.clock.Now().Add(service.AccountDeletionDelay)
+	require.NoError(t, entstore.NewErasureRepository(e.ent).ScheduleDeletion(e.ctx(), e.alice.ID, &at))
+
+	pkce := oauth2.S256ChallengeOption(oauth2.GenerateVerifier())
+	require.Equal(t, "access_denied",
+		errorFromRedirect(t, b.get(cfg.AuthCodeURL("s1", pkce, oauth2.SetAuthURLParam("prompt", "none"))), webRedirectURI))
+	resp, body := b.page(cfg.AuthCodeURL("s2", pkce))
+	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+	require.Contains(t, body, "/r/"+e.realm.Name+"/account/data")
+
+	_, err = e.refresh(cfg, tok.RefreshToken)
+	requireInvalidGrant(t, err)
+}
+
 func TestOIDC_Integration_Reauthentication(t *testing.T) {
 	e := setupOIDCTestEnv(t)
 	cfg := e.oauth(webClientID, e.webSecret, webRedirectURI)
@@ -744,7 +769,6 @@ func TestOIDC_Integration_LogoutRevocationIntrospection(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 }
-
 
 func (e *oidcTestEnv) totpCode(t *testing.T, secret string) string {
 	t.Helper()

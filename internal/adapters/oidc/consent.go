@@ -20,7 +20,6 @@ import (
 	"sso.internal/sso/internal/i18n"
 )
 
-
 // The lines of the standard scopes. The items keep the English text (they
 // are saved with the authorization request); the page shows them in the
 // reader's language (loginui.ConsentLines).
@@ -155,7 +154,7 @@ func (a *Adapter) renderConsent(w http.ResponseWriter, r *http.Request, ar *auth
 		Action:         base + "/oidc/consent",
 		RequestID:      ar.ID,
 		Token:          token,
-		Assets:         base + "/oidc/assets",
+		Assets:         base + assetsPath,
 	})
 }
 

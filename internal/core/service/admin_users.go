@@ -1,7 +1,6 @@
 package service
 
 import (
-	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"net/mail"
 	"regexp"
 	"slices"
+	"sso.internal/sso/internal/i18n"
 	"strings"
 	"time"
 
@@ -16,8 +16,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
-
-
 
 var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._@+-]{0,127}$`)
 
@@ -38,27 +36,30 @@ func checkEmail(e string) (string, error) {
 
 // UserSummary is a row of the user list.
 type UserSummary struct {
-	ID          string            `json:"id"`
-	Username    string            `json:"username"`
-	Email       string            `json:"email"`
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
 	// EmailVerified: the user proved they read the address, or an
 	// administrator said so (B-13); since EmailVerifiedAt.
-	EmailVerified   bool       `json:"email_verified"`
-	EmailVerifiedAt *time.Time `json:"email_verified_at"`
-	Name        string            `json:"name"`
-	Status      domain.UserStatus `json:"status"`
-	HasPassword bool              `json:"has_password"` // false: invitation not accepted yet
-	MFAEnrolled bool              `json:"mfa_enrolled"`
-	Locked      bool              `json:"locked"`
+	EmailVerified   bool              `json:"email_verified"`
+	EmailVerifiedAt *time.Time        `json:"email_verified_at"`
+	Name            string            `json:"name"`
+	Status          domain.UserStatus `json:"status"`
+	HasPassword     bool              `json:"has_password"` // false: invitation not accepted yet
+	MFAEnrolled     bool              `json:"mfa_enrolled"`
+	Locked          bool              `json:"locked"`
 	// MustChangePassword: a forced password reset is waiting.
 	MustChangePassword bool `json:"must_change_password"`
-	FailedLogins       int  `json:"failed_logins"`
+	// DeletionScheduledAt: the user asked for the account to be deleted
+	// (account console); it is, at this time. nil: not asked.
+	DeletionScheduledAt *time.Time `json:"deletion_scheduled_at"`
+	FailedLogins        int        `json:"failed_logins"`
 	// LockedUntil: nil when the account is not locked.
 	LockedUntil *time.Time `json:"locked_until"`
-	LastLoginAt *time.Time        `json:"last_login_at"`
-	CreatedAt   time.Time         `json:"created_at"`
-	Groups      []NameRef         `json:"groups"`
-	Roles       []NameRef         `json:"roles"`
+	LastLoginAt *time.Time `json:"last_login_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	Groups      []NameRef  `json:"groups"`
+	Roles       []NameRef  `json:"roles"`
 }
 
 // UserDetail is the user drawer: summary, profile, factors, rights.
@@ -155,6 +156,7 @@ func (s *AdminService) summaries(ctx context.Context, users []*domain.User) ([]U
 			EmailVerified: u.EmailVerifiedAt != nil, EmailVerifiedAt: u.EmailVerifiedAt,
 			HasPassword: u.PasswordHash != "", MFAEnrolled: mfa[u.ID], Locked: u.Lockout.LockedAt(now),
 			CreatedAt: u.CreatedAt, MustChangePassword: u.MustChangePassword, FailedLogins: u.Lockout.FailedCount,
+			DeletionScheduledAt: u.DeletionScheduledAt,
 			// Names loaded with the memberships: no query per group or role.
 			Groups: namedRefs(members[u.ID].GroupIDs, members[u.ID].Names),
 			Roles:  namedRefs(members[u.ID].RoleIDs, members[u.ID].Names),
@@ -627,8 +629,9 @@ func (s *AdminService) UpdateUser(ctx context.Context, actor AdminActor, realm *
 	return s.GetUser(ctx, realm, u.ID)
 }
 
-// DeleteUser removes an account for good (sessions, factors, consents go
-// with it). The audit log keeps its history.
+// DeleteUser removes an account for good, with what still names it
+// (ErasureService: GDPR article 17). The audit log keeps its history under
+// its id, without its name or address.
 func (s *AdminService) DeleteUser(ctx context.Context, actor AdminActor, realm *domain.Realm, userID string) error {
 	u, err := s.userInRealm(ctx, realm.ID, userID)
 	if err != nil {
@@ -637,16 +640,50 @@ func (s *AdminService) DeleteUser(ctx context.Context, actor AdminActor, realm *
 	if err := s.guardAdminRemoval(ctx, actor, realm, u.ID, i18n.M("admin.error.self_change.delete", "you cannot delete your own account")); err != nil {
 		return err
 	}
-	if err := s.d.Sessions.RevokeAllForUser(ctx, u.ID, domain.SessionRevokedAdminRevoked); err != nil {
-		return fmt.Errorf("delete user: sign out: %w", err)
-	}
-	if err := s.d.Users.Delete(ctx, u.ID); err != nil {
-		return fmt.Errorf("delete user: %w", err)
+	apps := []string{}
+	if s.d.Erasure != nil {
+		var deleted bool
+		if apps, deleted, err = s.d.Erasure.Erase(ctx, u); err != nil {
+			return fmt.Errorf("delete user: %w", err)
+		}
+		if !deleted {
+			// Deleted meanwhile (its owner's request came due): one
+			// action, one entry, and it is not this one.
+			return adminNotFound(msgUserNotFound)
+		}
+	} else {
+		// shortcut: without an ErasureService (in-memory stores of tests),
+		// only the account's own rows go; production always wires one.
+		if err := s.d.Sessions.RevokeAllForUser(ctx, u.ID, domain.SessionRevokedAdminRevoked); err != nil {
+			return fmt.Errorf("delete user: sign out: %w", err)
+		}
+		if err := s.d.Users.Delete(ctx, u.ID); err != nil {
+			return fmt.Errorf("delete user: %w", err)
+		}
 	}
 	s.auditAdmin(ctx, actor, realm.ID, audit.UserDeleted, "User", u.ID, domain.AuditLogWarning, map[string]interface{}{
-		"username": u.Username, "email": u.Email,
+		"reason": "administrator", "applications": apps,
 	})
 	return nil
+}
+
+// CancelUserDeletion takes back the deletion the user asked for (support:
+// they changed their mind and cannot sign in).
+func (s *AdminService) CancelUserDeletion(ctx context.Context, actor AdminActor, realm *domain.Realm, userID string) (*UserDetail, error) {
+	u, err := s.userInRealm(ctx, realm.ID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if u.DeletionScheduledAt == nil || s.d.Erasure == nil {
+		return nil, adminText(AdminConflict, "not_scheduled", "", i18n.M("admin.error.deletion_not_scheduled", "this account is not waiting to be deleted"))
+	}
+	if err := s.d.Erasure.Schedule(ctx, u.ID, nil); err != nil {
+		return nil, fmt.Errorf("cancel deletion: %w", err)
+	}
+	s.auditAdmin(ctx, actor, realm.ID, audit.UserDeletionCancelled, "User", u.ID, domain.AuditLogInfo, map[string]interface{}{
+		"scheduled_for": u.DeletionScheduledAt.UTC().Format(time.RFC3339),
+	})
+	return s.GetUser(ctx, realm, u.ID)
 }
 
 // SetUserGroups replaces the user's groups.
@@ -735,7 +772,6 @@ func (s *AdminService) UnlockUser(ctx context.Context, actor AdminActor, realm *
 	return nil
 }
 
-
 func isMaster(realm *domain.Realm) bool {
 	return realm.IsSystemRealm && realm.Name == MasterRealmName
 }
@@ -795,8 +831,14 @@ func (s *AdminService) checkUnique(ctx context.Context, realmID, selfID, usernam
 // form takes either in one field, so a username equal to somebody else's
 // address would sign in, or reset the password, in their place.
 func (s *AdminService) identifierTaken(ctx context.Context, realmID, selfID, identifier string) (bool, error) {
+	return identifierTaken(ctx, s.d.Users, realmID, selfID, identifier)
+}
+
+// identifierTaken is AdminService.identifierTaken on any user repository
+// (the account console's e-mail change checks the same).
+func identifierTaken(ctx context.Context, users repository.UserRepository, realmID, selfID, identifier string) (bool, error) {
 	for _, lookup := range []func(context.Context, string, string) (*domain.User, error){
-		s.d.Users.GetByRealmAndUsername, s.d.Users.GetByRealmAndEmail,
+		users.GetByRealmAndUsername, users.GetByRealmAndEmail,
 	} {
 		u, err := lookup(ctx, realmID, identifier)
 		if err == nil && u.ID != selfID {

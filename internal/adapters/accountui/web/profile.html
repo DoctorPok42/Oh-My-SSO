@@ -45,7 +45,7 @@
     <div><dt>{{t "account.profile.ids.username" "Username"}}</dt><dd>{{.Username}}</dd></div>
     <div><dt>{{t "account.profile.ids.email" "E-mail address"}}</dt><dd>{{.Email}}{{if .EmailVerified}} <span class="badge badge-success">{{t "account.profile.ids.verified" "Verified"}}</span>{{end}}</dd></div>
   </dl>
-  {{- if and (not .EmailVerified) .CanVerifyEmail}}
+  {{- if and (not .EmailVerified) .CanVerifyEmail (not .PendingEmail)}}
   <form class="stack" method="post" action="{{.Base}}/profile/verify-email">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <p class="card-note">{{t "account.profile.ids.not_verified" "This address is not verified yet. Some applications only accept a verified address: confirm it with the link we e-mail you."}}</p>
@@ -54,9 +54,41 @@
     </div>
   </form>
   {{- end}}
-  <p class="card-note">{{t "account.profile.ids.ask_admin" "To change your username or e-mail address, ask your administrator."}}
+  <p class="card-note">{{if .CanChangeEmail}}{{t "account.profile.ids.ask_admin_username" "To change your username, ask your administrator."}}{{else}}{{t "account.profile.ids.ask_admin" "To change your username or e-mail address, ask your administrator."}}{{end}}
     <a href="{{.Base}}/security">{{t "account.profile.ids.security_link" "Your password and sign-in methods are on the Security page."}}</a></p>
 </section>
+
+{{- if .CanChangeEmail}}
+<section class="card" id="email" aria-labelledby="email-title">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title" id="email-title">{{t "account.profile.email.title" "Change your e-mail address"}}</h2>
+      <p class="card-description">{{t "account.profile.email.description" "We e-mail a link to the new address. Your address only changes once you open it, and we tell your current address."}}</p>
+    </div>
+  </div>
+  {{- if .PendingEmail}}
+  <form class="stack" method="post" action="{{.Base}}/profile/email/cancel">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <output class="banner banner-warning">{{th "account.profile.email.pending" "Waiting for confirmation: open the link we sent to <strong>{email}</strong>. Until then, you keep your current address." "email" .PendingEmail}}</output>
+    <div class="actions">
+      <button type="submit" class="btn btn-secondary">{{t "account.profile.email.cancel" "Cancel the change"}}</button>
+    </div>
+  </form>
+  {{- end}}
+  <form class="stack" method="post" action="{{.Base}}/profile/email">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div>
+      <label class="label" for="new_email">{{t "account.profile.email.label" "New e-mail address"}}</label>
+      <input class="input" id="new_email" name="new_email" type="email" value="{{.NewEmail}}" maxlength="320" autocomplete="email" required
+             {{- if .EmailFormError}} aria-invalid="true" aria-describedby="new-email-error" autofocus{{end}}>
+    </div>
+    {{- with .EmailFormError}}<p class="banner banner-danger" id="new-email-error" role="alert">{{.}}</p>{{end}}
+    <div class="actions">
+      <button type="submit" class="btn">{{t "account.profile.email.send" "Send the confirmation link"}}</button>
+    </div>
+  </form>
+</section>
+{{- end}}
 {{end}}
 
 {{define "profile-form"}}<form id="profile-form" class="stack" method="post" action="{{.Base}}/profile"

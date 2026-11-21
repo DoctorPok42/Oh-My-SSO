@@ -1,0 +1,19 @@
+{{define "subject"}}{{t "email.data_export.subject" "Your copy of your data is ready"}}{{end}}
+
+{{define "text"}}{{template "hello" .}}
+
+{{tp "email.data_export.intro" "The copy of the data of your <strong>{realm}</strong> account that you asked for is ready. Sign in to your account to download it: it can be downloaded for <strong>{expires}</strong>, then it is deleted." "realm" .Realm "expires" .ExpiresIn}}
+
+{{.DataExportURL}}
+
+{{t "email.data_export.ignore" "If you did not ask for it, change your password: someone else may be signed in to your account. The file can only be downloaded after signing in again."}}
+{{end}}
+
+{{define "html"}}{{template "badge.info" (t "email.badge.account" "Account")}}
+{{template "title" (t "email.data_export.subject" "Your copy of your data is ready")}}
+{{template "hello" .}}
+<p>{{th "email.data_export.intro" "The copy of the data of your <strong>{realm}</strong> account that you asked for is ready. Sign in to your account to download it: it can be downloaded for <strong>{expires}</strong>, then it is deleted." "realm" .Realm "expires" .ExpiresIn}}</p>
+{{template "button" (button .DataExportURL (t "email.data_export.button" "Go to my data"))}}
+{{template "link" .DataExportURL}}
+{{template "muted" (t "email.data_export.ignore" "If you did not ask for it, change your password: someone else may be signed in to your account. The file can only be downloaded after signing in again.")}}
+{{end}}

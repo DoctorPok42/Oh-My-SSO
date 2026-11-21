@@ -92,6 +92,18 @@ type Data struct {
 	// email_verification: the link that confirms the address (ExpiresIn:
 	// how long it works).
 	VerifyURL string
+
+	// data_export_ready: the "Your data" page of the account console, where
+	// the copy can be downloaded (ExpiresIn: for how long).
+	DataExportURL string
+
+	// account_deletion_scheduled: when the account is deleted, and the page
+	// of the account console where it is cancelled (DataExportURL).
+	DeletionAt string
+
+	// email_changed: the account's address now (the e-mail goes to the
+	// previous one).
+	NewEmail string
 }
 
 type htmlData struct {

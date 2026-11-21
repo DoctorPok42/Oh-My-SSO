@@ -280,6 +280,18 @@ type BackLink struct {
 	Name string
 }
 
+// AccountDeletionMessage is what an application's sign-in shows while the
+// account waits for the deletion its owner asked for: applications refuse
+// it until the deletion is cancelled, on accountURL (account console).
+func AccountDeletionMessage(loc *i18n.Localizer, accountURL string) Message {
+	return Message{
+		Title: i18n.M("message.deletion.title", "This account is being deleted"),
+		Text: i18n.M("message.deletion.text",
+			"You asked for this account to be deleted: applications can no longer use it. To keep it, cancel the deletion from your account."),
+		Back: &BackLink{URL: accountURL, Name: loc.T("message.deletion.account", "your account")},
+	}
+}
+
 // NewBackLink: nil when the application has no address a browser can open.
 func NewBackLink(name string, urls ...string) *BackLink {
 	home := AppHome(urls...)

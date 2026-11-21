@@ -45,8 +45,8 @@ const (
 	accountFlashCookie = "sso_account_flash"
 	// Set by account.js on the tabs it fetches ahead of a click.
 	accountPrefetchHeader = "X-Account-Prefetch"
-	csrfField          = "csrf"
-	maxAccountFormSize = 16 << 10
+	csrfField             = "csrf"
+	maxAccountFormSize    = 16 << 10
 
 	// The organizations this browser signed in to (account console menu).
 	realmsCookieName = "sso_realms"
@@ -55,6 +55,10 @@ const (
 
 	routeAccountPassword   = "account.password"
 	accountPasswordPerUser = 5
+	// An e-mail change says whether an address is taken in the realm: a few
+	// tries per window, like the password.
+	routeAccountEmail   = "account.email"
+	accountEmailPerUser = 5
 )
 
 // WithAccountConsole mounts the account console. It needs the MFA service
@@ -110,6 +114,9 @@ func (s *Server) mountAccount(r chi.Router) {
 			r.Get("/", s.handleAccountProfile)
 			r.Post("/profile", s.handleAccountProfileSave)
 			r.Post("/profile/verify-email", s.handleAccountVerifyEmail)
+			r.Get("/profile/email", s.handleAccountEmailGate)
+			r.Post("/profile/email", s.handleAccountEmailChange)
+			r.Post("/profile/email/cancel", s.handleAccountEmailChangeCancel)
 			r.Post("/language", s.handleAccountLanguage)
 			r.Post("/signout", s.handleAccountSignOut)
 
@@ -135,6 +142,14 @@ func (s *Server) mountAccount(r chi.Router) {
 			r.Post("/apps/{clientRef}/revoke", s.handleAccountRevokeApp)
 
 			r.Get("/history", s.handleAccountHistory)
+
+			if s.account.DataExportEnabled() {
+				r.Get("/data", s.handleAccountData)
+				r.Post("/data/export", s.handleAccountDataExport)
+				r.Get("/data/download", s.handleAccountDataDownload)
+				r.Post("/data/deletion", s.handleAccountDeletion)
+				r.Post("/data/deletion/cancel", s.handleAccountDeletionCancel)
+			}
 		})
 	})
 }
@@ -256,6 +271,15 @@ func (s *Server) rememberMeOffer(ctx context.Context, realmID string) (bool, int
 // change itself asks for the password (changing it), which proves as much
 // as signing in again.
 func (s *Server) accountStepUp(w http.ResponseWriter, r *http.Request, a *acct, gate string, ignoreRecentLogin bool) bool {
+	return s.accountStepUpFor(w, r, a, gate, ignoreRecentLogin,
+		i18n.M("account.stepup.subtitle", "to change how you sign in"), accountBase(a.realm.Name)+"/security")
+}
+
+// accountStepUpFor is accountStepUp for another purpose than security:
+// subtitle says what the confirmation is for, back is where "Back to your
+// account" goes.
+func (s *Server) accountStepUpFor(w http.ResponseWriter, r *http.Request, a *acct, gate string, ignoreRecentLogin bool,
+	subtitle i18n.Text, back string) bool {
 	err := s.mfa.CheckStepUp(r.Context(), a.sess, service.StepUpAccountSecurity)
 	var su *service.StepUpRequiredError
 	switch {
@@ -279,8 +303,8 @@ func (s *Server) accountStepUp(w http.ResponseWriter, r *http.Request, a *acct, 
 			page.LoginHint = a.user.Username
 			page.Notice = loc.T("account.stepup.notice_password", "For your security, enter your password again to continue.")
 		}
-		page.Subtitle = loc.T("account.stepup.subtitle", "to change how you sign in")
-		page.CancelURL, page.CancelText = accountBase(a.realm.Name)+"/security", loc.T("account.stepup.back", "Back to your account")
+		page.Subtitle = loc.Text(subtitle)
+		page.CancelURL, page.CancelText = back, loc.T("account.stepup.back", "Back to your account")
 		s.loginPages.RenderLogin(w, r, http.StatusOK, page)
 		return false
 	default:
@@ -344,6 +368,9 @@ func (s *Server) accountLayout(w http.ResponseWriter, r *http.Request, a *acct, 
 		Assets: base + "/assets",
 		CSRF:   a.csrf,
 		Theme:  accountui.ThemeFrom(r),
+		// DataTab: the "Your data" page (account_data.go).
+		DataTab:    s.account.DataExportEnabled(),
+		DeletionAt: a.user.DeletionScheduledAt,
 	}
 	l.Orgs = s.accountOrgs(r, a.realm)
 	var flash string
@@ -405,26 +432,35 @@ func initialsOf(name string) string {
 // The notice of the last action travels in a short-lived cookie as a key
 // (never as text: a forged cookie can only pick one of these sentences).
 var flashText = map[string]i18n.Text{
-	"profile_saved":    i18n.M("account.flash.profile_saved", "Your name was saved."),
-	"language_saved":   i18n.M("account.flash.language_saved", "Your language was saved."),
-	"password_changed": i18n.M("account.flash.password_changed", "Your password was changed. Your other sessions were signed out."),
-	"totp_added":       i18n.M("account.flash.totp_added", "Authenticator app added."),
-	"passkey_added":    i18n.M("account.flash.passkey_added", "Passkey or security key added."),
-	"factor_removed":   i18n.M("account.flash.factor_removed", "Removed."),
-	"session_revoked":  i18n.M("account.flash.session_revoked", "That session was signed out."),
-	"sessions_revoked": i18n.M("account.flash.sessions_revoked", "Your other sessions were signed out."),
-	"device_revoked":   i18n.M("account.flash.device_revoked", "That device will ask for the second step again."),
-	"devices_revoked":  i18n.M("account.flash.devices_revoked", "Every device will ask for the second step again."),
-	"app_revoked":      i18n.M("account.flash.app_revoked", "Access removed."),
-	"confirm_first":    i18n.M("account.flash.confirm_first", "For your security, confirm it's you, then try again."),
-	"not_found":        i18n.M("account.flash.not_found", "That item no longer exists."),
-	"enroll_expired":   i18n.M("account.flash.enroll_expired", "This setup expired. Start again."),
-	"refused":          i18n.M("account.flash.refused", "This form had expired: nothing was changed. Try again."),
-	"failed":           i18n.M("account.flash.failed", "Something went wrong: nothing was changed. Try again in a moment."),
-	"bad_language":     i18n.M("account.flash.bad_language", "This language is not available."),
-	"verify_sent":        i18n.M("account.flash.verify_sent", "We sent a confirmation link to your e-mail address. It works for 24 hours."),
-	"verify_too_soon":    i18n.M("account.flash.verify_too_soon", "A confirmation link was sent less than a minute ago. Check your mailbox, or try again in a moment."),
-	"verify_unavailable": i18n.M("account.flash.verify_unavailable", "The confirmation e-mail cannot be sent right now. Try again later."),
+	"profile_saved":          i18n.M("account.flash.profile_saved", "Your name was saved."),
+	"language_saved":         i18n.M("account.flash.language_saved", "Your language was saved."),
+	"password_changed":       i18n.M("account.flash.password_changed", "Your password was changed. Your other sessions were signed out."),
+	"totp_added":             i18n.M("account.flash.totp_added", "Authenticator app added."),
+	"passkey_added":          i18n.M("account.flash.passkey_added", "Passkey or security key added."),
+	"factor_removed":         i18n.M("account.flash.factor_removed", "Removed."),
+	"session_revoked":        i18n.M("account.flash.session_revoked", "That session was signed out."),
+	"sessions_revoked":       i18n.M("account.flash.sessions_revoked", "Your other sessions were signed out."),
+	"device_revoked":         i18n.M("account.flash.device_revoked", "That device will ask for the second step again."),
+	"devices_revoked":        i18n.M("account.flash.devices_revoked", "Every device will ask for the second step again."),
+	"app_revoked":            i18n.M("account.flash.app_revoked", "Access removed."),
+	"confirm_first":          i18n.M("account.flash.confirm_first", "For your security, confirm it's you, then try again."),
+	"not_found":              i18n.M("account.flash.not_found", "That item no longer exists."),
+	"enroll_expired":         i18n.M("account.flash.enroll_expired", "This setup expired. Start again."),
+	"refused":                i18n.M("account.flash.refused", "This form had expired: nothing was changed. Try again."),
+	"failed":                 i18n.M("account.flash.failed", "Something went wrong: nothing was changed. Try again in a moment."),
+	"bad_language":           i18n.M("account.flash.bad_language", "This language is not available."),
+	"verify_sent":            i18n.M("account.flash.verify_sent", "We sent a confirmation link to your e-mail address. It works for 24 hours."),
+	"verify_too_soon":        i18n.M("account.flash.verify_too_soon", "A confirmation link was sent less than a minute ago. Check your mailbox, or try again in a moment."),
+	"verify_unavailable":     i18n.M("account.flash.verify_unavailable", "The confirmation e-mail cannot be sent right now. Try again later."),
+	"export_requested":       i18n.M("account.flash.export_requested", "Your copy is being made. We will e-mail you once it is ready."),
+	"export_running":         i18n.M("account.flash.export_running", "A copy is already being made. Wait for it, then try again."),
+	"export_gone":            i18n.M("account.flash.export_gone", "There is no copy to download any more. Ask for a new one."),
+	"export_stopping":        i18n.M("account.flash.export_stopping", "The server is restarting. Try again in a moment."),
+	"deletion_cancelled":     i18n.M("account.flash.deletion_cancelled", "Your account is kept: the deletion is cancelled."),
+	"deletion_disabled":      i18n.M("account.flash.deletion_disabled", "Your organization does not let you delete your account. Ask your administrator."),
+	"email_change_sent":      i18n.M("account.flash.email_change_sent", "We sent a confirmation link to your new address. Your address changes once you open it, within 24 hours."),
+	"email_change_cancelled": i18n.M("account.flash.email_change_cancelled", "The change of address is cancelled: you keep your current one."),
+	"email_change_disabled":  i18n.M("account.flash.email_change_disabled", "Your organization does not let you change your e-mail address. Ask your administrator."),
 }
 
 // flashValue: a key, with a count for the sentences that show one.
@@ -477,7 +513,8 @@ func flashParts(loc *i18n.Localizer, value string) (notice, problem string) {
 		}
 	}
 	switch key {
-	case "confirm_first", "not_found", "enroll_expired", "refused", "failed", "bad_language", "verify_too_soon", "verify_unavailable":
+	case "confirm_first", "not_found", "enroll_expired", "refused", "failed", "bad_language", "verify_too_soon", "verify_unavailable",
+		"export_running", "export_gone", "export_stopping", "deletion_disabled", "email_change_disabled":
 		return "", text
 	}
 	return text, ""

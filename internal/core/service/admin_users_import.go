@@ -369,7 +369,9 @@ func importedUsers(rows []domain.UserImportRow) []map[string]interface{} {
 		if r.Status != domain.UserImportRowCreated {
 			continue
 		}
-		u := map[string]interface{}{"username": r.Username, "email": r.Email}
+		// "id": deleting this account later finds it here, whatever its
+		// name or address then (entstore eraser).
+		u := map[string]interface{}{"id": r.UserID, "username": r.Username, "email": r.Email}
 		if len(r.Groups) > 0 {
 			u["groups"] = r.Groups
 		}

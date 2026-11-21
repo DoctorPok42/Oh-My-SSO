@@ -98,6 +98,34 @@ func (_c *InstanceSettingsCreate) SetNillablePasswordBreachCheckEnabled(v *bool)
 	return _c
 }
 
+// SetAccountDeletionEnabled sets the "account_deletion_enabled" field.
+func (_c *InstanceSettingsCreate) SetAccountDeletionEnabled(v bool) *InstanceSettingsCreate {
+	_c.mutation.SetAccountDeletionEnabled(v)
+	return _c
+}
+
+// SetNillableAccountDeletionEnabled sets the "account_deletion_enabled" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableAccountDeletionEnabled(v *bool) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetAccountDeletionEnabled(*v)
+	}
+	return _c
+}
+
+// SetEmailChangeAllowed sets the "email_change_allowed" field.
+func (_c *InstanceSettingsCreate) SetEmailChangeAllowed(v bool) *InstanceSettingsCreate {
+	_c.mutation.SetEmailChangeAllowed(v)
+	return _c
+}
+
+// SetNillableEmailChangeAllowed sets the "email_change_allowed" field if the given value is not nil.
+func (_c *InstanceSettingsCreate) SetNillableEmailChangeAllowed(v *bool) *InstanceSettingsCreate {
+	if v != nil {
+		_c.SetEmailChangeAllowed(*v)
+	}
+	return _c
+}
+
 // SetSessionIdleMinutes sets the "session_idle_minutes" field.
 func (_c *InstanceSettingsCreate) SetSessionIdleMinutes(v int) *InstanceSettingsCreate {
 	_c.mutation.SetSessionIdleMinutes(v)
@@ -570,6 +598,14 @@ func (_c *InstanceSettingsCreate) defaults() {
 		v := instancesettings.DefaultPasswordBreachCheckEnabled
 		_c.mutation.SetPasswordBreachCheckEnabled(v)
 	}
+	if _, ok := _c.mutation.AccountDeletionEnabled(); !ok {
+		v := instancesettings.DefaultAccountDeletionEnabled
+		_c.mutation.SetAccountDeletionEnabled(v)
+	}
+	if _, ok := _c.mutation.EmailChangeAllowed(); !ok {
+		v := instancesettings.DefaultEmailChangeAllowed
+		_c.mutation.SetEmailChangeAllowed(v)
+	}
 	if _, ok := _c.mutation.SessionIdleMinutes(); !ok {
 		v := instancesettings.DefaultSessionIdleMinutes
 		_c.mutation.SetSessionIdleMinutes(v)
@@ -704,6 +740,12 @@ func (_c *InstanceSettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.PasswordBreachCheckEnabled(); !ok {
 		return &ValidationError{Name: "password_breach_check_enabled", err: errors.New(`ent: missing required field "InstanceSettings.password_breach_check_enabled"`)}
+	}
+	if _, ok := _c.mutation.AccountDeletionEnabled(); !ok {
+		return &ValidationError{Name: "account_deletion_enabled", err: errors.New(`ent: missing required field "InstanceSettings.account_deletion_enabled"`)}
+	}
+	if _, ok := _c.mutation.EmailChangeAllowed(); !ok {
+		return &ValidationError{Name: "email_change_allowed", err: errors.New(`ent: missing required field "InstanceSettings.email_change_allowed"`)}
 	}
 	if _, ok := _c.mutation.SessionIdleMinutes(); !ok {
 		return &ValidationError{Name: "session_idle_minutes", err: errors.New(`ent: missing required field "InstanceSettings.session_idle_minutes"`)}
@@ -845,6 +887,14 @@ func (_c *InstanceSettingsCreate) createSpec() (*InstanceSettings, *sqlgraph.Cre
 	if value, ok := _c.mutation.PasswordBreachCheckEnabled(); ok {
 		_spec.SetField(instancesettings.FieldPasswordBreachCheckEnabled, field.TypeBool, value)
 		_node.PasswordBreachCheckEnabled = value
+	}
+	if value, ok := _c.mutation.AccountDeletionEnabled(); ok {
+		_spec.SetField(instancesettings.FieldAccountDeletionEnabled, field.TypeBool, value)
+		_node.AccountDeletionEnabled = value
+	}
+	if value, ok := _c.mutation.EmailChangeAllowed(); ok {
+		_spec.SetField(instancesettings.FieldEmailChangeAllowed, field.TypeBool, value)
+		_node.EmailChangeAllowed = value
 	}
 	if value, ok := _c.mutation.SessionIdleMinutes(); ok {
 		_spec.SetField(instancesettings.FieldSessionIdleMinutes, field.TypeInt, value)

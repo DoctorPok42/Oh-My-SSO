@@ -38,6 +38,8 @@ describe("settings form", () => {
     password_expiry_days: 0,
     password_history_count: 0,
     password_breach_check_enabled: false,
+    account_deletion_enabled: false,
+    email_change_allowed: false,
     password_reset_ttl_minutes: 30,
     invite_ttl_hours: 4,
     session_idle_minutes: 30,
@@ -92,6 +94,22 @@ describe("settings form", () => {
   it("sends nothing when nothing changed", () => {
     const toggles = { notif: true, suspicious: false, remember: true, breach: false };
     expect(settingsDiff(before, form, "10.0.0.0/8\n", toggles)).toEqual({});
+  });
+
+  it("sends account deletion only when it changes", () => {
+    const toggles = { notif: true, suspicious: false, remember: true, breach: false };
+    expect(settingsDiff(before, form, "10.0.0.0/8\n", { ...toggles, deletion: false })).toEqual({});
+    expect(settingsDiff(before, form, "10.0.0.0/8\n", { ...toggles, deletion: true })).toEqual({
+      account_deletion_enabled: true,
+    });
+  });
+
+  it("sends the e-mail change setting only when it changes", () => {
+    const toggles = { notif: true, suspicious: false, remember: true, breach: false };
+    expect(settingsDiff(before, form, "10.0.0.0/8\n", { ...toggles, emailChange: false })).toEqual({});
+    expect(settingsDiff(before, form, "10.0.0.0/8\n", { ...toggles, emailChange: true })).toEqual({
+      email_change_allowed: true,
+    });
   });
 
   it("sends the changed fields only", () => {

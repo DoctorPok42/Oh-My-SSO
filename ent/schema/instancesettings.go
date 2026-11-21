@@ -37,6 +37,15 @@ func (InstanceSettings) Fields() []ent.Field {
 		field.Int("password_history_count").Default(5),
 		// On by default; it sends a 5-character hash prefix to Have I Been Pwned.
 		field.Bool("password_breach_check_enabled").Default(true),
+		// Users may ask for their account to be deleted (account console,
+		// GDPR article 17). Off by default: in an organization, accounts
+		// usually belong to the employer. Never in the master realm.
+		field.Bool("account_deletion_enabled").Default(false),
+		// Users may change their e-mail address (account console), once the
+		// new one is confirmed. Off by default: an application that matches
+		// accounts by address (SAML NameID emailAddress, the email claim
+		// instead of sub) would see a new user.
+		field.Bool("email_change_allowed").Default(false),
 		field.Int("session_idle_minutes").Default(10),
 		field.Int("session_max_hours").Default(8),
 		// "Keep me signed in" on the sign-in page. A remembered session

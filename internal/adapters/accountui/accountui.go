@@ -53,13 +53,14 @@ const (
 	PageSessions      = "sessions"
 	PageApps          = "apps"
 	PageHistory       = "history"
+	PageData          = "data"
 	pageLayout        = "layout.html"
 	pageSharedPartial = "shared.html"
 )
 
 var pageNames = []string{
 	PageProfile, PageSecurity, PagePassword, PageTOTP, PagePasskey, PageRemoveFactor,
-	PageBackupCodes, PageSessions, PageApps, PageHistory,
+	PageBackupCodes, PageSessions, PageApps, PageHistory, PageData,
 }
 
 // Pages renders the templates, in the language of each request (package
@@ -134,7 +135,7 @@ type Layout struct {
 	Orgs []Org
 	User Person
 	// Active: the tab of the menu (profile, security, sessions, apps,
-	// history).
+	// history, data).
 	Active string
 	Base   string // "/r/<realm>/account"
 	Assets string // Base + "/assets"
@@ -150,6 +151,11 @@ type Layout struct {
 	// copies it (the language/sync address of the other organizations
 	// signed in on this browser).
 	LocaleSync []string
+	// DataTab: show the "Your data" tab.
+	DataTab bool
+	// DeletionAt: the account is deleted at this time (the user asked);
+	// every page says so, with the way to cancel. nil: not asked.
+	DeletionAt *time.Time
 }
 
 // LocaleSyncList: LocaleSync for a data-* attribute (space separated).
@@ -193,6 +199,13 @@ type ProfilePage struct {
 	// CanVerifyEmail: offer "Send a verification e-mail" (not verified, and
 	// e-mails can leave).
 	CanVerifyEmail bool
+	// CanChangeEmail: the realm lets users change their address (the card
+	// "Change your e-mail address"). PendingEmail: the address waiting for
+	// its link. NewEmail, EmailFormError: the form sent back with an error.
+	CanChangeEmail bool
+	PendingEmail   string
+	NewEmail       string
+	EmailFormError string
 	GivenName      string
 	FamilyName     string
 	FormError      string
@@ -340,6 +353,22 @@ type HistoryPage struct {
 	Activity []ActivityRow
 	Page     int // 1-based
 	More     bool
+}
+
+// DataPage is "Your data": the copy of what the organization keeps about
+// the user.
+type DataPage struct {
+	Layout
+	Status    string // "" (none), running, ready, failed
+	MadeAt    time.Time
+	ExpiresAt time.Time // ready: the last moment it can be downloaded
+	KeepDays  int       // how long a copy can be downloaded
+
+	// DeletionAllowed: the organization lets the user delete their account
+	// (DeletionDays after asking).
+	DeletionAllowed bool
+	DeletionDays    int
+	FormError       string // the deletion form, sent without its confirmation
 }
 
 // RenderPage writes a whole page.

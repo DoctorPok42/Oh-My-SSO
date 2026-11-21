@@ -35,14 +35,21 @@ type User struct {
 	// to it was used), or an administrator said so; nil otherwise. Cleared
 	// whenever Email changes. The OIDC claim email_verified.
 	EmailVerifiedAt *time.Time
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	DeletedAt       *time.Time
-	Status          UserStatus
-	LastLoginAt     *time.Time
-	Profile         map[string]interface{}
-	Lockout         LockoutState
+	// PendingEmail: the address the user asked to switch to, until they use
+	// the link e-mailed to it; "" when none. Cleared whenever Email changes.
+	PendingEmail string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeletedAt    *time.Time
+	Status       UserStatus
+	LastLoginAt  *time.Time
+	Profile      map[string]interface{}
+	Lockout      LockoutState
 	// MustChangePassword: an administrator forced a password reset. Signing
 	// in with the password is refused until the password changes.
 	MustChangePassword bool
+	// DeletionScheduledAt: the user asked for their account to be deleted
+	// (account console); it is deleted for good at this time. Until then,
+	// applications refuse it. nil: not asked.
+	DeletionScheduledAt *time.Time
 }

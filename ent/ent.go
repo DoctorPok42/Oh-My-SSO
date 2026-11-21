@@ -20,6 +20,7 @@ import (
 	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/clientscopemapping"
 	"sso.internal/sso/ent/consent"
+	"sso.internal/sso/ent/dataexport"
 	"sso.internal/sso/ent/emailoutbox"
 	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/federatedidentity"
@@ -113,6 +114,7 @@ func checkColumn(t, c string) error {
 			clientscope.Table:            clientscope.ValidColumn,
 			clientscopemapping.Table:     clientscopemapping.ValidColumn,
 			consent.Table:                consent.ValidColumn,
+			dataexport.Table:             dataexport.ValidColumn,
 			emailoutbox.Table:            emailoutbox.ValidColumn,
 			emailverificationtoken.Table: emailverificationtoken.ValidColumn,
 			federatedidentity.Table:      federatedidentity.ValidColumn,

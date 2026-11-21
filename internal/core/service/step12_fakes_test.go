@@ -107,6 +107,11 @@ func (m *memUsers) Update(_ context.Context, id string, p repository.UpdateUserP
 	if p.MustChangePassword != nil {
 		u.MustChangePassword = *p.MustChangePassword
 	}
+	if p.Email != nil {
+		u.Email, u.PendingEmail, u.EmailVerifiedAt = *p.Email, "", nil
+	} else if p.PendingEmail != nil {
+		u.PendingEmail = *p.PendingEmail
+	}
 	cp := *u
 	return &cp, nil
 }

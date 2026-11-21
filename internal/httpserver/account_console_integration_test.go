@@ -36,6 +36,11 @@ import (
 type accountTestEnv struct {
 	mfaTestEnv
 	consents repository.ConsentRepository
+	settings repository.InstanceSettingsRepository
+	erasure  *service.ErasureService
+	// verify: address verification and change; mails: what it e-mails.
+	verify *service.EmailVerificationService
+	mails  *recordingNotifier
 }
 
 func setupAccountTestEnv(t *testing.T) *accountTestEnv {
@@ -92,16 +97,28 @@ func setupAccountTestEnv(t *testing.T) *accountTestEnv {
 	consent := service.NewConsentService(service.ConsentDeps{
 		Consents: consents, Clients: clients, Sessions: sessions, Tokens: tokens, Audit: audit,
 	})
+	erasure := service.NewErasureService(service.ErasureDeps{
+		Users: users, Erasure: entstore.NewErasureRepository(client), Sessions: sessions,
+		SessionRows: entstore.NewSessionRepository(client), Tokens: tokens, Consents: consents, Clients: clients,
+		Audit: audit, Now: clock.Now,
+	})
 	account := service.NewAccountService(service.AccountDeps{
 		Users: users, Admin: entstore.NewAdminRepository(client), Settings: settings, Clients: clients,
 		ClientScopes: entstore.NewClientScopeRepository(client), Tokens: tokens, LoginAttempts: attempts,
 		Audit: audit, Sessions: sessions, Consents: consent, TrustedDevices: trusted,
-		Policy: service.NewPasswordPolicyService(settings), Now: clock.Now,
+		MFAMethods: entstore.NewMfaMethodRepository(client), DataExports: entstore.NewDataExportRepository(client),
+		Erasure: erasure,
+		Policy:  service.NewPasswordPolicyService(settings), Now: clock.Now,
 	})
 	rbac := service.NewRBACService(entstore.NewAccessRepository(client), audit)
+	mails := &recordingNotifier{}
+	verify := service.NewEmailVerificationService(service.EmailVerificationDeps{
+		Tx: repository.NoTransaction{}, Users: users, Links: entstore.NewEmailVerificationRepository(client),
+		Notifier: mails, Audit: audit, Settings: settings, Now: clock.Now,
+	})
 
 	srv := httpserver.New(service.NewAuthService(users, attempts), sessions, rbac, realms, clients, limiter,
-		httpserver.WithMFA(mfa), httpserver.WithAccountConsole(account))
+		httpserver.WithMFA(mfa), httpserver.WithAccountConsole(account), httpserver.WithEmailVerification(verify))
 	// TLS: the cookies are Secure, and a cookie jar only sends them over https.
 	ts := httptest.NewTLSServer(srv.Router())
 	t.Cleanup(ts.Close)
@@ -109,6 +126,10 @@ func setupAccountTestEnv(t *testing.T) *accountTestEnv {
 	return &accountTestEnv{
 		mfaTestEnv: mfaTestEnv{ts: ts, realms: realms, users: users, clients: clients, mfaPol: policy, clock: clock},
 		consents:   consents,
+		settings:   settings,
+		erasure:    erasure,
+		verify:     verify,
+		mails:      mails,
 	}
 }
 

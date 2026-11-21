@@ -228,6 +228,8 @@ export type UserSummary = {
   locked: boolean;
   /** A forced password reset is waiting. */
   must_change_password: boolean;
+  /** The user asked for the account to be deleted: it is, at this time. */
+  deletion_scheduled_at: string | null;
   failed_logins: number;
   locked_until: string | null;
   last_login_at: string | null;
@@ -409,6 +411,10 @@ export type Settings = {
   password_history_count: number;
   /** New passwords are checked against Have I Been Pwned (k-anonymity). */
   password_breach_check_enabled: boolean;
+  /** Users may ask for their account to be deleted (never in master). */
+  account_deletion_enabled: boolean;
+  /** Users may change their e-mail address, once the new one is confirmed. */
+  email_change_allowed: boolean;
   password_reset_ttl_minutes: number;
   invite_ttl_hours: number;
   session_idle_minutes: number;

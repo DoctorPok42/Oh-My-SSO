@@ -351,3 +351,20 @@ func (r *entEmailVerificationRepository) MarkEmailVerified(ctx context.Context, 
 	}
 	return n == 1, nil
 }
+
+func (r *entEmailVerificationRepository) ApplyEmailChange(ctx context.Context, userID, email string, at time.Time) (bool, error) {
+	email = domain.NormalizeIdentifier(email)
+	n, err := r.client.User.Update().
+		Where(user.ID(userID), user.PendingEmail(email)).
+		SetEmail(email).
+		ClearPendingEmail().
+		SetEmailVerifiedAt(at).
+		Save(ctx)
+	if ent.IsConstraintError(err) {
+		return false, repository.ErrConflict // unique (realm_id, email)
+	}
+	if err != nil {
+		return false, err
+	}
+	return n == 1, nil
+}
