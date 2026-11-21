@@ -116,6 +116,9 @@ func (s *Server) handleAccountVerifyEmail(w http.ResponseWriter, r *http.Request
 
 var emailStepUpSubtitle = i18n.M("account.stepup.subtitle_email", "to change your e-mail address")
 
+// emailCard: the anchor of the profile page's "Change your e-mail address".
+const emailCard = "#email"
+
 // canChangeEmail: the profile page offers "Change your e-mail address".
 func (s *Server) canChangeEmail(r *http.Request, u *domain.User) bool {
 	return s.emailVerify != nil && u.Status == domain.UserActive && s.emailVerify.EmailChangeAllowed(r.Context(), u.RealmID)
@@ -135,7 +138,7 @@ func (s *Server) handleAccountEmailGate(w http.ResponseWriter, r *http.Request) 
 	if !s.emailStepUp(w, r, a) {
 		return
 	}
-	s.accountRedirect(w, r, accountBase(a.realm.Name)+"#email")
+	s.accountRedirect(w, r, accountBase(a.realm.Name)+emailCard)
 }
 
 // handleAccountEmailChange: "Send the confirmation link". The address only
@@ -193,7 +196,7 @@ func (s *Server) handleAccountEmailChange(w http.ResponseWriter, r *http.Request
 		s.accountFailure(w, r, err)
 		return
 	}
-	s.accountRedirect(w, r, accountBase(a.realm.Name)+"#email")
+	s.accountRedirect(w, r, accountBase(a.realm.Name)+emailCard)
 }
 
 // handleAccountEmailChangeCancel: "Cancel the change". Keeping one's
@@ -209,5 +212,5 @@ func (s *Server) handleAccountEmailChangeCancel(w http.ResponseWriter, r *http.R
 		return
 	}
 	setFlash(w, a.realm.Name, "email_change_cancelled", 0)
-	s.accountRedirect(w, r, accountBase(a.realm.Name)+"#email")
+	s.accountRedirect(w, r, accountBase(a.realm.Name)+emailCard)
 }

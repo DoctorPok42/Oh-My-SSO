@@ -12,9 +12,9 @@
     <p class="card-description">{{t "account.data.copy.text" "Your profile, groups and roles, sign-in methods, sessions, connected apps, trusted devices, sign-in history and account activity, in one JSON file that other services can read. It holds no password, second-factor secret or backup code."}}</p>
   </div>
   {{- if eq .Status "running"}}
-  <p class="banner banner-warning" role="status">{{t "account.data.copy.running" "Your copy is being made, since {time}. We will e-mail you once it is ready: you can leave this page." "time" (when .MadeAt)}}</p>
+  <output class="banner banner-warning">{{t "account.data.copy.running" "Your copy is being made, since {time}. We will e-mail you once it is ready: you can leave this page." "time" (when .MadeAt)}}</output>
   {{- else if eq .Status "ready"}}
-  <p class="banner banner-success" role="status">{{t "account.data.copy.ready" "Your copy is ready. You can download it until {time}, then it is deleted." "time" (when .ExpiresAt)}}</p>
+  <output class="banner banner-success">{{t "account.data.copy.ready" "Your copy is ready. You can download it until {time}, then it is deleted." "time" (when .ExpiresAt)}}</output>
   <div class="actions">
     <a class="btn" href="{{.Base}}/data/download">{{t "account.data.copy.download" "Download (JSON)"}}</a>
   </div>
@@ -32,25 +32,23 @@
   <p class="card-note">{{t "account.data.copy.note" "Making the copy takes a moment. It can be downloaded for {days} days, after confirming it's you." "days" .KeepDays}}</p>
 </section>
 
-{{- if .DeletionAt}}
+{{- if or .DeletionAt .DeletionAllowed}}
 <section class="card" id="deletion" aria-labelledby="deletion-title">
   <div class="card-header">
     <h2 class="card-title" id="deletion-title">{{t "account.deletion.title" "Delete your account"}}</h2>
+    {{- if not .DeletionAt}}
+    <p class="card-description">{{t "account.deletion.text" "Your account is deleted {days} days after you ask, with what {org} keeps about you: profile, sign-in methods, sessions, consents, devices, sign-in history. You are signed out everywhere at once and applications can no longer use it; until the deletion you can sign in here and keep it. The history of what was done stays, without your name, e-mail address or network addresses." "days" .DeletionDays "org" .Org.Display}}</p>
+    {{- end}}
   </div>
-  <p class="banner banner-danger" role="status">{{t "account.deletion.scheduled" "Your account will be deleted on {date}, with what {org} keeps about you. Until then, applications can no longer use it." "date" (when .DeletionAt) "org" .Org.Display}}</p>
+  {{- if .DeletionAt}}
+  <output class="banner banner-danger">{{t "account.deletion.scheduled" "Your account will be deleted on {date}, with what {org} keeps about you. Until then, applications can no longer use it." "date" (when .DeletionAt) "org" .Org.Display}}</output>
   <form class="stack" method="post" action="{{.Base}}/data/deletion/cancel">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <div class="actions">
       <button type="submit" class="btn">{{t "account.deletion.cancel" "Keep my account"}}</button>
     </div>
   </form>
-</section>
-{{- else if .DeletionAllowed}}
-<section class="card" id="deletion" aria-labelledby="deletion-title">
-  <div class="card-header">
-    <h2 class="card-title" id="deletion-title">{{t "account.deletion.title" "Delete your account"}}</h2>
-    <p class="card-description">{{t "account.deletion.text" "Your account is deleted {days} days after you ask, with what {org} keeps about you: profile, sign-in methods, sessions, consents, devices, sign-in history. You are signed out everywhere at once and applications can no longer use it; until the deletion you can sign in here and keep it. The history of what was done stays, without your name, e-mail address or network addresses." "days" .DeletionDays "org" .Org.Display}}</p>
-  </div>
+  {{- else}}
   <form class="stack" method="post" action="{{.Base}}/data/deletion">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <div class="check-field">
@@ -63,6 +61,7 @@
     </div>
   </form>
   <p class="card-note">{{t "account.deletion.note" "Download a copy of your data first if you want to keep it."}}</p>
+  {{- end}}
 </section>
 {{- end}}
 {{end}}

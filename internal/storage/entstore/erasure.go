@@ -88,19 +88,31 @@ func (r *entErasureRepository) EraseAccount(ctx context.Context, u *domain.User,
 
 func eraseTraces(ctx context.Context, tx *ent.Tx, u *domain.User) error {
 	e := newEraser(u)
-	// Sign-in attempts: by account, and the names typed on the sign-in
-	// page of its realm (an unknown-account attempt has no user_id).
-	if _, err := tx.LoginAttempt.Delete().Where(loginattempt.Or(
+	for _, step := range []func(context.Context, *ent.Tx, *domain.User, *eraser) error{
+		deleteSignInAttempts, eraseAuditTraces, eraseBulkReports, eraseImportReports,
+	} {
+		if err := step(ctx, tx, u, e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// deleteSignInAttempts: by account, and the names typed on the sign-in page
+// of its realm (an unknown-account attempt has no user_id).
+func deleteSignInAttempts(ctx context.Context, tx *ent.Tx, u *domain.User, e *eraser) error {
+	_, err := tx.LoginAttempt.Delete().Where(loginattempt.Or(
 		loginattempt.UserID(u.ID),
 		loginattempt.And(loginattempt.RealmID(u.RealmID), predicateLower(loginattempt.FieldIdentifier, e.names)),
-	)).Exec(ctx); err != nil {
-		return err
-	}
+	)).Exec(ctx)
+	return err
+}
 
-	// Where the entries came from, when it was this person's browser:
-	// what they did, and what was done with their name without an
-	// administrator (a failed sign-in, a lockout). An administrator's
-	// address stays on what the administrator did.
+func eraseAuditTraces(ctx context.Context, tx *ent.Tx, u *domain.User, e *eraser) error {
+	// Where the entries came from, when it was this person's browser: what
+	// they did, and what was done with their name without an administrator
+	// (a failed sign-in, a lockout). An administrator's address stays on
+	// what the administrator did.
 	if _, err := tx.AuditLog.Update().Where(auditlog.Or(
 		auditlog.UserID(u.ID),
 		auditlog.And(auditlog.TargetUserID(u.ID), auditlog.ActorTypeIn(
@@ -131,14 +143,19 @@ func eraseTraces(ctx context.Context, tx *ent.Tx, u *domain.User) error {
 		// Only what targets the account: an entry it wrote about nobody (an
 		// import) holds other people's names, which stay. Its own names are
 		// still found there by value (isName).
-		about := a.TargetUserID == u.ID
-		if d, changed := e.scrub(a.Details, about, ""); changed {
-			if err := tx.AuditLog.UpdateOneID(a.ID).SetDetails(d.(map[string]interface{})).Exec(ctx); err != nil {
-				return err
-			}
+		d, changed := e.scrub(a.Details, a.TargetUserID == u.ID, "")
+		if !changed {
+			continue
+		}
+		if err := tx.AuditLog.UpdateOneID(a.ID).SetDetails(d.(map[string]interface{})).Exec(ctx); err != nil {
+			return err
 		}
 	}
+	return nil
+}
 
+// eraseBulkReports: its name as the requester, its label as an item.
+func eraseBulkReports(ctx context.Context, tx *ent.Tx, u *domain.User, _ *eraser) error {
 	jobs, err := tx.BulkJob.Query().Where(bulkjob.Or(
 		bulkjob.RequestedBy(u.ID),
 		bulkjob.And(bulkjob.RealmID(u.RealmID), predicateJSONMentions(bulkjob.FieldItems, []string{u.ID})),
@@ -147,23 +164,28 @@ func eraseTraces(ctx context.Context, tx *ent.Tx, u *domain.User) error {
 		return err
 	}
 	for _, j := range jobs {
-		upd, changed := tx.BulkJob.UpdateOneID(j.ID), false
-		if j.RequestedBy == u.ID {
+		upd, changed := tx.BulkJob.UpdateOneID(j.ID), j.RequestedBy == u.ID
+		if changed {
 			upd.SetRequestedByName(repository.Erased)
-			changed = true
 		}
 		for i := range j.Items {
 			if j.Items[i].ID == u.ID {
 				j.Items[i].Label, changed = repository.Erased, true
 			}
 		}
-		if changed {
-			if err := upd.SetItems(j.Items).Exec(ctx); err != nil {
-				return err
-			}
+		if !changed {
+			continue
+		}
+		if err := upd.SetItems(j.Items).Exec(ctx); err != nil {
+			return err
 		}
 	}
+	return nil
+}
 
+// eraseImportReports: its name as the requester, its row as an account
+// created (by id, or by address for a row that failed).
+func eraseImportReports(ctx context.Context, tx *ent.Tx, u *domain.User, e *eraser) error {
 	imports, err := tx.UserImportJob.Query().Where(userimportjob.Or(
 		userimportjob.RequestedBy(u.ID),
 		userimportjob.And(userimportjob.RealmID(u.RealmID), predicateJSONMentions(userimportjob.FieldRows, e.needles())),
@@ -172,10 +194,9 @@ func eraseTraces(ctx context.Context, tx *ent.Tx, u *domain.User) error {
 		return err
 	}
 	for _, j := range imports {
-		upd, changed := tx.UserImportJob.UpdateOneID(j.ID), false
-		if j.RequestedBy == u.ID {
+		upd, changed := tx.UserImportJob.UpdateOneID(j.ID), j.RequestedBy == u.ID
+		if changed {
 			upd.SetRequestedByName(repository.Erased)
-			changed = true
 		}
 		for i := range j.Rows {
 			row := &j.Rows[i]
@@ -183,10 +204,11 @@ func eraseTraces(ctx context.Context, tx *ent.Tx, u *domain.User) error {
 				row.Email, row.Username, changed = repository.Erased, repository.Erased, true
 			}
 		}
-		if changed {
-			if err := upd.SetRows(j.Rows).Exec(ctx); err != nil {
-				return err
-			}
+		if !changed {
+			continue
+		}
+		if err := upd.SetRows(j.Rows).Exec(ctx); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -251,21 +273,9 @@ func (e *eraser) owned(s string, about bool, key string) bool {
 func (e *eraser) scrub(v any, about bool, key string) (any, bool) {
 	switch x := v.(type) {
 	case string:
-		if e.owned(x, about, key) {
-			return repository.Erased, true
-		}
-		if e.emailRe != nil && e.emailRe.MatchString(x) {
-			return e.emailRe.ReplaceAllLiteralString(x, repository.Erased), true
-		}
+		return e.scrubString(x, about, key)
 	case map[string]interface{}:
-		inner := about || x["id"] == e.id || x["user_id"] == e.id
-		changed := false
-		for k, val := range x {
-			if nv, ok := e.scrub(val, inner, k); ok {
-				x[k], changed = nv, true
-			}
-		}
-		return x, changed
+		return e.scrubObject(x, about)
 	case []interface{}:
 		changed := false
 		for i, val := range x {
@@ -276,6 +286,28 @@ func (e *eraser) scrub(v any, about bool, key string) (any, bool) {
 		return x, changed
 	}
 	return v, false
+}
+
+func (e *eraser) scrubString(s string, about bool, key string) (any, bool) {
+	if e.owned(s, about, key) {
+		return repository.Erased, true
+	}
+	if e.emailRe != nil && e.emailRe.MatchString(s) {
+		return e.emailRe.ReplaceAllLiteralString(s, repository.Erased), true
+	}
+	return s, false
+}
+
+// scrubObject: an object with the account's id is about it.
+func (e *eraser) scrubObject(m map[string]interface{}, about bool) (any, bool) {
+	inner := about || m["id"] == e.id || m["user_id"] == e.id
+	changed := false
+	for k, val := range m {
+		if nv, ok := e.scrub(val, inner, k); ok {
+			m[k], changed = nv, true
+		}
+	}
+	return m, changed
 }
 
 // predicateLower: LOWER(column) is one of values (lower case already).

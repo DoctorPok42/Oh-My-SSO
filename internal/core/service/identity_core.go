@@ -41,7 +41,7 @@ type IdentityCoreService struct {
 	keys     repository.SigningKeyRepository
 	km       keymanager.KeyManager
 	timeouts TimeoutChecker
-	mfa      *MFAService                   // nil: MFA not configured (no policy enforced)
+	mfa      *MFAService // nil: MFA not configured (no policy enforced)
 	consent  *ConsentService
 	// accounts: nil means no remembered account, only the current one.
 	accounts *KnownAccountService
@@ -69,9 +69,9 @@ type IdentityCoreDeps struct {
 	// Timeouts should be the same checker given to AuthService. nil means
 	// NoActiveTimeouts.
 	Timeouts TimeoutChecker
-	MFA *MFAService
-	Consent *ConsentService
-	Audit repository.AuditLogRepository
+	MFA      *MFAService
+	Consent  *ConsentService
+	Audit    repository.AuditLogRepository
 
 	// Accounts: "Pick an account". nil shows the current account only.
 	Accounts *KnownAccountService
@@ -118,7 +118,6 @@ func NewIdentityCore(d IdentityCoreDeps, opts ...IdentityCoreOption) *IdentityCo
 	return s
 }
 
-
 func (s *IdentityCoreService) AuthenticateLocal(ctx context.Context, c core.Credentials) (*domain.User, error) {
 	return s.auth.AuthenticateLocal(ctx, AuthenticateLocalParams{
 		RealmID:    c.RealmID,
@@ -137,7 +136,6 @@ func (s *IdentityCoreService) VerifyMFA(ctx context.Context, userID string, ch c
 	_, ok, err := s.mfa.VerifyCode(ctx, userID, ch.Method, ch.Response)
 	return ok, err
 }
-
 
 func (s *IdentityCoreService) CreateSession(ctx context.Context, userID string, ac core.AuthContext) (*core.IssuedSession, error) {
 	raw, sess, err := s.sessions.Create(ctx, CreateSessionInput{
@@ -230,6 +228,39 @@ func (s *IdentityCoreService) RevokeSession(ctx context.Context, sessionID strin
 	return s.sessions.Revoke(ctx, sessionID, reason)
 }
 
+// admit: the user may use the client (RBAC), and no admin-issued timeout
+// holds the user, one of their groups or the client (a *core.TimeoutError).
+func (s *IdentityCoreService) admit(ctx context.Context, sess *domain.Session, clientRef string) error {
+	if err := s.rbac.AuthorizeClientAccess(ctx, AuthorizeInput{
+		RealmID:   sess.RealmID,
+		UserID:    sess.UserID,
+		ClientRef: clientRef,
+		IPAddress: sess.IPAddress,
+		UserAgent: sess.UserAgent,
+	}); err != nil {
+		return err
+	}
+	if err := checkTimeout(ctx, s.timeouts, sess.UserID, clientRef); err != nil {
+		if errors.Is(err, core.ErrTimeoutActive) {
+			return err
+		}
+		return fmt.Errorf("issue identity assertion: check timeout: %w", err)
+	}
+	return nil
+}
+
+// assertableUser loads the account an assertion is about; one waiting for
+// its deletion is refused (core.ErrAccountDeletionScheduled).
+func (s *IdentityCoreService) assertableUser(ctx context.Context, userID string) (*domain.User, error) {
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("issue identity assertion: load user: %w", err)
+	}
+	if user.DeletionScheduledAt != nil {
+		return nil, core.ErrAccountDeletionScheduled
+	}
+	return user, nil
+}
 
 func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessionID, clientRef string, requestedScopes []string) (*core.IdentityAssertion, error) {
 	// 1. The session must still be valid.
@@ -238,32 +269,15 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 		return nil, err
 	}
 
-	if err := s.rbac.AuthorizeClientAccess(ctx, AuthorizeInput{
-		RealmID:   sess.RealmID,
-		UserID:    sess.UserID,
-		ClientRef: clientRef,
-		IPAddress: sess.IPAddress,
-		UserAgent: sess.UserAgent,
-	}); err != nil {
+	// 2-3. Access rights and admin-issued timeouts.
+	if err := s.admit(ctx, sess, clientRef); err != nil {
 		return nil, err
 	}
 
-	// 3. Admin-issued timeouts on the user, one of their groups or the
-	//    client: a *core.TimeoutError.
-	if err := checkTimeout(ctx, s.timeouts, sess.UserID, clientRef); err != nil {
-		if errors.Is(err, core.ErrTimeoutActive) {
-			return nil, err
-		}
-		return nil, fmt.Errorf("issue identity assertion: check timeout: %w", err)
-	}
-
 	// 4. Data needed to build the assertion.
-	user, err := s.users.GetByID(ctx, sess.UserID)
+	user, err := s.assertableUser(ctx, sess.UserID)
 	if err != nil {
-		return nil, fmt.Errorf("issue identity assertion: load user: %w", err)
-	}
-	if user.DeletionScheduledAt != nil {
-		return nil, core.ErrAccountDeletionScheduled
+		return nil, err
 	}
 	client, err := s.clients.GetByID(ctx, clientRef)
 	if err != nil {
@@ -505,7 +519,6 @@ func userAttributes(u *domain.User, groups, roles []string) map[string]any {
 	return attrs
 }
 
-
 func (s *IdentityCoreService) GetEffectivePermissions(ctx context.Context, userID, clientRef string) ([]*domain.Permission, error) {
 	return s.rbac.GetEffectivePermissions(ctx, userID, clientRef)
 }
@@ -521,7 +534,6 @@ func (s *IdentityCoreService) IsAuthorizedForClient(ctx context.Context, userID,
 	}
 	return t == nil, nil
 }
-
 
 func (s *IdentityCoreService) RevokeToken(ctx context.Context, jti string) error {
 	tok, err := s.tokens.GetByJTI(ctx, jti)
@@ -550,7 +562,6 @@ func (s *IdentityCoreService) IsTokenRevoked(ctx context.Context, jti string) (b
 	}
 	return tok.Revoked, nil
 }
-
 
 func (s *IdentityCoreService) Signer(ctx context.Context, realmID string, purpose domain.SigningKeyPurpose) (core.Signer, error) {
 	keys, err := s.keys.ListActiveByRealm(ctx, realmID)

@@ -69,7 +69,7 @@
   {{- if .PendingEmail}}
   <form class="stack" method="post" action="{{.Base}}/profile/email/cancel">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <p class="banner banner-warning" role="status">{{th "account.profile.email.pending" "Waiting for confirmation: open the link we sent to <strong>{email}</strong>. Until then, you keep your current address." "email" .PendingEmail}}</p>
+    <output class="banner banner-warning">{{th "account.profile.email.pending" "Waiting for confirmation: open the link we sent to <strong>{email}</strong>. Until then, you keep your current address." "email" .PendingEmail}}</output>
     <div class="actions">
       <button type="submit" class="btn btn-secondary">{{t "account.profile.email.cancel" "Cancel the change"}}</button>
     </div>
