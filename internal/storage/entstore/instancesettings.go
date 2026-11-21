@@ -52,6 +52,8 @@ func (r *entInstanceSettingsRepository) Update(ctx context.Context, id string, p
 		SetNillablePasswordExpiryDays(p.PasswordExpiryDays).
 		SetNillablePasswordHistoryCount(p.PasswordHistoryCount).
 		SetNillablePasswordBreachCheckEnabled(p.PasswordBreachCheckEnabled).
+		SetNillableAccountDeletionEnabled(p.AccountDeletionEnabled).
+		SetNillableEmailChangeAllowed(p.EmailChangeAllowed).
 		SetNillableSessionIdleMinutes(p.SessionIdleMinutes).
 		SetNillableSessionMaxHours(p.SessionMaxHours).
 		SetNillableRememberMeEnabled(p.RememberMeEnabled).
@@ -132,6 +134,8 @@ func toDomainInstanceSettings(e *ent.InstanceSettings) *domain.InstanceSettings 
 		PasswordExpiryDays:          e.PasswordExpiryDays,
 		PasswordHistoryCount:        e.PasswordHistoryCount,
 		PasswordBreachCheckEnabled:  e.PasswordBreachCheckEnabled,
+		AccountDeletionEnabled:      e.AccountDeletionEnabled,
+		EmailChangeAllowed:          e.EmailChangeAllowed,
 		SessionIdleMinutes:          e.SessionIdleMinutes,
 		SessionMaxHours:             e.SessionMaxHours,
 		RememberMeEnabled:           e.RememberMeEnabled,

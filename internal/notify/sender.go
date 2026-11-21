@@ -23,13 +23,16 @@ const (
 	TemplateMfaReset               Template = "mfa_reset"
 	TemplateBackupCodesRegenerated Template = "backup_codes_regenerated"
 	TemplateAccountLocked          Template = "account_locked"
-	TemplateAppConnected Template = "app_connected"
+	TemplateAppConnected           Template = "app_connected"
 	// TemplateTest is sent by `idp mail test` to check the SMTP settings.
-	TemplateTest Template = "test"
-	TemplateAccountInvite Template = "account_invite"
-	TemplateAdminRecovery Template = "admin_recovery"
+	TemplateTest               Template = "test"
+	TemplateAccountInvite      Template = "account_invite"
+	TemplateAdminRecovery      Template = "admin_recovery"
 	TemplateUserImportFinished Template = "user_import_finished"
 	TemplateEmailVerification  Template = "email_verification"
+	TemplateDataExportReady    Template = "data_export_ready"
+	TemplateAccountDeletion    Template = "account_deletion_scheduled"
+	TemplateEmailChanged       Template = "email_changed"
 )
 
 // AllTemplates lists every template: LoadTemplates parses each one at
@@ -39,7 +42,8 @@ var AllTemplates = []Template{
 	TemplateSuspiciousLogin, TemplateMfaMethodAdded, TemplateMfaMethodRemoved,
 	TemplateMfaReset, TemplateBackupCodesRegenerated, TemplateAccountLocked,
 	TemplateAppConnected, TemplateTest, TemplateAccountInvite, TemplateAdminRecovery,
-	TemplateUserImportFinished, TemplateEmailVerification,
+	TemplateUserImportFinished, TemplateEmailVerification, TemplateDataExportReady, TemplateAccountDeletion,
+	TemplateEmailChanged,
 }
 
 // Sender is what a realm changes in the identity of its e-mails (Settings >

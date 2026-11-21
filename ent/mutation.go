@@ -19,6 +19,7 @@ import (
 	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/clientscopemapping"
 	"sso.internal/sso/ent/consent"
+	"sso.internal/sso/ent/dataexport"
 	"sso.internal/sso/ent/emailoutbox"
 	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/federatedidentity"
@@ -65,6 +66,7 @@ const (
 	TypeClientScope            = "ClientScope"
 	TypeClientScopeMapping     = "ClientScopeMapping"
 	TypeConsent                = "Consent"
+	TypeDataExport             = "DataExport"
 	TypeEmailOutbox            = "EmailOutbox"
 	TypeEmailVerificationToken = "EmailVerificationToken"
 	TypeFederatedIdentity      = "FederatedIdentity"
@@ -10558,6 +10560,770 @@ func (m *ConsentMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Consent edge %s", name)
 }
 
+// DataExportMutation represents an operation that mutates the DataExport nodes in the graph.
+type DataExportMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *string
+	realm_id      *string
+	status        *schema.DataExportStatus
+	data          *[]byte
+	created_at    *time.Time
+	finished_at   *time.Time
+	expires_at    *time.Time
+	clearedFields map[string]struct{}
+	owner         *string
+	clearedowner  bool
+	done          bool
+	oldValue      func(context.Context) (*DataExport, error)
+	predicates    []predicate.DataExport
+}
+
+var _ ent.Mutation = (*DataExportMutation)(nil)
+
+// dataexportOption allows management of the mutation configuration using functional options.
+type dataexportOption func(*DataExportMutation)
+
+// newDataExportMutation creates new mutation for the DataExport entity.
+func newDataExportMutation(c config, op Op, opts ...dataexportOption) *DataExportMutation {
+	m := &DataExportMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDataExport,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDataExportID sets the ID field of the mutation.
+func withDataExportID(id string) dataexportOption {
+	return func(m *DataExportMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DataExport
+		)
+		m.oldValue = func(ctx context.Context) (*DataExport, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DataExport.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDataExport sets the old DataExport of the mutation.
+func withDataExport(node *DataExport) dataexportOption {
+	return func(m *DataExportMutation) {
+		m.oldValue = func(context.Context) (*DataExport, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DataExportMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DataExportMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of DataExport entities.
+func (m *DataExportMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DataExportMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DataExportMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DataExport.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetRealmID sets the "realm_id" field.
+func (m *DataExportMutation) SetRealmID(s string) {
+	m.realm_id = &s
+}
+
+// RealmID returns the value of the "realm_id" field in the mutation.
+func (m *DataExportMutation) RealmID() (r string, exists bool) {
+	v := m.realm_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRealmID returns the old "realm_id" field's value of the DataExport entity.
+// If the DataExport object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataExportMutation) OldRealmID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRealmID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRealmID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRealmID: %w", err)
+	}
+	return oldValue.RealmID, nil
+}
+
+// ResetRealmID resets all changes to the "realm_id" field.
+func (m *DataExportMutation) ResetRealmID() {
+	m.realm_id = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *DataExportMutation) SetUserID(s string) {
+	m.owner = &s
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *DataExportMutation) UserID() (r string, exists bool) {
+	v := m.owner
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the DataExport entity.
+// If the DataExport object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataExportMutation) OldUserID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *DataExportMutation) ResetUserID() {
+	m.owner = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *DataExportMutation) SetStatus(ses schema.DataExportStatus) {
+	m.status = &ses
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *DataExportMutation) Status() (r schema.DataExportStatus, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the DataExport entity.
+// If the DataExport object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataExportMutation) OldStatus(ctx context.Context) (v schema.DataExportStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *DataExportMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetData sets the "data" field.
+func (m *DataExportMutation) SetData(b []byte) {
+	m.data = &b
+}
+
+// Data returns the value of the "data" field in the mutation.
+func (m *DataExportMutation) Data() (r []byte, exists bool) {
+	v := m.data
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldData returns the old "data" field's value of the DataExport entity.
+// If the DataExport object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataExportMutation) OldData(ctx context.Context) (v []byte, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldData is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldData requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldData: %w", err)
+	}
+	return oldValue.Data, nil
+}
+
+// ClearData clears the value of the "data" field.
+func (m *DataExportMutation) ClearData() {
+	m.data = nil
+	m.clearedFields[dataexport.FieldData] = struct{}{}
+}
+
+// DataCleared returns if the "data" field was cleared in this mutation.
+func (m *DataExportMutation) DataCleared() bool {
+	_, ok := m.clearedFields[dataexport.FieldData]
+	return ok
+}
+
+// ResetData resets all changes to the "data" field.
+func (m *DataExportMutation) ResetData() {
+	m.data = nil
+	delete(m.clearedFields, dataexport.FieldData)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *DataExportMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *DataExportMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the DataExport entity.
+// If the DataExport object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataExportMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *DataExportMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetFinishedAt sets the "finished_at" field.
+func (m *DataExportMutation) SetFinishedAt(t time.Time) {
+	m.finished_at = &t
+}
+
+// FinishedAt returns the value of the "finished_at" field in the mutation.
+func (m *DataExportMutation) FinishedAt() (r time.Time, exists bool) {
+	v := m.finished_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFinishedAt returns the old "finished_at" field's value of the DataExport entity.
+// If the DataExport object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataExportMutation) OldFinishedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFinishedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFinishedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFinishedAt: %w", err)
+	}
+	return oldValue.FinishedAt, nil
+}
+
+// ClearFinishedAt clears the value of the "finished_at" field.
+func (m *DataExportMutation) ClearFinishedAt() {
+	m.finished_at = nil
+	m.clearedFields[dataexport.FieldFinishedAt] = struct{}{}
+}
+
+// FinishedAtCleared returns if the "finished_at" field was cleared in this mutation.
+func (m *DataExportMutation) FinishedAtCleared() bool {
+	_, ok := m.clearedFields[dataexport.FieldFinishedAt]
+	return ok
+}
+
+// ResetFinishedAt resets all changes to the "finished_at" field.
+func (m *DataExportMutation) ResetFinishedAt() {
+	m.finished_at = nil
+	delete(m.clearedFields, dataexport.FieldFinishedAt)
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (m *DataExportMutation) SetExpiresAt(t time.Time) {
+	m.expires_at = &t
+}
+
+// ExpiresAt returns the value of the "expires_at" field in the mutation.
+func (m *DataExportMutation) ExpiresAt() (r time.Time, exists bool) {
+	v := m.expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExpiresAt returns the old "expires_at" field's value of the DataExport entity.
+// If the DataExport object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataExportMutation) OldExpiresAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExpiresAt: %w", err)
+	}
+	return oldValue.ExpiresAt, nil
+}
+
+// ResetExpiresAt resets all changes to the "expires_at" field.
+func (m *DataExportMutation) ResetExpiresAt() {
+	m.expires_at = nil
+}
+
+// SetOwnerID sets the "owner" edge to the User entity by id.
+func (m *DataExportMutation) SetOwnerID(id string) {
+	m.owner = &id
+}
+
+// ClearOwner clears the "owner" edge to the User entity.
+func (m *DataExportMutation) ClearOwner() {
+	m.clearedowner = true
+	m.clearedFields[dataexport.FieldUserID] = struct{}{}
+}
+
+// OwnerCleared reports if the "owner" edge to the User entity was cleared.
+func (m *DataExportMutation) OwnerCleared() bool {
+	return m.clearedowner
+}
+
+// OwnerID returns the "owner" edge ID in the mutation.
+func (m *DataExportMutation) OwnerID() (id string, exists bool) {
+	if m.owner != nil {
+		return *m.owner, true
+	}
+	return
+}
+
+// OwnerIDs returns the "owner" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// OwnerID instead. It exists only for internal usage by the builders.
+func (m *DataExportMutation) OwnerIDs() (ids []string) {
+	if id := m.owner; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetOwner resets all changes to the "owner" edge.
+func (m *DataExportMutation) ResetOwner() {
+	m.owner = nil
+	m.clearedowner = false
+}
+
+// Where appends a list predicates to the DataExportMutation builder.
+func (m *DataExportMutation) Where(ps ...predicate.DataExport) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DataExportMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DataExportMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DataExport, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DataExportMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DataExportMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DataExport).
+func (m *DataExportMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DataExportMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.realm_id != nil {
+		fields = append(fields, dataexport.FieldRealmID)
+	}
+	if m.owner != nil {
+		fields = append(fields, dataexport.FieldUserID)
+	}
+	if m.status != nil {
+		fields = append(fields, dataexport.FieldStatus)
+	}
+	if m.data != nil {
+		fields = append(fields, dataexport.FieldData)
+	}
+	if m.created_at != nil {
+		fields = append(fields, dataexport.FieldCreatedAt)
+	}
+	if m.finished_at != nil {
+		fields = append(fields, dataexport.FieldFinishedAt)
+	}
+	if m.expires_at != nil {
+		fields = append(fields, dataexport.FieldExpiresAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DataExportMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case dataexport.FieldRealmID:
+		return m.RealmID()
+	case dataexport.FieldUserID:
+		return m.UserID()
+	case dataexport.FieldStatus:
+		return m.Status()
+	case dataexport.FieldData:
+		return m.Data()
+	case dataexport.FieldCreatedAt:
+		return m.CreatedAt()
+	case dataexport.FieldFinishedAt:
+		return m.FinishedAt()
+	case dataexport.FieldExpiresAt:
+		return m.ExpiresAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DataExportMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case dataexport.FieldRealmID:
+		return m.OldRealmID(ctx)
+	case dataexport.FieldUserID:
+		return m.OldUserID(ctx)
+	case dataexport.FieldStatus:
+		return m.OldStatus(ctx)
+	case dataexport.FieldData:
+		return m.OldData(ctx)
+	case dataexport.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case dataexport.FieldFinishedAt:
+		return m.OldFinishedAt(ctx)
+	case dataexport.FieldExpiresAt:
+		return m.OldExpiresAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown DataExport field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DataExportMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case dataexport.FieldRealmID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRealmID(v)
+		return nil
+	case dataexport.FieldUserID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case dataexport.FieldStatus:
+		v, ok := value.(schema.DataExportStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case dataexport.FieldData:
+		v, ok := value.([]byte)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetData(v)
+		return nil
+	case dataexport.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case dataexport.FieldFinishedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFinishedAt(v)
+		return nil
+	case dataexport.FieldExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExpiresAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DataExport field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DataExportMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DataExportMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DataExportMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown DataExport numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DataExportMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(dataexport.FieldData) {
+		fields = append(fields, dataexport.FieldData)
+	}
+	if m.FieldCleared(dataexport.FieldFinishedAt) {
+		fields = append(fields, dataexport.FieldFinishedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DataExportMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DataExportMutation) ClearField(name string) error {
+	switch name {
+	case dataexport.FieldData:
+		m.ClearData()
+		return nil
+	case dataexport.FieldFinishedAt:
+		m.ClearFinishedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown DataExport nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DataExportMutation) ResetField(name string) error {
+	switch name {
+	case dataexport.FieldRealmID:
+		m.ResetRealmID()
+		return nil
+	case dataexport.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case dataexport.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case dataexport.FieldData:
+		m.ResetData()
+		return nil
+	case dataexport.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case dataexport.FieldFinishedAt:
+		m.ResetFinishedAt()
+		return nil
+	case dataexport.FieldExpiresAt:
+		m.ResetExpiresAt()
+		return nil
+	}
+	return fmt.Errorf("unknown DataExport field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DataExportMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.owner != nil {
+		edges = append(edges, dataexport.EdgeOwner)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DataExportMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case dataexport.EdgeOwner:
+		if id := m.owner; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DataExportMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DataExportMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DataExportMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedowner {
+		edges = append(edges, dataexport.EdgeOwner)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DataExportMutation) EdgeCleared(name string) bool {
+	switch name {
+	case dataexport.EdgeOwner:
+		return m.clearedowner
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DataExportMutation) ClearEdge(name string) error {
+	switch name {
+	case dataexport.EdgeOwner:
+		m.ClearOwner()
+		return nil
+	}
+	return fmt.Errorf("unknown DataExport unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DataExportMutation) ResetEdge(name string) error {
+	switch name {
+	case dataexport.EdgeOwner:
+		m.ResetOwner()
+		return nil
+	}
+	return fmt.Errorf("unknown DataExport edge %s", name)
+}
+
 // EmailOutboxMutation represents an operation that mutates the EmailOutbox nodes in the graph.
 type EmailOutboxMutation struct {
 	config
@@ -16975,6 +17741,8 @@ type InstanceSettingsMutation struct {
 	password_history_count         *int
 	addpassword_history_count      *int
 	password_breach_check_enabled  *bool
+	account_deletion_enabled       *bool
+	email_change_allowed           *bool
 	session_idle_minutes           *int
 	addsession_idle_minutes        *int
 	session_max_hours              *int
@@ -17406,6 +18174,78 @@ func (m *InstanceSettingsMutation) OldPasswordBreachCheckEnabled(ctx context.Con
 // ResetPasswordBreachCheckEnabled resets all changes to the "password_breach_check_enabled" field.
 func (m *InstanceSettingsMutation) ResetPasswordBreachCheckEnabled() {
 	m.password_breach_check_enabled = nil
+}
+
+// SetAccountDeletionEnabled sets the "account_deletion_enabled" field.
+func (m *InstanceSettingsMutation) SetAccountDeletionEnabled(b bool) {
+	m.account_deletion_enabled = &b
+}
+
+// AccountDeletionEnabled returns the value of the "account_deletion_enabled" field in the mutation.
+func (m *InstanceSettingsMutation) AccountDeletionEnabled() (r bool, exists bool) {
+	v := m.account_deletion_enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAccountDeletionEnabled returns the old "account_deletion_enabled" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldAccountDeletionEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAccountDeletionEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAccountDeletionEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAccountDeletionEnabled: %w", err)
+	}
+	return oldValue.AccountDeletionEnabled, nil
+}
+
+// ResetAccountDeletionEnabled resets all changes to the "account_deletion_enabled" field.
+func (m *InstanceSettingsMutation) ResetAccountDeletionEnabled() {
+	m.account_deletion_enabled = nil
+}
+
+// SetEmailChangeAllowed sets the "email_change_allowed" field.
+func (m *InstanceSettingsMutation) SetEmailChangeAllowed(b bool) {
+	m.email_change_allowed = &b
+}
+
+// EmailChangeAllowed returns the value of the "email_change_allowed" field in the mutation.
+func (m *InstanceSettingsMutation) EmailChangeAllowed() (r bool, exists bool) {
+	v := m.email_change_allowed
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEmailChangeAllowed returns the old "email_change_allowed" field's value of the InstanceSettings entity.
+// If the InstanceSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstanceSettingsMutation) OldEmailChangeAllowed(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEmailChangeAllowed is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEmailChangeAllowed requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEmailChangeAllowed: %w", err)
+	}
+	return oldValue.EmailChangeAllowed, nil
+}
+
+// ResetEmailChangeAllowed resets all changes to the "email_change_allowed" field.
+func (m *InstanceSettingsMutation) ResetEmailChangeAllowed() {
+	m.email_change_allowed = nil
 }
 
 // SetSessionIdleMinutes sets the "session_idle_minutes" field.
@@ -18868,7 +19708,7 @@ func (m *InstanceSettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstanceSettingsMutation) Fields() []string {
-	fields := make([]string, 0, 35)
+	fields := make([]string, 0, 37)
 	if m.realm != nil {
 		fields = append(fields, instancesettings.FieldRealmID)
 	}
@@ -18886,6 +19726,12 @@ func (m *InstanceSettingsMutation) Fields() []string {
 	}
 	if m.password_breach_check_enabled != nil {
 		fields = append(fields, instancesettings.FieldPasswordBreachCheckEnabled)
+	}
+	if m.account_deletion_enabled != nil {
+		fields = append(fields, instancesettings.FieldAccountDeletionEnabled)
+	}
+	if m.email_change_allowed != nil {
+		fields = append(fields, instancesettings.FieldEmailChangeAllowed)
 	}
 	if m.session_idle_minutes != nil {
 		fields = append(fields, instancesettings.FieldSessionIdleMinutes)
@@ -18994,6 +19840,10 @@ func (m *InstanceSettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.PasswordHistoryCount()
 	case instancesettings.FieldPasswordBreachCheckEnabled:
 		return m.PasswordBreachCheckEnabled()
+	case instancesettings.FieldAccountDeletionEnabled:
+		return m.AccountDeletionEnabled()
+	case instancesettings.FieldEmailChangeAllowed:
+		return m.EmailChangeAllowed()
 	case instancesettings.FieldSessionIdleMinutes:
 		return m.SessionIdleMinutes()
 	case instancesettings.FieldSessionMaxHours:
@@ -19073,6 +19923,10 @@ func (m *InstanceSettingsMutation) OldField(ctx context.Context, name string) (e
 		return m.OldPasswordHistoryCount(ctx)
 	case instancesettings.FieldPasswordBreachCheckEnabled:
 		return m.OldPasswordBreachCheckEnabled(ctx)
+	case instancesettings.FieldAccountDeletionEnabled:
+		return m.OldAccountDeletionEnabled(ctx)
+	case instancesettings.FieldEmailChangeAllowed:
+		return m.OldEmailChangeAllowed(ctx)
 	case instancesettings.FieldSessionIdleMinutes:
 		return m.OldSessionIdleMinutes(ctx)
 	case instancesettings.FieldSessionMaxHours:
@@ -19181,6 +20035,20 @@ func (m *InstanceSettingsMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPasswordBreachCheckEnabled(v)
+		return nil
+	case instancesettings.FieldAccountDeletionEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAccountDeletionEnabled(v)
+		return nil
+	case instancesettings.FieldEmailChangeAllowed:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEmailChangeAllowed(v)
 		return nil
 	case instancesettings.FieldSessionIdleMinutes:
 		v, ok := value.(int)
@@ -19691,6 +20559,12 @@ func (m *InstanceSettingsMutation) ResetField(name string) error {
 		return nil
 	case instancesettings.FieldPasswordBreachCheckEnabled:
 		m.ResetPasswordBreachCheckEnabled()
+		return nil
+	case instancesettings.FieldAccountDeletionEnabled:
+		m.ResetAccountDeletionEnabled()
+		return nil
+	case instancesettings.FieldEmailChangeAllowed:
+		m.ResetEmailChangeAllowed()
 		return nil
 	case instancesettings.FieldSessionIdleMinutes:
 		m.ResetSessionIdleMinutes()
@@ -36765,6 +37639,7 @@ type UserMutation struct {
 	must_change_password             *bool
 	email                            *string
 	email_verified_at                *time.Time
+	pending_email                    *string
 	created_at                       *time.Time
 	updated_at                       *time.Time
 	deleted_at                       *time.Time
@@ -36778,6 +37653,7 @@ type UserMutation struct {
 	lockout_count                    *int
 	addlockout_count                 *int
 	last_locked_at                   *time.Time
+	deletion_scheduled_at            *time.Time
 	clearedFields                    map[string]struct{}
 	realm                            *string
 	clearedrealm                     bool
@@ -36817,6 +37693,9 @@ type UserMutation struct {
 	email_verification_tokens        map[string]struct{}
 	removedemail_verification_tokens map[string]struct{}
 	clearedemail_verification_tokens bool
+	data_exports                     map[string]struct{}
+	removeddata_exports              map[string]struct{}
+	cleareddata_exports              bool
 	done                             bool
 	oldValue                         func(context.Context) (*User, error)
 	predicates                       []predicate.User
@@ -37267,6 +38146,55 @@ func (m *UserMutation) EmailVerifiedAtCleared() bool {
 func (m *UserMutation) ResetEmailVerifiedAt() {
 	m.email_verified_at = nil
 	delete(m.clearedFields, user.FieldEmailVerifiedAt)
+}
+
+// SetPendingEmail sets the "pending_email" field.
+func (m *UserMutation) SetPendingEmail(s string) {
+	m.pending_email = &s
+}
+
+// PendingEmail returns the value of the "pending_email" field in the mutation.
+func (m *UserMutation) PendingEmail() (r string, exists bool) {
+	v := m.pending_email
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPendingEmail returns the old "pending_email" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldPendingEmail(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPendingEmail is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPendingEmail requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPendingEmail: %w", err)
+	}
+	return oldValue.PendingEmail, nil
+}
+
+// ClearPendingEmail clears the value of the "pending_email" field.
+func (m *UserMutation) ClearPendingEmail() {
+	m.pending_email = nil
+	m.clearedFields[user.FieldPendingEmail] = struct{}{}
+}
+
+// PendingEmailCleared returns if the "pending_email" field was cleared in this mutation.
+func (m *UserMutation) PendingEmailCleared() bool {
+	_, ok := m.clearedFields[user.FieldPendingEmail]
+	return ok
+}
+
+// ResetPendingEmail resets all changes to the "pending_email" field.
+func (m *UserMutation) ResetPendingEmail() {
+	m.pending_email = nil
+	delete(m.clearedFields, user.FieldPendingEmail)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -37781,6 +38709,55 @@ func (m *UserMutation) LastLockedAtCleared() bool {
 func (m *UserMutation) ResetLastLockedAt() {
 	m.last_locked_at = nil
 	delete(m.clearedFields, user.FieldLastLockedAt)
+}
+
+// SetDeletionScheduledAt sets the "deletion_scheduled_at" field.
+func (m *UserMutation) SetDeletionScheduledAt(t time.Time) {
+	m.deletion_scheduled_at = &t
+}
+
+// DeletionScheduledAt returns the value of the "deletion_scheduled_at" field in the mutation.
+func (m *UserMutation) DeletionScheduledAt() (r time.Time, exists bool) {
+	v := m.deletion_scheduled_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletionScheduledAt returns the old "deletion_scheduled_at" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldDeletionScheduledAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletionScheduledAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletionScheduledAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletionScheduledAt: %w", err)
+	}
+	return oldValue.DeletionScheduledAt, nil
+}
+
+// ClearDeletionScheduledAt clears the value of the "deletion_scheduled_at" field.
+func (m *UserMutation) ClearDeletionScheduledAt() {
+	m.deletion_scheduled_at = nil
+	m.clearedFields[user.FieldDeletionScheduledAt] = struct{}{}
+}
+
+// DeletionScheduledAtCleared returns if the "deletion_scheduled_at" field was cleared in this mutation.
+func (m *UserMutation) DeletionScheduledAtCleared() bool {
+	_, ok := m.clearedFields[user.FieldDeletionScheduledAt]
+	return ok
+}
+
+// ResetDeletionScheduledAt resets all changes to the "deletion_scheduled_at" field.
+func (m *UserMutation) ResetDeletionScheduledAt() {
+	m.deletion_scheduled_at = nil
+	delete(m.clearedFields, user.FieldDeletionScheduledAt)
 }
 
 // ClearRealm clears the "realm" edge to the Realm entity.
@@ -38458,6 +39435,60 @@ func (m *UserMutation) ResetEmailVerificationTokens() {
 	m.removedemail_verification_tokens = nil
 }
 
+// AddDataExportIDs adds the "data_exports" edge to the DataExport entity by ids.
+func (m *UserMutation) AddDataExportIDs(ids ...string) {
+	if m.data_exports == nil {
+		m.data_exports = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.data_exports[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDataExports clears the "data_exports" edge to the DataExport entity.
+func (m *UserMutation) ClearDataExports() {
+	m.cleareddata_exports = true
+}
+
+// DataExportsCleared reports if the "data_exports" edge to the DataExport entity was cleared.
+func (m *UserMutation) DataExportsCleared() bool {
+	return m.cleareddata_exports
+}
+
+// RemoveDataExportIDs removes the "data_exports" edge to the DataExport entity by IDs.
+func (m *UserMutation) RemoveDataExportIDs(ids ...string) {
+	if m.removeddata_exports == nil {
+		m.removeddata_exports = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.data_exports, ids[i])
+		m.removeddata_exports[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDataExports returns the removed IDs of the "data_exports" edge to the DataExport entity.
+func (m *UserMutation) RemovedDataExportsIDs() (ids []string) {
+	for id := range m.removeddata_exports {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DataExportsIDs returns the "data_exports" edge IDs in the mutation.
+func (m *UserMutation) DataExportsIDs() (ids []string) {
+	for id := range m.data_exports {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDataExports resets all changes to the "data_exports" edge.
+func (m *UserMutation) ResetDataExports() {
+	m.data_exports = nil
+	m.cleareddata_exports = false
+	m.removeddata_exports = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -38492,7 +39523,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 19)
+	fields := make([]string, 0, 21)
 	if m.realm != nil {
 		fields = append(fields, user.FieldRealmID)
 	}
@@ -38516,6 +39547,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.email_verified_at != nil {
 		fields = append(fields, user.FieldEmailVerifiedAt)
+	}
+	if m.pending_email != nil {
+		fields = append(fields, user.FieldPendingEmail)
 	}
 	if m.created_at != nil {
 		fields = append(fields, user.FieldCreatedAt)
@@ -38550,6 +39584,9 @@ func (m *UserMutation) Fields() []string {
 	if m.last_locked_at != nil {
 		fields = append(fields, user.FieldLastLockedAt)
 	}
+	if m.deletion_scheduled_at != nil {
+		fields = append(fields, user.FieldDeletionScheduledAt)
+	}
 	return fields
 }
 
@@ -38574,6 +39611,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Email()
 	case user.FieldEmailVerifiedAt:
 		return m.EmailVerifiedAt()
+	case user.FieldPendingEmail:
+		return m.PendingEmail()
 	case user.FieldCreatedAt:
 		return m.CreatedAt()
 	case user.FieldUpdatedAt:
@@ -38596,6 +39635,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.LockoutCount()
 	case user.FieldLastLockedAt:
 		return m.LastLockedAt()
+	case user.FieldDeletionScheduledAt:
+		return m.DeletionScheduledAt()
 	}
 	return nil, false
 }
@@ -38621,6 +39662,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldEmail(ctx)
 	case user.FieldEmailVerifiedAt:
 		return m.OldEmailVerifiedAt(ctx)
+	case user.FieldPendingEmail:
+		return m.OldPendingEmail(ctx)
 	case user.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case user.FieldUpdatedAt:
@@ -38643,6 +39686,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldLockoutCount(ctx)
 	case user.FieldLastLockedAt:
 		return m.OldLastLockedAt(ctx)
+	case user.FieldDeletionScheduledAt:
+		return m.OldDeletionScheduledAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown User field %s", name)
 }
@@ -38707,6 +39752,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetEmailVerifiedAt(v)
+		return nil
+	case user.FieldPendingEmail:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPendingEmail(v)
 		return nil
 	case user.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -38785,6 +39837,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetLastLockedAt(v)
 		return nil
+	case user.FieldDeletionScheduledAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletionScheduledAt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)
 }
@@ -38851,6 +39910,9 @@ func (m *UserMutation) ClearedFields() []string {
 	if m.FieldCleared(user.FieldEmailVerifiedAt) {
 		fields = append(fields, user.FieldEmailVerifiedAt)
 	}
+	if m.FieldCleared(user.FieldPendingEmail) {
+		fields = append(fields, user.FieldPendingEmail)
+	}
 	if m.FieldCleared(user.FieldDeletedAt) {
 		fields = append(fields, user.FieldDeletedAt)
 	}
@@ -38868,6 +39930,9 @@ func (m *UserMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(user.FieldLastLockedAt) {
 		fields = append(fields, user.FieldLastLockedAt)
+	}
+	if m.FieldCleared(user.FieldDeletionScheduledAt) {
+		fields = append(fields, user.FieldDeletionScheduledAt)
 	}
 	return fields
 }
@@ -38892,6 +39957,9 @@ func (m *UserMutation) ClearField(name string) error {
 	case user.FieldEmailVerifiedAt:
 		m.ClearEmailVerifiedAt()
 		return nil
+	case user.FieldPendingEmail:
+		m.ClearPendingEmail()
+		return nil
 	case user.FieldDeletedAt:
 		m.ClearDeletedAt()
 		return nil
@@ -38909,6 +39977,9 @@ func (m *UserMutation) ClearField(name string) error {
 		return nil
 	case user.FieldLastLockedAt:
 		m.ClearLastLockedAt()
+		return nil
+	case user.FieldDeletionScheduledAt:
+		m.ClearDeletionScheduledAt()
 		return nil
 	}
 	return fmt.Errorf("unknown User nullable field %s", name)
@@ -38941,6 +40012,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldEmailVerifiedAt:
 		m.ResetEmailVerifiedAt()
+		return nil
+	case user.FieldPendingEmail:
+		m.ResetPendingEmail()
 		return nil
 	case user.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -38975,13 +40049,16 @@ func (m *UserMutation) ResetField(name string) error {
 	case user.FieldLastLockedAt:
 		m.ResetLastLockedAt()
 		return nil
+	case user.FieldDeletionScheduledAt:
+		m.ResetDeletionScheduledAt()
+		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 14)
 	if m.realm != nil {
 		edges = append(edges, user.EdgeRealm)
 	}
@@ -39020,6 +40097,9 @@ func (m *UserMutation) AddedEdges() []string {
 	}
 	if m.email_verification_tokens != nil {
 		edges = append(edges, user.EdgeEmailVerificationTokens)
+	}
+	if m.data_exports != nil {
+		edges = append(edges, user.EdgeDataExports)
 	}
 	return edges
 }
@@ -39104,13 +40184,19 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeDataExports:
+		ids := make([]ent.Value, 0, len(m.data_exports))
+		for id := range m.data_exports {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 14)
 	if m.removedroles != nil {
 		edges = append(edges, user.EdgeRoles)
 	}
@@ -39146,6 +40232,9 @@ func (m *UserMutation) RemovedEdges() []string {
 	}
 	if m.removedemail_verification_tokens != nil {
 		edges = append(edges, user.EdgeEmailVerificationTokens)
+	}
+	if m.removeddata_exports != nil {
+		edges = append(edges, user.EdgeDataExports)
 	}
 	return edges
 }
@@ -39226,13 +40315,19 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeDataExports:
+		ids := make([]ent.Value, 0, len(m.removeddata_exports))
+		for id := range m.removeddata_exports {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 14)
 	if m.clearedrealm {
 		edges = append(edges, user.EdgeRealm)
 	}
@@ -39272,6 +40367,9 @@ func (m *UserMutation) ClearedEdges() []string {
 	if m.clearedemail_verification_tokens {
 		edges = append(edges, user.EdgeEmailVerificationTokens)
 	}
+	if m.cleareddata_exports {
+		edges = append(edges, user.EdgeDataExports)
+	}
 	return edges
 }
 
@@ -39305,6 +40403,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedemail_outbox
 	case user.EdgeEmailVerificationTokens:
 		return m.clearedemail_verification_tokens
+	case user.EdgeDataExports:
+		return m.cleareddata_exports
 	}
 	return false
 }
@@ -39362,6 +40462,9 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgeEmailVerificationTokens:
 		m.ResetEmailVerificationTokens()
+		return nil
+	case user.EdgeDataExports:
+		m.ResetDataExports()
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)

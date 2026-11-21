@@ -202,6 +202,8 @@ type SettingsView struct {
 	BulkLimit                   int       `json:"bulk_limit"`
 	ExpiredDataRetentionDays    int       `json:"expired_data_retention_days"`
 	AuditLogRetentionDays       int       `json:"audit_log_retention_days"` // 0: kept forever
+	AccountDeletionEnabled      bool      `json:"account_deletion_enabled"`
+	EmailChangeAllowed          bool      `json:"email_change_allowed"`
 	UpdatedAt                   time.Time `json:"updated_at"`
 	UpdatedBy                   string    `json:"updated_by"`
 }
@@ -240,6 +242,7 @@ func (s *AdminService) GetSettings(ctx context.Context, realm *domain.Realm) (*S
 		SuspiciousLoginEmailEnabled: st.SuspiciousLoginEmailEnabled, DefaultLocale: localeOrEnglish(st.DefaultLocale),
 		MailFromName: st.MailFromName, MailFromAddress: st.MailFromAddress, MailReplyTo: st.MailReplyTo, MailLogoURL: st.MailLogoURL, BulkLimit: effectiveBulkLimit(st),
 		ExpiredDataRetentionDays: EffectiveRetentionDays(st), AuditLogRetentionDays: EffectiveAuditLogRetentionDays(st),
+		AccountDeletionEnabled: st.AccountDeletionEnabled, EmailChangeAllowed: st.EmailChangeAllowed,
 		UpdatedAt: st.UpdatedAt, UpdatedBy: st.UpdatedBy,
 	}, nil
 }
@@ -274,6 +277,9 @@ type SettingsPatch struct {
 	BulkLimit                   *int
 	ExpiredDataRetentionDays    *int
 	AuditLogRetentionDays       *int
+	AccountDeletionEnabled      *bool
+	// EmailChangeAllowed: users may change their address (account console).
+	EmailChangeAllowed *bool
 }
 
 // UpdateSettings validates and applies a patch. Changes apply within a
@@ -316,6 +322,11 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 	if v := p.PasswordExpiryDays; v != nil && *v != 0 && !s.d.EmailEnabled {
 		return nil, adminInvalid("password_expiry_days", i18n.M("admin.error.password_expiry_needs_email", "password expiry needs e-mail: an expired password is replaced through a link sent by e-mail, which is not configured on this server"))
 	}
+	// The new address is confirmed through a link sent to it. Turning it
+	// off stays possible: e-mail may have been removed since.
+	if v := p.EmailChangeAllowed; v != nil && *v && !s.d.EmailEnabled {
+		return nil, adminInvalid("email_change_allowed", i18n.M("admin.error.email_change_needs_email", "changing one's e-mail address needs e-mail: the new address is confirmed through a link sent to it, and e-mail is not configured on this server"))
+	}
 	if v := p.AuditLogRetentionDays; v != nil && !validAuditLogRetention(*v) {
 		return nil, adminInvalid("audit_log_retention_days", i18n.M("admin.error.audit_retention", "audit_log_retention_days must be 0 (keep forever) or between {lo} and {hi}", "lo", MinAuditLogRetentionDays, "hi", MaxAuditLogRetentionDays))
 	}
@@ -342,6 +353,9 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 	}
 	if err := normalizeMailSender(&p); err != nil {
 		return nil, err
+	}
+	if isMaster(realm) && p.AccountDeletionEnabled != nil && *p.AccountDeletionEnabled {
+		return nil, adminRefused("system_realm", i18n.M("admin.error.deletion_master", "accounts of the master realm cannot delete themselves: administrators are removed by other administrators"))
 	}
 	if isMaster(realm) && p.MFARequiredGlobally != nil && !*p.MFARequiredGlobally {
 		return nil, adminRefused("system_realm", i18n.M("admin.error.mfa_master_full", "MFA stays required in the master realm: its accounts administer the whole instance"))
@@ -382,6 +396,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, actor AdminActor, rea
 		SuspiciousLoginEmailEnabled: p.SuspiciousLoginEmailEnabled, DefaultLocale: p.DefaultLocale, UpdatedBy: &by,
 		MailFromName: p.MailFromName, MailFromAddress: p.MailFromAddress, MailReplyTo: p.MailReplyTo, MailLogoURL: p.MailLogoURL, BulkLimit: p.BulkLimit,
 		ExpiredDataRetentionDays: p.ExpiredDataRetentionDays, AuditLogRetentionDays: p.AuditLogRetentionDays,
+		AccountDeletionEnabled: p.AccountDeletionEnabled, EmailChangeAllowed: p.EmailChangeAllowed,
 	}
 	if _, err := s.d.Settings.Update(ctx, st.ID, upd); err != nil {
 		return nil, fmt.Errorf("update settings: %w", err)
@@ -413,7 +428,8 @@ func settingsChanges(p SettingsPatch) map[string]interface{} {
 	bools := map[string]*bool{
 		"mfa_required_globally": p.MFARequiredGlobally, "notification_email_enabled": p.NotificationEmailEnabled,
 		"suspicious_login_email_enabled": p.SuspiciousLoginEmailEnabled, "remember_me_enabled": p.RememberMeEnabled,
-		"password_breach_check_enabled": p.PasswordBreachCheckEnabled,
+		"password_breach_check_enabled": p.PasswordBreachCheckEnabled, "account_deletion_enabled": p.AccountDeletionEnabled,
+		"email_change_allowed": p.EmailChangeAllowed,
 	}
 	for k, v := range bools {
 		if v != nil {

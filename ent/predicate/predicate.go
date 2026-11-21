@@ -30,6 +30,9 @@ type ClientScopeMapping func(*sql.Selector)
 // Consent is the predicate function for consent builders.
 type Consent func(*sql.Selector)
 
+// DataExport is the predicate function for dataexport builders.
+type DataExport func(*sql.Selector)
+
 // EmailOutbox is the predicate function for emailoutbox builders.
 type EmailOutbox func(*sql.Selector)
 

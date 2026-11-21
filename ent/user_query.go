@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"sso.internal/sso/ent/consent"
+	"sso.internal/sso/ent/dataexport"
 	"sso.internal/sso/ent/emailoutbox"
 	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/federatedidentity"
@@ -49,6 +50,7 @@ type UserQuery struct {
 	withFederatedIdentities     *FederatedIdentityQuery
 	withEmailOutbox             *EmailOutboxQuery
 	withEmailVerificationTokens *EmailVerificationTokenQuery
+	withDataExports             *DataExportQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -371,6 +373,28 @@ func (_q *UserQuery) QueryEmailVerificationTokens() *EmailVerificationTokenQuery
 	return query
 }
 
+// QueryDataExports chains the current query on the "data_exports" edge.
+func (_q *UserQuery) QueryDataExports() *DataExportQuery {
+	query := (&DataExportClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(dataexport.Table, dataexport.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.DataExportsTable, user.DataExportsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // First returns the first User entity from the query.
 // Returns a *NotFoundError when no User was found.
 func (_q *UserQuery) First(ctx context.Context) (*User, error) {
@@ -576,6 +600,7 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withFederatedIdentities:     _q.withFederatedIdentities.Clone(),
 		withEmailOutbox:             _q.withEmailOutbox.Clone(),
 		withEmailVerificationTokens: _q.withEmailVerificationTokens.Clone(),
+		withDataExports:             _q.withDataExports.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -725,6 +750,17 @@ func (_q *UserQuery) WithEmailVerificationTokens(opts ...func(*EmailVerification
 	return _q
 }
 
+// WithDataExports tells the query-builder to eager-load the nodes that are connected to
+// the "data_exports" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithDataExports(opts ...func(*DataExportQuery)) *UserQuery {
+	query := (&DataExportClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDataExports = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
@@ -803,7 +839,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [13]bool{
+		loadedTypes = [14]bool{
 			_q.withRealm != nil,
 			_q.withRoles != nil,
 			_q.withGroups != nil,
@@ -817,6 +853,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withFederatedIdentities != nil,
 			_q.withEmailOutbox != nil,
 			_q.withEmailVerificationTokens != nil,
+			_q.withDataExports != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -930,6 +967,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			func(n *User, e *EmailVerificationToken) {
 				n.Edges.EmailVerificationTokens = append(n.Edges.EmailVerificationTokens, e)
 			}); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withDataExports; query != nil {
+		if err := _q.loadDataExports(ctx, query, nodes,
+			func(n *User) { n.Edges.DataExports = []*DataExport{} },
+			func(n *User, e *DataExport) { n.Edges.DataExports = append(n.Edges.DataExports, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1372,6 +1416,36 @@ func (_q *UserQuery) loadEmailVerificationTokens(ctx context.Context, query *Ema
 	}
 	query.Where(predicate.EmailVerificationToken(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.EmailVerificationTokensColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadDataExports(ctx context.Context, query *DataExportQuery, nodes []*User, init func(*User), assign func(*User, *DataExport)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(dataexport.FieldUserID)
+	}
+	query.Where(predicate.DataExport(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.DataExportsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

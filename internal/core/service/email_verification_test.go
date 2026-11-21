@@ -98,6 +98,17 @@ func (m *memVerifications) MarkEmailVerified(_ context.Context, userID, email st
 	return true, nil
 }
 
+func (m *memVerifications) ApplyEmailChange(_ context.Context, userID, email string, at time.Time) (bool, error) {
+	m.users.mu.Lock()
+	defer m.users.mu.Unlock()
+	u, ok := m.users.byID[userID]
+	if !ok || u.PendingEmail != email {
+		return false, nil
+	}
+	u.Email, u.PendingEmail, u.EmailVerifiedAt = email, "", &at
+	return true, nil
+}
+
 type verifyFixture struct {
 	clock    *testClock
 	user     *domain.User
@@ -239,9 +250,8 @@ func TestResetPassword_EmailedLinkVerifiesTheAddress(t *testing.T) {
 		emailedTo string
 		want      bool
 	}{
-		"e-mailed to the address":      {"carol@example.test", true},
-		"handed over (not e-mailed)":   {"", false},
-		"e-mailed to a former address": {"carol@old.example", false},
+		"e-mailed to the address":    {"carol@example.test", true},
+		"handed over (not e-mailed)": {"", false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			f := newResetFixture(t)
@@ -260,4 +270,23 @@ func TestResetPassword_EmailedLinkVerifiesTheAddress(t *testing.T) {
 			require.Equal(t, c.want, f.users.byID["u-carol"].EmailVerifiedAt != nil)
 		})
 	}
+}
+
+// A link e-mailed to an address the account has left (its owner changed it,
+// or an administrator did) no longer resets the password: whoever reads the
+// old mailbox may not be the owner.
+func TestResetPassword_LinkToAFormerAddressIsRefused(t *testing.T) {
+	f := newResetFixture(t)
+	token := f.request(t, "carol")
+	for _, tok := range f.tokens.byID {
+		tok.EmailedTo = "carol@example.test"
+	}
+	before := f.users.byID["u-carol"].PasswordHash
+	f.users.byID["u-carol"].Email = "carol@new.example"
+
+	err := f.svc.ResetPassword(context.Background(), service.ResetPasswordInput{
+		RealmID: resetRealm, Token: token, NewPassword: "a brand new passphrase",
+	})
+	require.ErrorIs(t, err, service.ErrResetTokenInvalid)
+	require.Equal(t, before, f.users.byID["u-carol"].PasswordHash, "the password stays")
 }

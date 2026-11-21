@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"sso.internal/sso/ent/consent"
+	"sso.internal/sso/ent/dataexport"
 	"sso.internal/sso/ent/emailoutbox"
 	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/federatedidentity"
@@ -153,6 +154,26 @@ func (_u *UserUpdate) SetNillableEmailVerifiedAt(v *time.Time) *UserUpdate {
 // ClearEmailVerifiedAt clears the value of the "email_verified_at" field.
 func (_u *UserUpdate) ClearEmailVerifiedAt() *UserUpdate {
 	_u.mutation.ClearEmailVerifiedAt()
+	return _u
+}
+
+// SetPendingEmail sets the "pending_email" field.
+func (_u *UserUpdate) SetPendingEmail(v string) *UserUpdate {
+	_u.mutation.SetPendingEmail(v)
+	return _u
+}
+
+// SetNillablePendingEmail sets the "pending_email" field if the given value is not nil.
+func (_u *UserUpdate) SetNillablePendingEmail(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetPendingEmail(*v)
+	}
+	return _u
+}
+
+// ClearPendingEmail clears the value of the "pending_email" field.
+func (_u *UserUpdate) ClearPendingEmail() *UserUpdate {
+	_u.mutation.ClearPendingEmail()
 	return _u
 }
 
@@ -327,6 +348,26 @@ func (_u *UserUpdate) SetNillableLastLockedAt(v *time.Time) *UserUpdate {
 // ClearLastLockedAt clears the value of the "last_locked_at" field.
 func (_u *UserUpdate) ClearLastLockedAt() *UserUpdate {
 	_u.mutation.ClearLastLockedAt()
+	return _u
+}
+
+// SetDeletionScheduledAt sets the "deletion_scheduled_at" field.
+func (_u *UserUpdate) SetDeletionScheduledAt(v time.Time) *UserUpdate {
+	_u.mutation.SetDeletionScheduledAt(v)
+	return _u
+}
+
+// SetNillableDeletionScheduledAt sets the "deletion_scheduled_at" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableDeletionScheduledAt(v *time.Time) *UserUpdate {
+	if v != nil {
+		_u.SetDeletionScheduledAt(*v)
+	}
+	return _u
+}
+
+// ClearDeletionScheduledAt clears the value of the "deletion_scheduled_at" field.
+func (_u *UserUpdate) ClearDeletionScheduledAt() *UserUpdate {
+	_u.mutation.ClearDeletionScheduledAt()
 	return _u
 }
 
@@ -508,6 +549,21 @@ func (_u *UserUpdate) AddEmailVerificationTokens(v ...*EmailVerificationToken) *
 		ids[i] = v[i].ID
 	}
 	return _u.AddEmailVerificationTokenIDs(ids...)
+}
+
+// AddDataExportIDs adds the "data_exports" edge to the DataExport entity by IDs.
+func (_u *UserUpdate) AddDataExportIDs(ids ...string) *UserUpdate {
+	_u.mutation.AddDataExportIDs(ids...)
+	return _u
+}
+
+// AddDataExports adds the "data_exports" edges to the DataExport entity.
+func (_u *UserUpdate) AddDataExports(v ...*DataExport) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDataExportIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -767,6 +823,27 @@ func (_u *UserUpdate) RemoveEmailVerificationTokens(v ...*EmailVerificationToken
 	return _u.RemoveEmailVerificationTokenIDs(ids...)
 }
 
+// ClearDataExports clears all "data_exports" edges to the DataExport entity.
+func (_u *UserUpdate) ClearDataExports() *UserUpdate {
+	_u.mutation.ClearDataExports()
+	return _u
+}
+
+// RemoveDataExportIDs removes the "data_exports" edge to DataExport entities by IDs.
+func (_u *UserUpdate) RemoveDataExportIDs(ids ...string) *UserUpdate {
+	_u.mutation.RemoveDataExportIDs(ids...)
+	return _u
+}
+
+// RemoveDataExports removes "data_exports" edges to DataExport entities.
+func (_u *UserUpdate) RemoveDataExports(v ...*DataExport) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDataExportIDs(ids...)
+}
+
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *UserUpdate) Save(ctx context.Context) (int, error) {
 	_u.defaults()
@@ -868,6 +945,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.EmailVerifiedAtCleared() {
 		_spec.ClearField(user.FieldEmailVerifiedAt, field.TypeTime)
 	}
+	if value, ok := _u.mutation.PendingEmail(); ok {
+		_spec.SetField(user.FieldPendingEmail, field.TypeString, value)
+	}
+	if _u.mutation.PendingEmailCleared() {
+		_spec.ClearField(user.FieldPendingEmail, field.TypeString)
+	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
 	}
@@ -921,6 +1004,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.LastLockedAtCleared() {
 		_spec.ClearField(user.FieldLastLockedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.DeletionScheduledAt(); ok {
+		_spec.SetField(user.FieldDeletionScheduledAt, field.TypeTime, value)
+	}
+	if _u.mutation.DeletionScheduledAtCleared() {
+		_spec.ClearField(user.FieldDeletionScheduledAt, field.TypeTime)
 	}
 	if _u.mutation.RolesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1462,6 +1551,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.DataExportsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DataExportsTable,
+			Columns: []string{user.DataExportsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dataexport.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDataExportsIDs(); len(nodes) > 0 && !_u.mutation.DataExportsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DataExportsTable,
+			Columns: []string{user.DataExportsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dataexport.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DataExportsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DataExportsTable,
+			Columns: []string{user.DataExportsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dataexport.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -1593,6 +1727,26 @@ func (_u *UserUpdateOne) SetNillableEmailVerifiedAt(v *time.Time) *UserUpdateOne
 // ClearEmailVerifiedAt clears the value of the "email_verified_at" field.
 func (_u *UserUpdateOne) ClearEmailVerifiedAt() *UserUpdateOne {
 	_u.mutation.ClearEmailVerifiedAt()
+	return _u
+}
+
+// SetPendingEmail sets the "pending_email" field.
+func (_u *UserUpdateOne) SetPendingEmail(v string) *UserUpdateOne {
+	_u.mutation.SetPendingEmail(v)
+	return _u
+}
+
+// SetNillablePendingEmail sets the "pending_email" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillablePendingEmail(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetPendingEmail(*v)
+	}
+	return _u
+}
+
+// ClearPendingEmail clears the value of the "pending_email" field.
+func (_u *UserUpdateOne) ClearPendingEmail() *UserUpdateOne {
+	_u.mutation.ClearPendingEmail()
 	return _u
 }
 
@@ -1767,6 +1921,26 @@ func (_u *UserUpdateOne) SetNillableLastLockedAt(v *time.Time) *UserUpdateOne {
 // ClearLastLockedAt clears the value of the "last_locked_at" field.
 func (_u *UserUpdateOne) ClearLastLockedAt() *UserUpdateOne {
 	_u.mutation.ClearLastLockedAt()
+	return _u
+}
+
+// SetDeletionScheduledAt sets the "deletion_scheduled_at" field.
+func (_u *UserUpdateOne) SetDeletionScheduledAt(v time.Time) *UserUpdateOne {
+	_u.mutation.SetDeletionScheduledAt(v)
+	return _u
+}
+
+// SetNillableDeletionScheduledAt sets the "deletion_scheduled_at" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableDeletionScheduledAt(v *time.Time) *UserUpdateOne {
+	if v != nil {
+		_u.SetDeletionScheduledAt(*v)
+	}
+	return _u
+}
+
+// ClearDeletionScheduledAt clears the value of the "deletion_scheduled_at" field.
+func (_u *UserUpdateOne) ClearDeletionScheduledAt() *UserUpdateOne {
+	_u.mutation.ClearDeletionScheduledAt()
 	return _u
 }
 
@@ -1948,6 +2122,21 @@ func (_u *UserUpdateOne) AddEmailVerificationTokens(v ...*EmailVerificationToken
 		ids[i] = v[i].ID
 	}
 	return _u.AddEmailVerificationTokenIDs(ids...)
+}
+
+// AddDataExportIDs adds the "data_exports" edge to the DataExport entity by IDs.
+func (_u *UserUpdateOne) AddDataExportIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.AddDataExportIDs(ids...)
+	return _u
+}
+
+// AddDataExports adds the "data_exports" edges to the DataExport entity.
+func (_u *UserUpdateOne) AddDataExports(v ...*DataExport) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDataExportIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -2207,6 +2396,27 @@ func (_u *UserUpdateOne) RemoveEmailVerificationTokens(v ...*EmailVerificationTo
 	return _u.RemoveEmailVerificationTokenIDs(ids...)
 }
 
+// ClearDataExports clears all "data_exports" edges to the DataExport entity.
+func (_u *UserUpdateOne) ClearDataExports() *UserUpdateOne {
+	_u.mutation.ClearDataExports()
+	return _u
+}
+
+// RemoveDataExportIDs removes the "data_exports" edge to DataExport entities by IDs.
+func (_u *UserUpdateOne) RemoveDataExportIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.RemoveDataExportIDs(ids...)
+	return _u
+}
+
+// RemoveDataExports removes "data_exports" edges to DataExport entities.
+func (_u *UserUpdateOne) RemoveDataExports(v ...*DataExport) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDataExportIDs(ids...)
+}
+
 // Where appends a list predicates to the UserUpdate builder.
 func (_u *UserUpdateOne) Where(ps ...predicate.User) *UserUpdateOne {
 	_u.mutation.Where(ps...)
@@ -2338,6 +2548,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if _u.mutation.EmailVerifiedAtCleared() {
 		_spec.ClearField(user.FieldEmailVerifiedAt, field.TypeTime)
 	}
+	if value, ok := _u.mutation.PendingEmail(); ok {
+		_spec.SetField(user.FieldPendingEmail, field.TypeString, value)
+	}
+	if _u.mutation.PendingEmailCleared() {
+		_spec.ClearField(user.FieldPendingEmail, field.TypeString)
+	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
 	}
@@ -2391,6 +2607,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if _u.mutation.LastLockedAtCleared() {
 		_spec.ClearField(user.FieldLastLockedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.DeletionScheduledAt(); ok {
+		_spec.SetField(user.FieldDeletionScheduledAt, field.TypeTime, value)
+	}
+	if _u.mutation.DeletionScheduledAtCleared() {
+		_spec.ClearField(user.FieldDeletionScheduledAt, field.TypeTime)
 	}
 	if _u.mutation.RolesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -2925,6 +3147,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(emailverificationtoken.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DataExportsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DataExportsTable,
+			Columns: []string{user.DataExportsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dataexport.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDataExportsIDs(); len(nodes) > 0 && !_u.mutation.DataExportsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DataExportsTable,
+			Columns: []string{user.DataExportsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dataexport.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DataExportsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DataExportsTable,
+			Columns: []string{user.DataExportsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dataexport.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

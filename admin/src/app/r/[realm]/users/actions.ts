@@ -176,6 +176,12 @@ export async function unlockUser(realm: string, id: string) {
   return act(() => api<void>(apiPath(["realms", realm, "users", id, "unlock"]), { method: "POST" }));
 }
 
+export async function cancelUserDeletion(realm: string, id: string) {
+  return act(() =>
+    api<void>(apiPath(["realms", realm, "users", id, "deletion", "cancel"]), { method: "POST" }),
+  );
+}
+
 export async function resendActivation(realm: string, id: string, sendEmail: boolean) {
   return act(() =>
     api<InviteResult>(apiPath(["realms", realm, "users", id, "activation-link"]), {

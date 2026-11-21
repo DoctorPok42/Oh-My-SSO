@@ -179,6 +179,11 @@ func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *admin
 		TrustedDevices: trusted,
 		Outbox:         entstore.NewEmailOutboxRepository(client),
 	}
+	// As in app.BuildCore: a deleted account takes what still names it along.
+	deps.Erasure = service.NewErasureService(service.ErasureDeps{
+		Users: users, Erasure: entstore.NewErasureRepository(client), Sessions: sessions, SessionRows: sessionRepo,
+		Tokens: tokens, Consents: entstore.NewConsentRepository(client), Clients: clients, Audit: audit, Now: clock.Now,
+	})
 	deps.EmailVerification = service.NewEmailVerificationService(service.EmailVerificationDeps{
 		Tx: tx, Users: users, Links: entstore.NewEmailVerificationRepository(client), Notifier: notifier, Audit: audit, Now: clock.Now,
 	})

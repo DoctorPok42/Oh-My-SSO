@@ -27,6 +27,10 @@ const (
 	FieldPasswordHistoryCount = "password_history_count"
 	// FieldPasswordBreachCheckEnabled holds the string denoting the password_breach_check_enabled field in the database.
 	FieldPasswordBreachCheckEnabled = "password_breach_check_enabled"
+	// FieldAccountDeletionEnabled holds the string denoting the account_deletion_enabled field in the database.
+	FieldAccountDeletionEnabled = "account_deletion_enabled"
+	// FieldEmailChangeAllowed holds the string denoting the email_change_allowed field in the database.
+	FieldEmailChangeAllowed = "email_change_allowed"
 	// FieldSessionIdleMinutes holds the string denoting the session_idle_minutes field in the database.
 	FieldSessionIdleMinutes = "session_idle_minutes"
 	// FieldSessionMaxHours holds the string denoting the session_max_hours field in the database.
@@ -107,6 +111,8 @@ var Columns = []string{
 	FieldPasswordExpiryDays,
 	FieldPasswordHistoryCount,
 	FieldPasswordBreachCheckEnabled,
+	FieldAccountDeletionEnabled,
+	FieldEmailChangeAllowed,
 	FieldSessionIdleMinutes,
 	FieldSessionMaxHours,
 	FieldRememberMeEnabled,
@@ -161,6 +167,10 @@ var (
 	DefaultPasswordHistoryCount int
 	// DefaultPasswordBreachCheckEnabled holds the default value on creation for the "password_breach_check_enabled" field.
 	DefaultPasswordBreachCheckEnabled bool
+	// DefaultAccountDeletionEnabled holds the default value on creation for the "account_deletion_enabled" field.
+	DefaultAccountDeletionEnabled bool
+	// DefaultEmailChangeAllowed holds the default value on creation for the "email_change_allowed" field.
+	DefaultEmailChangeAllowed bool
 	// DefaultSessionIdleMinutes holds the default value on creation for the "session_idle_minutes" field.
 	DefaultSessionIdleMinutes int
 	// DefaultSessionMaxHours holds the default value on creation for the "session_max_hours" field.
@@ -257,6 +267,16 @@ func ByPasswordHistoryCount(opts ...sql.OrderTermOption) OrderOption {
 // ByPasswordBreachCheckEnabled orders the results by the password_breach_check_enabled field.
 func ByPasswordBreachCheckEnabled(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPasswordBreachCheckEnabled, opts...).ToFunc()
+}
+
+// ByAccountDeletionEnabled orders the results by the account_deletion_enabled field.
+func ByAccountDeletionEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAccountDeletionEnabled, opts...).ToFunc()
+}
+
+// ByEmailChangeAllowed orders the results by the email_change_allowed field.
+func ByEmailChangeAllowed(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEmailChangeAllowed, opts...).ToFunc()
 }
 
 // BySessionIdleMinutes orders the results by the session_idle_minutes field.

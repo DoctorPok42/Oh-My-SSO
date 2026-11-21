@@ -31,6 +31,8 @@ const (
 	FieldEmail = "email"
 	// FieldEmailVerifiedAt holds the string denoting the email_verified_at field in the database.
 	FieldEmailVerifiedAt = "email_verified_at"
+	// FieldPendingEmail holds the string denoting the pending_email field in the database.
+	FieldPendingEmail = "pending_email"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -53,6 +55,8 @@ const (
 	FieldLockoutCount = "lockout_count"
 	// FieldLastLockedAt holds the string denoting the last_locked_at field in the database.
 	FieldLastLockedAt = "last_locked_at"
+	// FieldDeletionScheduledAt holds the string denoting the deletion_scheduled_at field in the database.
+	FieldDeletionScheduledAt = "deletion_scheduled_at"
 	// EdgeRealm holds the string denoting the realm edge name in mutations.
 	EdgeRealm = "realm"
 	// EdgeRoles holds the string denoting the roles edge name in mutations.
@@ -79,6 +83,8 @@ const (
 	EdgeEmailOutbox = "email_outbox"
 	// EdgeEmailVerificationTokens holds the string denoting the email_verification_tokens edge name in mutations.
 	EdgeEmailVerificationTokens = "email_verification_tokens"
+	// EdgeDataExports holds the string denoting the data_exports edge name in mutations.
+	EdgeDataExports = "data_exports"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// RealmTable is the table that holds the realm relation/edge.
@@ -168,6 +174,13 @@ const (
 	EmailVerificationTokensInverseTable = "email_verification_tokens"
 	// EmailVerificationTokensColumn is the table column denoting the email_verification_tokens relation/edge.
 	EmailVerificationTokensColumn = "user_id"
+	// DataExportsTable is the table that holds the data_exports relation/edge.
+	DataExportsTable = "data_exports"
+	// DataExportsInverseTable is the table name for the DataExport entity.
+	// It exists in this package in order to avoid circular dependency with the "dataexport" package.
+	DataExportsInverseTable = "data_exports"
+	// DataExportsColumn is the table column denoting the data_exports relation/edge.
+	DataExportsColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -181,6 +194,7 @@ var Columns = []string{
 	FieldMustChangePassword,
 	FieldEmail,
 	FieldEmailVerifiedAt,
+	FieldPendingEmail,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldDeletedAt,
@@ -192,6 +206,7 @@ var Columns = []string{
 	FieldLockedUntil,
 	FieldLockoutCount,
 	FieldLastLockedAt,
+	FieldDeletionScheduledAt,
 }
 
 var (
@@ -285,6 +300,11 @@ func ByEmailVerifiedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEmailVerifiedAt, opts...).ToFunc()
 }
 
+// ByPendingEmail orders the results by the pending_email field.
+func ByPendingEmail(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPendingEmail, opts...).ToFunc()
+}
+
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
@@ -333,6 +353,11 @@ func ByLockoutCount(opts ...sql.OrderTermOption) OrderOption {
 // ByLastLockedAt orders the results by the last_locked_at field.
 func ByLastLockedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastLockedAt, opts...).ToFunc()
+}
+
+// ByDeletionScheduledAt orders the results by the deletion_scheduled_at field.
+func ByDeletionScheduledAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeletionScheduledAt, opts...).ToFunc()
 }
 
 // ByRealmField orders the results by realm field.
@@ -509,6 +534,20 @@ func ByEmailVerificationTokens(term sql.OrderTerm, terms ...sql.OrderTerm) Order
 		sqlgraph.OrderByNeighborTerms(s, newEmailVerificationTokensStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByDataExportsCount orders the results by data_exports count.
+func ByDataExportsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDataExportsStep(), opts...)
+	}
+}
+
+// ByDataExports orders the results by data_exports terms.
+func ByDataExports(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDataExportsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newRealmStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -598,5 +637,12 @@ func newEmailVerificationTokensStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(EmailVerificationTokensInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, EmailVerificationTokensTable, EmailVerificationTokensColumn),
+	)
+}
+func newDataExportsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DataExportsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, DataExportsTable, DataExportsColumn),
 	)
 }

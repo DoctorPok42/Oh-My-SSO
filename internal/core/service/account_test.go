@@ -139,6 +139,8 @@ type acctFixture struct {
 	admin    *acctAdmin
 	attempts *acctAttempts
 	devices  *memstore.TrustedDevices
+	mfa      *memstore.MfaMethods
+	exports  *acctExports
 	audit    *fakeAuditRepo
 	notifier *recordingNotifier
 	svc      *service.AccountService
@@ -146,7 +148,9 @@ type acctFixture struct {
 	other    *domain.User // another user of the same realm
 }
 
-func newAcctFixture(t *testing.T) *acctFixture {
+// newAcctFixture: opts change the service's dependencies (the fixture's
+// fakes are made by then).
+func newAcctFixture(t *testing.T, opts ...func(*acctFixture, *service.AccountDeps)) *acctFixture {
 	t.Helper()
 	f := &acctFixture{clock: newTestClock(), audit: &fakeAuditRepo{}, notifier: &recordingNotifier{}}
 	f.user = &domain.User{ID: "u-dana", RealmID: acctRealm, Username: "dana", Email: "dana@example.test",
@@ -177,9 +181,11 @@ func newAcctFixture(t *testing.T) *acctFixture {
 	f.admin = &acctAdmin{users: f.users, sessions: f.sessions, tokens: f.tokens}
 	f.attempts = &acctAttempts{}
 	f.devices = memstore.NewTrustedDevices()
-	f.svc = service.NewAccountService(service.AccountDeps{
+	f.mfa = memstore.NewMfaMethods(f.clock.Now)
+	f.exports = &acctExports{byUser: map[string]*domain.DataExport{}}
+	deps := service.AccountDeps{
 		Users: f.users, Admin: f.admin, Settings: fakeSettingsRepo{}, Clients: f.clients, ClientScopes: acctScopes{},
-		Tokens: f.tokens, LoginAttempts: f.attempts, Audit: f.audit,
+		Tokens: f.tokens, LoginAttempts: f.attempts, Audit: f.audit, MFAMethods: f.mfa, DataExports: f.exports,
 		Sessions: f.sessSvc,
 		Consents: service.NewConsentService(service.ConsentDeps{
 			Consents: f.consents, Clients: f.clients, Tokens: f.tokens, Audit: f.audit,
@@ -188,7 +194,11 @@ func newAcctFixture(t *testing.T) *acctFixture {
 		Policy:         service.NewPasswordPolicyService(nil),
 		Notifier:       f.notifier,
 		Now:            f.clock.Now,
-	})
+	}
+	for _, opt := range opts {
+		opt(f, &deps)
+	}
+	f.svc = service.NewAccountService(deps)
 	return f
 }
 
@@ -517,9 +527,12 @@ func TestAccount_SignIns(t *testing.T) {
 
 func TestAccount_Activity(t *testing.T) {
 	f := newAcctFixture(t)
+	// The targets as repository.CreateAuditLogParams.Normalized sets them.
 	f.admin.audit = []*domain.AuditLog{
-		{Action: "mfa.method_enrolled", UserID: f.user.ID, IPAddress: "198.51.100.7", Details: map[string]interface{}{"type": "totp"}},
-		{Action: "mfa.reset", UserID: "an-admin-of-master", IPAddress: "10.0.0.9", UserAgent: "admin browser"},
+		{Action: "mfa.method_enrolled", UserID: f.user.ID, TargetUserID: f.user.ID, IPAddress: "198.51.100.7",
+			Details: map[string]interface{}{"type": "totp"}},
+		{Action: "mfa.reset", UserID: "an-admin-of-master", TargetUserID: f.user.ID, IPAddress: "10.0.0.9", UserAgent: "admin browser",
+			Details: map[string]interface{}{"admin_username": "root-operator", "admin_realm": "master", "reason": "lost phone"}},
 	}
 	list, more, err := f.svc.Activity(context.Background(), f.user, 0, 25)
 	require.NoError(t, err)
@@ -530,6 +543,8 @@ func TestAccount_Activity(t *testing.T) {
 	require.True(t, list[1].ByAdmin)
 	require.Empty(t, list[1].IPAddress, "an administrator's address is not shown")
 	require.Empty(t, list[1].UserAgent)
+	require.Equal(t, map[string]interface{}{"reason": "lost phone"}, list[1].Details, "nor their name")
+	require.Contains(t, f.admin.audit[1].Details, "admin_username", "the stored row is left alone")
 
 	require.Equal(t, acctRealm, f.admin.searched.RealmID)
 	require.Equal(t, f.user.ID, f.admin.searched.UserID)

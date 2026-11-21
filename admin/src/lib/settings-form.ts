@@ -32,6 +32,8 @@ export type SettingsPatch = Partial<
     | "bulk_limit"
     | "expired_data_retention_days"
     | "audit_log_retention_days"
+    | "account_deletion_enabled"
+    | "email_change_allowed"
   >
 >;
 
@@ -99,7 +101,13 @@ export function settingsSection(tab?: string): SettingsSection {
 }
 
 const SECTION_FIELDS: Record<SettingsSection, readonly string[]> = {
-  general: ["default_locale", "bulk_limit", "expired_data_retention_days"],
+  general: [
+    "default_locale",
+    "bulk_limit",
+    "expired_data_retention_days",
+    "account_deletion_enabled",
+    "email_change_allowed",
+  ],
   security: [
     "min_password_length",
     "password_breach_check_enabled",
@@ -135,6 +143,10 @@ export type SettingsToggles = {
   suspicious: boolean;
   remember: boolean;
   breach: boolean;
+  /** account_deletion_enabled; undefined: unchanged. */
+  deletion?: boolean;
+  /** email_change_allowed; undefined: unchanged. */
+  emailChange?: boolean;
 };
 
 /** The changed fields only (PATCH). */
@@ -158,6 +170,10 @@ export function settingsDiff(
     patch.suspicious_login_email_enabled = toggles.suspicious;
   if (toggles.remember !== before.remember_me_enabled) patch.remember_me_enabled = toggles.remember;
   if (toggles.breach !== before.password_breach_check_enabled) patch.password_breach_check_enabled = toggles.breach;
+  if (toggles.deletion !== undefined && toggles.deletion !== before.account_deletion_enabled)
+    patch.account_deletion_enabled = toggles.deletion;
+  if (toggles.emailChange !== undefined && toggles.emailChange !== before.email_change_allowed)
+    patch.email_change_allowed = toggles.emailChange;
   if (locale && locale !== (before.default_locale || "en")) patch.default_locale = locale;
   if (mail) {
     // An empty field is a valid value (back to the server default), so it

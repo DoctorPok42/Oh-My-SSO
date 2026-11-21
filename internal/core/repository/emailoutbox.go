@@ -55,4 +55,10 @@ type EmailVerificationRepository interface {
 	// address still is email and is not verified yet, in one statement (an
 	// address changed in between is not marked). It reports whether it did.
 	MarkEmailVerified(ctx context.Context, userID, email string, at time.Time) (bool, error)
+	// ApplyEmailChange makes email the account's address, verified at at,
+	// if it still is the account's pending address, in one statement (a
+	// change cancelled or replaced in between is not applied). It reports
+	// whether it did. ErrConflict: another account took the address
+	// meanwhile.
+	ApplyEmailChange(ctx context.Context, userID, email string, at time.Time) (bool, error)
 }

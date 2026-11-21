@@ -262,6 +262,9 @@ func (s *IdentityCoreService) IssueIdentityAssertion(ctx context.Context, sessio
 	if err != nil {
 		return nil, fmt.Errorf("issue identity assertion: load user: %w", err)
 	}
+	if user.DeletionScheduledAt != nil {
+		return nil, core.ErrAccountDeletionScheduled
+	}
 	client, err := s.clients.GetByID(ctx, clientRef)
 	if err != nil {
 		return nil, fmt.Errorf("issue identity assertion: load client: %w", err)

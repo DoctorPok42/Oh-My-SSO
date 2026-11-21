@@ -36,14 +36,20 @@ func PreviewDataIn(loc *i18n.Localizer, tmpl Template, product string, now time.
 	case TemplateEmailVerification:
 		d.VerifyURL = base + "/auth/verify-email#token=Xk3pQ9vRt2LmN8wYz4AbCdEfGh7JkLmNoPqRsTuVwXy"
 		d.ExpiresIn = humanDuration(loc, 24*time.Hour)
+	case TemplateDataExportReady:
+		d.DataExportURL, d.ExpiresIn = base+"/account/data", humanDuration(loc, 7*24*time.Hour)
+	case TemplateAccountDeletion:
+		d.DataExportURL, d.DeletionAt = base+"/account/data", formatTime(loc, now.Add(14*24*time.Hour))
+	case TemplateEmailChanged:
+		d.NewEmail = "alice.martin@example.org"
 	case TemplateAccountInvite:
 		d.ResetURL, d.ExpiresIn = resetURL, humanDuration(loc, 72*time.Hour)
 	case TemplateMfaMethodAdded, TemplateMfaMethodRemoved:
 		d.MethodLabel, d.MethodName = methodLabel(loc, domain.MfaMethodPasskey), "MacBook Touch ID"
 	case TemplateAccountLocked:
 		d.FailedAttempts = 5
-		d.LockDuration = humanDuration(loc, 15 * time.Minute)
-		d.LockedUntil = formatTime(loc, now.Add(15 * time.Minute))
+		d.LockDuration = humanDuration(loc, 15*time.Minute)
+		d.LockedUntil = formatTime(loc, now.Add(15*time.Minute))
 	case TemplateSuspiciousLogin:
 		d.Reasons = []string{
 			reasonText(loc, domain.SuspiciousNewCountry, d.Location, ""),

@@ -59,6 +59,8 @@ export function SettingsForm({
   const [suspicious, setSuspicious] = useState(settings.suspicious_login_email_enabled);
   const [remember, setRemember] = useState(settings.remember_me_enabled);
   const [breach, setBreach] = useState(settings.password_breach_check_enabled);
+  const [deletion, setDeletion] = useState(settings.account_deletion_enabled);
+  const [emailChange, setEmailChange] = useState(settings.email_change_allowed);
   const [locale, setLocale] = useState(settings.default_locale || "en");
   const [mail, setMail] = useState(Object.fromEntries(MAIL_FIELDS.map((k) => [k, settings[k] ?? ""])) as MailForm);
   const [error, setError] = useState<{ field?: string; message: string } | null>(null);
@@ -66,7 +68,14 @@ export function SettingsForm({
   const { locked, banner } = useEditLock({ canWrite: writable, managedByConfig: settings.managed_by === "config" });
   const { run, pending } = useAction();
   const testMail = useAction(); // its own spinner, apart from "Save changes"
-  const patch = settingsDiff(settings, form, allowlist, { notif, suspicious, remember, breach }, locale, mail);
+  const patch = settingsDiff(
+    settings,
+    form,
+    allowlist,
+    { notif, suspicious, remember, breach, deletion, emailChange },
+    locale,
+    mail,
+  );
   const dirty = Object.keys(patch).length > 0;
   // The save bar slides up when there is something to save and slides back down
   // when there is not: it stays mounted while its exit animation plays.
@@ -202,6 +211,29 @@ export function SettingsForm({
                     RETENTION_DAYS,
                   ),
                 )}
+                {realm !== "master" && (
+                  <Toggle
+                    label={t("settings.retention.account_deletion", "Let users delete their account")}
+                    hint={t(
+                      "settings.retention.account_deletion_hint",
+                      "From their account console (GDPR article 17). The account is deleted 14 days later, with what names it in the audit log; applications refuse it in between, and the user may keep it. Off: they ask an administrator.",
+                    )}
+                    checked={deletion}
+                    onChange={setDeletion}
+                    locked={locked}
+                  />
+                )}
+                <Toggle
+                  label={t("settings.retention.email_change", "Let users change their e-mail address")}
+                  hint={t(
+                    "settings.retention.email_change_hint",
+                    "From their account console: the address changes once they open a link sent to the new one, and the previous one is told. An application that recognizes its users by e-mail address (SAML NameID in e-mail format, or the email claim instead of sub) will see a new user: check yours first. Off: they ask an administrator.",
+                  )}
+                  checked={emailChange}
+                  onChange={setEmailChange}
+                  // The new address is confirmed by e-mail: without it, it can only be turned off.
+                  locked={locked || (!settings.email_enabled && !emailChange)}
+                />
               </div>
             </Card>
             {infrastructure && <div className="lg:col-span-2">{infrastructure}</div>}

@@ -43,6 +43,22 @@ const (
 	UserEmailVerificationSent = "user.email_verification_sent"
 	// UserEmailVerified: its link was used; the address is verified.
 	UserEmailVerified = "user.email_verified"
+	// UserEmailChangeRequested: the user asked to switch to a new address
+	// (account console), a link went to it; UserEmailChanged: they used it,
+	// the account has the new address; UserEmailChangeCancelled: they
+	// cancelled before.
+	UserEmailChangeRequested = "user.email_change_requested"
+	UserEmailChanged         = "user.email_changed"
+	UserEmailChangeCancelled = "user.email_change_cancelled"
+	// UserDataExportRequested: the user asked for a copy of their data
+	// (account console); UserDataExported: they downloaded it.
+	UserDataExportRequested = "user.data_export_requested"
+	UserDataExported        = "user.data_exported"
+	// UserDeletionRequested: the user asked for their account to be deleted
+	// (account console); UserDeletionCancelled: they, or an administrator,
+	// took it back before it happened. UserDeleted follows otherwise.
+	UserDeletionRequested = "user.deletion_requested"
+	UserDeletionCancelled = "user.deletion_cancelled"
 
 	// Second factors.
 	MFAMethodEnrolled         = "mfa.method_enrolled"
@@ -168,6 +184,13 @@ var Catalog = []ActionInfo{
 	{UserPasswordResetForced, "Users", "Password reset forced by an administrator"},
 	{UserEmailVerificationSent, "Users", "Address verification e-mail sent"},
 	{UserEmailVerified, "Users", "E-mail address verified"},
+	{UserEmailChangeRequested, "Users", "E-mail address change requested"},
+	{UserEmailChanged, "Users", "E-mail address changed"},
+	{UserEmailChangeCancelled, "Users", "E-mail address change cancelled"},
+	{UserDataExportRequested, "Users", "Copy of personal data requested"},
+	{UserDataExported, "Users", "Copy of personal data downloaded"},
+	{UserDeletionRequested, "Users", "Account deletion requested"},
+	{UserDeletionCancelled, "Users", "Account deletion cancelled"},
 
 	{MFAMethodEnrolled, "Second factors", "Factor enrolled"},
 	{MFAMethodRemoved, "Second factors", "Factor removed"},

@@ -24,7 +24,7 @@ import { UriList } from "@/components/ui/uri-list";
 import { useT } from "@/i18n/client";
 import { clientBody, draftFromClient, emptyDraft, type ClientDraft } from "@/lib/client-form";
 import { formatDate } from "@/lib/format";
-import { MFA_METHOD_LABELS, NAME_ID_FORMATS, STANDARD_SCOPES } from "@/lib/labels";
+import { EMAIL_NAME_ID, MFA_METHOD_LABELS, NAME_ID_FORMATS, STANDARD_SCOPES } from "@/lib/labels";
 import type { Access, Client, ClientScope, ClientSummary } from "@/lib/types";
 import {
   addCertificate,
@@ -622,7 +622,19 @@ function SamlFields({
           placeholder="https://sp.example.com/saml/acs"
         />
       </Field>
-      <Field label={t("clients.field.nameid", "NameID format")} htmlFor="c-nameid" error={err("name_id_format")}>
+      <Field
+        label={t("clients.field.nameid", "NameID format")}
+        htmlFor="c-nameid"
+        error={err("name_id_format")}
+        hint={
+          draft.nameIdFormat === EMAIL_NAME_ID
+            ? t(
+                "clients.field.nameid_email_hint",
+                "The service provider gets the user's e-mail address: if the address changes, it sees a new user. Prefer Persistent.",
+              )
+            : undefined
+        }
+      >
         <NativeSelect id="c-nameid" value={draft.nameIdFormat} onChange={(e) => set("nameIdFormat", e.target.value)}>
           {NAME_ID_FORMATS.map((f) => (
             <option key={f.value} value={f.value}>

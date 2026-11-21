@@ -30,6 +30,8 @@ const (
 	// The user changed their password in the account console: their other
 	// sessions end, the one they used stays.
 	SessionRevokedPasswordChanged SessionRevokedReason = "password_changed"
+	// The user asked for their account to be deleted, or it was.
+	SessionRevokedAccountDeletion SessionRevokedReason = "account_deletion"
 )
 
 // Authentication Method Reference values (RFC 8176 §2), stored as-is in

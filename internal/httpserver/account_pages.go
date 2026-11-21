@@ -50,11 +50,18 @@ func (s *Server) accountEvent(r *http.Request) service.AccountEvent {
 func (s *Server) profilePage(w http.ResponseWriter, r *http.Request, a *acct) accountui.ProfilePage {
 	given, _ := a.user.Profile["given_name"].(string)
 	family, _ := a.user.Profile["family_name"].(string)
+	canChange, pending := s.canChangeEmail(r, a.user), ""
+	if canChange {
+		// Turned off since the request: the change is out of reach, it must
+		// not hide "Send a verification e-mail" either.
+		pending = a.user.PendingEmail
+	}
 	return accountui.ProfilePage{
 		Layout:   s.accountLayout(w, r, a, "profile", titleProfile),
 		Username: a.user.Username, Email: a.user.Email, EmailVerified: a.user.EmailVerifiedAt != nil,
 		CanVerifyEmail: s.canVerifyEmail(a.user),
-		GivenName:      given, FamilyName: family,
+		CanChangeEmail: canChange, PendingEmail: pending,
+		GivenName: given, FamilyName: family,
 		Languages: s.languageOptions(r),
 	}
 }
@@ -872,6 +879,20 @@ func activityText(loc *i18n.Localizer, e service.ActivityEntry) string {
 		return loc.T("account.activity.approved", "Approved an application")
 	case audit.KnownAccountForgotten:
 		return loc.T("account.activity.forgotten", "Account forgotten on a device")
+	case audit.UserDataExportRequested:
+		return loc.T("account.activity.data_requested", "Copy of your data requested")
+	case audit.UserDataExported:
+		return loc.T("account.activity.data_downloaded", "Copy of your data downloaded")
+	case audit.UserDeletionRequested:
+		return loc.T("account.activity.deletion_requested", "Deletion of your account requested")
+	case audit.UserDeletionCancelled:
+		return loc.T("account.activity.deletion_cancelled", "Deletion of your account cancelled")
+	case audit.UserEmailChangeRequested:
+		return loc.T("account.activity.email_change_requested", "Change of e-mail address requested")
+	case audit.UserEmailChanged:
+		return loc.T("account.activity.email_changed", "E-mail address changed")
+	case audit.UserEmailChangeCancelled:
+		return loc.T("account.activity.email_change_cancelled", "Change of e-mail address cancelled")
 	case audit.UserPasswordResetRequested:
 		return loc.T("account.activity.reset_requested", "Password reset link requested")
 	case audit.UserPasswordReset:

@@ -23,6 +23,7 @@ import (
 	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/clientscopemapping"
 	"sso.internal/sso/ent/consent"
+	"sso.internal/sso/ent/dataexport"
 	"sso.internal/sso/ent/emailoutbox"
 	"sso.internal/sso/ent/emailverificationtoken"
 	"sso.internal/sso/ent/federatedidentity"
@@ -71,6 +72,8 @@ type Client struct {
 	ClientScopeMapping *ClientScopeMappingClient
 	// Consent is the client for interacting with the Consent builders.
 	Consent *ConsentClient
+	// DataExport is the client for interacting with the DataExport builders.
+	DataExport *DataExportClient
 	// EmailOutbox is the client for interacting with the EmailOutbox builders.
 	EmailOutbox *EmailOutboxClient
 	// EmailVerificationToken is the client for interacting with the EmailVerificationToken builders.
@@ -140,6 +143,7 @@ func (c *Client) init() {
 	c.ClientScope = NewClientScopeClient(c.config)
 	c.ClientScopeMapping = NewClientScopeMappingClient(c.config)
 	c.Consent = NewConsentClient(c.config)
+	c.DataExport = NewDataExportClient(c.config)
 	c.EmailOutbox = NewEmailOutboxClient(c.config)
 	c.EmailVerificationToken = NewEmailVerificationTokenClient(c.config)
 	c.FederatedIdentity = NewFederatedIdentityClient(c.config)
@@ -265,6 +269,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ClientScope:            NewClientScopeClient(cfg),
 		ClientScopeMapping:     NewClientScopeMappingClient(cfg),
 		Consent:                NewConsentClient(cfg),
+		DataExport:             NewDataExportClient(cfg),
 		EmailOutbox:            NewEmailOutboxClient(cfg),
 		EmailVerificationToken: NewEmailVerificationTokenClient(cfg),
 		FederatedIdentity:      NewFederatedIdentityClient(cfg),
@@ -317,6 +322,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ClientScope:            NewClientScopeClient(cfg),
 		ClientScopeMapping:     NewClientScopeMappingClient(cfg),
 		Consent:                NewConsentClient(cfg),
+		DataExport:             NewDataExportClient(cfg),
 		EmailOutbox:            NewEmailOutboxClient(cfg),
 		EmailVerificationToken: NewEmailVerificationTokenClient(cfg),
 		FederatedIdentity:      NewFederatedIdentityClient(cfg),
@@ -372,12 +378,13 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.AuditLog, c.BulkJob, c.ClientApp, c.ClientGroup, c.ClientRole, c.ClientScope,
-		c.ClientScopeMapping, c.Consent, c.EmailOutbox, c.EmailVerificationToken,
-		c.FederatedIdentity, c.Group, c.GroupClientScope, c.IdentityProvider,
-		c.InstanceSettings, c.KeyRotationLog, c.KnownAccount, c.LoginAttempt,
-		c.MfaBackupCode, c.MfaMethod, c.MfaPolicy, c.PasswordResetToken, c.Permission,
-		c.Realm, c.Role, c.RoleClientScope, c.Session, c.SigningKey, c.Timeout,
-		c.Token, c.TrustedDevice, c.User, c.UserImportJob,
+		c.ClientScopeMapping, c.Consent, c.DataExport, c.EmailOutbox,
+		c.EmailVerificationToken, c.FederatedIdentity, c.Group, c.GroupClientScope,
+		c.IdentityProvider, c.InstanceSettings, c.KeyRotationLog, c.KnownAccount,
+		c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.MfaPolicy,
+		c.PasswordResetToken, c.Permission, c.Realm, c.Role, c.RoleClientScope,
+		c.Session, c.SigningKey, c.Timeout, c.Token, c.TrustedDevice, c.User,
+		c.UserImportJob,
 	} {
 		n.Use(hooks...)
 	}
@@ -388,12 +395,13 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.AuditLog, c.BulkJob, c.ClientApp, c.ClientGroup, c.ClientRole, c.ClientScope,
-		c.ClientScopeMapping, c.Consent, c.EmailOutbox, c.EmailVerificationToken,
-		c.FederatedIdentity, c.Group, c.GroupClientScope, c.IdentityProvider,
-		c.InstanceSettings, c.KeyRotationLog, c.KnownAccount, c.LoginAttempt,
-		c.MfaBackupCode, c.MfaMethod, c.MfaPolicy, c.PasswordResetToken, c.Permission,
-		c.Realm, c.Role, c.RoleClientScope, c.Session, c.SigningKey, c.Timeout,
-		c.Token, c.TrustedDevice, c.User, c.UserImportJob,
+		c.ClientScopeMapping, c.Consent, c.DataExport, c.EmailOutbox,
+		c.EmailVerificationToken, c.FederatedIdentity, c.Group, c.GroupClientScope,
+		c.IdentityProvider, c.InstanceSettings, c.KeyRotationLog, c.KnownAccount,
+		c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.MfaPolicy,
+		c.PasswordResetToken, c.Permission, c.Realm, c.Role, c.RoleClientScope,
+		c.Session, c.SigningKey, c.Timeout, c.Token, c.TrustedDevice, c.User,
+		c.UserImportJob,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -418,6 +426,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ClientScopeMapping.mutate(ctx, m)
 	case *ConsentMutation:
 		return c.Consent.mutate(ctx, m)
+	case *DataExportMutation:
+		return c.DataExport.mutate(ctx, m)
 	case *EmailOutboxMutation:
 		return c.EmailOutbox.mutate(ctx, m)
 	case *EmailVerificationTokenMutation:
@@ -1950,6 +1960,155 @@ func (c *ConsentClient) mutate(ctx context.Context, m *ConsentMutation) (Value, 
 		return (&ConsentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Consent mutation op: %q", m.Op())
+	}
+}
+
+// DataExportClient is a client for the DataExport schema.
+type DataExportClient struct {
+	config
+}
+
+// NewDataExportClient returns a client for the DataExport from the given config.
+func NewDataExportClient(c config) *DataExportClient {
+	return &DataExportClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `dataexport.Hooks(f(g(h())))`.
+func (c *DataExportClient) Use(hooks ...Hook) {
+	c.hooks.DataExport = append(c.hooks.DataExport, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `dataexport.Intercept(f(g(h())))`.
+func (c *DataExportClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DataExport = append(c.inters.DataExport, interceptors...)
+}
+
+// Create returns a builder for creating a DataExport entity.
+func (c *DataExportClient) Create() *DataExportCreate {
+	mutation := newDataExportMutation(c.config, OpCreate)
+	return &DataExportCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DataExport entities.
+func (c *DataExportClient) CreateBulk(builders ...*DataExportCreate) *DataExportCreateBulk {
+	return &DataExportCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DataExportClient) MapCreateBulk(slice any, setFunc func(*DataExportCreate, int)) *DataExportCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DataExportCreateBulk{err: fmt.Errorf("calling to DataExportClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DataExportCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DataExportCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DataExport.
+func (c *DataExportClient) Update() *DataExportUpdate {
+	mutation := newDataExportMutation(c.config, OpUpdate)
+	return &DataExportUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DataExportClient) UpdateOne(_m *DataExport) *DataExportUpdateOne {
+	mutation := newDataExportMutation(c.config, OpUpdateOne, withDataExport(_m))
+	return &DataExportUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DataExportClient) UpdateOneID(id string) *DataExportUpdateOne {
+	mutation := newDataExportMutation(c.config, OpUpdateOne, withDataExportID(id))
+	return &DataExportUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DataExport.
+func (c *DataExportClient) Delete() *DataExportDelete {
+	mutation := newDataExportMutation(c.config, OpDelete)
+	return &DataExportDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DataExportClient) DeleteOne(_m *DataExport) *DataExportDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DataExportClient) DeleteOneID(id string) *DataExportDeleteOne {
+	builder := c.Delete().Where(dataexport.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DataExportDeleteOne{builder}
+}
+
+// Query returns a query builder for DataExport.
+func (c *DataExportClient) Query() *DataExportQuery {
+	return &DataExportQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDataExport},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DataExport entity by its id.
+func (c *DataExportClient) Get(ctx context.Context, id string) (*DataExport, error) {
+	return c.Query().Where(dataexport.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DataExportClient) GetX(ctx context.Context, id string) *DataExport {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryOwner queries the owner edge of a DataExport.
+func (c *DataExportClient) QueryOwner(_m *DataExport) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(dataexport.Table, dataexport.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, dataexport.OwnerTable, dataexport.OwnerColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DataExportClient) Hooks() []Hook {
+	return c.hooks.DataExport
+}
+
+// Interceptors returns the client interceptors.
+func (c *DataExportClient) Interceptors() []Interceptor {
+	return c.inters.DataExport
+}
+
+func (c *DataExportClient) mutate(ctx context.Context, m *DataExportMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DataExportCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DataExportUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DataExportUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DataExportDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DataExport mutation op: %q", m.Op())
 	}
 }
 
@@ -6352,6 +6511,22 @@ func (c *UserClient) QueryEmailVerificationTokens(_m *User) *EmailVerificationTo
 	return query
 }
 
+// QueryDataExports queries the data_exports edge of a User.
+func (c *UserClient) QueryDataExports(_m *User) *DataExportQuery {
+	query := (&DataExportClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(dataexport.Table, dataexport.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.DataExportsTable, user.DataExportsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
@@ -6530,7 +6705,7 @@ func (c *UserImportJobClient) mutate(ctx context.Context, m *UserImportJobMutati
 type (
 	hooks struct {
 		AuditLog, BulkJob, ClientApp, ClientGroup, ClientRole, ClientScope,
-		ClientScopeMapping, Consent, EmailOutbox, EmailVerificationToken,
+		ClientScopeMapping, Consent, DataExport, EmailOutbox, EmailVerificationToken,
 		FederatedIdentity, Group, GroupClientScope, IdentityProvider, InstanceSettings,
 		KeyRotationLog, KnownAccount, LoginAttempt, MfaBackupCode, MfaMethod,
 		MfaPolicy, PasswordResetToken, Permission, Realm, Role, RoleClientScope,
@@ -6539,7 +6714,7 @@ type (
 	}
 	inters struct {
 		AuditLog, BulkJob, ClientApp, ClientGroup, ClientRole, ClientScope,
-		ClientScopeMapping, Consent, EmailOutbox, EmailVerificationToken,
+		ClientScopeMapping, Consent, DataExport, EmailOutbox, EmailVerificationToken,
 		FederatedIdentity, Group, GroupClientScope, IdentityProvider, InstanceSettings,
 		KeyRotationLog, KnownAccount, LoginAttempt, MfaBackupCode, MfaMethod,
 		MfaPolicy, PasswordResetToken, Permission, Realm, Role, RoleClientScope,

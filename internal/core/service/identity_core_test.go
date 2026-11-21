@@ -359,6 +359,7 @@ type coreFixture struct {
 	notifier *recordingNotifier
 	consent  *service.ConsentService
 	access *fakeAccessRepo
+	users  *fakeUserRepo
 }
 
 // advance moves the shared fake clock forward.
@@ -376,6 +377,7 @@ func newCoreFixture(t *testing.T) *coreFixture {
 		},
 		bobID: {ID: bobID, RealmID: realmA, Username: "bob", Status: domain.UserActive},
 	}}
+	f.users = users
 
 	// RBAC data (helpers from rbac_test.go): alice holds "role-app", which
 	// grants the "profile" and "email" scopes.
@@ -640,6 +642,20 @@ func TestIdentityCore_IssueIdentityAssertion(t *testing.T) {
 		require.Equal(t, "alice", a.UserAttributes["username"])
 		require.ElementsMatch(t, []string{"email", "profile"}, scopeNames(a.Scopes))
 		require.Nil(t, a.Entitlements, "only the admin console's tokens carry permissions")
+	})
+
+	t.Run("an account waiting for its deletion gets nothing", func(t *testing.T) {
+		f := newCoreFixture(t)
+		sess := f.aliceSession(t).Session
+		at := f.now.Add(service.AccountDeletionDelay)
+		f.users.byID[aliceID].DeletionScheduledAt = &at
+
+		_, err := f.core.IssueIdentityAssertion(ctx, sess.ID, clientOIDC, nil)
+		require.ErrorIs(t, err, core.ErrAccountDeletionScheduled)
+
+		f.users.byID[aliceID].DeletionScheduledAt = nil // the user kept it
+		_, err = f.core.IssueIdentityAssertion(ctx, sess.ID, clientOIDC, nil)
+		require.NoError(t, err)
 	})
 
 	t.Run("admin console: entitlements are the effective permissions, sorted and unique", func(t *testing.T) {

@@ -1,4 +1,4 @@
-h1:yClCd79CgJoNFRrROqy2Or87GMAzrpbJj5alhbOeS64=
+h1:cuKLUNWzCH31FbVo/7O6GdNZoUNiuoQO+QEeMO8id08=
 20260911235655_unnamed_migration.sql h1:T9jMdh02PzNWOEBxR23qkTvS3ASuXIdCln0XXX+ZPrI=
 20260924144340_sessions.sql h1:BaRgGUAxm3O7Z1hNUDew1IQ4fl0JLAzo0miODlR7tAw=
 20261005191224_pairwise_subject_and_amr.sql h1:qt5P4RmPSXWuYPWctJV5/qMKs1D+nXuIf577rG8Iucc=
@@ -35,3 +35,6 @@ h1:yClCd79CgJoNFRrROqy2Or87GMAzrpbJj5alhbOeS64=
 20261119120000_key_rotation_interval.sql h1:JDJKd7ooBJ1l++a4/HU7PKJjoY2YnSD3aKSpK7XptQs=
 20261120120000_password_breach_check.sql h1:WvVxDCqJqrYJNi9CasOUTisB6J+oZGRXWQ6gQ7SlgdY=
 20261120130000_password_history_expiry.sql h1:bCFjbca6yhyBSRfIkSsppJA6l+xaElKVeW3sFCqmaZ8=
+20261120214519_data_export.sql h1:cAiCwzG10MOKxlXEcTC9Ucw+BfOaB+C8OWoivHBBiPY=
+20261120225941_account_deletion.sql h1:Gh7U1vYv5scwY47ZilP21EezwyczEiYAGZAHScI58P0=
+20261121100000_email_change.sql h1:suQ9mGJ3y0pRjC82QLbNHPJTRzm/gk+m+Bu3VFErZng=

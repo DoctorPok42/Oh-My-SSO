@@ -22,7 +22,7 @@ const (
 	NotificationAccountLocked          NotificationKind = "account_locked"
 	// NotificationSuspiciousLogin also needs suspicious_login_email_enabled.
 	NotificationSuspiciousLogin NotificationKind = "suspicious_login"
-	NotificationAppConnected NotificationKind = "app_connected"
+	NotificationAppConnected    NotificationKind = "app_connected"
 
 	NotificationAccountInvite NotificationKind = "account_invite"
 	NotificationAdminRecovery NotificationKind = "admin_recovery"
@@ -32,6 +32,17 @@ const (
 	// NotificationEmailVerification: "is this your address?", with a link
 	// (ResetToken) that marks the address verified.
 	NotificationEmailVerification NotificationKind = "email_verification"
+	// NotificationDataExportReady: the copy of their data the user asked
+	// for can be downloaded from the account console until ExpiresAt.
+	NotificationDataExportReady NotificationKind = "data_export_ready"
+	// NotificationAccountDeletionScheduled: the account will be deleted at
+	// ExpiresAt, unless the user cancels from the account console. Sent
+	// whatever the realm's security alerts: someone else may have asked.
+	NotificationAccountDeletionScheduled NotificationKind = "account_deletion_scheduled"
+	// NotificationEmailChanged goes to the previous address (To) once the
+	// account switched to a new one. Sent whatever the realm's security
+	// alerts: it is how the owner learns their account moved.
+	NotificationEmailChanged NotificationKind = "email_changed"
 )
 
 // IsSecurityAlert tells whether the realm's notification_email_enabled
@@ -40,7 +51,8 @@ func (k NotificationKind) IsSecurityAlert() bool {
 	switch k {
 	case NotificationPasswordReset, NotificationPasswordResetRequired, NotificationPasswordChanged,
 		NotificationAccountInvite, NotificationAdminRecovery, NotificationUserImportFinished,
-		NotificationEmailVerification:
+		NotificationEmailVerification, NotificationDataExportReady, NotificationAccountDeletionScheduled,
+		NotificationEmailChanged:
 		return false
 	default:
 		return true
@@ -61,9 +73,13 @@ const (
 // NotificationEvent is what the core hands to the notification dispatcher.
 // Only the fields that make sense for its Kind are set.
 type NotificationEvent struct {
-	Kind       NotificationKind
-	RealmID    string
-	UserID     string
+	Kind    NotificationKind
+	RealmID string
+	UserID  string
+	// To: the recipient when it is not the account's address: the new
+	// address of an e-mail change (email_verification), the previous one
+	// (email_changed).
+	To         string
 	OccurredAt time.Time
 	IPAddress  string // where the action came from, when known
 	UserAgent  string

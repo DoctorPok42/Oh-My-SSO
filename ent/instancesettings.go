@@ -32,6 +32,10 @@ type InstanceSettings struct {
 	PasswordHistoryCount int `json:"password_history_count,omitempty"`
 	// PasswordBreachCheckEnabled holds the value of the "password_breach_check_enabled" field.
 	PasswordBreachCheckEnabled bool `json:"password_breach_check_enabled,omitempty"`
+	// AccountDeletionEnabled holds the value of the "account_deletion_enabled" field.
+	AccountDeletionEnabled bool `json:"account_deletion_enabled,omitempty"`
+	// EmailChangeAllowed holds the value of the "email_change_allowed" field.
+	EmailChangeAllowed bool `json:"email_change_allowed,omitempty"`
 	// SessionIdleMinutes holds the value of the "session_idle_minutes" field.
 	SessionIdleMinutes int `json:"session_idle_minutes,omitempty"`
 	// SessionMaxHours holds the value of the "session_max_hours" field.
@@ -123,7 +127,7 @@ func (*InstanceSettings) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case instancesettings.FieldIPAllowlist:
 			values[i] = new([]byte)
-		case instancesettings.FieldPasswordBreachCheckEnabled, instancesettings.FieldRememberMeEnabled, instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled, instancesettings.FieldMfaTrustedDeviceEnabled, instancesettings.FieldSuspiciousLoginEmailEnabled:
+		case instancesettings.FieldPasswordBreachCheckEnabled, instancesettings.FieldAccountDeletionEnabled, instancesettings.FieldEmailChangeAllowed, instancesettings.FieldRememberMeEnabled, instancesettings.FieldMfaRequiredGlobally, instancesettings.FieldNotificationEmailEnabled, instancesettings.FieldMfaTrustedDeviceEnabled, instancesettings.FieldSuspiciousLoginEmailEnabled:
 			values[i] = new(sql.NullBool)
 		case instancesettings.FieldMinPasswordLength, instancesettings.FieldPasswordExpiryDays, instancesettings.FieldPasswordHistoryCount, instancesettings.FieldSessionIdleMinutes, instancesettings.FieldSessionMaxHours, instancesettings.FieldRememberMeIdleDays, instancesettings.FieldRememberMeMaxDays, instancesettings.FieldLockoutThreshold, instancesettings.FieldLockoutDurationMinutes, instancesettings.FieldKeyRotationGraceHours, instancesettings.FieldKeyRotationIntervalDays, instancesettings.FieldMfaStepUpMaxAgeMinutes, instancesettings.FieldMfaTrustedDeviceDays, instancesettings.FieldPasswordResetTTLMinutes, instancesettings.FieldInviteTTLHours, instancesettings.FieldBulkLimit, instancesettings.FieldExpiredDataRetentionDays, instancesettings.FieldAuditLogRetentionDays:
 			values[i] = new(sql.NullInt64)
@@ -187,6 +191,18 @@ func (_m *InstanceSettings) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field password_breach_check_enabled", values[i])
 			} else if value.Valid {
 				_m.PasswordBreachCheckEnabled = value.Bool
+			}
+		case instancesettings.FieldAccountDeletionEnabled:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field account_deletion_enabled", values[i])
+			} else if value.Valid {
+				_m.AccountDeletionEnabled = value.Bool
+			}
+		case instancesettings.FieldEmailChangeAllowed:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field email_change_allowed", values[i])
+			} else if value.Valid {
+				_m.EmailChangeAllowed = value.Bool
 			}
 		case instancesettings.FieldSessionIdleMinutes:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -423,6 +439,12 @@ func (_m *InstanceSettings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("password_breach_check_enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PasswordBreachCheckEnabled))
+	builder.WriteString(", ")
+	builder.WriteString("account_deletion_enabled=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AccountDeletionEnabled))
+	builder.WriteString(", ")
+	builder.WriteString("email_change_allowed=")
+	builder.WriteString(fmt.Sprintf("%v", _m.EmailChangeAllowed))
 	builder.WriteString(", ")
 	builder.WriteString("session_idle_minutes=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SessionIdleMinutes))

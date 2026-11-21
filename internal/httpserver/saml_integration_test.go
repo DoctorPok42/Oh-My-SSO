@@ -46,7 +46,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-
 const (
 	samlRealm    = "acme"
 	samlPassword = "correct-horse-battery-staple"
@@ -174,7 +173,6 @@ func setupSAMLTestEnv(t *testing.T) *samlTestEnv {
 	}
 }
 
-
 func (e *samlTestEnv) metadata(t *testing.T) *samllib.EntityDescriptor {
 	t.Helper()
 	resp, err := e.ts.Client().Get(e.realmURL + "/saml/metadata")
@@ -201,7 +199,6 @@ func idpCerts(t *testing.T, md *samllib.EntityDescriptor) []*x509.Certificate {
 	}
 	return out
 }
-
 
 type testSP struct {
 	t      *testing.T
@@ -324,7 +321,6 @@ func (s *testSP) assertion(samlResponse, requestID string) (*samllib.Assertion, 
 	return s.sp.ParseXMLResponse(raw, []string{requestID}, s.sp.AcsURL)
 }
 
-
 type samlBrowser struct {
 	t   *testing.T
 	c   *http.Client
@@ -432,7 +428,6 @@ func attrs(a *samllib.Assertion) map[string][]string {
 	}
 	return out
 }
-
 
 func TestSAMLIntegration(t *testing.T) {
 	env := setupSAMLTestEnv(t)
@@ -601,6 +596,26 @@ func TestSAMLIntegration(t *testing.T) {
 			_, second := statusOf(t, fields["SAMLResponse"])
 			require.Equal(t, "urn:oasis:names:tc:SAML:2.0:status:RequestDenied", second)
 		})
+		t.Run("an account being deleted: RequestDenied, or a page that leads to cancelling", func(t *testing.T) {
+			b := env.browser(t)
+			b.login("alice")
+			erasure := entstore.NewErasureRepository(env.ent)
+			at := time.Now().Add(service.AccountDeletionDelay)
+			require.NoError(t, erasure.ScheduleDeletion(context.Background(), env.alice.ID, &at))
+			defer func() { require.NoError(t, erasure.ScheduleDeletion(context.Background(), env.alice.ID, nil)) }()
+
+			yes := true
+			u, _ := signedSP.redirectRequest(func(r *samllib.AuthnRequest) { r.IsPassive = &yes })
+			_, body := b.get(u)
+			_, fields := autoPost(t, body)
+			_, second := statusOf(t, fields["SAMLResponse"])
+			require.Equal(t, "urn:oasis:names:tc:SAML:2.0:status:RequestDenied", second)
+
+			u, _ = signedSP.redirectRequest(nil)
+			resp, body := b.get(u)
+			require.Equal(t, http.StatusForbidden, resp.StatusCode)
+			require.Contains(t, body, "/r/"+env.realm.Name+"/account/data")
+		})
 		requireConsent := func(u *repository.UpdateClientAppParams) {
 			yes := true
 			u.RequireConsent = &yes
@@ -718,7 +733,6 @@ func TestSAMLIntegration(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
-
 
 // logoutRequest builds a LogoutRequest from s, signed in the query string.
 func (s *testSP) logoutRequest(nameID, format, sessionIndex string) (string, string) {

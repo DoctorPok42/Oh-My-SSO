@@ -28,6 +28,8 @@ type UpdateInstanceSettingsParams struct {
 	PasswordExpiryDays          *int
 	PasswordHistoryCount        *int
 	PasswordBreachCheckEnabled  *bool
+	AccountDeletionEnabled      *bool
+	EmailChangeAllowed          *bool
 	SessionIdleMinutes          *int
 	SessionMaxHours             *int
 	RememberMeEnabled           *bool

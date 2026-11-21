@@ -36,6 +36,8 @@ type User struct {
 	Email string `json:"email,omitempty"`
 	// EmailVerifiedAt holds the value of the "email_verified_at" field.
 	EmailVerifiedAt *time.Time `json:"email_verified_at,omitempty"`
+	// PendingEmail holds the value of the "pending_email" field.
+	PendingEmail string `json:"pending_email,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -58,6 +60,8 @@ type User struct {
 	LockoutCount int `json:"lockout_count,omitempty"`
 	// LastLockedAt holds the value of the "last_locked_at" field.
 	LastLockedAt *time.Time `json:"last_locked_at,omitempty"`
+	// DeletionScheduledAt holds the value of the "deletion_scheduled_at" field.
+	DeletionScheduledAt *time.Time `json:"deletion_scheduled_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserQuery when eager-loading is set.
 	Edges        UserEdges `json:"edges"`
@@ -92,9 +96,11 @@ type UserEdges struct {
 	EmailOutbox []*EmailOutbox `json:"email_outbox,omitempty"`
 	// EmailVerificationTokens holds the value of the email_verification_tokens edge.
 	EmailVerificationTokens []*EmailVerificationToken `json:"email_verification_tokens,omitempty"`
+	// DataExports holds the value of the data_exports edge.
+	DataExports []*DataExport `json:"data_exports,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [13]bool
+	loadedTypes [14]bool
 }
 
 // RealmOrErr returns the Realm value or an error if the edge
@@ -216,6 +222,15 @@ func (e UserEdges) EmailVerificationTokensOrErr() ([]*EmailVerificationToken, er
 	return nil, &NotLoadedError{edge: "email_verification_tokens"}
 }
 
+// DataExportsOrErr returns the DataExports value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) DataExportsOrErr() ([]*DataExport, error) {
+	if e.loadedTypes[13] {
+		return e.DataExports, nil
+	}
+	return nil, &NotLoadedError{edge: "data_exports"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -227,9 +242,9 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case user.FieldFailedLoginCount, user.FieldLockoutCount:
 			values[i] = new(sql.NullInt64)
-		case user.FieldID, user.FieldRealmID, user.FieldUsername, user.FieldPasswordHash, user.FieldEmail, user.FieldStatus:
+		case user.FieldID, user.FieldRealmID, user.FieldUsername, user.FieldPasswordHash, user.FieldEmail, user.FieldPendingEmail, user.FieldStatus:
 			values[i] = new(sql.NullString)
-		case user.FieldPasswordChangedAt, user.FieldEmailVerifiedAt, user.FieldCreatedAt, user.FieldUpdatedAt, user.FieldDeletedAt, user.FieldLastLoginAt, user.FieldLastFailedLoginAt, user.FieldLockedUntil, user.FieldLastLockedAt:
+		case user.FieldPasswordChangedAt, user.FieldEmailVerifiedAt, user.FieldCreatedAt, user.FieldUpdatedAt, user.FieldDeletedAt, user.FieldLastLoginAt, user.FieldLastFailedLoginAt, user.FieldLockedUntil, user.FieldLastLockedAt, user.FieldDeletionScheduledAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -303,6 +318,12 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				_m.EmailVerifiedAt = new(time.Time)
 				*_m.EmailVerifiedAt = value.Time
 			}
+		case user.FieldPendingEmail:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field pending_email", values[i])
+			} else if value.Valid {
+				_m.PendingEmail = value.String
+			}
 		case user.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -375,6 +396,13 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.LastLockedAt = new(time.Time)
 				*_m.LastLockedAt = value.Time
+			}
+		case user.FieldDeletionScheduledAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field deletion_scheduled_at", values[i])
+			} else if value.Valid {
+				_m.DeletionScheduledAt = new(time.Time)
+				*_m.DeletionScheduledAt = value.Time
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -454,6 +482,11 @@ func (_m *User) QueryEmailVerificationTokens() *EmailVerificationTokenQuery {
 	return NewUserClient(_m.config).QueryEmailVerificationTokens(_m)
 }
 
+// QueryDataExports queries the "data_exports" edge of the User entity.
+func (_m *User) QueryDataExports() *DataExportQuery {
+	return NewUserClient(_m.config).QueryDataExports(_m)
+}
+
 // Update returns a builder for updating this User.
 // Note that you need to call User.Unwrap() before calling this method if this User
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -503,6 +536,9 @@ func (_m *User) String() string {
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
+	builder.WriteString("pending_email=")
+	builder.WriteString(_m.PendingEmail)
+	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
@@ -543,6 +579,11 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	if v := _m.LastLockedAt; v != nil {
 		builder.WriteString("last_locked_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.DeletionScheduledAt; v != nil {
+		builder.WriteString("deletion_scheduled_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteByte(')')

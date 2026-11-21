@@ -202,6 +202,7 @@ func New(cfg Config, d Deps) *Server {
 			r.With(write("user", "write")...).Put("/users/{id}/roles", s.handleSetUserRoles)
 			r.With(write("user", "write")...).Post("/users/{id}/mfa/reset", s.handleResetUserMFA)
 			r.With(write("user", "write")...).Post("/users/{id}/unlock", s.handleUnlockUser)
+			r.With(write("user", "write")...).Post("/users/{id}/deletion/cancel", s.handleCancelUserDeletion)
 			r.With(write("user", "write")...).Post("/users/{id}/activation-link", s.handleActivationLink)
 			r.With(write("user", "write")...).Post("/users/{id}/email-verification", s.handleSendEmailVerification)
 			r.With(write("user", "write")...).Post("/users/{id}/emails/{emailID}/resend", s.handleResendEmail)

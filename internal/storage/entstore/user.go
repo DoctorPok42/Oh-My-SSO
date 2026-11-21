@@ -85,7 +85,10 @@ func (r *entUserRepository) Update(ctx context.Context, id string, p repository.
 		builder = builder.SetUsername(domain.NormalizeIdentifier(*p.Username))
 	}
 	if p.Email != nil {
-		builder = builder.SetEmail(domain.NormalizeIdentifier(*p.Email))
+		// A new address cancels the change the user was waiting for.
+		builder = builder.SetEmail(domain.NormalizeIdentifier(*p.Email)).ClearPendingEmail()
+	} else if p.PendingEmail != nil {
+		builder = builder.SetPendingEmail(domain.NormalizeIdentifier(*p.PendingEmail))
 	}
 	if p.PasswordHash != nil {
 		builder = builder.SetPasswordHash(*p.PasswordHash)
@@ -131,7 +134,7 @@ func (r *entUserRepository) Update(ctx context.Context, id string, p repository.
 }
 
 func (r *entUserRepository) Delete(ctx context.Context, id string) error {
-	return r.client.User.DeleteOneID(id).Exec(ctx)
+	return mapNotFound(r.client.User.DeleteOneID(id).Exec(ctx))
 }
 
 // CompareAndSwapPasswordHash is a single UPDATE ... SET password_hash = next
@@ -219,6 +222,7 @@ func toDomainUser(e *ent.User) *domain.User {
 		Username:        e.Username,
 		Email:           e.Email,
 		EmailVerifiedAt: e.EmailVerifiedAt,
+		PendingEmail:    e.PendingEmail,
 		PasswordHash:    e.PasswordHash,
 		CreatedAt:       e.CreatedAt,
 
@@ -231,6 +235,7 @@ func toDomainUser(e *ent.User) *domain.User {
 		Profile:           e.Profile,
 		Lockout:           lockoutFromEnt(e),
 
-		MustChangePassword: e.MustChangePassword,
+		MustChangePassword:  e.MustChangePassword,
+		DeletionScheduledAt: e.DeletionScheduledAt,
 	}
 }

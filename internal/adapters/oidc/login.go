@@ -174,6 +174,16 @@ func (a *Adapter) handleLogin(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, core.ErrTimeoutActive):
 		a.authError(w, r, ar, oidc.ErrAccessDenied().WithDescription("the access of this user is temporarily suspended"))
 		return
+	case errors.Is(err, core.ErrAccountDeletionScheduled):
+		if ar.hasPrompt(oidc.PromptNone) {
+			a.authError(w, r, ar, oidc.ErrAccessDenied().WithDescription("the account is being deleted"))
+			return
+		}
+		// The page says why, and leads to where the deletion is cancelled.
+		realm, _ := realmFrom(ctx)
+		a.pages.RenderMessage(w, r, http.StatusForbidden, loginui.AccountDeletionMessage(a.pages.Loc(r), "/r/"+realm.Name+"/account/data"),
+			"/r/"+realm.Name+"/oidc/assets")
+		return
 	case errors.Is(err, core.ErrForbidden):
 		a.authError(w, r, ar, oidc.ErrAccessDenied().WithDescription("the user is not allowed to use this application"))
 		return

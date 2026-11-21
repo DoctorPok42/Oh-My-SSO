@@ -436,6 +436,17 @@ func (s *Server) handleUnlockUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// POST /users/{id}/deletion/cancel: the deletion the user asked for is
+// taken back (409 not_scheduled when there is none).
+func (s *Server) handleCancelUserDeletion(w http.ResponseWriter, r *http.Request) {
+	v, err := s.d.Admin.CancelUserDeletion(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id"))
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
+
 func (s *Server) handleActivationLink(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		SendEmail bool `json:"send_email"`

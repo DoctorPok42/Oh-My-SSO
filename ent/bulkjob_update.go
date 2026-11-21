@@ -44,6 +44,20 @@ func (_u *BulkJobUpdate) SetNillableStatus(v *schema.BulkJobStatus) *BulkJobUpda
 	return _u
 }
 
+// SetRequestedByName sets the "requested_by_name" field.
+func (_u *BulkJobUpdate) SetRequestedByName(v string) *BulkJobUpdate {
+	_u.mutation.SetRequestedByName(v)
+	return _u
+}
+
+// SetNillableRequestedByName sets the "requested_by_name" field if the given value is not nil.
+func (_u *BulkJobUpdate) SetNillableRequestedByName(v *string) *BulkJobUpdate {
+	if v != nil {
+		_u.SetRequestedByName(*v)
+	}
+	return _u
+}
+
 // SetProcessed sets the "processed" field.
 func (_u *BulkJobUpdate) SetProcessed(v int) *BulkJobUpdate {
 	_u.mutation.ResetProcessed()
@@ -215,6 +229,11 @@ func (_u *BulkJobUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *BulkJobUpdate) check() error {
+	if v, ok := _u.mutation.RequestedByName(); ok {
+		if err := bulkjob.RequestedByNameValidator(v); err != nil {
+			return &ValidationError{Name: "requested_by_name", err: fmt.Errorf(`ent: validator failed for field "BulkJob.requested_by_name": %w`, err)}
+		}
+	}
 	if _u.mutation.RealmCleared() && len(_u.mutation.RealmIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "BulkJob.realm"`)
 	}
@@ -235,6 +254,9 @@ func (_u *BulkJobUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(bulkjob.FieldStatus, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RequestedByName(); ok {
+		_spec.SetField(bulkjob.FieldRequestedByName, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Processed(); ok {
 		_spec.SetField(bulkjob.FieldProcessed, field.TypeInt, value)
@@ -310,6 +332,20 @@ func (_u *BulkJobUpdateOne) SetStatus(v schema.BulkJobStatus) *BulkJobUpdateOne 
 func (_u *BulkJobUpdateOne) SetNillableStatus(v *schema.BulkJobStatus) *BulkJobUpdateOne {
 	if v != nil {
 		_u.SetStatus(*v)
+	}
+	return _u
+}
+
+// SetRequestedByName sets the "requested_by_name" field.
+func (_u *BulkJobUpdateOne) SetRequestedByName(v string) *BulkJobUpdateOne {
+	_u.mutation.SetRequestedByName(v)
+	return _u
+}
+
+// SetNillableRequestedByName sets the "requested_by_name" field if the given value is not nil.
+func (_u *BulkJobUpdateOne) SetNillableRequestedByName(v *string) *BulkJobUpdateOne {
+	if v != nil {
+		_u.SetRequestedByName(*v)
 	}
 	return _u
 }
@@ -498,6 +534,11 @@ func (_u *BulkJobUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *BulkJobUpdateOne) check() error {
+	if v, ok := _u.mutation.RequestedByName(); ok {
+		if err := bulkjob.RequestedByNameValidator(v); err != nil {
+			return &ValidationError{Name: "requested_by_name", err: fmt.Errorf(`ent: validator failed for field "BulkJob.requested_by_name": %w`, err)}
+		}
+	}
 	if _u.mutation.RealmCleared() && len(_u.mutation.RealmIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "BulkJob.realm"`)
 	}
@@ -535,6 +576,9 @@ func (_u *BulkJobUpdateOne) sqlSave(ctx context.Context) (_node *BulkJob, err er
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(bulkjob.FieldStatus, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RequestedByName(); ok {
+		_spec.SetField(bulkjob.FieldRequestedByName, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Processed(); ok {
 		_spec.SetField(bulkjob.FieldProcessed, field.TypeInt, value)

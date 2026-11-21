@@ -39,6 +39,7 @@ import {
   setUserRoles,
   unlockUser,
   updateUser,
+  cancelUserDeletion,
 } from "./actions";
 
 type Once = { title: string; description: string; items: { label: string; value: string }[] } | null;
@@ -236,6 +237,7 @@ export function UserDrawer({
                 <span className="flex flex-wrap items-center gap-2">
                   {!user.has_password ? <StatusBadge status="invited" /> : <StatusBadge status={user.status} />}
                   {user.locked && <StatusBadge status="locked" />}
+                  {user.deletion_scheduled_at && <StatusBadge status="deletion_scheduled" />}
                   <span>
                     {t("users.created_last_signin", "Created {created} · last sign-in {last}", {
                       created: formatDate(user.created_at, locale),
@@ -641,7 +643,33 @@ function UserDetails({
 
       <section className="space-y-2">
         <h3 className="text-[13px] font-semibold text-text-secondary">{t("users.account", "Account")}</h3>
+        {user.deletion_scheduled_at && (
+          <p className="text-[13px] text-text-secondary">
+            {t(
+              "users.deletion_scheduled",
+              "The user asked for this account to be deleted: it is deleted for good on {date}. Until then, applications refuse it.",
+              { date: formatDateTime(user.deletion_scheduled_at, locale) },
+            )}
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
+          {user.deletion_scheduled_at && (
+            <ConfirmAction
+              variant="secondary"
+              size="sm"
+              disabled={locked}
+              trigger={t("users.deletion_cancel", "Cancel the deletion")}
+              title={t("users.deletion_cancel_title", "Keep this account?")}
+              description={t(
+                "users.deletion_cancel_text",
+                "The account is no longer deleted and applications accept it again. Do it only at the user's request.",
+              )}
+              confirmLabel={t("users.deletion_cancel", "Cancel the deletion")}
+              confirmVariant="primary"
+              success={t("users.deletion_cancelled", "Deletion cancelled")}
+              action={() => cancelUserDeletion(realm, user.id)}
+            />
+          )}
           {user.locked && (
             <ConfirmAction
               variant="secondary"

@@ -558,6 +558,8 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		BulkLimit                   *int      `json:"bulk_limit"`
 		ExpiredDataRetentionDays    *int      `json:"expired_data_retention_days"`
 		AuditLogRetentionDays       *int      `json:"audit_log_retention_days"`
+		AccountDeletionEnabled      *bool     `json:"account_deletion_enabled"`
+		EmailChangeAllowed          *bool     `json:"email_change_allowed"`
 	}
 	if !decode(w, r, &in) {
 		return

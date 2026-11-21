@@ -25,6 +25,9 @@ type purgeRepo struct {
 	kinds       map[string][]string
 	lastPurge   map[string]time.Time // realm → its last complete audit log purge
 	lastFails   string               // realm whose last purge cannot be read
+	// exportsBefore: the date the data exports were purged with (not
+	// counted in calls).
+	exportsBefore time.Time
 }
 
 func (r *purgeRepo) LastSuccessfulAuditEntry(_ context.Context, realmID, action string) (time.Time, error) {
@@ -89,6 +92,12 @@ func (r *purgeRepo) DeleteUnusedKnownAccounts(ctx context.Context, realmID strin
 func (r *purgeRepo) DeleteExpiredTrustedDevices(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
 	return r.del("trusted")(ctx, realmID, before, limit)
 }
+func (r *purgeRepo) DeleteExpiredDataExports(_ context.Context, before time.Time, limit int) (int, error) {
+	r.exportsBefore = before
+	n := min(r.stock["/exports"], limit)
+	r.stock["/exports"] -= n
+	return n, nil
+}
 func (r *purgeRepo) DeleteAuditLogs(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
 	return r.del("audit")(ctx, realmID, before, limit)
 }
@@ -139,10 +148,11 @@ func TestPurgeAll_UsesEachRealmsRetention(t *testing.T) {
 	require.Equal(t, []string{"tokens", "sessions", "reset", "verify", "emails", "attempts", "known", "trusted"}, repo.kinds["custom"],
 		"every kind, tokens before their sessions")
 	require.Equal(t, []string{"attempts"}, repo.kinds[""])
+	require.Equal(t, now, repo.exportsBefore, "data exports: on their own date, no retention")
 }
 
 func TestPurgeAll_DeletesInBatchesUntilDone(t *testing.T) {
-	repo := &purgeRepo{stock: map[string]int{"r/tokens": 2500, "r/known": 1000, "/attempts": 3}, before: map[string]time.Time{}}
+	repo := &purgeRepo{stock: map[string]int{"r/tokens": 2500, "r/known": 1000, "/attempts": 3, "/exports": 2}, before: map[string]time.Time{}}
 	svc, _ := newPurge(repo, nil, "r")
 
 	got, err := svc.PurgeAll(context.Background())
@@ -150,7 +160,8 @@ func TestPurgeAll_DeletesInBatchesUntilDone(t *testing.T) {
 	require.Equal(t, 2500, got.Tokens)
 	require.Equal(t, 1000, got.KnownAccounts)
 	require.Equal(t, 3, got.LoginAttempts)
-	require.Equal(t, 3503, got.Total())
+	require.Equal(t, 2, got.DataExports)
+	require.Equal(t, 3505, got.Total())
 	require.Zero(t, repo.stock["r/tokens"])
 	// tokens: 1000, 1000, 500; known: 1000, then 0 to see it is done;
 	// the six other kinds once each; the attempts of no realm once.

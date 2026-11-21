@@ -5,6 +5,60 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
 
 ## [Unreleased]
 
+### Manual steps
+- Deleting an account now erases what still names it (see Changed): the audit log keeps its entries under the
+  account's id, without its name, e-mail address or network addresses. Export the audit log first if a copy with
+  names must be kept for the accounts you delete.
+- Users cannot delete their own account until a realm turns it on (Settings > General, or
+  `idp settings set --realm <realm> --account-deletion=true`).
+- Users cannot change their e-mail address until a realm turns it on (Settings > General, or
+  `idp settings set --realm <realm> --email-change=true`). Before that, move the SAML clients that use the
+  `emailAddress` NameID to `persistent`, and check that the OIDC applications match accounts by `sub`: an
+  application that matches them by address sees a new user after a change.
+
+### Added
+- Account console > Your data: a user downloads a copy of their data (GDPR articles 15 and 20), as JSON. It is made
+  in the background, announced by e-mail (`data_export_ready`), downloadable for 7 days after confirming it's them,
+  then purged. Its sign-in history and audit entries keep the 10 000 newest rows each (`truncated` names a list
+  cut); the audit entries are those about the account, without the names of the administrators. New table
+  `data_exports` (migration `20261120214519_data_export`); audit actions `user.data_export_requested` and
+  `user.data_exported`.
+- Account deletion by its owner (GDPR article 17), per realm (`account_deletion_enabled`, off by default, never in
+  `master`): from Your data, after confirming it's them, the account is signed out everywhere and deleted 14 days
+  later by the hourly purge. In between, applications refuse it (OIDC `access_denied`, SAML `RequestDenied`, a page
+  in the browser), and the user may sign in to the account console and keep it; an administrator may also cancel
+  (user drawer, `POST /users/{id}/deletion/cancel`). E-mail `account_deletion_scheduled`; audit actions
+  `user.deletion_requested` and `user.deletion_cancelled`; badge "Deletion scheduled" in the console. Migration
+  `20261120225941_account_deletion`.
+- E-mail change by the user, per realm (`email_change_allowed`, off by default): from the account console
+  (Profile), after confirming it's them. The new address waits in `users.pending_email` until the link e-mailed to
+  it is opened: applications never see an unproven address. Then the account switches to it, verified, and the
+  previous address gets the e-mail `email_changed`. An administrator's change, a new request or a verification
+  e-mail cancels a pending change. Audit actions `user.email_change_requested`, `user.email_changed`,
+  `user.email_change_cancelled`; the admin console warns about the `emailAddress` NameID. Needs e-mail: the
+  setting is refused without SMTP. Migration `20261121100000_email_change`.
+
+### Changed
+- Deleting an account (administrator, bulk action, or its owner) removes it and erases its traces in one
+  transaction (a deletion its owner cancelled at the last moment does not happen): its sign-in attempts are deleted;
+  in the audit log, the addresses and browsers of what it did (and of the sign-ins made with its name) are cleared
+  and its username and e-mail address become `[deleted]`, in the details too (in the entries about it, also the
+  names and addresses it had or asked for and the recipients of its e-mails); the same in the reports of bulk
+  actions and user imports. `user.deleted` keeps the id, the reason and the applications that received the
+  account's data (to tell them, GDPR article 19), no longer the username and e-mail address. `user.import_finished`
+  now lists the id of each account created, so that a later deletion finds it there whatever its name then; entries
+  written before keep a name or address the account changed since. Suspensions (Timeouts) of a deleted account are
+  kept with their reason.
+- A password reset link e-mailed to an address the account no longer has stops working (its owner or an
+  administrator changed the address): whoever reads the old mailbox may not be the owner any more.
+
+### Fixed
+- Account console > History > Account activity no longer lists what an administrator did to other accounts, nor
+  what they did about nobody (an import, a bulk action), and no longer shows the name of the administrator who
+  acted on the account.
+- Deleting an account that another server, or its owner's request, deleted a moment before answers "not found",
+  with no second `user.deleted` entry.
+
 ## [1.0.0-rc.5] - 2026-11-20
 
 Passwords are checked against common and breached ones, and a realm can keep a history and expire them.

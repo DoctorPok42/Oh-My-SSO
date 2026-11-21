@@ -44,6 +44,20 @@ func (_u *UserImportJobUpdate) SetNillableStatus(v *schema.UserImportStatus) *Us
 	return _u
 }
 
+// SetRequestedByName sets the "requested_by_name" field.
+func (_u *UserImportJobUpdate) SetRequestedByName(v string) *UserImportJobUpdate {
+	_u.mutation.SetRequestedByName(v)
+	return _u
+}
+
+// SetNillableRequestedByName sets the "requested_by_name" field if the given value is not nil.
+func (_u *UserImportJobUpdate) SetNillableRequestedByName(v *string) *UserImportJobUpdate {
+	if v != nil {
+		_u.SetRequestedByName(*v)
+	}
+	return _u
+}
+
 // SetProcessed sets the "processed" field.
 func (_u *UserImportJobUpdate) SetProcessed(v int) *UserImportJobUpdate {
 	_u.mutation.ResetProcessed()
@@ -194,6 +208,11 @@ func (_u *UserImportJobUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *UserImportJobUpdate) check() error {
+	if v, ok := _u.mutation.RequestedByName(); ok {
+		if err := userimportjob.RequestedByNameValidator(v); err != nil {
+			return &ValidationError{Name: "requested_by_name", err: fmt.Errorf(`ent: validator failed for field "UserImportJob.requested_by_name": %w`, err)}
+		}
+	}
 	if _u.mutation.RealmCleared() && len(_u.mutation.RealmIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "UserImportJob.realm"`)
 	}
@@ -214,6 +233,9 @@ func (_u *UserImportJobUpdate) sqlSave(ctx context.Context) (_node int, err erro
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(userimportjob.FieldStatus, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RequestedByName(); ok {
+		_spec.SetField(userimportjob.FieldRequestedByName, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Processed(); ok {
 		_spec.SetField(userimportjob.FieldProcessed, field.TypeInt, value)
@@ -286,6 +308,20 @@ func (_u *UserImportJobUpdateOne) SetStatus(v schema.UserImportStatus) *UserImpo
 func (_u *UserImportJobUpdateOne) SetNillableStatus(v *schema.UserImportStatus) *UserImportJobUpdateOne {
 	if v != nil {
 		_u.SetStatus(*v)
+	}
+	return _u
+}
+
+// SetRequestedByName sets the "requested_by_name" field.
+func (_u *UserImportJobUpdateOne) SetRequestedByName(v string) *UserImportJobUpdateOne {
+	_u.mutation.SetRequestedByName(v)
+	return _u
+}
+
+// SetNillableRequestedByName sets the "requested_by_name" field if the given value is not nil.
+func (_u *UserImportJobUpdateOne) SetNillableRequestedByName(v *string) *UserImportJobUpdateOne {
+	if v != nil {
+		_u.SetRequestedByName(*v)
 	}
 	return _u
 }
@@ -453,6 +489,11 @@ func (_u *UserImportJobUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *UserImportJobUpdateOne) check() error {
+	if v, ok := _u.mutation.RequestedByName(); ok {
+		if err := userimportjob.RequestedByNameValidator(v); err != nil {
+			return &ValidationError{Name: "requested_by_name", err: fmt.Errorf(`ent: validator failed for field "UserImportJob.requested_by_name": %w`, err)}
+		}
+	}
 	if _u.mutation.RealmCleared() && len(_u.mutation.RealmIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "UserImportJob.realm"`)
 	}
@@ -490,6 +531,9 @@ func (_u *UserImportJobUpdateOne) sqlSave(ctx context.Context) (_node *UserImpor
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(userimportjob.FieldStatus, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RequestedByName(); ok {
+		_spec.SetField(userimportjob.FieldRequestedByName, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Processed(); ok {
 		_spec.SetField(userimportjob.FieldProcessed, field.TypeInt, value)

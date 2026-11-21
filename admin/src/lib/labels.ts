@@ -17,6 +17,9 @@ export const EMAIL_KIND_LABELS: Record<string, Msg> = {
   password_reset_required: m("labels.email.password_reset_required", "Forced password reset"),
   password_changed: m("labels.email.password_changed", "Password changed"),
   email_verification: m("labels.email.email_verification", "Address verification"),
+  email_changed: m("labels.email.email_changed", "Address changed (to the previous one)"),
+  data_export_ready: m("labels.email.data_export_ready", "Copy of data ready"),
+  account_deletion_scheduled: m("labels.email.account_deletion_scheduled", "Account deletion scheduled"),
   new_device_login: m("labels.email.new_device_login", "New device sign-in"),
   suspicious_login: m("labels.email.suspicious_login", "Suspicious sign-in"),
   mfa_method_added: m("labels.email.mfa_method_added", "Second factor added"),
@@ -44,10 +47,13 @@ export const AUTH_METHOD_LABELS: Record<string, Msg> = {
 
 export const PROTOCOL_LABELS: Record<string, string> = { oidc: "OIDC", saml2: "SAML 2.0", both: "OIDC + SAML" };
 
+/** The e-mail NameID: the service provider sees a new user when the address changes. */
+export const EMAIL_NAME_ID = "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress";
+
 export const NAME_ID_FORMATS = [
   { value: "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent", label: m("labels.nameid.persistent", "Persistent") },
   { value: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient", label: m("labels.nameid.transient", "Transient") },
-  { value: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress", label: m("labels.nameid.email", "Email address") },
+  { value: EMAIL_NAME_ID, label: m("labels.nameid.email", "Email address") },
   {
     value: "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified",
     label: m("labels.nameid.unspecified", "Unspecified"),

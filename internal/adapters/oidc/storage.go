@@ -579,6 +579,7 @@ func toTokenError(err error) error {
 		errors.Is(err, core.ErrSessionInvalid),
 		errors.Is(err, core.ErrForbidden),
 		errors.Is(err, core.ErrTimeoutActive),
+		errors.Is(err, core.ErrAccountDeletionScheduled),
 		errors.Is(err, core.ErrClientNotFound),
 		errors.Is(err, core.ErrMFARequired):
 		return oidc.ErrInvalidGrant().WithParent(err)
