@@ -80,39 +80,9 @@ func (r *entUserRepository) GetByRealmAndUsername(ctx context.Context, realmID, 
 
 func (r *entUserRepository) Update(ctx context.Context, id string, p repository.UpdateUserParams) (*domain.User, error) {
 	builder := r.client.User.UpdateOneID(id)
-
-	if p.Username != nil {
-		builder = builder.SetUsername(domain.NormalizeIdentifier(*p.Username))
-	}
-	if p.Email != nil {
-		// A new address cancels the change the user was waiting for.
-		builder = builder.SetEmail(domain.NormalizeIdentifier(*p.Email)).ClearPendingEmail()
-	} else if p.PendingEmail != nil {
-		builder = builder.SetPendingEmail(domain.NormalizeIdentifier(*p.PendingEmail))
-	}
-	if p.PasswordHash != nil {
-		builder = builder.SetPasswordHash(*p.PasswordHash)
-	}
-	if p.PasswordChangedAt != nil {
-		builder = builder.SetPasswordChangedAt(*p.PasswordChangedAt)
-	}
-	if p.PasswordHistory != nil {
-		builder = builder.SetPasswordHistory(*p.PasswordHistory)
-	}
-	if p.Status != nil {
-		builder = builder.SetStatus(entschema.UserStatus(*p.Status))
-	}
-	if p.MustChangePassword != nil {
-		builder = builder.SetMustChangePassword(*p.MustChangePassword)
-	}
+	applyUserFields(builder, p)
 	verify := p.EmailVerified != nil && *p.EmailVerified
-	switch {
-	case verify && p.Email != nil:
-		builder = builder.SetEmailVerifiedAt(time.Now()) // a new address, verified from now
-	case !verify && (p.EmailVerified != nil || p.Email != nil):
-		// A new address is not verified, whatever the old one was.
-		builder = builder.ClearEmailVerifiedAt()
-	}
+	applyEmailVerified(builder, p, verify)
 
 	e, err := builder.Save(ctx)
 	if err != nil {
@@ -131,6 +101,46 @@ func (r *entUserRepository) Update(ctx context.Context, id string, p repository.
 		}
 	}
 	return toDomainUser(e), nil
+}
+
+// applyUserFields sets the fields p carries (the builder mutates in place).
+func applyUserFields(b *ent.UserUpdateOne, p repository.UpdateUserParams) {
+	if p.Username != nil {
+		b.SetUsername(domain.NormalizeIdentifier(*p.Username))
+	}
+	if p.Email != nil {
+		// A new address cancels the change the user was waiting for.
+		b.SetEmail(domain.NormalizeIdentifier(*p.Email)).ClearPendingEmail()
+	} else if p.PendingEmail != nil {
+		b.SetPendingEmail(domain.NormalizeIdentifier(*p.PendingEmail))
+	}
+	if p.PasswordHash != nil {
+		b.SetPasswordHash(*p.PasswordHash)
+	}
+	if p.PasswordChangedAt != nil {
+		b.SetPasswordChangedAt(*p.PasswordChangedAt)
+	}
+	if p.PasswordHistory != nil {
+		b.SetPasswordHistory(*p.PasswordHistory)
+	}
+	if p.Status != nil {
+		b.SetStatus(entschema.UserStatus(*p.Status))
+	}
+	if p.MustChangePassword != nil {
+		b.SetMustChangePassword(*p.MustChangePassword)
+	}
+}
+
+// applyEmailVerified: a new address is verified from now when p says so, and
+// not verified otherwise, whatever the old one was. verify without a new
+// address is applied after the save (Update).
+func applyEmailVerified(b *ent.UserUpdateOne, p repository.UpdateUserParams, verify bool) {
+	switch {
+	case verify && p.Email != nil:
+		b.SetEmailVerifiedAt(time.Now())
+	case !verify && (p.EmailVerified != nil || p.Email != nil):
+		b.ClearEmailVerifiedAt()
+	}
 }
 
 func (r *entUserRepository) Delete(ctx context.Context, id string) error {
