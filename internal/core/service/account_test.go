@@ -380,6 +380,53 @@ func TestAccount_Sessions(t *testing.T) {
 	require.ElementsMatch(t, []string{"Payroll", "Wiki"}, list[1].Apps)
 }
 
+// Signing in again in a browser leaves its old session: one row per browser,
+// and signing the row out ends the hidden session too.
+func TestAccount_SessionsByDevice(t *testing.T) {
+	f := newAcctFixture(t)
+	ctx := context.Background()
+	user := f.users.get(f.user.ID)
+	onDevice := func(dev string) *domain.Session {
+		_, s, err := f.sessSvc.Create(ctx, service.CreateSessionInput{
+			RealmID: user.RealmID, UserID: user.ID, AuthMethod: domain.AuthMethodPassword, DeviceFingerprint: dev,
+		})
+		require.NoError(t, err)
+		f.clock.Advance(time.Minute)
+		return s
+	}
+	oldA := onDevice("dev-a")
+	f.token(oldA.ID, "c-payroll")
+	otherDevice := onDevice("dev-b")
+	noDevice1, noDevice2 := onDevice(""), onDevice("")
+	newA := onDevice("dev-a")
+	current := onDevice("dev-c")
+
+	list, err := f.svc.SessionsByDevice(ctx, user, current.ID)
+	require.NoError(t, err)
+	var ids []string
+	for _, v := range list {
+		ids = append(ids, v.ID)
+	}
+	require.ElementsMatch(t, []string{current.ID, newA.ID, otherDevice.ID, noDevice1.ID, noDevice2.ID}, ids,
+		"one row per device (the most recent), sessions without a device cookie stay apart")
+	for _, v := range list {
+		if v.ID == newA.ID {
+			require.Equal(t, []string{"Payroll"}, v.Apps, "the applications of the hidden session")
+		}
+	}
+
+	require.NoError(t, f.svc.RevokeSession(ctx, user, current.ID, newA.ID, ev))
+	for _, s := range []*domain.Session{oldA, newA} {
+		got, _ := f.sessions.GetByID(ctx, s.ID)
+		require.Equal(t, domain.SessionRevoked, got.Status, "session %s", s.ID)
+	}
+	for _, s := range []*domain.Session{current, otherDevice, noDevice1, noDevice2} {
+		got, _ := f.sessions.GetByID(ctx, s.ID)
+		require.Equal(t, domain.SessionActive, got.Status, "session %s", s.ID)
+	}
+	require.True(t, f.tokens.byJTI["jti-1"].Revoked, "the tokens of the hidden session too")
+}
+
 func TestAccount_RevokeSession(t *testing.T) {
 	f := newAcctFixture(t)
 	ctx := context.Background()

@@ -572,7 +572,7 @@ func (s *Server) handleAccountBackupCodesNew(w http.ResponseWriter, r *http.Requ
 
 func (s *Server) sessionsPage(w http.ResponseWriter, r *http.Request, a *acct) (accountui.SessionsPage, error) {
 	page := accountui.SessionsPage{Layout: s.accountLayout(w, r, a, "sessions", titleSessions)}
-	list, err := s.account.Sessions(r.Context(), a.user, a.sess.ID)
+	list, err := s.account.SessionsByDevice(r.Context(), a.user, a.sess.ID)
 	if err != nil {
 		return page, err
 	}
