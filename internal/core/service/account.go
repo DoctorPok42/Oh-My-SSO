@@ -296,6 +296,7 @@ func (s *AccountService) ChangePassword(ctx context.Context, in ChangePasswordIn
 type AccountSession struct {
 	ID             string    `json:"id"`
 	Current        bool      `json:"-"` // the session of this browser
+	Device         string    `json:"-"` // hash of the browser's sso_device cookie; "" when it had none
 	IPAddress      string    `json:"ip_address"`
 	Country        string    `json:"country,omitempty"`
 	UserAgent      string    `json:"user_agent"`
@@ -330,7 +331,7 @@ func (s *AccountService) Sessions(ctx context.Context, user *domain.User, curren
 	out := make([]AccountSession, 0, len(live))
 	for _, se := range live {
 		v := AccountSession{
-			ID: se.ID, Current: se.ID == currentID, IPAddress: se.IPAddress, Country: s.Country(se.IPAddress),
+			ID: se.ID, Current: se.ID == currentID, Device: se.DeviceFingerprint, IPAddress: se.IPAddress, Country: s.Country(se.IPAddress),
 			UserAgent: se.UserAgent, AuthMethod: se.AuthMethod, MFAVerified: se.MFAVerified, MFAMethod: se.MFAMethodType,
 			RememberMe: se.RememberMe, TrustedDevice: se.TrustedDevice,
 			CreatedAt: se.CreatedAt, LastActivityAt: se.LastActivityAt, ExpiresAt: se.ExpiresAt,
@@ -358,6 +359,38 @@ func (s *AccountService) Sessions(ctx context.Context, user *domain.User, curren
 			return b.LastActivityAt.Compare(a.LastActivityAt)
 		}
 	})
+	return out, nil
+}
+
+// SessionsByDevice is Sessions with one row per browser: signing in again in
+// the same browser opens a new session and keeps the old one (its
+// applications' tokens are bound to it), which would show the device twice,
+// often with an IPv4 and an IPv6 address. The row kept is the current session,
+// else the most recently used; it lists the applications of the sessions it
+// hides. RevokeSession ends them with it. Sessions without a device cookie
+// are never merged.
+func (s *AccountService) SessionsByDevice(ctx context.Context, user *domain.User, currentID string) ([]AccountSession, error) {
+	all, err := s.Sessions(ctx, user, currentID)
+	if err != nil {
+		return nil, err
+	}
+	kept := map[string]int{} // device -> index in out
+	out := make([]AccountSession, 0, len(all))
+	for _, v := range all {
+		i, seen := kept[v.Device]
+		if v.Device == "" || !seen {
+			if v.Device != "" {
+				kept[v.Device] = len(out)
+			}
+			out = append(out, v)
+			continue
+		}
+		for _, app := range v.Apps {
+			if !slices.Contains(out[i].Apps, app) {
+				out[i].Apps = append(out[i].Apps, app)
+			}
+		}
+	}
 	return out, nil
 }
 
@@ -408,8 +441,32 @@ func (s *AccountService) RevokeSession(ctx context.Context, user *domain.User, c
 		}
 		return fmt.Errorf("revoke session: %w", err)
 	}
+	err = s.revokeSameDevice(ctx, user, currentID, se)
 	s.audit(ctx, user, audit.SessionRevoked, "Session", se.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev, nil)
+	if err != nil {
+		return fmt.Errorf("revoke session: %w", err)
+	}
 	return nil
+}
+
+// revokeSameDevice ends the sessions SessionsByDevice hides behind the row of
+// se: a row signed out must not leave a usable session of the same browser.
+// Every session is tried whatever the others do.
+func (s *AccountService) revokeSameDevice(ctx context.Context, user *domain.User, currentID string, se *domain.Session) error {
+	if se.DeviceFingerprint == "" {
+		return nil
+	}
+	live, err := s.liveSessions(ctx, user)
+	errs := []error{err}
+	for _, old := range live {
+		if old.ID == se.ID || old.ID == currentID || old.DeviceFingerprint != se.DeviceFingerprint {
+			continue
+		}
+		if err := s.d.Sessions.Revoke(ctx, old.ID, domain.SessionRevokedByUser); !errors.Is(err, ErrSessionInvalid) {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // RevokeOtherSessions signs out every session of the user but currentID,
