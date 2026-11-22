@@ -5,6 +5,11 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
 
 ## [Unreleased]
 
+## [1.0.0-rc.6] - 2026-11-22
+
+Users can get a copy of their data, delete their account and change their e-mail address, and the previous address is
+always told of a change.
+
 ### Manual steps
 - Deleting an account now erases its names and addresses from the audit log, reports and imports (see Changed).
   Export the audit log first if the names must be kept.
@@ -18,10 +23,10 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
   are off by default.
 
 ### Changed
+- When an administrator changes a user's e-mail address, the previous address is now notified, as when users
+  change it themselves.
 - Deleting an account erases its names and addresses from the audit log, reports and imports, and removes it
   together with its traces in one transaction.
-
-### Fixed
 
 ### Fixed
 - Account console > History > Account activity no longer lists what an administrator did to other accounts, nor

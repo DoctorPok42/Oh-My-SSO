@@ -5,7 +5,7 @@
 {{tp "email.email_changed.intro" "The e-mail address of your <strong>{realm}</strong> account is now <strong>{email}</strong>. This address no longer receives its e-mails." "realm" .Realm "email" .NewEmail}}
 
 {{template "details.txt" .}}
-{{t "email.not_you" "Not you?"}} {{t "email.email_changed.not_you" "Someone may be signed in to your account. Tell your administrator right away: a password reset would now go to the new address."}}
+{{t "email.not_you" "Not you?"}} {{if .ByAdmin}}{{t "email.email_changed.not_you_admin" "An administrator made this change. If you did not expect it, contact them: a password reset would now go to the new address."}}{{else}}{{t "email.email_changed.not_you" "Someone may be signed in to your account. Tell your administrator right away: a password reset would now go to the new address."}}{{end}}
 {{end}}
 
 {{define "html"}}{{template "badge.warning" (t "email.badge.security" "Security")}}
@@ -13,5 +13,5 @@
 {{template "hello" .}}
 <p>{{th "email.email_changed.intro" "The e-mail address of your <strong>{realm}</strong> account is now <strong>{email}</strong>. This address no longer receives its e-mails." "realm" .Realm "email" .NewEmail}}</p>
 {{template "details" .}}
-{{template "notyou" (t "email.email_changed.not_you" "Someone may be signed in to your account. Tell your administrator right away: a password reset would now go to the new address.")}}
+{{if .ByAdmin}}{{template "notyou" (t "email.email_changed.not_you_admin" "An administrator made this change. If you did not expect it, contact them: a password reset would now go to the new address.")}}{{else}}{{template "notyou" (t "email.email_changed.not_you" "Someone may be signed in to your account. Tell your administrator right away: a password reset would now go to the new address.")}}{{end}}
 {{end}}

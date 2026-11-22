@@ -593,6 +593,7 @@
   "email.details.when": "Quand",
   "email.email_changed.intro": "L'adresse e-mail de votre compte <strong>{realm}</strong> est désormais <strong>{email}</strong>. Cette adresse ne reçoit plus ses e-mails.",
   "email.email_changed.not_you": "Quelqu'un est peut-être connecté à votre compte. Prévenez tout de suite votre administrateur : une réinitialisation du mot de passe partirait maintenant vers la nouvelle adresse.",
+  "email.email_changed.not_you_admin": "Un administrateur a fait ce changement. Si vous ne vous y attendiez pas, contactez-le : une réinitialisation du mot de passe partirait maintenant vers la nouvelle adresse.",
   "email.email_changed.subject": "Votre adresse e-mail a été modifiée",
   "email.footer": "Ceci est un message automatique de {product} au sujet de votre compte. Les réponses ne sont pas lues.",
   "email.footer.user": "Ceci est un message automatique de {product} au sujet de votre compte <strong>{user}</strong>. Les réponses ne sont pas lues.",

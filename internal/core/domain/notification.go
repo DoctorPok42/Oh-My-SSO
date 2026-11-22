@@ -83,6 +83,9 @@ type NotificationEvent struct {
 	OccurredAt time.Time
 	IPAddress  string // where the action came from, when known
 	UserAgent  string
+	// ByAdmin: an administrator did it (email_changed), not the user.
+	ByAdmin bool
+
 	// QuietAudit: one e-mail of a batch that the audit log records as a whole.
 	// It gets an entry of its own only if it fails.
 	QuietAudit bool

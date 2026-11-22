@@ -710,6 +710,7 @@ func (d *Dispatcher) data(loc *i18n.Localizer, e domain.NotificationEvent, user 
 		out.DeletionAt = formatTime(loc, e.ExpiresAt)
 	case domain.NotificationEmailChanged:
 		out.NewEmail = user.Email // the account's address once changed
+		out.ByAdmin = e.ByAdmin
 	case domain.NotificationAdminRecovery:
 		out.RecoveryKind = knownText(loc, recoveryKinds, e.RecoveryKind)
 		out.RecoveryActor = e.RecoveryActor

@@ -619,6 +619,13 @@ func (s *AdminService) UpdateUser(ctx context.Context, actor AdminActor, realm *
 			s.d.Logger.WarnContext(ctx, "update user: session cache not updated", "user_id", u.ID, "error", err)
 		}
 	}
+	if params.Email != nil {
+		// Same e-mail as when the user changes it: the previous address learns the account moved.
+		s.d.Notifier.Notify(ctx, domain.NotificationEvent{
+			Kind: domain.NotificationEmailChanged, RealmID: realm.ID, UserID: u.ID, To: u.Email,
+			OccurredAt: s.d.Now(), ByAdmin: true,
+		})
+	}
 	if len(changes) > 0 {
 		level := domain.AuditLogInfo
 		if deactivate {
@@ -696,25 +703,34 @@ func (s *AdminService) SetUserGroups(ctx context.Context, actor AdminActor, real
 	if err != nil {
 		return nil, err
 	}
-	if isMaster(realm) {
-		admins, err := s.d.Groups.GetByRealmAndName(ctx, realm.ID, AdminGroupName)
-		if err == nil && !slices.Contains(ids, admins.ID) {
-			m, err := s.d.Admin.Memberships(ctx, []string{u.ID})
-			if err != nil {
-				return nil, err
-			}
-			if slices.Contains(m[u.ID].GroupIDs, admins.ID) {
-				if err := s.guardAdminRemoval(ctx, actor, realm, u.ID, i18n.M("admin.error.self_change.group", "you cannot remove yourself from {group}", "group", AdminGroupName)); err != nil {
-					return nil, err
-				}
-			}
-		}
+	if err := s.guardAdminGroupRemoval(ctx, actor, realm, u.ID, ids); err != nil {
+		return nil, err
 	}
 	if err := s.d.Admin.SetUserGroups(ctx, u.ID, ids); err != nil {
 		return nil, err
 	}
 	s.auditAdmin(ctx, actor, realm.ID, audit.UserGroupsChanged, "User", u.ID, domain.AuditLogInfo, map[string]interface{}{"group_ids": ids})
 	return s.GetUser(ctx, realm, u.ID)
+}
+
+// guardAdminGroupRemoval refuses, in the master realm, that the new groups
+// (ids) take the user out of the administrators' group when it is the actor.
+func (s *AdminService) guardAdminGroupRemoval(ctx context.Context, actor AdminActor, realm *domain.Realm, userID string, ids []string) error {
+	if !isMaster(realm) {
+		return nil
+	}
+	admins, err := s.d.Groups.GetByRealmAndName(ctx, realm.ID, AdminGroupName)
+	if err != nil || slices.Contains(ids, admins.ID) {
+		return nil
+	}
+	m, err := s.d.Admin.Memberships(ctx, []string{userID})
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(m[userID].GroupIDs, admins.ID) {
+		return nil
+	}
+	return s.guardAdminRemoval(ctx, actor, realm, userID, i18n.M("admin.error.self_change.group", "you cannot remove yourself from {group}", "group", AdminGroupName))
 }
 
 // SetUserRoles replaces the user's direct roles. Prefer groups (spec:
