@@ -441,28 +441,32 @@ func (s *AccountService) RevokeSession(ctx context.Context, user *domain.User, c
 		}
 		return fmt.Errorf("revoke session: %w", err)
 	}
-	// The sessions SessionsByDevice hides behind this row go with it: a row
-	// signed out must not leave a usable session of the same browser.
-	var errs []error
-	if se.DeviceFingerprint != "" {
-		live, err := s.liveSessions(ctx, user)
-		if err != nil {
-			errs = append(errs, err)
-		}
-		for _, old := range live {
-			if old.ID == se.ID || old.ID == currentID || old.DeviceFingerprint != se.DeviceFingerprint {
-				continue
-			}
-			if err := s.d.Sessions.Revoke(ctx, old.ID, domain.SessionRevokedByUser); err != nil && !errors.Is(err, ErrSessionInvalid) {
-				errs = append(errs, err)
-			}
-		}
-	}
+	err = s.revokeSameDevice(ctx, user, currentID, se)
 	s.audit(ctx, user, audit.SessionRevoked, "Session", se.ID, domain.AuditLogInfo, domain.AuditLogSuccess, ev, nil)
-	if err := errors.Join(errs...); err != nil {
+	if err != nil {
 		return fmt.Errorf("revoke session: %w", err)
 	}
 	return nil
+}
+
+// revokeSameDevice ends the sessions SessionsByDevice hides behind the row of
+// se: a row signed out must not leave a usable session of the same browser.
+// Every session is tried whatever the others do.
+func (s *AccountService) revokeSameDevice(ctx context.Context, user *domain.User, currentID string, se *domain.Session) error {
+	if se.DeviceFingerprint == "" {
+		return nil
+	}
+	live, err := s.liveSessions(ctx, user)
+	errs := []error{err}
+	for _, old := range live {
+		if old.ID == se.ID || old.ID == currentID || old.DeviceFingerprint != se.DeviceFingerprint {
+			continue
+		}
+		if err := s.d.Sessions.Revoke(ctx, old.ID, domain.SessionRevokedByUser); !errors.Is(err, ErrSessionInvalid) {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // RevokeOtherSessions signs out every session of the user but currentID,
