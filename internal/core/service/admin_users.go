@@ -619,6 +619,13 @@ func (s *AdminService) UpdateUser(ctx context.Context, actor AdminActor, realm *
 			s.d.Logger.WarnContext(ctx, "update user: session cache not updated", "user_id", u.ID, "error", err)
 		}
 	}
+	if params.Email != nil {
+		// Same e-mail as when the user changes it: the previous address learns the account moved.
+		s.d.Notifier.Notify(ctx, domain.NotificationEvent{
+			Kind: domain.NotificationEmailChanged, RealmID: realm.ID, UserID: u.ID, To: u.Email,
+			OccurredAt: s.d.Now(), ByAdmin: true,
+		})
+	}
 	if len(changes) > 0 {
 		level := domain.AuditLogInfo
 		if deactivate {

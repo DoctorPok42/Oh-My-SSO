@@ -104,6 +104,8 @@ type Data struct {
 	// email_changed: the account's address now (the e-mail goes to the
 	// previous one).
 	NewEmail string
+	// ByAdmin: an administrator changed it (email_changed).
+	ByAdmin bool
 }
 
 type htmlData struct {

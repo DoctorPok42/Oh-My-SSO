@@ -643,6 +643,13 @@ func TestAdminService_Integration(t *testing.T) {
 		require.Equal(t, "robert", up.Username)
 		require.Equal(t, "Smith", up.Profile["family_name"])
 		require.NotContains(t, up.Profile, "vip")
+		// The previous address is told: one e-mail, and none for a change that leaves the address alone.
+		moved := func() int { return len(e.notifier.kinds(domain.NotificationEmailChanged)) }
+		require.Equal(t, 1, moved())
+		require.True(t, e.notifier.kinds(domain.NotificationEmailChanged)[0].ByAdmin, "the e-mail says an administrator did it")
+		_, err = svc.UpdateUser(ctx, root, demo, bobID, service.UpdateUserInput{Username: ptr("robert")})
+		require.NoError(t, err)
+		require.Equal(t, 1, moved())
 		up, err = svc.UpdateUser(ctx, root, demo, bobID, service.UpdateUserInput{Status: ptr(domain.UserSuspended)})
 		require.NoError(t, err)
 		require.Equal(t, domain.UserSuspended, up.Status)
