@@ -463,5 +463,6 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
 - [ ] `WEBAUTHN_RP_ID` final, with `WEBAUTHN_RP_ORIGINS` = `PUBLIC_URL`: every account of the master realm signs in with a
   passkey or a security key only, so without them nobody can open the console (`idp doctor` checks this, and the
   MFA policies of master). A lost key is replaced with `idp-admin recover admin`: backup codes do not work there
+- [ ] `SECURITY_CONTACT` set, so `/.well-known/security.txt` tells researchers whom to write to (optional; 404 without it)
 - [ ] `IMAGE_*` pinned to a commit sha, the same one for `idp`, `idp-admin` and `migrate`
 - [ ] `dev seed`, the test SAML SP, default passwords and `dev-root-token` all gone

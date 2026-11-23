@@ -5,6 +5,15 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-23
+
+First stable release: a security policy and fuzzed parsers on top of 1.0.0-rc.6. No manual step is required.
+
+### Added
+- `SECURITY.md` (private vulnerability reporting), `CONTRIBUTING.md` and a short threat model (`docs/THREAT_MODEL.md`).
+- `/.well-known/security.txt` (RFC 9116), served when `SECURITY_CONTACT` is set; 404 otherwise.
+- Fuzz targets for the SAML XML parser, the SAML signature check and the CSV import, run weekly in CI (`fuzz.yml`).
+
 ### Changed
 
 - The account console's "Sessions" page shows one row per browser instead of one per sign-in (often one with an IPv4 and one with an IPv6 address). Signing a row out also ends the older sessions of that browser.

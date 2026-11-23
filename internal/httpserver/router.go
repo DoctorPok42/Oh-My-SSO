@@ -17,6 +17,7 @@ import (
 )
 
 type Server struct {
+	securityContact string // SECURITY_CONTACT: served as /.well-known/security.txt
 	router      *chi.Mux
 	ipResolver  clientip.Resolver
 	auth        *service.AuthService
@@ -99,6 +100,12 @@ func WithReadiness(checks ...health.Check) Option {
 	return func(s *Server) { s.ready = checks }
 }
 
+// WithSecurityContact serves GET /.well-known/security.txt (RFC 9116) with this
+// contact (an address, a mailto: or an https: URL). Empty: the route is not mounted.
+func WithSecurityContact(contact string) Option {
+	return func(s *Server) { s.securityContact = contact }
+}
+
 // WithKnownAccounts mounts POST /r/{realm}/auth/accounts/forget, the
 // "Forget" button of "Pick an account".
 func WithKnownAccounts(k *service.KnownAccountService) Option {
@@ -169,6 +176,7 @@ func New(
 
 	s.router.Get("/health", s.handleHealth)
 	s.router.Method(http.MethodGet, "/readyz", health.Handler(s.ready...))
+	s.mountSecurityTxt()
 
 	s.router.Route("/r/{realmName}", func(r chi.Router) {
 		r.Use(s.realmMiddleware)

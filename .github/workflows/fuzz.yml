@@ -1,0 +1,65 @@
+# Fuzzing, weekly: the three parsers that read bytes from outside (SAML XML,
+# SAML signature check, CSV import) get a few minutes of `go test -fuzz` each.
+# A crash is saved as testdata/fuzz/<Target>/<hash> and uploaded: commit it, it
+# then replays as a normal test in `go test`. Run it by hand from the Actions tab
+# to fuzz longer (fuzztime input).
+
+name: Fuzz
+
+on:
+  schedule:
+    - cron: "17 3 * * 1" # Mondays, 03:17 UTC
+  workflow_dispatch:
+    inputs:
+      fuzztime:
+        description: Duration per target (Go syntax)
+        default: 5m
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Fuzz parsers
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      # The fuzzer keeps what it learned in Go's build cache: restore it, so
+      # each week continues from the last one instead of the seeds.
+      - name: Restore the fuzz corpus
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/go-build/fuzz
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
+
+      # go test -fuzz accepts one target per run; a crash in one must not
+      # skip the others.
+      - name: Fuzz
+        env:
+          FUZZTIME: ${{ inputs.fuzztime || '2m' }}
+        run: |
+          rc=0
+          go test ./internal/adapters/saml -run='^$' -fuzz='^FuzzParseXML$' -fuzztime="$FUZZTIME" || rc=1
+          go test ./internal/adapters/saml -run='^$' -fuzz='^FuzzVerifyInbound$' -fuzztime="$FUZZTIME" || rc=1
+          go test ./internal/core/service -run='^$' -fuzz='^FuzzParseUserCSV$' -fuzztime="$FUZZTIME" || rc=1
+          exit $rc
+
+      - name: Keep the crashing inputs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-crashers
+          path: "**/testdata/fuzz/**"
+          if-no-files-found: ignore
