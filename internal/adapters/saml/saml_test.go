@@ -41,7 +41,7 @@ type spKey struct {
 	pem  string
 }
 
-func newSPKey(t *testing.T, ec bool, notBefore, notAfter time.Time) *spKey {
+func newSPKey(t testing.TB, ec bool, notBefore, notAfter time.Time) *spKey {
 	t.Helper()
 	var key crypto.Signer
 	var err error
@@ -60,7 +60,7 @@ func newSPKey(t *testing.T, ec bool, notBefore, notAfter time.Time) *spKey {
 	return &spKey{key: key, cert: cert, pem: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))}
 }
 
-func validSPKey(t *testing.T, ec bool) *spKey {
+func validSPKey(t testing.TB, ec bool) *spKey {
 	return newSPKey(t, ec, time.Now().Add(-time.Hour), time.Now().Add(time.Hour))
 }
 
@@ -200,7 +200,7 @@ func TestCertificatesAt(t *testing.T) {
 }
 
 // signedAuthnRequest builds an AuthnRequest signed by sp (XML-DSig, POST binding).
-func signedAuthnRequest(t *testing.T, k *spKey, alg string, id string) []byte {
+func signedAuthnRequest(t testing.TB, k *spKey, alg string, id string) []byte {
 	t.Helper()
 	sp := &samllib.ServiceProvider{Key: k.key, Certificate: k.cert, SignatureMethod: alg, EntityID: "https://sp.example.test/metadata"}
 	req := samllib.AuthnRequest{ID: id, Version: "2.0", IssueInstant: time.Now().UTC(),
