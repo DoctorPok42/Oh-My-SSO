@@ -39,7 +39,7 @@ const (
 
 func (t AuditActorType) Valid() bool {
 	switch t {
-	case AuditActorUser, AuditActorAdmin, AuditActorCLI, AuditActorSystem, AuditActorAnonymous:
+	case AuditActorUser, AuditActorAdmin, AuditActorCLI, AuditActorSystem, AuditActorAnonymous, AuditActorClient:
 		return true
 	}
 	return false

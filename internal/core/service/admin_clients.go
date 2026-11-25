@@ -1,7 +1,6 @@
 package service
 
 import (
-	"sso.internal/sso/internal/i18n"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -14,8 +13,8 @@ import (
 	"sso.internal/sso/internal/core/audit"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
+	"sso.internal/sso/internal/i18n"
 )
-
 
 type ClientSummary struct {
 	ID        string                   `json:"id"`
@@ -49,16 +48,19 @@ type CertificateView struct {
 // ClientView: the client drawer. The secret is never part of it.
 type ClientView struct {
 	ClientSummary
-	RequireConsent bool                   `json:"require_consent"`
-	SubjectType    string                 `json:"subject_type"`
-	MFAPolicy      string                 `json:"mfa_policy"`
-	MFAMethods     []string               `json:"mfa_methods"`
-	ClientScopes   []ClientScopeChoice    `json:"client_scopes"`
-	AllowedRoles   []NameRef              `json:"allowed_roles"`
-	AllowedGroups  []NameRef              `json:"allowed_groups"`
-	OIDC           *ClientOIDCView        `json:"oidc,omitempty"`
-	SAML           *ClientSAMLView        `json:"saml,omitempty"`
-	Mappings       map[string]interface{} `json:"attribute_mappings"`
+	RequireConsent bool                `json:"require_consent"`
+	SubjectType    string              `json:"subject_type"`
+	MFAPolicy      string              `json:"mfa_policy"`
+	MFAMethods     []string            `json:"mfa_methods"`
+	ClientScopes   []ClientScopeChoice `json:"client_scopes"`
+	AllowedRoles   []NameRef           `json:"allowed_roles"`
+	AllowedGroups  []NameRef           `json:"allowed_groups"`
+	// ServiceRoles: the roles of the client's own service account
+	// (client_credentials grant), not who may sign in to it.
+	ServiceRoles []NameRef              `json:"service_roles"`
+	OIDC         *ClientOIDCView        `json:"oidc,omitempty"`
+	SAML         *ClientSAMLView        `json:"saml,omitempty"`
+	Mappings     map[string]interface{} `json:"attribute_mappings"`
 }
 
 type ClientOIDCView struct {
@@ -106,6 +108,8 @@ type ClientInput struct {
 	StandardScopes          *[]string
 	TokenEndpointAuthMethod *string
 	RequirePKCE             *bool
+	GrantTypes              *[]string
+	ServiceRoleIDs          *[]string
 	AccessTokenTTL          *int
 	RefreshTokenTTL         *int
 	IDTokenTTL              *int
@@ -176,6 +180,7 @@ func (s *AdminService) clientView(ctx context.Context, c *domain.ClientApp) (Cli
 		ClientScopes:   []ClientScopeChoice{},
 		AllowedRoles:   namedRefs(grants.RoleIDs, grants.Names),
 		AllowedGroups:  namedRefs(grants.GroupIDs, grants.Names),
+		ServiceRoles:   namedRefs(grants.ServiceRoleIDs, grants.Names),
 		Mappings:       c.AttributeMappings,
 	}
 	if v.MFAPolicy == "" {
@@ -321,6 +326,14 @@ func checkTTL(field string, v *int) error {
 	return nil
 }
 
+// checkGrantTypes: an empty list is refused (nil: unchanged or default).
+func checkGrantTypes(v *[]string) error {
+	if v != nil && len(*v) == 0 {
+		return adminInvalid("grant_types", i18n.M("admin.error.grant_required", "choose at least one grant type"))
+	}
+	return nil
+}
+
 func mfaInput(policy *string, methods *[]string) (domain.ClientAppMFAPolicy, []domain.MfaMethodType) {
 	p := domain.ClientAppMFAInherit
 	if policy != nil && *policy != "" {
@@ -336,31 +349,95 @@ func mfaInput(policy *string, methods *[]string) (domain.ClientAppMFAPolicy, []d
 	return p, ms
 }
 
-// CreateClient creates an OIDC or a SAML client from the drawer.
-func (s *AdminService) CreateClient(ctx context.Context, actor AdminActor, realm *domain.Realm, in ClientInput) (*ClientCreated, error) {
+// newClientChecks is what a new client's input resolves to once validated.
+type newClientChecks struct {
+	roles, groups, serviceRoles []string
+	scopeMaps                   []repository.ScopeMapping
+	scopeNames                  []string
+}
+
+func (s *AdminService) checkNewClient(ctx context.Context, realm *domain.Realm, in ClientInput) (newClientChecks, error) {
+	var c newClientChecks
 	if in.Protocol != domain.ClientAppProtocolOIDC && in.Protocol != domain.ClientAppProtocolSAML2 {
-		return nil, adminInvalid("protocol", i18n.M("admin.error.protocol_oidc_saml2", "protocol must be oidc or saml2"))
+		return c, adminInvalid("protocol", i18n.M("admin.error.protocol_oidc_saml2", "protocol must be oidc or saml2"))
 	}
-	roles, err := s.checkRoleIDs(ctx, realm.ID, listOr(in.AllowedRoleIDs, nil))
-	if err != nil {
-		return nil, err
+	var err error
+	if c.roles, err = s.checkRoleIDs(ctx, realm.ID, listOr(in.AllowedRoleIDs, nil)); err != nil {
+		return c, err
 	}
-	groups, err := s.checkGroupIDs(ctx, realm.ID, listOr(in.AllowedGroupIDs, nil))
-	if err != nil {
-		return nil, err
+	if c.groups, err = s.checkGroupIDs(ctx, realm.ID, listOr(in.AllowedGroupIDs, nil)); err != nil {
+		return c, err
+	}
+	if c.serviceRoles, err = s.checkRoleIDs(ctx, realm.ID, listOr(in.ServiceRoleIDs, nil)); err != nil {
+		return c, err
 	}
 	var choices []ScopeChoiceInput
 	if in.ClientScopes != nil {
 		choices = *in.ClientScopes
 	}
-	scopeMaps, scopeNames, err := s.clientScopes(ctx, realm.ID, in.Protocol, choices)
-	if err != nil {
-		return nil, err
+	if c.scopeMaps, c.scopeNames, err = s.clientScopes(ctx, realm.ID, in.Protocol, choices); err != nil {
+		return c, err
 	}
+	if err = checkTTLs(in); err != nil {
+		return c, err
+	}
+	return c, checkGrantTypes(in.GrantTypes)
+}
+
+func checkTTLs(in ClientInput) error {
 	for field, v := range map[string]*int{"access_token_ttl": in.AccessTokenTTL, "refresh_token_ttl": in.RefreshTokenTTL, "id_token_ttl": in.IDTokenTTL} {
 		if err := checkTTL(field, v); err != nil {
-			return nil, err
+			return err
 		}
+	}
+	return nil
+}
+
+// resolveClientID returns the given client_id, or one generated from the name.
+func resolveClientID(name string, given *string) (string, error) {
+	if id := strOr(given, ""); id != "" {
+		return id, nil
+	}
+	if name == "" {
+		return "", adminInvalid("name", i18n.M("admin.error.name_or_client_id", "a name or a client_id is required"))
+	}
+	return generatedClientID(name), nil
+}
+
+// setNewClientGrants stores the grants by id (the services that create the
+// client resolve names; the console has ids).
+func (s *AdminService) setNewClientGrants(ctx context.Context, actor AdminActor, app *domain.ClientApp, c newClientChecks) error {
+	if err := s.d.Admin.SetClientRoles(ctx, app.ID, c.roles, actor.By()); err != nil {
+		return err
+	}
+	if err := s.d.Admin.SetClientGroups(ctx, app.ID, c.groups, actor.By()); err != nil {
+		return err
+	}
+	if err := s.d.Admin.SetClientScopes(ctx, app.ID, c.scopeMaps); err != nil {
+		return err
+	}
+	if app.Protocol == domain.ClientAppProtocolOIDC && len(c.serviceRoles) > 0 {
+		return s.d.Admin.SetServiceRoles(ctx, app.ID, c.serviceRoles)
+	}
+	return nil
+}
+
+// newClientUpdate holds the settings a create does not pass to the services.
+func newClientUpdate(in ClientInput) repository.UpdateClientAppParams {
+	upd := repository.UpdateClientAppParams{AccessTokenTTL: in.AccessTokenTTL, RefreshTokenTTL: in.RefreshTokenTTL, IDTokenTTL: in.IDTokenTTL}
+	upd.DefaultRelayState = in.DefaultRelayState
+	if in.Active != nil && !*in.Active {
+		st := domain.ClientAppInactive
+		upd.Status = &st
+	}
+	return upd
+}
+
+// CreateClient creates an OIDC or a SAML client from the drawer.
+func (s *AdminService) CreateClient(ctx context.Context, actor AdminActor, realm *domain.Realm, in ClientInput) (*ClientCreated, error) {
+	chk, err := s.checkNewClient(ctx, realm, in)
+	if err != nil {
+		return nil, err
 	}
 	name := strOr(in.Name, "")
 
@@ -368,17 +445,15 @@ func (s *AdminService) CreateClient(ctx context.Context, actor AdminActor, realm
 	var secret string
 	switch in.Protocol {
 	case domain.ClientAppProtocolOIDC:
-		clientID := strOr(in.ClientID, "")
-		if clientID == "" {
-			if name == "" {
-				return nil, adminInvalid("name", i18n.M("admin.error.name_or_client_id", "a name or a client_id is required"))
-			}
-			clientID = generatedClientID(name)
+		var clientID string
+		if clientID, err = resolveClientID(name, in.ClientID); err != nil {
+			return nil, err
 		}
 		app, secret, err = s.d.OIDCClients.Create(ctx, OIDCClientInput{
 			RealmID: realm.ID, Name: name, ClientID: clientID, Public: boolOr(in.Public, false),
 			RedirectURIs: listOr(in.RedirectURIs, nil), PostLogoutRedirectURIs: listOr(in.PostLogoutRedirectURIs, nil),
-			Scopes:                  append(slices.Clone(listOr(in.StandardScopes, nil)), scopeNames...),
+			GrantTypes:              listOr(in.GrantTypes, nil),
+			Scopes:                  append(slices.Clone(listOr(in.StandardScopes, nil)), chk.scopeNames...),
 			TokenEndpointAuthMethod: strOr(in.TokenEndpointAuthMethod, ""),
 			DisablePKCE:             !boolOr(in.RequirePKCE, true),
 			RequireConsent:          boolOr(in.RequireConsent, false),
@@ -389,31 +464,17 @@ func (s *AdminService) CreateClient(ctx context.Context, actor AdminActor, realm
 			RealmID: realm.ID, Name: name, EntityID: strOr(in.EntityID, ""), ACSURL: strOr(in.ACSURL, ""),
 			SLOURL: strOr(in.SLOURL, ""), NameIDFormat: strOr(in.NameIDFormat, ""), Certificates: in.Certificates,
 			WantResponseSigned: boolOr(in.WantResponseSigned, false), Pairwise: boolOr(in.Pairwise, false),
-			Scopes: scopeNames, RequireConsent: boolOr(in.RequireConsent, false), GrantedBy: actor.By(),
+			Scopes: chk.scopeNames, RequireConsent: boolOr(in.RequireConsent, false), GrantedBy: actor.By(),
 		})
 	}
 	if err != nil {
 		return nil, asAdminError(err)
 	}
 
-	// Grants by id (the services above resolve names; the console has ids).
-	if err := s.d.Admin.SetClientRoles(ctx, app.ID, roles, actor.By()); err != nil {
+	if err := s.setNewClientGrants(ctx, actor, app, chk); err != nil {
 		return nil, err
 	}
-	if err := s.d.Admin.SetClientGroups(ctx, app.ID, groups, actor.By()); err != nil {
-		return nil, err
-	}
-	if err := s.d.Admin.SetClientScopes(ctx, app.ID, scopeMaps); err != nil {
-		return nil, err
-	}
-	upd := repository.UpdateClientAppParams{AccessTokenTTL: in.AccessTokenTTL, RefreshTokenTTL: in.RefreshTokenTTL, IDTokenTTL: in.IDTokenTTL}
-	if in.DefaultRelayState != nil {
-		upd.DefaultRelayState = in.DefaultRelayState
-	}
-	if in.Active != nil && !*in.Active {
-		st := domain.ClientAppInactive
-		upd.Status = &st
-	}
+	upd := newClientUpdate(in)
 	if app, err = s.d.Clients.Update(ctx, app.ID, upd); err != nil {
 		return nil, err
 	}
@@ -427,7 +488,7 @@ func (s *AdminService) CreateClient(ctx context.Context, actor AdminActor, realm
 
 	s.auditAdmin(ctx, actor, realm.ID, audit.ClientCreated, "ClientApp", app.ID, domain.AuditLogInfo, map[string]interface{}{
 		"name": app.Name, "protocol": string(app.Protocol), "client_id": app.ClientID, "entity_id": app.EntityID,
-		"role_ids": roles, "group_ids": groups,
+		"role_ids": chk.roles, "group_ids": chk.groups, "grant_types": app.AllowedGrantTypes, "service_role_ids": chk.serviceRoles,
 	})
 	view, err := s.clientView(ctx, app)
 	if err != nil {
@@ -446,10 +507,11 @@ func (s *AdminService) UpdateClient(ctx context.Context, actor AdminActor, realm
 	if app.ManagedBy == domain.ClientAppManagedByConfig {
 		return ClientView{}, errManagedByConfig
 	}
-	for field, v := range map[string]*int{"access_token_ttl": in.AccessTokenTTL, "refresh_token_ttl": in.RefreshTokenTTL, "id_token_ttl": in.IDTokenTTL} {
-		if err := checkTTL(field, v); err != nil {
-			return ClientView{}, err
-		}
+	if err := checkTTLs(in); err != nil {
+		return ClientView{}, err
+	}
+	if err := checkGrantTypes(in.GrantTypes); err != nil {
+		return ClientView{}, err
 	}
 	grants, err := s.d.Admin.ClientGrants(ctx, app.ID)
 	if err != nil {
@@ -478,6 +540,12 @@ func (s *AdminService) UpdateClient(ctx context.Context, actor AdminActor, realm
 	}
 	if in.AllowedGroupIDs != nil {
 		if groups, err = s.checkGroupIDs(ctx, realm.ID, *in.AllowedGroupIDs); err != nil {
+			return ClientView{}, err
+		}
+	}
+	var serviceRoles []string
+	if in.ServiceRoleIDs != nil {
+		if serviceRoles, err = s.checkRoleIDs(ctx, realm.ID, *in.ServiceRoleIDs); err != nil {
 			return ClientView{}, err
 		}
 	}
@@ -518,7 +586,7 @@ func (s *AdminService) UpdateClient(ctx context.Context, actor AdminActor, realm
 			RedirectURIs:            listOr(in.RedirectURIs, app.RedirectURIs),
 			PostLogoutRedirectURIs:  listOr(in.PostLogoutRedirectURIs, app.PostLogoutRedirectURIs),
 			Scopes:                  append(slices.Clone(listOr(in.StandardScopes, std)), scopeNames...),
-			GrantTypes:              app.AllowedGrantTypes,
+			GrantTypes:              listOr(in.GrantTypes, app.AllowedGrantTypes),
 			TokenEndpointAuthMethod: strOr(in.TokenEndpointAuthMethod, app.TokenEndpointAuthMethod),
 			DisablePKCE:             !requirePKCE,
 		})
@@ -528,10 +596,12 @@ func (s *AdminService) UpdateClient(ctx context.Context, actor AdminActor, realm
 		upd.RedirectURIs = norm.RedirectURIs
 		upd.PostLogoutRedirectURIs = norm.PostLogoutRedirectURIs
 		upd.AllowedScopes = norm.AllowedScopes
+		upd.AllowedGrantTypes = norm.GrantTypes
 		upd.TokenEndpointAuthMethod = &norm.AuthMethod
 		upd.RequirePKCE = &requirePKCE
 		for f, set := range map[string]bool{"redirect_uris": in.RedirectURIs != nil, "post_logout_redirect_uris": in.PostLogoutRedirectURIs != nil,
-			"standard_scopes": in.StandardScopes != nil, "token_endpoint_auth_method": in.TokenEndpointAuthMethod != nil, "require_pkce": in.RequirePKCE != nil} {
+			"standard_scopes": in.StandardScopes != nil, "token_endpoint_auth_method": in.TokenEndpointAuthMethod != nil, "require_pkce": in.RequirePKCE != nil,
+			"grant_types": in.GrantTypes != nil} {
 			if set {
 				changed = append(changed, f)
 			}
@@ -587,6 +657,12 @@ func (s *AdminService) UpdateClient(ctx context.Context, actor AdminActor, realm
 			return ClientView{}, err
 		}
 		changed = append(changed, "allowed_groups")
+	}
+	if in.ServiceRoleIDs != nil && app.Protocol == domain.ClientAppProtocolOIDC {
+		if err := s.d.Admin.SetServiceRoles(ctx, app.ID, serviceRoles); err != nil {
+			return ClientView{}, err
+		}
+		changed = append(changed, "service_roles")
 	}
 	if in.RequireConsent != nil {
 		changed = append(changed, "require_consent")

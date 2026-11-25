@@ -18,7 +18,8 @@ services:
   postgres:
     image: postgres:16
     environment: { POSTGRES_USER: sso, POSTGRES_PASSWORD: sso, POSTGRES_DB: sso }
-    healthcheck: { test: ["CMD-SHELL", "pg_isready -U sso"], interval: 1s, retries: 30 }
+    # TCP, not the socket: the image's init server only listens on the socket, then restarts.
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U sso"], interval: 1s, retries: 30 }
   valkey:
     image: valkey/valkey:8
     command: ["valkey-server", "--requirepass", "pw"]

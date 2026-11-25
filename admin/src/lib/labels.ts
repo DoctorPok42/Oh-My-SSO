@@ -95,6 +95,7 @@ export const ACTOR_TYPE_LABELS: Record<string, Msg> = {
   user: m("labels.actor.user", "User"),
   admin: m("labels.actor.admin", "Admin"),
   cli: m("labels.actor.cli", "CLI"),
+  client: m("labels.actor.client", "Client"),
   system: m("labels.actor.system", "System"),
   anonymous: m("labels.actor.anonymous", "Anonymous"),
 };

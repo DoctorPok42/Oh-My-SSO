@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { OpenRow } from "@/components/console/drawer";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { apiPath, getMe, load, loadCached } from "@/lib/api";
 import type { ApiResult } from "@/lib/api-error";
@@ -281,7 +282,7 @@ async function UsersTable({
             </TableEmpty>
           )}
           {items.map((u) => (
-            <TableRow key={u.id} className={BULK_ROW}>
+            <OpenRow id={u.id} key={u.id} className={BULK_ROW}>
               {bulk && (
                 <BulkCell
                   id={u.id}
@@ -322,7 +323,7 @@ async function UsersTable({
               <TableCell className="text-right">
                 <UserRowActions id={u.id} />
               </TableCell>
-            </TableRow>
+            </OpenRow>
           ))}
         </TableBody>
       </Table>
@@ -400,7 +401,7 @@ async function AccessTab({ realm, kind, writable }: { realm: string; kind: "role
               </TableEmpty>
             )}
             {items.map((a) => (
-              <TableRow key={a.id} className={BULK_ROW}>
+              <OpenRow id={a.id} key={a.id} className={BULK_ROW}>
                 {writable && (
                   <BulkCell
                     id={a.id}
@@ -435,7 +436,7 @@ async function AccessTab({ realm, kind, writable }: { realm: string; kind: "role
                 <TableCell className="text-right">
                   <AccessRowActions realm={realm} kind={kind} item={a} writable={writable} />
                 </TableCell>
-              </TableRow>
+              </OpenRow>
             ))}
           </TableBody>
         </Table>

@@ -64,6 +64,9 @@ type AdminRepository interface {
 	ClientGrants(ctx context.Context, clientRef string) (ClientGrants, error)
 	SetClientRoles(ctx context.Context, clientRef string, roleIDs []string, grantedBy string) error
 	SetClientGroups(ctx context.Context, clientRef string, groupIDs []string, grantedBy string) error
+	// SetServiceRoles replaces the roles of the client's own service account
+	// (client_credentials grant).
+	SetServiceRoles(ctx context.Context, clientRef string, roleIDs []string) error
 	SetClientScopes(ctx context.Context, clientRef string, scopes []ScopeMapping) error
 	// ScopeUsage: number of (not deleted) clients mapping each client scope.
 	ScopeUsage(ctx context.Context, realmID string) (map[string]int, error)
@@ -189,6 +192,8 @@ type ClientGrants struct {
 	RoleIDs  []string
 	GroupIDs []string
 	Scopes   []ScopeMapping
+	// ServiceRoleIDs: the roles of the client's own service account.
+	ServiceRoleIDs []string
 	// Names: id → name of those roles and groups, loaded with them.
 	Names map[string]string
 }

@@ -52,8 +52,8 @@ export type HealthLine = {
   latency_ms: number;
 };
 
-/** Who did an audited action: a person (user, admin), the CLI, the server itself, or nobody signed in. */
-export type AuditActorType = "user" | "admin" | "cli" | "system" | "anonymous";
+/** Who did an audited action: a person (user, admin), the CLI, the server itself, nobody signed in, or an application (its service account). */
+export type AuditActorType = "user" | "admin" | "cli" | "system" | "anonymous" | "client";
 
 export type AuditEntry = {
   id: string;
@@ -120,6 +120,8 @@ export type Client = ClientSummary & {
   client_scopes: ClientScopeChoice[];
   allowed_roles: NameRef[];
   allowed_groups: NameRef[];
+  /** Roles of the client's own service account (client_credentials grant). */
+  service_roles: NameRef[];
   oidc?: {
     client_type: "confidential" | "public";
     has_secret: boolean;
@@ -160,6 +162,8 @@ export type ClientBody = {
   standard_scopes?: string[];
   token_endpoint_auth_method?: string;
   require_pkce?: boolean;
+  grant_types?: string[];
+  service_role_ids?: string[];
   access_token_ttl?: number;
   refresh_token_ttl?: number;
   id_token_ttl?: number;

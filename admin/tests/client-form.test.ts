@@ -65,6 +65,7 @@ describe("client form <-> Admin API body", () => {
       client_scopes: [{ id: "s1", name: "x", protocol: "oidc", required: true }],
       allowed_roles: [{ id: "r1", name: "r" }],
       allowed_groups: [],
+      service_roles: [{ id: "r2", name: "reporter" }],
       attribute_mappings: null,
       oidc: {
         client_type: "public",
@@ -72,7 +73,7 @@ describe("client form <-> Admin API body", () => {
         redirect_uris: ["https://a", "https://b"],
         post_logout_redirect_uris: [],
         standard_scopes: ["openid"],
-        grant_types: [],
+        grant_types: ["client_credentials"],
         token_endpoint_auth_method: "none",
         require_pkce: true,
         access_token_ttl: 600,
@@ -91,6 +92,23 @@ describe("client form <-> Admin API body", () => {
       mfaPolicy: "required",
       scopes: [{ id: "s1", required: true }],
       roleIds: ["r1"],
+      grantTypes: ["client_credentials"],
+      serviceRoleIds: ["r2"],
     });
+  });
+
+  it("sends the service account roles only with the client_credentials grant", () => {
+    const machine = { ...emptyDraft("oidc"), grantTypes: ["client_credentials"], serviceRoleIds: ["r1"] };
+    expect(clientBody(machine, "update")).toMatchObject({
+      grant_types: ["client_credentials"],
+      service_role_ids: ["r1"],
+    });
+    expect(clientBody({ ...machine, grantTypes: ["authorization_code"] }, "update").service_role_ids).toEqual([]);
+    // A public client has no service account.
+    const pub = clientBody(
+      { ...machine, isPublic: true, grantTypes: ["authorization_code", "client_credentials"] },
+      "create",
+    );
+    expect(pub).toMatchObject({ grant_types: ["authorization_code"], service_role_ids: [] });
   });
 });
