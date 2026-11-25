@@ -112,15 +112,7 @@ func (s *Server) limitOIDCClient(next http.Handler) http.Handler {
 			return
 		}
 
-		// The client_credentials hit is the one an authenticated client keeps.
-		var ccHits, otherHits []ratelimit.Hit
-		for _, h := range res.Hits {
-			if ccKey != "" && h.Key == ccKey {
-				ccHits = append(ccHits, h)
-			} else {
-				otherHits = append(otherHits, h)
-			}
-		}
+		ccHits, otherHits := splitHits(res.Hits, ccKey)
 
 		var once sync.Once
 		authenticated := false // set and read on this goroutine: the library calls back synchronously
@@ -135,6 +127,19 @@ func (s *Server) limitOIDCClient(next http.Handler) http.Handler {
 			s.releaseHits(r, ccHits)
 		}
 	})
+}
+
+// splitHits: the client_credentials hit (key ccKey) is the one an
+// authenticated client keeps; the others are given back.
+func splitHits(hits []ratelimit.Hit, ccKey string) (cc, other []ratelimit.Hit) {
+	for _, h := range hits {
+		if ccKey != "" && h.Key == ccKey {
+			cc = append(cc, h)
+		} else {
+			other = append(other, h)
+		}
+	}
+	return cc, other
 }
 
 // oidcClientRules: what this request counts under. ccKey is the key of the
