@@ -1208,7 +1208,7 @@ var (
 		{Name: "subject", Type: field.TypeString, Nullable: true},
 		{Name: "subject_format", Type: field.TypeString, Nullable: true},
 		{Name: "client_ref_id", Type: field.TypeString},
-		{Name: "session_id", Type: field.TypeString},
+		{Name: "session_id", Type: field.TypeString, Nullable: true},
 	}
 	// TokensTable holds the schema information for the "tokens" table.
 	TokensTable = &schema.Table{
@@ -1397,6 +1397,31 @@ var (
 			},
 		},
 	}
+	// ClientAppServiceRolesColumns holds the columns for the "client_app_service_roles" table.
+	ClientAppServiceRolesColumns = []*schema.Column{
+		{Name: "client_app_id", Type: field.TypeString},
+		{Name: "role_id", Type: field.TypeString},
+	}
+	// ClientAppServiceRolesTable holds the schema information for the "client_app_service_roles" table.
+	ClientAppServiceRolesTable = &schema.Table{
+		Name:       "client_app_service_roles",
+		Columns:    ClientAppServiceRolesColumns,
+		PrimaryKey: []*schema.Column{ClientAppServiceRolesColumns[0], ClientAppServiceRolesColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "client_app_service_roles_client_app_id",
+				Columns:    []*schema.Column{ClientAppServiceRolesColumns[0]},
+				RefColumns: []*schema.Column{ClientAppsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "client_app_service_roles_role_id",
+				Columns:    []*schema.Column{ClientAppServiceRolesColumns[1]},
+				RefColumns: []*schema.Column{RolesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// GroupPermissionsColumns holds the columns for the "group_permissions" table.
 	GroupPermissionsColumns = []*schema.Column{
 		{Name: "group_id", Type: field.TypeString},
@@ -1533,6 +1558,7 @@ var (
 		TrustedDevicesTable,
 		UsersTable,
 		UserImportJobsTable,
+		ClientAppServiceRolesTable,
 		GroupPermissionsTable,
 		RolePermissionsTable,
 		UserRolesTable,
@@ -1588,6 +1614,8 @@ func init() {
 	TrustedDevicesTable.ForeignKeys[1].RefTable = UsersTable
 	UsersTable.ForeignKeys[0].RefTable = RealmsTable
 	UserImportJobsTable.ForeignKeys[0].RefTable = RealmsTable
+	ClientAppServiceRolesTable.ForeignKeys[0].RefTable = ClientAppsTable
+	ClientAppServiceRolesTable.ForeignKeys[1].RefTable = RolesTable
 	GroupPermissionsTable.ForeignKeys[0].RefTable = GroupsTable
 	GroupPermissionsTable.ForeignKeys[1].RefTable = PermissionsTable
 	RolePermissionsTable.ForeignKeys[0].RefTable = RolesTable

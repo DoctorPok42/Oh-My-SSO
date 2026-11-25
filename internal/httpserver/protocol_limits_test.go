@@ -167,6 +167,8 @@ var generous = ProtocolLimits{
 	OIDCPerIP:           RateRule{Max: 1000, Window: time.Minute},
 	ClientFailuresPerIP: RateRule{Max: 1000, Window: time.Minute},
 	SAMLPerIP:           RateRule{Max: 1000, Window: time.Minute},
+	// callToken sends grant_type=client_credentials.
+	ClientCredentialsPerClient: RateRule{Max: 1000, Window: time.Minute},
 }
 
 type tokenCall struct {
@@ -318,6 +320,31 @@ func TestOIDCClient_RefusalConsumesNothing(t *testing.T) {
 	}
 	require.Equal(t, 1, lim.count(ipKey))
 	require.Equal(t, 1, lim.count(clientFailureKey("realm-1", "app", "203.0.113.1")))
+}
+
+// client_credentials tokens are limited per client, whatever the address;
+// only an authenticated client uses its budget, so the public client_id
+// alone cannot exhaust it.
+func TestOIDCClient_ClientCredentialsPerClient(t *testing.T) {
+	l := generous
+	l.ClientCredentialsPerClient = RateRule{Max: 2, Window: time.Minute}
+	lim := newMemLimiter()
+	s, _ := newProtocolServer(lim, l, &fakeSAML{})
+	ccKey := ratelimit.Key(routeOIDCClient, "realm-1", "client_credentials", "app")
+
+	for a := 0; a < 5; a++ {
+		ip := "203.0.113." + strconv.Itoa(a)
+		require.Equal(t, http.StatusUnauthorized, callToken(s, tokenCall{ip: ip, clientID: "app", secret: "x"}).Code)
+	}
+	require.Zero(t, lim.count(ccKey), "a failed attempt gives its hit back")
+
+	require.Equal(t, http.StatusOK, callToken(s, tokenCall{ip: "198.51.100.7", clientID: "app", secret: rightSecret}).Code)
+	require.Equal(t, http.StatusOK, callToken(s, tokenCall{ip: "198.51.100.8", clientID: "app", secret: rightSecret}).Code)
+	requireTooMany(t, callToken(s, tokenCall{ip: "198.51.100.9", clientID: "app", secret: rightSecret}), time.Minute)
+	// Another client keeps its own budget.
+	require.Equal(t, http.StatusOK, callToken(s, tokenCall{ip: "198.51.100.9", clientID: "other", secret: rightSecret}).Code)
+	// /introspect and /revoke are not client_credentials requests.
+	require.Equal(t, http.StatusOK, callToken(s, tokenCall{path: "/oidc/introspect", ip: "198.51.100.9", clientID: "app", secret: rightSecret}).Code)
 }
 
 // A browser application must be able to read the 429 (CORS) and its

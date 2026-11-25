@@ -34,6 +34,7 @@ const (
 	AuditActorCLI       AuditActorType = "cli"       // an operator on the command line
 	AuditActorSystem    AuditActorType = "system"    // the server itself (lockout, key retirer, e-mails...)
 	AuditActorAnonymous AuditActorType = "anonymous" // nobody signed in (a failed sign-in)
+	AuditActorClient    AuditActorType = "client"    // an application, for its own service account (client_credentials)
 )
 
 func (t AuditActorType) Valid() bool {

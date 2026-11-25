@@ -41,15 +41,7 @@ func (r *entAccessRepository) GetUserAccess(ctx context.Context, userID string) 
 		Groups:  make([]domain.AccessSource, 0, len(u.Edges.Groups)),
 	}
 	for _, ro := range u.Edges.Roles {
-		access.Roles = append(access.Roles, domain.AccessSource{
-			Kind:         domain.AccessSourceRole,
-			ID:           ro.ID,
-			RealmID:      ro.RealmID,
-			Name:         ro.Name,
-			Active:       ro.Status == entschema.RoleActive,
-			Permissions:  toDomainPermissions(ro.Edges.Permissions),
-			ClientScopes: toDomainClientScopes(ro.Edges.ClientScopes),
-		})
+		access.Roles = append(access.Roles, roleAccessSource(ro))
 	}
 	for _, g := range u.Edges.Groups {
 		access.Groups = append(access.Groups, domain.AccessSource{
@@ -100,6 +92,32 @@ func (r *entAccessRepository) GetClientAccessPolicy(ctx context.Context, clientR
 		}
 	}
 	return policy, nil
+}
+
+func (r *entAccessRepository) GetServiceRoles(ctx context.Context, clientRef string) ([]domain.AccessSource, error) {
+	rows, err := r.client.ClientApp.Query().Where(clientapp.ID(clientRef)).
+		QueryServiceRoles().WithPermissions().WithClientScopes().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.AccessSource, 0, len(rows))
+	for _, ro := range rows {
+		out = append(out, roleAccessSource(ro))
+	}
+	return out, nil
+}
+
+// roleAccessSource: ro must be loaded with its permissions and client scopes.
+func roleAccessSource(ro *ent.Role) domain.AccessSource {
+	return domain.AccessSource{
+		Kind:         domain.AccessSourceRole,
+		ID:           ro.ID,
+		RealmID:      ro.RealmID,
+		Name:         ro.Name,
+		Active:       ro.Status == entschema.RoleActive,
+		Permissions:  toDomainPermissions(ro.Edges.Permissions),
+		ClientScopes: toDomainClientScopes(ro.Edges.ClientScopes),
+	}
 }
 
 func toDomainPermissions(rows []*ent.Permission) []*domain.Permission {

@@ -46,7 +46,33 @@ func TestNormalizeOIDCClient(t *testing.T) {
 		require.Equal(t, "none", got.AuthMethod)
 	})
 
+	t.Run("machine client: client_credentials alone, no redirect URI", func(t *testing.T) {
+		got, err := service.NormalizeOIDCClient(base(func(in *service.OIDCClientInput) {
+			in.GrantTypes = []string{"client_credentials"}
+			in.RedirectURIs = nil
+		}))
+		require.NoError(t, err)
+		require.Equal(t, []string{"client_credentials"}, got.GrantTypes)
+	})
+
+	t.Run("web client that also has a service account", func(t *testing.T) {
+		got, err := service.NormalizeOIDCClient(base(func(in *service.OIDCClientInput) {
+			in.GrantTypes = []string{"authorization_code", "client_credentials"}
+		}))
+		require.NoError(t, err)
+		require.Equal(t, []string{"authorization_code", "client_credentials"}, got.GrantTypes)
+	})
+
 	refused := map[string]func(*service.OIDCClientInput){
+		"client_credentials, public client": func(in *service.OIDCClientInput) {
+			in.Public = true
+			in.RedirectURIs = []string{"http://127.0.0.1:5173/cb"}
+			in.GrantTypes = []string{"authorization_code", "client_credentials"}
+		},
+		"refresh without code": func(in *service.OIDCClientInput) {
+			in.GrantTypes = []string{"client_credentials", "refresh_token"}
+			in.RedirectURIs = nil
+		},
 		"bad client_id":               func(in *service.OIDCClientInput) { in.ClientID = "has space" },
 		"no redirect URI":             func(in *service.OIDCClientInput) { in.RedirectURIs = nil },
 		"relative URI":                func(in *service.OIDCClientInput) { in.RedirectURIs = []string{"/cb"} },

@@ -14,6 +14,7 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/op"
 
 	"sso.internal/sso/internal/core"
+	"sso.internal/sso/internal/core/domain"
 )
 
 // Lifetimes of the short-lived login state (oidcstore, i.e. Valkey).
@@ -133,6 +134,19 @@ func (r *refreshRequest) GetClientID() string         { return r.assertion.Audie
 func (r *refreshRequest) GetScopes() []string         { return r.scopes }
 func (r *refreshRequest) GetSubject() string          { return r.assertion.Subject }
 func (r *refreshRequest) SetCurrentScopes(s []string) { r.scopes = s }
+
+// serviceAccountRequest is a client_credentials grant. Its token is already
+// recorded (IssueServiceAccountToken): the library only signs it. Subject
+// and audience are the client_id: there is no user.
+type serviceAccountRequest struct {
+	token *domain.Token
+}
+
+var _ op.TokenRequest = (*serviceAccountRequest)(nil)
+
+func (r *serviceAccountRequest) GetSubject() string    { return r.token.Subject }
+func (r *serviceAccountRequest) GetAudience() []string { return []string{r.token.Subject} }
+func (r *serviceAccountRequest) GetScopes() []string   { return r.token.Scopes }
 
 
 var errAuthRequestNotFound = errors.New("oidc: authorization request not found or expired")

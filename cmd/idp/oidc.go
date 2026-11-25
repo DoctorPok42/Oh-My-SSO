@@ -23,8 +23,10 @@ const oidcUsage = `usage:
   idp oidc clients list          --realm <name>
   idp oidc clients create        --realm <name> --client-id <id> --redirect-uri <uri> [--redirect-uri <uri>...]
                                  [--name <text>] [--public] [--scope <a,b>] [--post-logout-uri <uri>]
-                                 [--grant authorization_code,refresh_token] [--auth-method client_secret_basic|client_secret_post]
+                                 [--grant authorization_code,refresh_token,client_credentials] [--auth-method client_secret_basic|client_secret_post]
                                  [--no-pkce] [--allow-role <name>] [--allow-group <name>] [--require-consent]
+                                 [--service-role <name>]
+                                 (--grant client_credentials alone: a machine client, no --redirect-uri)
   idp oidc clients rotate-secret --realm <name> --client-id <id>
 `
 
@@ -153,18 +155,21 @@ func oidcClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 	authMethod := fs.String("auth-method", "", "client_secret_basic (default) or client_secret_post")
 	noPKCE := fs.Bool("no-pkce", false, "do not require PKCE (confidential clients only, not recommended)")
 	requireConsent := fs.Bool("require-consent", false, "users approve the client on a consent screen first")
-	var redirects, postLogout, scopes, grants, roles, groups listFlag
+	var redirects, postLogout, scopes, grants, roles, groups, serviceRoles listFlag
 	fs.Var(&redirects, "redirect-uri", "allowed redirect URI, exact match (repeatable, required)")
 	fs.Var(&postLogout, "post-logout-uri", "allowed post-logout redirect URI (repeatable)")
 	fs.Var(&scopes, "scope", "scopes the client may request, besides openid (repeatable or comma separated)")
 	fs.Var(&grants, "grant", "grant types (default: authorization_code,refresh_token)")
 	fs.Var(&roles, "allow-role", "role whose members may use the client (repeatable)")
 	fs.Var(&groups, "allow-group", "group whose members may use the client (repeatable)")
+	fs.Var(&serviceRoles, "service-role", "role of the client's own service account, for the client_credentials grant (repeatable)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *clientID == "" || len(redirects) == 0 {
-		return usageError{"--client-id and at least one --redirect-uri are required"}
+	// The redirect URIs are checked by the service: none is needed with
+	// client_credentials alone.
+	if *clientID == "" {
+		return usageError{"--client-id is required"}
 	}
 	env, err := openOIDCEnv(ctx, *realmName)
 	if err != nil {
@@ -185,6 +190,7 @@ func oidcClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 		DisablePKCE:             *noPKCE,
 		AllowRoles:              roles,
 		AllowGroups:             groups,
+		ServiceRoles:            serviceRoles,
 		GrantedBy:               cliActor(),
 		RequireConsent:          *requireConsent,
 	})

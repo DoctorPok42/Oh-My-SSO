@@ -38,8 +38,11 @@ func TestPurgeRepository_Integration(t *testing.T) {
 		return s
 	}
 	newToken := func(sessionID string, typ entschema.TokenType, expires time.Time, used bool) *ent.Token {
-		b := c.Token.Create().SetSessionID(sessionID).SetClientRefID(app.ID).SetType(typ).SetJti("jti-" + f.suffix()).
+		b := c.Token.Create().SetClientRefID(app.ID).SetType(typ).SetJti("jti-" + f.suffix()).
 			SetIssuedAt(expires.Add(-time.Hour)).SetExpiresAt(expires)
+		if sessionID != "" { // none: a service account token (client_credentials)
+			b.SetSessionID(sessionID)
+		}
 		if used {
 			b.SetUsedAt(expires.Add(-time.Minute))
 		}
@@ -64,10 +67,15 @@ func TestPurgeRepository_Integration(t *testing.T) {
 		usedRefreshActive := newToken(idle.ID, entschema.TokenRefreshToken, old, true)
 		usedRefreshRevoked := newToken(revokedLately.ID, entschema.TokenRefreshToken, old, true)
 		freshAccess := newToken(idle.ID, entschema.TokenAccessToken, recent, false)
+		expiredService := newToken("", entschema.TokenAccessToken, old, false)
+		freshService := newToken("", entschema.TokenAccessToken, recent, false)
+		otherService, err := c.Token.Create().SetClientRefID(other.clientApp("purge").ID).SetType(entschema.TokenAccessToken).
+			SetJti("jti-" + f.suffix()).SetIssuedAt(old.Add(-time.Hour)).SetExpiresAt(old).Save(f.ctx)
+		require.NoError(t, err)
 
 		n, err := purge.DeleteExpiredTokens(f.ctx, f.realm.ID, before, 100)
 		require.NoError(t, err)
-		require.Equal(t, 2, n, "the expired access token and the used refresh token of a revoked session")
+		require.Equal(t, 3, n, "the expired access token, the used refresh token of a revoked session, the expired service account token")
 		n, err = purge.DeleteEndedSessions(f.ctx, f.realm.ID, before, 100)
 		require.NoError(t, err)
 		require.Equal(t, 2, n, "the expired session and the one revoked long ago")
@@ -78,12 +86,14 @@ func TestPurgeRepository_Integration(t *testing.T) {
 		for _, kept := range []string{idle.ID, revokedLately.ID, otherRealm.ID} {
 			require.True(t, exists(c.Session.Query().Where(session.ID(kept)).Count(f.ctx)), kept)
 		}
-		for _, gone := range []string{onExpired.ID, expiredAccess.ID, usedRefreshRevoked.ID} {
+		for _, gone := range []string{onExpired.ID, expiredAccess.ID, usedRefreshRevoked.ID, expiredService.ID} {
 			require.False(t, exists(c.Token.Query().Where(token.ID(gone)).Count(f.ctx)), gone)
 		}
 		require.True(t, exists(c.Token.Query().Where(token.ID(usedRefreshActive.ID)).Count(f.ctx)),
 			"a used refresh token of an active session stays: presenting it again is a replay")
-		require.True(t, exists(c.Token.Query().Where(token.ID(freshAccess.ID)).Count(f.ctx)))
+		for _, kept := range []string{freshAccess.ID, freshService.ID, otherService.ID} {
+			require.True(t, exists(c.Token.Query().Where(token.ID(kept)).Count(f.ctx)), kept)
+		}
 	})
 
 	t.Run("reset and activation links", func(t *testing.T) {

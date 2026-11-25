@@ -9,6 +9,7 @@ import (
 	"sso.internal/sso/ent/clientgroup"
 	"sso.internal/sso/ent/clientrole"
 	"sso.internal/sso/ent/clientscopemapping"
+	"sso.internal/sso/ent/role"
 	entschema "sso.internal/sso/ent/schema"
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
@@ -186,6 +187,16 @@ func (r *entClientAppRepository) GrantRole(ctx context.Context, clientRef, roleI
 		SetRoleID(roleID).
 		SetNillableGrantedBy(nonEmpty(grantedBy)).
 		Exec(ctx)
+}
+
+func (r *entClientAppRepository) AddServiceRole(ctx context.Context, clientRef, roleID string) error {
+	exists, err := r.client.ClientApp.Query().
+		Where(clientapp.ID(clientRef), clientapp.HasServiceRolesWith(role.ID(roleID))).
+		Exist(ctx)
+	if err != nil || exists {
+		return err
+	}
+	return r.client.ClientApp.UpdateOneID(clientRef).AddServiceRoleIDs(roleID).Exec(ctx)
 }
 
 func (r *entClientAppRepository) GrantGroup(ctx context.Context, clientRef, groupID, grantedBy string) error {

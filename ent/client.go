@@ -953,6 +953,22 @@ func (c *ClientAppClient) QueryClientScopes(_m *ClientApp) *ClientScopeQuery {
 	return query
 }
 
+// QueryServiceRoles queries the service_roles edge of a ClientApp.
+func (c *ClientAppClient) QueryServiceRoles(_m *ClientApp) *RoleQuery {
+	query := (&RoleClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(clientapp.Table, clientapp.FieldID, id),
+			sqlgraph.To(role.Table, role.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, clientapp.ServiceRolesTable, clientapp.ServiceRolesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryTokens queries the tokens edge of a ClientApp.
 func (c *ClientAppClient) QueryTokens(_m *ClientApp) *TokenQuery {
 	query := (&TokenClient{config: c.config}).Query()
@@ -5125,6 +5141,22 @@ func (c *RoleClient) QueryClientApps(_m *Role) *ClientAppQuery {
 			sqlgraph.From(role.Table, role.FieldID, id),
 			sqlgraph.To(clientapp.Table, clientapp.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, role.ClientAppsTable, role.ClientAppsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryServiceAccounts queries the service_accounts edge of a Role.
+func (c *RoleClient) QueryServiceAccounts(_m *Role) *ClientAppQuery {
+	query := (&ClientAppClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(role.Table, role.FieldID, id),
+			sqlgraph.To(clientapp.Table, clientapp.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, role.ServiceAccountsTable, role.ServiceAccountsPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil

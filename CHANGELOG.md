@@ -5,6 +5,13 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
 
 ## [Unreleased]
 
+Applications can get tokens for themselves (service to service), without a user. No manual step is required.
+
+### Added
+- OAuth 2.0 `client_credentials` grant: each confidential client has a service account whose roles give the scopes of
+  its tokens (`idp oidc clients create --grant client_credentials --service-role <role>`); each token is audited as
+  `token.issued` and limited per client (`RATE_LIMIT_CLIENT_CREDENTIALS`, 60/min).
+
 ## [1.0.0] - 2026-11-23
 
 First stable release: a security policy and fuzzed parsers on top of 1.0.0-rc.6. No manual step is required.

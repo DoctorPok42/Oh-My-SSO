@@ -8,6 +8,7 @@ import (
 
 	"sso.internal/sso/ent"
 	"sso.internal/sso/ent/auditlog"
+	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/dataexport"
 	"sso.internal/sso/ent/emailoutbox"
 	"sso.internal/sso/ent/emailverificationtoken"
@@ -69,10 +70,14 @@ func (r *entPurgeRepository) DeleteEndedSessions(ctx context.Context, realmID st
 
 func (r *entPurgeRepository) DeleteExpiredTokens(ctx context.Context, realmID string, before time.Time, limit int) (int, error) {
 	return r.client.Token.Delete().Where(predicate.Token(batch(token.Table, limit, func(t *sql.SelectTable, s *sql.Selector) {
+		// The realm comes from the client: a service account token
+		// (client_credentials) has no session.
+		app := sql.Table(clientapp.Table)
 		sess := sql.Table(session.Table)
-		s.Join(sess).On(t.C(token.FieldSessionID), sess.C(session.FieldID))
+		s.Join(app).On(t.C(token.FieldClientRefID), app.C(clientapp.FieldID))
+		s.LeftJoin(sess).On(t.C(token.FieldSessionID), sess.C(session.FieldID))
 		s.Where(sql.And(
-			sql.EQ(sess.C(session.FieldRealmID), realmID),
+			sql.EQ(app.C(clientapp.FieldRealmID), realmID),
 			sql.LT(t.C(token.FieldExpiresAt), before),
 			sql.Or(
 				sql.IsNull(t.C(token.FieldUsedAt)),

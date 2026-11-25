@@ -2823,6 +2823,9 @@ type ClientAppMutation struct {
 	client_scopes                   map[string]struct{}
 	removedclient_scopes            map[string]struct{}
 	clearedclient_scopes            bool
+	service_roles                   map[string]struct{}
+	removedservice_roles            map[string]struct{}
+	clearedservice_roles            bool
 	tokens                          map[string]struct{}
 	removedtokens                   map[string]struct{}
 	clearedtokens                   bool
@@ -5037,6 +5040,60 @@ func (m *ClientAppMutation) ResetClientScopes() {
 	m.removedclient_scopes = nil
 }
 
+// AddServiceRoleIDs adds the "service_roles" edge to the Role entity by ids.
+func (m *ClientAppMutation) AddServiceRoleIDs(ids ...string) {
+	if m.service_roles == nil {
+		m.service_roles = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.service_roles[ids[i]] = struct{}{}
+	}
+}
+
+// ClearServiceRoles clears the "service_roles" edge to the Role entity.
+func (m *ClientAppMutation) ClearServiceRoles() {
+	m.clearedservice_roles = true
+}
+
+// ServiceRolesCleared reports if the "service_roles" edge to the Role entity was cleared.
+func (m *ClientAppMutation) ServiceRolesCleared() bool {
+	return m.clearedservice_roles
+}
+
+// RemoveServiceRoleIDs removes the "service_roles" edge to the Role entity by IDs.
+func (m *ClientAppMutation) RemoveServiceRoleIDs(ids ...string) {
+	if m.removedservice_roles == nil {
+		m.removedservice_roles = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.service_roles, ids[i])
+		m.removedservice_roles[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedServiceRoles returns the removed IDs of the "service_roles" edge to the Role entity.
+func (m *ClientAppMutation) RemovedServiceRolesIDs() (ids []string) {
+	for id := range m.removedservice_roles {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ServiceRolesIDs returns the "service_roles" edge IDs in the mutation.
+func (m *ClientAppMutation) ServiceRolesIDs() (ids []string) {
+	for id := range m.service_roles {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetServiceRoles resets all changes to the "service_roles" edge.
+func (m *ClientAppMutation) ResetServiceRoles() {
+	m.service_roles = nil
+	m.clearedservice_roles = false
+	m.removedservice_roles = nil
+}
+
 // AddTokenIDs adds the "tokens" edge to the Token entity by ids.
 func (m *ClientAppMutation) AddTokenIDs(ids ...string) {
 	if m.tokens == nil {
@@ -6290,7 +6347,7 @@ func (m *ClientAppMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ClientAppMutation) AddedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.realm != nil {
 		edges = append(edges, clientapp.EdgeRealm)
 	}
@@ -6302,6 +6359,9 @@ func (m *ClientAppMutation) AddedEdges() []string {
 	}
 	if m.client_scopes != nil {
 		edges = append(edges, clientapp.EdgeClientScopes)
+	}
+	if m.service_roles != nil {
+		edges = append(edges, clientapp.EdgeServiceRoles)
 	}
 	if m.tokens != nil {
 		edges = append(edges, clientapp.EdgeTokens)
@@ -6347,6 +6407,12 @@ func (m *ClientAppMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case clientapp.EdgeServiceRoles:
+		ids := make([]ent.Value, 0, len(m.service_roles))
+		for id := range m.service_roles {
+			ids = append(ids, id)
+		}
+		return ids
 	case clientapp.EdgeTokens:
 		ids := make([]ent.Value, 0, len(m.tokens))
 		for id := range m.tokens {
@@ -6383,7 +6449,7 @@ func (m *ClientAppMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ClientAppMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.removedroles != nil {
 		edges = append(edges, clientapp.EdgeRoles)
 	}
@@ -6392,6 +6458,9 @@ func (m *ClientAppMutation) RemovedEdges() []string {
 	}
 	if m.removedclient_scopes != nil {
 		edges = append(edges, clientapp.EdgeClientScopes)
+	}
+	if m.removedservice_roles != nil {
+		edges = append(edges, clientapp.EdgeServiceRoles)
 	}
 	if m.removedtokens != nil {
 		edges = append(edges, clientapp.EdgeTokens)
@@ -6433,6 +6502,12 @@ func (m *ClientAppMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case clientapp.EdgeServiceRoles:
+		ids := make([]ent.Value, 0, len(m.removedservice_roles))
+		for id := range m.removedservice_roles {
+			ids = append(ids, id)
+		}
+		return ids
 	case clientapp.EdgeTokens:
 		ids := make([]ent.Value, 0, len(m.removedtokens))
 		for id := range m.removedtokens {
@@ -6469,7 +6544,7 @@ func (m *ClientAppMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ClientAppMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.clearedrealm {
 		edges = append(edges, clientapp.EdgeRealm)
 	}
@@ -6481,6 +6556,9 @@ func (m *ClientAppMutation) ClearedEdges() []string {
 	}
 	if m.clearedclient_scopes {
 		edges = append(edges, clientapp.EdgeClientScopes)
+	}
+	if m.clearedservice_roles {
+		edges = append(edges, clientapp.EdgeServiceRoles)
 	}
 	if m.clearedtokens {
 		edges = append(edges, clientapp.EdgeTokens)
@@ -6512,6 +6590,8 @@ func (m *ClientAppMutation) EdgeCleared(name string) bool {
 		return m.clearedgroups
 	case clientapp.EdgeClientScopes:
 		return m.clearedclient_scopes
+	case clientapp.EdgeServiceRoles:
+		return m.clearedservice_roles
 	case clientapp.EdgeTokens:
 		return m.clearedtokens
 	case clientapp.EdgeConsents:
@@ -6552,6 +6632,9 @@ func (m *ClientAppMutation) ResetEdge(name string) error {
 		return nil
 	case clientapp.EdgeClientScopes:
 		m.ResetClientScopes()
+		return nil
+	case clientapp.EdgeServiceRoles:
+		m.ResetServiceRoles()
 		return nil
 	case clientapp.EdgeTokens:
 		m.ResetTokens()
@@ -30010,6 +30093,9 @@ type RoleMutation struct {
 	client_apps               map[string]struct{}
 	removedclient_apps        map[string]struct{}
 	clearedclient_apps        bool
+	service_accounts          map[string]struct{}
+	removedservice_accounts   map[string]struct{}
+	clearedservice_accounts   bool
 	mfa_policy                *string
 	clearedmfa_policy         bool
 	role_client_scopes        map[string]struct{}
@@ -30635,6 +30721,60 @@ func (m *RoleMutation) ResetClientApps() {
 	m.removedclient_apps = nil
 }
 
+// AddServiceAccountIDs adds the "service_accounts" edge to the ClientApp entity by ids.
+func (m *RoleMutation) AddServiceAccountIDs(ids ...string) {
+	if m.service_accounts == nil {
+		m.service_accounts = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.service_accounts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearServiceAccounts clears the "service_accounts" edge to the ClientApp entity.
+func (m *RoleMutation) ClearServiceAccounts() {
+	m.clearedservice_accounts = true
+}
+
+// ServiceAccountsCleared reports if the "service_accounts" edge to the ClientApp entity was cleared.
+func (m *RoleMutation) ServiceAccountsCleared() bool {
+	return m.clearedservice_accounts
+}
+
+// RemoveServiceAccountIDs removes the "service_accounts" edge to the ClientApp entity by IDs.
+func (m *RoleMutation) RemoveServiceAccountIDs(ids ...string) {
+	if m.removedservice_accounts == nil {
+		m.removedservice_accounts = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.service_accounts, ids[i])
+		m.removedservice_accounts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedServiceAccounts returns the removed IDs of the "service_accounts" edge to the ClientApp entity.
+func (m *RoleMutation) RemovedServiceAccountsIDs() (ids []string) {
+	for id := range m.removedservice_accounts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ServiceAccountsIDs returns the "service_accounts" edge IDs in the mutation.
+func (m *RoleMutation) ServiceAccountsIDs() (ids []string) {
+	for id := range m.service_accounts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetServiceAccounts resets all changes to the "service_accounts" edge.
+func (m *RoleMutation) ResetServiceAccounts() {
+	m.service_accounts = nil
+	m.clearedservice_accounts = false
+	m.removedservice_accounts = nil
+}
+
 // SetMfaPolicyID sets the "mfa_policy" edge to the MfaPolicy entity by id.
 func (m *RoleMutation) SetMfaPolicyID(id string) {
 	m.mfa_policy = &id
@@ -31026,7 +31166,7 @@ func (m *RoleMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RoleMutation) AddedEdges() []string {
-	edges := make([]string, 0, 8)
+	edges := make([]string, 0, 9)
 	if m.realm != nil {
 		edges = append(edges, role.EdgeRealm)
 	}
@@ -31041,6 +31181,9 @@ func (m *RoleMutation) AddedEdges() []string {
 	}
 	if m.client_apps != nil {
 		edges = append(edges, role.EdgeClientApps)
+	}
+	if m.service_accounts != nil {
+		edges = append(edges, role.EdgeServiceAccounts)
 	}
 	if m.mfa_policy != nil {
 		edges = append(edges, role.EdgeMfaPolicy)
@@ -31086,6 +31229,12 @@ func (m *RoleMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case role.EdgeServiceAccounts:
+		ids := make([]ent.Value, 0, len(m.service_accounts))
+		for id := range m.service_accounts {
+			ids = append(ids, id)
+		}
+		return ids
 	case role.EdgeMfaPolicy:
 		if id := m.mfa_policy; id != nil {
 			return []ent.Value{*id}
@@ -31108,7 +31257,7 @@ func (m *RoleMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RoleMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 8)
+	edges := make([]string, 0, 9)
 	if m.removedusers != nil {
 		edges = append(edges, role.EdgeUsers)
 	}
@@ -31120,6 +31269,9 @@ func (m *RoleMutation) RemovedEdges() []string {
 	}
 	if m.removedclient_apps != nil {
 		edges = append(edges, role.EdgeClientApps)
+	}
+	if m.removedservice_accounts != nil {
+		edges = append(edges, role.EdgeServiceAccounts)
 	}
 	if m.removedrole_client_scopes != nil {
 		edges = append(edges, role.EdgeRoleClientScopes)
@@ -31158,6 +31310,12 @@ func (m *RoleMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case role.EdgeServiceAccounts:
+		ids := make([]ent.Value, 0, len(m.removedservice_accounts))
+		for id := range m.removedservice_accounts {
+			ids = append(ids, id)
+		}
+		return ids
 	case role.EdgeRoleClientScopes:
 		ids := make([]ent.Value, 0, len(m.removedrole_client_scopes))
 		for id := range m.removedrole_client_scopes {
@@ -31176,7 +31334,7 @@ func (m *RoleMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RoleMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 8)
+	edges := make([]string, 0, 9)
 	if m.clearedrealm {
 		edges = append(edges, role.EdgeRealm)
 	}
@@ -31191,6 +31349,9 @@ func (m *RoleMutation) ClearedEdges() []string {
 	}
 	if m.clearedclient_apps {
 		edges = append(edges, role.EdgeClientApps)
+	}
+	if m.clearedservice_accounts {
+		edges = append(edges, role.EdgeServiceAccounts)
 	}
 	if m.clearedmfa_policy {
 		edges = append(edges, role.EdgeMfaPolicy)
@@ -31218,6 +31379,8 @@ func (m *RoleMutation) EdgeCleared(name string) bool {
 		return m.clearedclient_scopes
 	case role.EdgeClientApps:
 		return m.clearedclient_apps
+	case role.EdgeServiceAccounts:
+		return m.clearedservice_accounts
 	case role.EdgeMfaPolicy:
 		return m.clearedmfa_policy
 	case role.EdgeRoleClientScopes:
@@ -31260,6 +31423,9 @@ func (m *RoleMutation) ResetEdge(name string) error {
 		return nil
 	case role.EdgeClientApps:
 		m.ResetClientApps()
+		return nil
+	case role.EdgeServiceAccounts:
+		m.ResetServiceAccounts()
 		return nil
 	case role.EdgeMfaPolicy:
 		m.ResetMfaPolicy()
@@ -35691,9 +35857,22 @@ func (m *TokenMutation) OldSessionID(ctx context.Context) (v string, err error) 
 	return oldValue.SessionID, nil
 }
 
+// ClearSessionID clears the value of the "session_id" field.
+func (m *TokenMutation) ClearSessionID() {
+	m.session = nil
+	m.clearedFields[token.FieldSessionID] = struct{}{}
+}
+
+// SessionIDCleared returns if the "session_id" field was cleared in this mutation.
+func (m *TokenMutation) SessionIDCleared() bool {
+	_, ok := m.clearedFields[token.FieldSessionID]
+	return ok
+}
+
 // ResetSessionID resets all changes to the "session_id" field.
 func (m *TokenMutation) ResetSessionID() {
 	m.session = nil
+	delete(m.clearedFields, token.FieldSessionID)
 }
 
 // SetClientRefID sets the "client_ref_id" field.
@@ -36230,7 +36409,7 @@ func (m *TokenMutation) ClearSession() {
 
 // SessionCleared reports if the "session" edge to the Session entity was cleared.
 func (m *TokenMutation) SessionCleared() bool {
-	return m.clearedsession
+	return m.SessionIDCleared() || m.clearedsession
 }
 
 // SessionIDs returns the "session" edge IDs in the mutation.
@@ -36562,6 +36741,9 @@ func (m *TokenMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *TokenMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(token.FieldSessionID) {
+		fields = append(fields, token.FieldSessionID)
+	}
 	if m.FieldCleared(token.FieldScopes) {
 		fields = append(fields, token.FieldScopes)
 	}
@@ -36594,6 +36776,9 @@ func (m *TokenMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *TokenMutation) ClearField(name string) error {
 	switch name {
+	case token.FieldSessionID:
+		m.ClearSessionID()
+		return nil
 	case token.FieldScopes:
 		m.ClearScopes()
 		return nil

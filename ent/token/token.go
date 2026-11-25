@@ -91,8 +91,6 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
-	SessionIDValidator func(string) error
 	// ClientRefIDValidator is a validator for the "client_ref_id" field. It is called by the builders before save.
 	ClientRefIDValidator func(string) error
 	// JtiValidator is a validator for the "jti" field. It is called by the builders before save.

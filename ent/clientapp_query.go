@@ -36,6 +36,7 @@ type ClientAppQuery struct {
 	withRoles               *RoleQuery
 	withGroups              *GroupQuery
 	withClientScopes        *ClientScopeQuery
+	withServiceRoles        *RoleQuery
 	withTokens              *TokenQuery
 	withConsents            *ConsentQuery
 	withClientRoles         *ClientRoleQuery
@@ -158,6 +159,28 @@ func (_q *ClientAppQuery) QueryClientScopes() *ClientScopeQuery {
 			sqlgraph.From(clientapp.Table, clientapp.FieldID, selector),
 			sqlgraph.To(clientscope.Table, clientscope.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, clientapp.ClientScopesTable, clientapp.ClientScopesPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryServiceRoles chains the current query on the "service_roles" edge.
+func (_q *ClientAppQuery) QueryServiceRoles() *RoleQuery {
+	query := (&RoleClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(clientapp.Table, clientapp.FieldID, selector),
+			sqlgraph.To(role.Table, role.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, clientapp.ServiceRolesTable, clientapp.ServiceRolesPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -471,6 +494,7 @@ func (_q *ClientAppQuery) Clone() *ClientAppQuery {
 		withRoles:               _q.withRoles.Clone(),
 		withGroups:              _q.withGroups.Clone(),
 		withClientScopes:        _q.withClientScopes.Clone(),
+		withServiceRoles:        _q.withServiceRoles.Clone(),
 		withTokens:              _q.withTokens.Clone(),
 		withConsents:            _q.withConsents.Clone(),
 		withClientRoles:         _q.withClientRoles.Clone(),
@@ -523,6 +547,17 @@ func (_q *ClientAppQuery) WithClientScopes(opts ...func(*ClientScopeQuery)) *Cli
 		opt(query)
 	}
 	_q.withClientScopes = query
+	return _q
+}
+
+// WithServiceRoles tells the query-builder to eager-load the nodes that are connected to
+// the "service_roles" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ClientAppQuery) WithServiceRoles(opts ...func(*RoleQuery)) *ClientAppQuery {
+	query := (&RoleClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withServiceRoles = query
 	return _q
 }
 
@@ -659,11 +694,12 @@ func (_q *ClientAppQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cl
 	var (
 		nodes       = []*ClientApp{}
 		_spec       = _q.querySpec()
-		loadedTypes = [9]bool{
+		loadedTypes = [10]bool{
 			_q.withRealm != nil,
 			_q.withRoles != nil,
 			_q.withGroups != nil,
 			_q.withClientScopes != nil,
+			_q.withServiceRoles != nil,
 			_q.withTokens != nil,
 			_q.withConsents != nil,
 			_q.withClientRoles != nil,
@@ -713,6 +749,13 @@ func (_q *ClientAppQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cl
 		if err := _q.loadClientScopes(ctx, query, nodes,
 			func(n *ClientApp) { n.Edges.ClientScopes = []*ClientScope{} },
 			func(n *ClientApp, e *ClientScope) { n.Edges.ClientScopes = append(n.Edges.ClientScopes, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withServiceRoles; query != nil {
+		if err := _q.loadServiceRoles(ctx, query, nodes,
+			func(n *ClientApp) { n.Edges.ServiceRoles = []*Role{} },
+			func(n *ClientApp, e *Role) { n.Edges.ServiceRoles = append(n.Edges.ServiceRoles, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -961,6 +1004,67 @@ func (_q *ClientAppQuery) loadClientScopes(ctx context.Context, query *ClientSco
 		nodes, ok := nids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected "client_scopes" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
+func (_q *ClientAppQuery) loadServiceRoles(ctx context.Context, query *RoleQuery, nodes []*ClientApp, init func(*ClientApp), assign func(*ClientApp, *Role)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[string]*ClientApp)
+	nids := make(map[string]map[*ClientApp]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(clientapp.ServiceRolesTable)
+		s.Join(joinT).On(s.C(role.FieldID), joinT.C(clientapp.ServiceRolesPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(clientapp.ServiceRolesPrimaryKey[0]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(clientapp.ServiceRolesPrimaryKey[0]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(sql.NullString)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := values[0].(*sql.NullString).String
+				inValue := values[1].(*sql.NullString).String
+				if nids[inValue] == nil {
+					nids[inValue] = map[*ClientApp]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Role](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "service_roles" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)

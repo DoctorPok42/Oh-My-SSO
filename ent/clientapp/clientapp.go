@@ -101,6 +101,8 @@ const (
 	EdgeGroups = "groups"
 	// EdgeClientScopes holds the string denoting the client_scopes edge name in mutations.
 	EdgeClientScopes = "client_scopes"
+	// EdgeServiceRoles holds the string denoting the service_roles edge name in mutations.
+	EdgeServiceRoles = "service_roles"
 	// EdgeTokens holds the string denoting the tokens edge name in mutations.
 	EdgeTokens = "tokens"
 	// EdgeConsents holds the string denoting the consents edge name in mutations.
@@ -135,6 +137,11 @@ const (
 	// ClientScopesInverseTable is the table name for the ClientScope entity.
 	// It exists in this package in order to avoid circular dependency with the "clientscope" package.
 	ClientScopesInverseTable = "client_scopes"
+	// ServiceRolesTable is the table that holds the service_roles relation/edge. The primary key declared below.
+	ServiceRolesTable = "client_app_service_roles"
+	// ServiceRolesInverseTable is the table name for the Role entity.
+	// It exists in this package in order to avoid circular dependency with the "role" package.
+	ServiceRolesInverseTable = "roles"
 	// TokensTable is the table that holds the tokens relation/edge.
 	TokensTable = "tokens"
 	// TokensInverseTable is the table name for the Token entity.
@@ -226,6 +233,9 @@ var (
 	// ClientScopesPrimaryKey and ClientScopesColumn2 are the table columns denoting the
 	// primary key for the client_scopes relation (M2M).
 	ClientScopesPrimaryKey = []string{"client_app_id", "client_scope_id"}
+	// ServiceRolesPrimaryKey and ServiceRolesColumn2 are the table columns denoting the
+	// primary key for the service_roles relation (M2M).
+	ServiceRolesPrimaryKey = []string{"client_app_id", "role_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -500,6 +510,20 @@ func ByClientScopes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByServiceRolesCount orders the results by service_roles count.
+func ByServiceRolesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newServiceRolesStep(), opts...)
+	}
+}
+
+// ByServiceRoles orders the results by service_roles terms.
+func ByServiceRoles(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newServiceRolesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByTokensCount orders the results by tokens count.
 func ByTokensCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -595,6 +619,13 @@ func newClientScopesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ClientScopesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, ClientScopesTable, ClientScopesPrimaryKey...),
+	)
+}
+func newServiceRolesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ServiceRolesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, ServiceRolesTable, ServiceRolesPrimaryKey...),
 	)
 }
 func newTokensStep() *sqlgraph.Step {

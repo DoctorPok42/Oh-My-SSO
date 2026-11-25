@@ -21,6 +21,7 @@ var ErrInvalidClientConfig = errors.New("service: invalid client configuration")
 const (
 	GrantAuthorizationCode = "authorization_code"
 	GrantRefreshToken      = "refresh_token"
+	GrantClientCredentials = "client_credentials"
 )
 
 // Client authentication methods at the token endpoint (RFC 7591 names).
@@ -59,6 +60,9 @@ type OIDCClientInput struct {
 	DisablePKCE bool
 	AllowRoles  []string
 	AllowGroups []string
+	// ServiceRoles: role names given to the client's own service account
+	// (client_credentials grant); its tokens get the scopes of these roles.
+	ServiceRoles []string
 	// Secret supplied from outside (config-as-code). Empty: generated.
 	Secret    string
 	GrantedBy string // written on ClientRole/ClientGroup rows ("cli:alice")
@@ -103,6 +107,10 @@ func (s *OIDCClientService) Create(ctx context.Context, in OIDCClientInput) (*do
 		return nil, "", err
 	}
 	groupIDs, err := s.resolveGroups(ctx, in.RealmID, in.AllowGroups)
+	if err != nil {
+		return nil, "", err
+	}
+	serviceRoleIDs, err := s.resolveRoles(ctx, in.RealmID, in.ServiceRoles)
 	if err != nil {
 		return nil, "", err
 	}
@@ -160,6 +168,11 @@ func (s *OIDCClientService) Create(ctx context.Context, in OIDCClientInput) (*do
 	for _, id := range groupIDs {
 		if err := s.clients.GrantGroup(ctx, app.ID, id, in.GrantedBy); err != nil {
 			return nil, "", fmt.Errorf("grant group: %w", err)
+		}
+	}
+	for _, id := range serviceRoleIDs {
+		if err := s.clients.AddServiceRole(ctx, app.ID, id); err != nil {
+			return nil, "", fmt.Errorf("add service role: %w", err)
 		}
 	}
 	return app, secret, nil
@@ -225,7 +238,27 @@ func NormalizeOIDCClient(in OIDCClientInput) (*NormalizedOIDCClient, error) {
 		out.Name = out.ClientID
 	}
 
-	if len(in.RedirectURIs) == 0 {
+	grants := in.GrantTypes
+	if len(grants) == 0 {
+		grants = []string{GrantAuthorizationCode, GrantRefreshToken}
+	}
+	for _, g := range grants {
+		if g != GrantAuthorizationCode && g != GrantRefreshToken && g != GrantClientCredentials {
+			return nil, bad(i18n.M("admin.error.grant_unsupported", "grant type \"{grant}\" is not supported (only authorization_code, refresh_token and client_credentials)", "grant", g))
+		}
+		out.GrantTypes = appendUnique(out.GrantTypes, g)
+	}
+	// A machine client (client_credentials alone) has no user, so no code,
+	// no redirect URI and no refresh token (RFC 6749, section 4.4.3).
+	withCode := slices.Contains(out.GrantTypes, GrantAuthorizationCode)
+	if !withCode && slices.Contains(out.GrantTypes, GrantRefreshToken) {
+		return nil, bad(i18n.M("admin.error.code_grant_required", "the authorization_code grant is required"))
+	}
+	if in.Public && slices.Contains(out.GrantTypes, GrantClientCredentials) {
+		return nil, bad(i18n.M("admin.error.client_credentials_public", "a public client cannot use the client_credentials grant"))
+	}
+
+	if withCode && len(in.RedirectURIs) == 0 {
 		return nil, bad(i18n.M("admin.error.redirect_required", "at least one redirect URI is required"))
 	}
 	for _, u := range in.RedirectURIs {
@@ -242,20 +275,6 @@ func NormalizeOIDCClient(in OIDCClientInput) (*NormalizedOIDCClient, error) {
 	}
 	if out.PostLogoutRedirectURIs == nil {
 		out.PostLogoutRedirectURIs = []string{}
-	}
-
-	grants := in.GrantTypes
-	if len(grants) == 0 {
-		grants = []string{GrantAuthorizationCode, GrantRefreshToken}
-	}
-	for _, g := range grants {
-		if g != GrantAuthorizationCode && g != GrantRefreshToken {
-			return nil, bad(i18n.M("admin.error.grant_unsupported", "grant type \"{grant}\" is not supported (only authorization_code and refresh_token)", "grant", g))
-		}
-		out.GrantTypes = appendUnique(out.GrantTypes, g)
-	}
-	if !slices.Contains(out.GrantTypes, GrantAuthorizationCode) {
-		return nil, bad(i18n.M("admin.error.code_grant_required", "the authorization_code grant is required"))
 	}
 
 	out.AllowedScopes = []string{"openid"}

@@ -35,6 +35,7 @@ const (
 	AuditActorCLI       AuditLogActorType = "cli"       // an operator on the command line
 	AuditActorSystem    AuditLogActorType = "system"    // the server itself (lockout, key retirer, e-mails...)
 	AuditActorAnonymous AuditLogActorType = "anonymous" // nobody signed in (a failed sign-in)
+	AuditActorClient    AuditLogActorType = "client"    // an application, for its own service account
 )
 
 type AuditLogStatus string

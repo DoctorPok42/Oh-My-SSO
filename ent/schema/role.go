@@ -61,6 +61,7 @@ func (Role) Edges() []ent.Edge {
 			Through("role_client_scopes", RoleClientScope.Type),
 		edge.To("client_apps", ClientApp.Type).
 			Through("client_roles", ClientRole.Type),
+		edge.From("service_accounts", ClientApp.Type).Ref("service_roles"),
 		// At most one MFA policy per role; deleting the role deletes it.
 		edge.To("mfa_policy", MfaPolicy.Type).
 			Unique().
