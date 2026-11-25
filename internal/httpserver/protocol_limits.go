@@ -101,34 +101,14 @@ func (s *Server) limitOIDCClient(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		realm := realmFromContext(r)
-		ip := clientIP(r)
-		l := s.protocolLimits
-
 		r.Body = http.MaxBytesReader(w, r.Body, maxOIDCClientBody)
-		clientID, withSecret, err := requestClient(r)
+		rules, ccKey, err := s.oidcClientRules(r)
 		if err != nil {
 			writeOAuthError(w, r, http.StatusBadRequest, "invalid_request", "the request body is not a valid form")
 			return
 		}
-
-		rules := []ratelimit.Rule{l.OIDCPerIP.on(ratelimit.Key(routeOIDCClient, realm.ID, "ip", ip))}
-		ccKey := ""
-		if withSecret && clientID != "" {
-			rules = append(rules, l.ClientFailuresPerIP.on(clientFailureKey(realm.ID, clientID, ip)))
-			if strings.HasSuffix(r.URL.Path, "/oidc/token") && r.Form.Get("grant_type") == "client_credentials" {
-				ccKey = ratelimit.Key(routeOIDCClient, realm.ID, "client_credentials", boundedClientID(clientID))
-				rules = append(rules, l.ClientCredentialsPerClient.on(ccKey))
-			}
-		}
-		res, err := s.rateLimiter.Reserve(r.Context(), rules...)
-		if err != nil {
-			slog.ErrorContext(r.Context(), "oidc: rate limit", "error", err)
-			writeOAuthError(w, r, http.StatusInternalServerError, "server_error", "")
-			return
-		}
-		if !res.OK {
-			writeOAuthTooManyRequests(w, r, res.RetryAfter)
+		res, ok := s.reserveOIDC(w, r, rules)
+		if !ok {
 			return
 		}
 
@@ -141,28 +121,68 @@ func (s *Server) limitOIDCClient(next http.Handler) http.Handler {
 				otherHits = append(otherHits, h)
 			}
 		}
-		// The answer does not depend on it: hits that cannot be given back
-		// are logged, not turned into an error.
-		release := func(hits []ratelimit.Hit) {
-			ctx := context.WithoutCancel(r.Context())
-			if err := s.rateLimiter.Release(ctx, hits...); err != nil {
-				slog.ErrorContext(ctx, "oidc: rate limit: give back hits", "error", err)
-			}
-		}
 
 		var once sync.Once
 		authenticated := false // set and read on this goroutine: the library calls back synchronously
 		ctx := oidcadapter.WithClientAuthenticated(r.Context(), func(string) {
 			once.Do(func() {
 				authenticated = true
-				release(otherHits)
+				s.releaseHits(r, otherHits)
 			})
 		})
 		next.ServeHTTP(w, r.WithContext(ctx))
 		if !authenticated && len(ccHits) > 0 {
-			release(ccHits)
+			s.releaseHits(r, ccHits)
 		}
 	})
+}
+
+// oidcClientRules: what this request counts under. ccKey is the key of the
+// client_credentials rule, "" when the request is not one.
+func (s *Server) oidcClientRules(r *http.Request) (rules []ratelimit.Rule, ccKey string, err error) {
+	realm := realmFromContext(r)
+	ip := clientIP(r)
+	l := s.protocolLimits
+
+	clientID, withSecret, err := requestClient(r)
+	if err != nil {
+		return nil, "", err
+	}
+	rules = []ratelimit.Rule{l.OIDCPerIP.on(ratelimit.Key(routeOIDCClient, realm.ID, "ip", ip))}
+	if !withSecret || clientID == "" {
+		return rules, "", nil
+	}
+	rules = append(rules, l.ClientFailuresPerIP.on(clientFailureKey(realm.ID, clientID, ip)))
+	if strings.HasSuffix(r.URL.Path, "/oidc/token") && r.Form.Get("grant_type") == "client_credentials" {
+		ccKey = ratelimit.Key(routeOIDCClient, realm.ID, "client_credentials", boundedClientID(clientID))
+		rules = append(rules, l.ClientCredentialsPerClient.on(ccKey))
+	}
+	return rules, ccKey, nil
+}
+
+// reserveOIDC counts the request under rules. When it must not run (a rule
+// is full, or the limiter failed) the answer is written and ok is false.
+func (s *Server) reserveOIDC(w http.ResponseWriter, r *http.Request, rules []ratelimit.Rule) (res ratelimit.Reservation, ok bool) {
+	res, err := s.rateLimiter.Reserve(r.Context(), rules...)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "oidc: rate limit", "error", err)
+		writeOAuthError(w, r, http.StatusInternalServerError, "server_error", "")
+		return res, false
+	}
+	if !res.OK {
+		writeOAuthTooManyRequests(w, r, res.RetryAfter)
+		return res, false
+	}
+	return res, true
+}
+
+// releaseHits gives hits back. The answer does not depend on it: hits that
+// cannot be given back are logged, not turned into an error.
+func (s *Server) releaseHits(r *http.Request, hits []ratelimit.Hit) {
+	ctx := context.WithoutCancel(r.Context())
+	if err := s.rateLimiter.Release(ctx, hits...); err != nil {
+		slog.ErrorContext(ctx, "oidc: rate limit: give back hits", "error", err)
+	}
 }
 
 // requestClient: the client_id the request claims and whether it sends a

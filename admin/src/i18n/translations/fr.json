@@ -101,6 +101,7 @@
   "audit.action.timeout.enforced": "Suspension appliquée (déconnexion)",
   "audit.action.timeout.lifted": "Suspension levée",
   "audit.action.timeout.updated": "Suspension modifiée",
+  "audit.action.token.issued": "Jeton de compte de service émis",
   "audit.action.token.reuse_detected": "Réutilisation d'un refresh token détectée",
   "audit.action.trusted_device.added": "Appareil de confiance ajouté",
   "audit.action.trusted_device.revoked": "Appareil de confiance révoqué",

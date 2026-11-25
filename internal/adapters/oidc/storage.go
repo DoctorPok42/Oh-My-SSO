@@ -542,11 +542,11 @@ func (s *storage) activeAccessToken(ctx context.Context, jti, subject string) (*
 	}
 	as, err := s.a.core.IssueIdentityAssertion(ctx, tok.SessionID, tok.ClientRefID, tok.Scopes)
 	if err != nil || as.Subject != subject {
-		return nil, nil, nil, oidc.ErrAccessDenied().WithDescription("token is not active")
+		return nil, nil, nil, errTokenNotActive()
 	}
 	pc, err := s.lookupClient(ctx, as.Audience)
 	if err != nil || pc.App.ID != tok.ClientRefID {
-		return nil, nil, nil, oidc.ErrAccessDenied().WithDescription("token is not active")
+		return nil, nil, nil, errTokenNotActive()
 	}
 	return tok, as, pc, nil
 }

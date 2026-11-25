@@ -204,34 +204,16 @@ func (s *IdentityCoreService) RotateRefreshToken(ctx context.Context, rawToken, 
 		// consume it (the rightful owner may still use it).
 		return nil, core.ErrTokenInvalid
 	}
-	if scopes == nil {
-		scopes = old.Scopes
-	} else {
-		for _, sc := range scopes {
-			if !slices.Contains(old.Scopes, sc) {
-				return nil, fmt.Errorf("%w: scope %q was not granted", core.ErrTokenInvalid, sc)
-			}
-		}
+	if scopes, err = narrowScopes(old.Scopes, scopes); err != nil {
+		return nil, err
 	}
 
 	sess, client, err := s.tokenContext(ctx, old.SessionID, clientRef)
 	if err != nil {
 		return nil, err
 	}
-
-	// The one atomic step: whoever marks the token first owns the rotation.
-	won, err := s.tokens.MarkUsed(ctx, old.ID, s.now())
-	if err != nil {
-		return nil, fmt.Errorf("rotate refresh token: %w", err)
-	}
-	if !won {
-		// Another request exchanged (or revoked) it a moment ago. If it was
-		// exchanged, two parties hold the same token: treat it as a replay.
-		if cur, err := s.tokens.GetByID(ctx, old.ID); err == nil && cur.IsUsed() {
-			s.refreshTokenReplayed(ctx, cur)
-			return nil, core.ErrTokenReused
-		}
-		return nil, core.ErrTokenInvalid
+	if err := s.claimRefreshToken(ctx, old); err != nil {
+		return nil, err
 	}
 
 	// Refresh tokens are bound to the SSO session: using one is activity,
@@ -244,16 +226,56 @@ func (s *IdentityCoreService) RotateRefreshToken(ctx context.Context, rawToken, 
 	if err != nil {
 		return nil, err
 	}
-	// Close the race with a concurrent replay: a loser of MarkUsed revokes
-	// the family, maybe just BEFORE our new tokens were inserted (so they
-	// escaped it). It always revokes the old row too, so check it again.
+	if err := s.closeReplayRace(ctx, old); err != nil {
+		return nil, err
+	}
+	return issued, nil
+}
+
+// narrowScopes: nil asks for every scope of the grant; otherwise each one
+// asked must have been granted.
+func narrowScopes(granted, asked []string) ([]string, error) {
+	if asked == nil {
+		return granted, nil
+	}
+	for _, sc := range asked {
+		if !slices.Contains(granted, sc) {
+			return nil, fmt.Errorf("%w: scope %q was not granted", core.ErrTokenInvalid, sc)
+		}
+	}
+	return asked, nil
+}
+
+// claimRefreshToken is the one atomic step of a rotation: whoever marks the
+// token first owns it.
+func (s *IdentityCoreService) claimRefreshToken(ctx context.Context, old *domain.Token) error {
+	won, err := s.tokens.MarkUsed(ctx, old.ID, s.now())
+	if err != nil {
+		return fmt.Errorf("rotate refresh token: %w", err)
+	}
+	if won {
+		return nil
+	}
+	// Another request exchanged (or revoked) it a moment ago. If it was
+	// exchanged, two parties hold the same token: treat it as a replay.
+	if cur, err := s.tokens.GetByID(ctx, old.ID); err == nil && cur.IsUsed() {
+		s.refreshTokenReplayed(ctx, cur)
+		return core.ErrTokenReused
+	}
+	return core.ErrTokenInvalid
+}
+
+// closeReplayRace: a loser of MarkUsed revokes the family, maybe just BEFORE
+// our new tokens were inserted (so they escaped it). It always revokes the
+// old row too, so check it again.
+func (s *IdentityCoreService) closeReplayRace(ctx context.Context, old *domain.Token) error {
 	if cur, err := s.tokens.GetByID(ctx, old.ID); err != nil || cur.Revoked {
 		if _, rerr := s.tokens.RevokeFamily(ctx, old.FamilyID); rerr != nil {
 			s.logger.ErrorContext(ctx, "rotate refresh token: could not revoke the family after a replay", "error", rerr)
 		}
-		return nil, core.ErrTokenReused
+		return core.ErrTokenReused
 	}
-	return issued, nil
+	return nil
 }
 
 func (s *IdentityCoreService) LookupToken(ctx context.Context, jti string) (*domain.Token, error) {
