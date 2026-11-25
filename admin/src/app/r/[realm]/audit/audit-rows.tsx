@@ -19,6 +19,7 @@ const ACTOR_TONES: Record<string, "info" | "accent" | "neutral" | "warning"> = {
   user: "info",
   admin: "accent",
   cli: "neutral",
+  client: "info",
   system: "neutral",
   anonymous: "warning",
 };
@@ -37,6 +38,7 @@ const ACTOR_HINTS: Record<string, Msg> = {
   user: m("audit.actor_hint.user", "Done by a user of the realm, on their own account"),
   admin: m("audit.actor_hint.admin", "Done by an administrator in the admin console"),
   cli: m("audit.actor_hint.cli", "Done by an operator on the command line"),
+  client: m("audit.actor_hint.client", "Done by an application, for its own service account"),
   anonymous: m("audit.actor_hint.anonymous", "Nobody was signed in (a failed sign-in, a reset request...)"),
   system: m("audit.actor_hint.system", "Done by the server itself (lockout, key retirer, e-mails...)"),
 };
@@ -64,6 +66,7 @@ export function AuditRows({
     <>
       {items.map((a) => {
         const expanded = open === a.id;
+        const clientId = a.actor_type === "client" ? a.details?.client_id : undefined;
         const target = targetName(a);
         return (
           <Fragment key={a.id}>
@@ -79,6 +82,9 @@ export function AuditRows({
                     <span className="max-w-[160px] truncate text-[12px]" title={a.actor.id}>
                       {a.actor.username || a.actor.id}
                     </span>
+                  )}
+                  {typeof clientId === "string" && (
+                    <span className="max-w-[160px] truncate font-mono text-[12px]">{clientId}</span>
                   )}
                 </div>
               </TableCell>

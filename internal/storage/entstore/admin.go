@@ -32,7 +32,6 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-
 type entAdminRepository struct {
 	client *ent.Client
 }
@@ -79,7 +78,6 @@ func quoteIdent(name string) string { return `"` + strings.ReplaceAll(name, `"`,
 // sub-queries: an aggregate expression cannot carry bind parameters.
 func quoteLiteral(v string) string { return "'" + strings.ReplaceAll(v, "'", "''") + "'" }
 
-
 func (r *entAdminRepository) ListRealms(ctx context.Context) ([]*domain.Realm, error) {
 	rows, err := r.client.Realm.Query().Order(ent.Desc(realm.FieldIsSystemRealm), ent.Asc(realm.FieldName)).All(ctx)
 	if err != nil {
@@ -103,7 +101,6 @@ func (r *entAdminRepository) CreateSystemRealm(ctx context.Context, p repository
 	}
 	return toDomainRealm(e), nil
 }
-
 
 func (r *entAdminRepository) SearchUsers(ctx context.Context, f repository.UserSearch) ([]*domain.User, int, error) {
 	preds := []predicate.User{user.RealmID(f.RealmID), user.DeletedAtIsNil()}
@@ -332,7 +329,6 @@ func (r *entAdminRepository) LastSuccessfulLogins(ctx context.Context, userIDs [
 	return out, nil
 }
 
-
 func (r *entAdminRepository) RoleGrants(ctx context.Context, roleID string) (repository.Grants, error) {
 	e, err := r.client.Role.Query().
 		Where(role.ID(roleID)).
@@ -443,10 +439,9 @@ func (r *entAdminRepository) SetManagedBy(ctx context.Context, kind, id, managed
 	}
 }
 
-
 func (r *entAdminRepository) ClientGrants(ctx context.Context, clientRef string) (repository.ClientGrants, error) {
 	out := repository.ClientGrants{RoleIDs: []string{}, GroupIDs: []string{}, Scopes: []repository.ScopeMapping{},
-		Names: map[string]string{}}
+		ServiceRoleIDs: []string{}, Names: map[string]string{}}
 	// Each link is loaded with the name of what it points to (Ent eager
 	// loading: one more query per kind, not one per role, group or scope).
 	roles, err := r.client.ClientRole.Query().Where(clientrole.ClientAppID(clientRef)).
@@ -485,7 +480,22 @@ func (r *entAdminRepository) ClientGrants(ctx context.Context, clientRef string)
 		}
 		out.Scopes = append(out.Scopes, m)
 	}
+	service, err := r.client.ClientApp.Query().Where(clientapp.ID(clientRef)).
+		QueryServiceRoles().Select(role.FieldID, role.FieldName).All(ctx)
+	if err != nil {
+		return out, err
+	}
+	for _, ro := range service {
+		out.ServiceRoleIDs = append(out.ServiceRoleIDs, ro.ID)
+		out.Names[ro.ID] = ro.Name
+	}
 	return out, nil
+}
+
+// SetServiceRoles: one UPDATE, which ent runs in a transaction.
+func (r *entAdminRepository) SetServiceRoles(ctx context.Context, clientRef string, roleIDs []string) error {
+	return mapNotFound(r.client.ClientApp.UpdateOneID(clientRef).ClearServiceRoles().
+		AddServiceRoleIDs(uniq(roleIDs)...).Exec(ctx))
 }
 
 // SetClientRoles replaces the roles allowed to use a client, in one
@@ -608,7 +618,6 @@ func (r *entAdminRepository) CountActiveClients(ctx context.Context, realmID str
 		Count(ctx)
 }
 
-
 func liveToken(now time.Time) predicate.Token {
 	return token.And(token.Revoked(false), token.ExpiresAtGT(now))
 }
@@ -689,7 +698,6 @@ func (r *entAdminRepository) SessionClients(ctx context.Context, sessionIDs []st
 	}
 	return out, nil
 }
-
 
 func (r *entAdminRepository) SearchAuditLogs(ctx context.Context, f repository.AuditSearch) ([]*domain.AuditLog, int, error) {
 	preds := []predicate.AuditLog{auditlog.RealmID(f.RealmID)}
@@ -804,7 +812,6 @@ func (r *entAdminRepository) LoginAttemptsByUser(ctx context.Context, userID str
 	return toDomainLoginAttempts(rows), nil
 }
 
-
 // MFACoverage: active users (invitations not yet accepted, i.e. without
 // password, are left out), and how many of them have a real factor, in
 // one query:
@@ -835,7 +842,6 @@ func (r *entAdminRepository) MFACoverage(ctx context.Context, realmID string) (i
 	}
 	return rows[0].Enrolled, rows[0].Count, nil
 }
-
 
 // withTx runs fn in a transaction, rolled back on error or panic.
 func withTx(ctx context.Context, client *ent.Client, fn func(tx *ent.Tx) error) (err error) {

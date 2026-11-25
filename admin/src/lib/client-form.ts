@@ -16,6 +16,8 @@ export type ClientDraft = {
   standardScopes: string[];
   authMethod: string;
   requirePkce: boolean;
+  grantTypes: string[];
+  serviceRoleIds: string[];
   accessTtlMinutes: string;
   refreshTtlDays: string;
   idTtlMinutes: string;
@@ -49,6 +51,8 @@ export function emptyDraft(protocol: Protocol = "oidc"): ClientDraft {
     standardScopes: ["openid", "profile", "email"],
     authMethod: "client_secret_basic",
     requirePkce: true,
+    grantTypes: ["authorization_code", "refresh_token"],
+    serviceRoleIds: [],
     accessTtlMinutes: "",
     refreshTtlDays: "",
     idTtlMinutes: "",
@@ -82,6 +86,8 @@ export function draftFromClient(c: Client): ClientDraft {
     standardScopes: c.oidc?.standard_scopes ?? d.standardScopes,
     authMethod: c.oidc?.token_endpoint_auth_method || d.authMethod,
     requirePkce: c.oidc?.require_pkce ?? true,
+    grantTypes: c.oidc?.grant_types.length ? c.oidc.grant_types : d.grantTypes,
+    serviceRoleIds: c.service_roles.map((r) => r.id),
     accessTtlMinutes: secondsTo("minutes", c.oidc?.access_token_ttl ?? 0),
     refreshTtlDays: secondsTo("days", c.oidc?.refresh_token_ttl ?? 0),
     idTtlMinutes: secondsTo("minutes", c.oidc?.id_token_ttl ?? 0),
@@ -118,7 +124,11 @@ export function clientBody(d: ClientDraft, mode: "create" | "update"): ClientBod
     allowed_group_ids: d.groupIds,
   };
   if (d.protocol === "oidc") {
+    // A public client cannot keep a secret, so it has no service account.
+    const grants = d.isPublic ? d.grantTypes.filter((g) => g !== "client_credentials") : d.grantTypes;
     Object.assign(body, {
+      grant_types: grants,
+      service_role_ids: grants.includes("client_credentials") ? d.serviceRoleIds : [],
       redirect_uris: lines(d.redirectUris),
       post_logout_redirect_uris: lines(d.postLogoutUris),
       standard_scopes: d.standardScopes,

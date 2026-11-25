@@ -7,6 +7,7 @@ import { offsetParam } from "@/lib/pagination";
 import { ColumnHeads } from "@/components/console/skeletons";
 import { ManagedBadge, ProtocolBadge, StatusBadge } from "@/components/console/status-badge";
 import { SegmentedLinks } from "@/components/ui/segmented";
+import { OpenRow } from "@/components/console/drawer";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { getI18n } from "@/i18n/server";
 import { apiPath, getMe, load, loadCached } from "@/lib/api";
@@ -106,7 +107,7 @@ async function ClientsTable({
             </TableEmpty>
           )}
           {items.map((c) => (
-            <TableRow key={c.id} className={BULK_ROW}>
+            <OpenRow id={c.id} key={c.id} className={BULK_ROW}>
               <BulkCell
                 id={c.id}
                 label={c.name}
@@ -137,7 +138,7 @@ async function ClientsTable({
               <TableCell className="text-right">
                 <ClientRowActions realm={realm} client={c} writable={writable} />
               </TableCell>
-            </TableRow>
+            </OpenRow>
           ))}
         </TableBody>
       </Table>

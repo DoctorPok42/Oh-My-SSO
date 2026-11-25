@@ -1,7 +1,6 @@
 package adminapi
 
 import (
-	"sso.internal/sso/internal/i18n"
 	"net/http"
 	"strings"
 	"time"
@@ -11,9 +10,9 @@ import (
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/i18n"
 	"sso.internal/sso/internal/notify"
 )
-
 
 type scopeChoiceJSON struct {
 	ID       string `json:"id"`
@@ -51,6 +50,8 @@ type clientJSON struct {
 	StandardScopes          *[]string `json:"standard_scopes"`
 	TokenEndpointAuthMethod *string   `json:"token_endpoint_auth_method"`
 	RequirePKCE             *bool     `json:"require_pkce"`
+	GrantTypes              *[]string `json:"grant_types"`
+	ServiceRoleIDs          *[]string `json:"service_role_ids"` // replaces the list
 	AccessTokenTTL          *int      `json:"access_token_ttl"`
 	RefreshTokenTTL         *int      `json:"refresh_token_ttl"`
 	IDTokenTTL              *int      `json:"id_token_ttl"`
@@ -77,6 +78,7 @@ func (c clientJSON) input() service.ClientInput {
 		Protocol: domain.ClientAppProtocol(c.Protocol), Name: c.Name, Active: c.Active,
 		ClientID: c.ClientID, Public: c.Public, RedirectURIs: c.RedirectURIs, PostLogoutRedirectURIs: c.PostLogoutRedirectURIs,
 		StandardScopes: c.StandardScopes, TokenEndpointAuthMethod: c.TokenEndpointAuthMethod, RequirePKCE: c.RequirePKCE,
+		GrantTypes: c.GrantTypes, ServiceRoleIDs: c.ServiceRoleIDs,
 		AccessTokenTTL: c.AccessTokenTTL, RefreshTokenTTL: c.RefreshTokenTTL, IDTokenTTL: c.IDTokenTTL,
 		EntityID: c.EntityID, ACSURL: c.ACSURL, SLOURL: c.SLOURL, NameIDFormat: c.NameIDFormat,
 		WantResponseSigned: c.WantResponseSigned, DefaultRelayState: c.DefaultRelayState, Pairwise: c.Pairwise,
@@ -202,7 +204,6 @@ func (s *Server) handleRemoveCertificate(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, v)
 }
 
-
 type scopeJSON struct {
 	Name        *string                `json:"name"`
 	Description *string                `json:"description"`
@@ -267,7 +268,6 @@ func (s *Server) handleDeleteScope(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-
 func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	p := page(r)
 	q := r.URL.Query()
@@ -290,7 +290,6 @@ func (s *Server) handleRevokeSession(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
-
 
 func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	p := page(r)
@@ -508,7 +507,6 @@ func (s *Server) handleRevokeTrustedDevices(w http.ResponseWriter, r *http.Reque
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
-
 
 type accessJSON struct {
 	Name           *string   `json:"name"`

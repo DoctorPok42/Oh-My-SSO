@@ -1,5 +1,6 @@
 "use client";
 
+import type * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useMemo, useState, useTransition } from "react";
 import { Lock } from "lucide-react";
@@ -9,7 +10,9 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogDescription, DialogTitle, SheetBody, SheetContent, SheetFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TableRow } from "@/components/ui/table";
 import { useT } from "@/i18n/client";
+import { cn } from "@/lib/utils";
 
 // Drawers are opened through the URL: ?new=1 or ?edit=<id>. The server
 // renders the page with the item already loaded, Back closes the drawer, a
@@ -79,6 +82,27 @@ export function useDrawerUrl() {
     closeDropping: (keys: string[]) =>
       go({ new: null, edit: null, ...Object.fromEntries(keys.map((k) => [k, null] as const)) }),
   };
+}
+
+/**
+ * A table row that opens its drawer when clicked anywhere (a phone has no room
+ * to scroll to the "Open" button). Clicks on buttons, links and fields keep
+ * their own behavior.
+ */
+export function OpenRow({ id, className, ...props }: { id: string } & React.ComponentProps<"tr">) {
+  const { openEdit } = useDrawerUrl();
+  return (
+    <TableRow
+      className={cn("cursor-pointer", className)}
+      onClick={(e) => {
+        // A dialog opened from the row bubbles its clicks through the React tree.
+        if (!e.currentTarget.contains(e.target as Node)) return;
+        if ((e.target as HTMLElement).closest("button, a, input, label, [role=switch]")) return;
+        openEdit(id);
+      }}
+      {...props}
+    />
+  );
 }
 
 /** Drawer frame: title, scrollable body, footer with Save / Cancel. */

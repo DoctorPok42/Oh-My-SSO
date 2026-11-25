@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/console/page-header";
 import { ColumnHeads } from "@/components/console/skeletons";
 import { ProtocolBadge } from "@/components/console/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { OpenRow } from "@/components/console/drawer";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { apiPath, getMe, loadCached } from "@/lib/api";
 import { BULK_ROW } from "@/lib/bulk";
@@ -68,7 +69,7 @@ async function ScopesTable({ realm, writable }: { realm: string; writable: boole
             <TableEmpty colSpan={writable ? 7 : 6}>{t("scopes.empty", "No client scope yet.")}</TableEmpty>
           )}
           {items.map((s) => (
-            <TableRow key={s.id} className={BULK_ROW}>
+            <OpenRow id={s.id} key={s.id} className={BULK_ROW}>
               {writable && (
                 <BulkCell
                   id={s.id}
@@ -97,7 +98,7 @@ async function ScopesTable({ realm, writable }: { realm: string; writable: boole
               <TableCell className="text-right">
                 <ScopeRowActions realm={realm} scope={s} writable={writable} />
               </TableCell>
-            </TableRow>
+            </OpenRow>
           ))}
         </TableBody>
       </Table>

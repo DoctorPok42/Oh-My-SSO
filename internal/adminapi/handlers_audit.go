@@ -1,7 +1,6 @@
 package adminapi
 
 import (
-	"sso.internal/sso/internal/i18n"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -14,12 +13,13 @@ import (
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 	"sso.internal/sso/internal/core/service"
+	"sso.internal/sso/internal/i18n"
 )
 
 // auditSearch reads the filters of the audit log (list and export):
 //
 //	action=user.locked   one action; "auth.*" every action of a domain
-//	actor=admin,cli      kinds of actor (user, admin, cli, system, anonymous)
+//	actor=admin,cli      kinds of actor (user, admin, cli, system, anonymous, client)
 //	user=<id>            done by or about this user
 //	client=<id>          about this client
 //	status=failure       success or failure
@@ -75,7 +75,7 @@ func auditSearch(r *http.Request) (repository.AuditSearch, i18n.Text) {
 		case t.Valid():
 			f.ActorTypes = append(f.ActorTypes, t)
 		default:
-			return repository.AuditSearch{}, i18n.M("admin.error.audit_actor", "actor must be a comma-separated list of user, admin, cli, system, anonymous")
+			return repository.AuditSearch{}, i18n.M("admin.error.audit_actor", "actor must be a comma-separated list of user, admin, cli, system, anonymous, client")
 		}
 	}
 	return f, i18n.Text{}

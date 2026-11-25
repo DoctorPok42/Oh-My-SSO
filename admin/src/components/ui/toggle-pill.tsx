@@ -31,9 +31,10 @@ function TogglePill({
       disabled={disabled}
       onClick={() => onCheckedChange?.(!checked)}
       className={cn(
-        "inline-flex h-6 min-w-12 items-center justify-center rounded-full px-2.5 text-[11px] font-semibold transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-accent-soft disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex h-6 min-w-12 items-center justify-center rounded-full px-2.5 text-[11px] font-semibold transition-[color,background-color,transform] duration-150 ease-out outline-none focus-visible:ring-[3px] focus-visible:ring-accent-soft disabled:cursor-not-allowed disabled:opacity-60",
         checked ? "bg-accent-soft text-accent" : "bg-neutral-soft text-neutral",
-        onCheckedChange && !disabled ? "cursor-pointer" : "cursor-default",
+        onCheckedChange && !disabled && (checked ? "hover:bg-accent/20" : "hover:bg-neutral/20"),
+        onCheckedChange && !disabled ? "cursor-pointer active:scale-95" : "cursor-default",
         className,
       )}
     >

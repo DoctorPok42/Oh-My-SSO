@@ -6,6 +6,7 @@ import { Pagination } from "@/components/console/pagination";
 import { offsetParam } from "@/lib/pagination";
 import { Badge } from "@/components/ui/badge";
 import { SegmentedLinks } from "@/components/ui/segmented";
+import { OpenRow } from "@/components/console/drawer";
 import { Table, TableBody, TableCell, TableContainer, TableEmpty, TableHeader, TableRow } from "@/components/ui/table";
 import { BULK_ROW } from "@/lib/bulk";
 import { apiPath, getMe, load, loadCached } from "@/lib/api";
@@ -117,7 +118,7 @@ async function TimeoutsTable({
           {items.map((to) => {
             const badge = STATUS_BADGE[to.status] ?? STATUS_BADGE.ended;
             return (
-              <TableRow key={to.id} className={BULK_ROW}>
+              <OpenRow id={to.id} key={to.id} className={BULK_ROW}>
                 {bulk && (
                   <BulkCell
                     id={to.id}
@@ -153,7 +154,7 @@ async function TimeoutsTable({
                 <TableCell className="text-right">
                   <TimeoutRowActions realm={realm} timeout={to} writable={writable} />
                 </TableCell>
-              </TableRow>
+              </OpenRow>
             );
           })}
         </TableBody>

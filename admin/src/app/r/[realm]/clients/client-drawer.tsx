@@ -197,7 +197,7 @@ export function ClientDrawer({
         }
       >
         {banner}
-        {fieldError && !fieldError.field && <Banner tone="danger">{fieldError.message}</Banner>}
+        {fieldError && !FIELD_SLOTS.has(fieldError.field ?? "") && <Banner tone="danger">{fieldError.message}</Banner>}
 
         <fieldset disabled={locked} className="space-y-5">
           <Field label={t("clients.field.name", "Name")} htmlFor="c-name" error={err("name")}>
@@ -235,7 +235,7 @@ export function ClientDrawer({
           </div>
 
           {isOidc ? (
-            <OidcFields draft={draft} set={set} mode={mode} client={client} err={err} />
+            <OidcFields draft={draft} set={set} mode={mode} client={client} roles={roles} locked={locked} err={err} />
           ) : (
             <SamlFields draft={draft} set={set} mode={mode} err={err} />
           )}
@@ -417,6 +417,23 @@ export function ClientDrawer({
   );
 }
 
+// Fields shown next to their input; any other error (role_ids, group_ids...) is a banner.
+// Keep in step with the err("...") calls below, or an error shows twice.
+const FIELD_SLOTS = new Set([
+  "name",
+  "client_id",
+  "grant_types",
+  "redirect_uris",
+  "post_logout_redirect_uris",
+  "access_token_ttl",
+  "id_token_ttl",
+  "refresh_token_ttl",
+  "entity_id",
+  "acs_url",
+  "name_id_format",
+  "certificates",
+]);
+
 type SetFn = <K extends keyof ClientDraft>(k: K, v: ClientDraft[K]) => void;
 
 function OidcFields({
@@ -424,15 +441,34 @@ function OidcFields({
   set,
   mode,
   client,
+  roles,
+  locked,
   err,
 }: Readonly<{
   draft: ClientDraft;
   set: SetFn;
   mode: "create" | "edit" | null;
   client: Client | null;
+  roles: Access[];
+  locked: boolean;
   err: (f: string) => string | undefined;
 }>) {
   const { t } = useT();
+  const has = (g: string) => draft.grantTypes.includes(g);
+  const toggle = (g: string, on: boolean) =>
+    set("grantTypes", on ? [...draft.grantTypes, g] : draft.grantTypes.filter((x) => x !== g));
+  const grants = [
+    { id: "authorization_code", label: t("clients.grant.code", "Authorization code (users sign in)") },
+    { id: "refresh_token", label: t("clients.grant.refresh", "Refresh token") },
+    ...(draft.isPublic
+      ? []
+      : [
+          {
+            id: "client_credentials",
+            label: t("clients.grant.client_credentials", "Client credentials (service account)"),
+          },
+        ]),
+  ];
   return (
     <>
       <Field
@@ -475,31 +511,68 @@ function OidcFields({
         </p>
       </Field>
 
-      <Field
-        label={t("clients.field.redirect_uris", "Redirect URIs")}
-        htmlFor="c-redirect"
-        hint={t(
-          "clients.field.redirect_uris_hint",
-          "One per line, exact match (no wildcard). https, or http on localhost.",
-        )}
-        error={err("redirect_uris")}
-      >
-        <UriList
-          id="c-redirect"
-          value={draft.redirectUris}
-          onChange={(v) => set("redirectUris", v)}
-          placeholder="https://payroll.example.com/auth/callback"
-        />
+      <Field label={t("clients.field.grants", "Grant types")} error={err("grant_types")}>
+        <div className="space-y-2">
+          {grants.map((g) => (
+            <CheckboxField
+              key={g.id}
+              id={`grant-${g.id}`}
+              label={g.label}
+              checked={has(g.id)}
+              onCheckedChange={(v) => toggle(g.id, v === true)}
+            />
+          ))}
+        </div>
       </Field>
-      <Field
-        label={t("clients.field.logout_uris", "Post-logout redirect URIs")}
-        htmlFor="c-logout"
-        optional
-        hint={t("clients.field.logout_uris_hint", "Where users may land after signing out (one per line).")}
-        error={err("post_logout_redirect_uris")}
-      >
-        <UriList id="c-logout" value={draft.postLogoutUris} onChange={(v) => set("postLogoutUris", v)} />
-      </Field>
+
+      {!draft.isPublic && has("client_credentials") && (
+        <Field
+          label={t("clients.service.roles", "Service account roles")}
+          hint={t(
+            "clients.service.roles_hint",
+            "The application's own tokens (client_credentials) get the scopes of these roles.",
+          )}
+        >
+          <ChipSelect
+            label={t("clients.service.roles", "Service account roles")}
+            options={roles}
+            value={draft.serviceRoleIds}
+            onChange={(v) => set("serviceRoleIds", v)}
+            disabled={locked}
+            empty={t("clients.access.no_role", "No role in this realm.")}
+          />
+        </Field>
+      )}
+
+      {has("authorization_code") && (
+        <>
+          <Field
+            label={t("clients.field.redirect_uris", "Redirect URIs")}
+            htmlFor="c-redirect"
+            hint={t(
+              "clients.field.redirect_uris_hint",
+              "One per line, exact match (no wildcard). https, or http on localhost.",
+            )}
+            error={err("redirect_uris")}
+          >
+            <UriList
+              id="c-redirect"
+              value={draft.redirectUris}
+              onChange={(v) => set("redirectUris", v)}
+              placeholder="https://payroll.example.com/auth/callback"
+            />
+          </Field>
+          <Field
+            label={t("clients.field.logout_uris", "Post-logout redirect URIs")}
+            htmlFor="c-logout"
+            optional
+            hint={t("clients.field.logout_uris_hint", "Where users may land after signing out (one per line).")}
+            error={err("post_logout_redirect_uris")}
+          >
+            <UriList id="c-logout" value={draft.postLogoutUris} onChange={(v) => set("postLogoutUris", v)} />
+          </Field>
+        </>
+      )}
 
       <Field
         label={t("clients.field.standard_scopes", "Standard scopes")}

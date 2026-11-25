@@ -42,7 +42,7 @@ type Search = {
   offset?: string;
 };
 
-const ACTOR_TYPES = ["user", "admin", "cli", "system", "anonymous"];
+const ACTOR_TYPES = ["user", "admin", "cli", "client", "system", "anonymous"];
 
 // Every sensitive action of the realm, newest first. Filters are URL
 // parameters (a GET form): a filtered view can be bookmarked or shared.

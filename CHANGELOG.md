@@ -11,6 +11,8 @@ Applications can get tokens for themselves (service to service), without a user.
 - OAuth 2.0 `client_credentials` grant: each confidential client has a service account whose roles give the scopes of
   its tokens (`idp oidc clients create --grant client_credentials --service-role <role>`); each token is audited as
   `token.issued` and limited per client (`RATE_LIMIT_CLIENT_CREDENTIALS`, 60/min).
+- Admin console and API: a client's grant types and its service account roles (`grant_types`, `service_role_ids` on
+  `/clients`); the audit log labels tokens issued to a client with the `Client` actor.
 
 ## [1.0.0] - 2026-11-23
 
