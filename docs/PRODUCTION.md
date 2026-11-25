@@ -210,7 +210,9 @@ Then:
   address in another header.
 - **Rate limits** (per client address, so `TRUSTED_PROXIES` must be right): `/token`, `/introspect` and `/revoke`
   count the requests that authenticate no client (600/min per address) and the failed secrets of a client_id
-  (10/15 min per address); a client that proves its secret is never limited. The SAML endpoints allow 300 requests per
+  (10/15 min per address); a client that proves its secret is never limited by them. A client's own service account
+  gets 60 `client_credentials` tokens per minute, whatever the address (only requests with the right secret count).
+  The SAML endpoints allow 300 requests per
   minute per address. The sign-in page allows 20 failed sign-ins per 15 minutes per address; a sign-in that succeeds is
   not counted, so the users of an office behind one address do not block each other. A refusal is `429` with
   `Retry-After`: applications should wait that long before retrying. The `RATE_LIMIT_*` variables of `.env.example`

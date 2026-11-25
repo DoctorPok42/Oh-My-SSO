@@ -100,6 +100,74 @@ func (s *IdentityCoreService) IssueTokens(ctx context.Context, req core.TokenReq
 	return s.issueTokens(ctx, sess, client, req.Scopes, uuid.NewString(), req.WithRefreshToken)
 }
 
+func (s *IdentityCoreService) IssueServiceAccountToken(ctx context.Context, clientRef string, requested []string) (*domain.Token, error) {
+	client, err := s.clients.GetByID(ctx, clientRef)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, core.ErrClientNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("issue service account token: load client: %w", err)
+	}
+	if client.IsDeleted() || client.Status != domain.ClientAppActive || client.ClientType == domain.ClientAppTypePublic ||
+		!slices.Contains(client.AllowedGrantTypes, GrantClientCredentials) {
+		return nil, core.ErrForbidden
+	}
+	// An application suspended by an administrator (timeout on the client)
+	// is suspended for its service account too. Its tokens were revoked when
+	// the timeout started; no new one while it lasts.
+	if err := checkTimeout(ctx, s.timeouts, "", client.ID); err != nil {
+		return nil, err
+	}
+
+	held, required, err := s.rbac.ServiceAccountClientScopes(ctx, client.ID)
+	if err != nil {
+		return nil, fmt.Errorf("issue service account token: %w", err)
+	}
+	for _, sc := range requested {
+		if !slices.ContainsFunc(held, func(cs *domain.ClientScope) bool { return cs.Name == sc }) {
+			return nil, fmt.Errorf("%w: %q", core.ErrScopeNotGranted, sc)
+		}
+	}
+	scopes := []string{}
+	for _, cs := range filterRequestedScopes(held, requested, required) {
+		scopes = append(scopes, cs.Name)
+	}
+
+	tok, err := s.tokens.Create(ctx, repository.CreateTokenParams{
+		ClientRefID: client.ID,
+		Type:        domain.TokenAccessToken,
+		JTI:         uuid.NewString(),
+		ExpiresAt:   s.now().Add(seconds(client.AccessTokenTTL, defaultAccessTokenTTL)),
+		Scopes:      scopes,
+		Subject:     client.ClientID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("issue service account token: %w", err)
+	}
+
+	if s.audit != nil {
+		if _, err := s.audit.Create(ctx, repository.CreateAuditLogParams{
+			RealmID:      client.RealmID,
+			ActorType:    domain.AuditActorClient,
+			Action:       audit.TokenIssued,
+			ResourceType: "Token",
+			ResourceID:   tok.JTI,
+			Level:        domain.AuditLogInfo,
+			Status:       domain.AuditLogSuccess,
+			Details: map[string]interface{}{
+				"client_ref": client.ID,
+				"client_id":  client.ClientID,
+				"scopes":     scopes,
+				"expires_at": tok.ExpiresAt,
+			},
+		}); err != nil {
+			// The token stands: losing one trace beats refusing a service.
+			s.logger.ErrorContext(ctx, "issue service account token: could not write the audit log", "error", err)
+		}
+	}
+	return tok, nil
+}
+
 func (s *IdentityCoreService) InspectRefreshToken(ctx context.Context, rawToken string) (*domain.Token, error) {
 	if rawToken == "" {
 		return nil, core.ErrTokenInvalid

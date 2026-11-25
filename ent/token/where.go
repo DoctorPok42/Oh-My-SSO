@@ -182,6 +182,16 @@ func SessionIDHasSuffix(v string) predicate.Token {
 	return predicate.Token(sql.FieldHasSuffix(FieldSessionID, v))
 }
 
+// SessionIDIsNil applies the IsNil predicate on the "session_id" field.
+func SessionIDIsNil() predicate.Token {
+	return predicate.Token(sql.FieldIsNull(FieldSessionID))
+}
+
+// SessionIDNotNil applies the NotNil predicate on the "session_id" field.
+func SessionIDNotNil() predicate.Token {
+	return predicate.Token(sql.FieldNotNull(FieldSessionID))
+}
+
 // SessionIDEqualFold applies the EqualFold predicate on the "session_id" field.
 func SessionIDEqualFold(v string) predicate.Token {
 	return predicate.Token(sql.FieldEqualFold(FieldSessionID, v))

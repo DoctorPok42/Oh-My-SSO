@@ -114,6 +114,8 @@ type ClientAppEdges struct {
 	Groups []*Group `json:"groups,omitempty"`
 	// ClientScopes holds the value of the client_scopes edge.
 	ClientScopes []*ClientScope `json:"client_scopes,omitempty"`
+	// ServiceRoles holds the value of the service_roles edge.
+	ServiceRoles []*Role `json:"service_roles,omitempty"`
 	// Tokens holds the value of the tokens edge.
 	Tokens []*Token `json:"tokens,omitempty"`
 	// Consents holds the value of the consents edge.
@@ -126,7 +128,7 @@ type ClientAppEdges struct {
 	ClientScopeMappings []*ClientScopeMapping `json:"client_scope_mappings,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [9]bool
+	loadedTypes [10]bool
 }
 
 // RealmOrErr returns the Realm value or an error if the edge
@@ -167,10 +169,19 @@ func (e ClientAppEdges) ClientScopesOrErr() ([]*ClientScope, error) {
 	return nil, &NotLoadedError{edge: "client_scopes"}
 }
 
+// ServiceRolesOrErr returns the ServiceRoles value or an error if the edge
+// was not loaded in eager-loading.
+func (e ClientAppEdges) ServiceRolesOrErr() ([]*Role, error) {
+	if e.loadedTypes[4] {
+		return e.ServiceRoles, nil
+	}
+	return nil, &NotLoadedError{edge: "service_roles"}
+}
+
 // TokensOrErr returns the Tokens value or an error if the edge
 // was not loaded in eager-loading.
 func (e ClientAppEdges) TokensOrErr() ([]*Token, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.Tokens, nil
 	}
 	return nil, &NotLoadedError{edge: "tokens"}
@@ -179,7 +190,7 @@ func (e ClientAppEdges) TokensOrErr() ([]*Token, error) {
 // ConsentsOrErr returns the Consents value or an error if the edge
 // was not loaded in eager-loading.
 func (e ClientAppEdges) ConsentsOrErr() ([]*Consent, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.Consents, nil
 	}
 	return nil, &NotLoadedError{edge: "consents"}
@@ -188,7 +199,7 @@ func (e ClientAppEdges) ConsentsOrErr() ([]*Consent, error) {
 // ClientRolesOrErr returns the ClientRoles value or an error if the edge
 // was not loaded in eager-loading.
 func (e ClientAppEdges) ClientRolesOrErr() ([]*ClientRole, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.ClientRoles, nil
 	}
 	return nil, &NotLoadedError{edge: "client_roles"}
@@ -197,7 +208,7 @@ func (e ClientAppEdges) ClientRolesOrErr() ([]*ClientRole, error) {
 // ClientGroupsOrErr returns the ClientGroups value or an error if the edge
 // was not loaded in eager-loading.
 func (e ClientAppEdges) ClientGroupsOrErr() ([]*ClientGroup, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[8] {
 		return e.ClientGroups, nil
 	}
 	return nil, &NotLoadedError{edge: "client_groups"}
@@ -206,7 +217,7 @@ func (e ClientAppEdges) ClientGroupsOrErr() ([]*ClientGroup, error) {
 // ClientScopeMappingsOrErr returns the ClientScopeMappings value or an error if the edge
 // was not loaded in eager-loading.
 func (e ClientAppEdges) ClientScopeMappingsOrErr() ([]*ClientScopeMapping, error) {
-	if e.loadedTypes[8] {
+	if e.loadedTypes[9] {
 		return e.ClientScopeMappings, nil
 	}
 	return nil, &NotLoadedError{edge: "client_scope_mappings"}
@@ -529,6 +540,11 @@ func (_m *ClientApp) QueryGroups() *GroupQuery {
 // QueryClientScopes queries the "client_scopes" edge of the ClientApp entity.
 func (_m *ClientApp) QueryClientScopes() *ClientScopeQuery {
 	return NewClientAppClient(_m.config).QueryClientScopes(_m)
+}
+
+// QueryServiceRoles queries the "service_roles" edge of the ClientApp entity.
+func (_m *ClientApp) QueryServiceRoles() *RoleQuery {
+	return NewClientAppClient(_m.config).QueryServiceRoles(_m)
 }
 
 // QueryTokens queries the "tokens" edge of the ClientApp entity.

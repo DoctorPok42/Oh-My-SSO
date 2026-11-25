@@ -560,6 +560,21 @@ func (_c *ClientAppCreate) AddClientScopes(v ...*ClientScope) *ClientAppCreate {
 	return _c.AddClientScopeIDs(ids...)
 }
 
+// AddServiceRoleIDs adds the "service_roles" edge to the Role entity by IDs.
+func (_c *ClientAppCreate) AddServiceRoleIDs(ids ...string) *ClientAppCreate {
+	_c.mutation.AddServiceRoleIDs(ids...)
+	return _c
+}
+
+// AddServiceRoles adds the "service_roles" edges to the Role entity.
+func (_c *ClientAppCreate) AddServiceRoles(v ...*Role) *ClientAppCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddServiceRoleIDs(ids...)
+}
+
 // AddTokenIDs adds the "tokens" edge to the Token entity by IDs.
 func (_c *ClientAppCreate) AddTokenIDs(ids ...string) *ClientAppCreate {
 	_c.mutation.AddTokenIDs(ids...)
@@ -1081,6 +1096,22 @@ func (_c *ClientAppCreate) createSpec() (*ClientApp, *sqlgraph.CreateSpec) {
 		edge.Target.Fields = specE.Fields
 		if specE.ID.Value != nil {
 			edge.Target.Fields = append(edge.Target.Fields, specE.ID)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ServiceRolesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   clientapp.ServiceRolesTable,
+			Columns: clientapp.ServiceRolesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}

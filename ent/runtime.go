@@ -1156,10 +1156,6 @@ func init() {
 	timeout.IDValidator = timeoutDescID.Validators[0].(func(string) error)
 	tokenFields := schema.Token{}.Fields()
 	_ = tokenFields
-	// tokenDescSessionID is the schema descriptor for session_id field.
-	tokenDescSessionID := tokenFields[1].Descriptor()
-	// token.SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
-	token.SessionIDValidator = tokenDescSessionID.Validators[0].(func(string) error)
 	// tokenDescClientRefID is the schema descriptor for client_ref_id field.
 	tokenDescClientRefID := tokenFields[2].Descriptor()
 	// token.ClientRefIDValidator is a validator for the "client_ref_id" field. It is called by the builders before save.

@@ -144,6 +144,9 @@ func (ClientApp) Edges() []ent.Edge {
 			Through("client_groups", ClientGroup.Type),
 		edge.To("client_scopes", ClientScope.Type).
 			Through("client_scope_mappings", ClientScopeMapping.Type),
+		// Roles held by the client's own service account (client_credentials
+		// grant). Not to be confused with "roles": who may sign in to it.
+		edge.To("service_roles", Role.Type),
 
 		edge.To("tokens", Token.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("consents", Consent.Type).Annotations(entsql.OnDelete(entsql.Cascade)),

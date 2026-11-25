@@ -39,6 +39,8 @@ const (
 	EdgeClientScopes = "client_scopes"
 	// EdgeClientApps holds the string denoting the client_apps edge name in mutations.
 	EdgeClientApps = "client_apps"
+	// EdgeServiceAccounts holds the string denoting the service_accounts edge name in mutations.
+	EdgeServiceAccounts = "service_accounts"
 	// EdgeMfaPolicy holds the string denoting the mfa_policy edge name in mutations.
 	EdgeMfaPolicy = "mfa_policy"
 	// EdgeRoleClientScopes holds the string denoting the role_client_scopes edge name in mutations.
@@ -74,6 +76,11 @@ const (
 	// ClientAppsInverseTable is the table name for the ClientApp entity.
 	// It exists in this package in order to avoid circular dependency with the "clientapp" package.
 	ClientAppsInverseTable = "client_apps"
+	// ServiceAccountsTable is the table that holds the service_accounts relation/edge. The primary key declared below.
+	ServiceAccountsTable = "client_app_service_roles"
+	// ServiceAccountsInverseTable is the table name for the ClientApp entity.
+	// It exists in this package in order to avoid circular dependency with the "clientapp" package.
+	ServiceAccountsInverseTable = "client_apps"
 	// MfaPolicyTable is the table that holds the mfa_policy relation/edge.
 	MfaPolicyTable = "mfa_policies"
 	// MfaPolicyInverseTable is the table name for the MfaPolicy entity.
@@ -122,6 +129,9 @@ var (
 	// ClientAppsPrimaryKey and ClientAppsColumn2 are the table columns denoting the
 	// primary key for the client_apps relation (M2M).
 	ClientAppsPrimaryKey = []string{"role_id", "client_app_id"}
+	// ServiceAccountsPrimaryKey and ServiceAccountsColumn2 are the table columns denoting the
+	// primary key for the service_accounts relation (M2M).
+	ServiceAccountsPrimaryKey = []string{"client_app_id", "role_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -261,6 +271,20 @@ func ByClientApps(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByServiceAccountsCount orders the results by service_accounts count.
+func ByServiceAccountsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newServiceAccountsStep(), opts...)
+	}
+}
+
+// ByServiceAccounts orders the results by service_accounts terms.
+func ByServiceAccounts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newServiceAccountsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByMfaPolicyField orders the results by mfa_policy field.
 func ByMfaPolicyField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -328,6 +352,13 @@ func newClientAppsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ClientAppsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, ClientAppsTable, ClientAppsPrimaryKey...),
+	)
+}
+func newServiceAccountsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ServiceAccountsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, ServiceAccountsTable, ServiceAccountsPrimaryKey...),
 	)
 }
 func newMfaPolicyStep() *sqlgraph.Step {

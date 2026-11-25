@@ -115,9 +115,6 @@ func (_u *TokenUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *TokenUpdate) check() error {
-	if _u.mutation.SessionCleared() && len(_u.mutation.SessionIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Token.session"`)
-	}
 	if _u.mutation.ClientAppCleared() && len(_u.mutation.ClientAppIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Token.client_app"`)
 	}
@@ -287,9 +284,6 @@ func (_u *TokenUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *TokenUpdateOne) check() error {
-	if _u.mutation.SessionCleared() && len(_u.mutation.SessionIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Token.session"`)
-	}
 	if _u.mutation.ClientAppCleared() && len(_u.mutation.ClientAppIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Token.client_app"`)
 	}

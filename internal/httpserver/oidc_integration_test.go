@@ -420,7 +420,7 @@ func TestOIDC_Integration_DefinitionOfDone(t *testing.T) {
 		require.Equal(t, e.realmURL+"/oidc/token", e.disc.TokenEndpoint)
 		require.Equal(t, e.realmURL+"/.well-known/jwks.json", e.disc.JwksURI)
 		require.Equal(t, []string{"code"}, e.disc.ResponseTypes)
-		require.ElementsMatch(t, []string{"authorization_code", "refresh_token"}, e.disc.GrantTypes)
+		require.ElementsMatch(t, []string{"authorization_code", "refresh_token", "client_credentials"}, e.disc.GrantTypes)
 		require.Equal(t, []string{"S256"}, e.disc.CodeChallengeMethods)
 		require.Contains(t, e.disc.IDTokenAlgs, "RS256")
 	})

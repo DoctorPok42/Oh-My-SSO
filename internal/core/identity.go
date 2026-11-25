@@ -42,6 +42,9 @@ var (
 	// ErrTokenReused: a refresh token that was already exchanged came back.
 	// Somebody holds a copy: every token of its family has been revoked.
 	ErrTokenReused = errors.New("core: refresh token reused, token family revoked")
+	// ErrScopeNotGranted: a service account asked for a scope its roles do
+	// not give (client_credentials grant).
+	ErrScopeNotGranted = errors.New("core: scope not granted to the service account")
 
 	ErrConsentNotConfigured = errors.New("core: user consent required but not configured")
 
@@ -440,6 +443,16 @@ type IdentityCore interface {
 	// session's own expiry. Call it right after IssueIdentityAssertion, which
 	// also enforces the MFA policy.
 	IssueTokens(ctx context.Context, req TokenRequest) (*IssuedTokens, error)
+	// IssueServiceAccountToken records an access token for the client's own
+	// service account (client_credentials grant): no session, no refresh
+	// token, the client's access token lifetime, Subject = its client_id.
+	// The caller has authenticated the client; it must still be an active
+	// confidential client allowing the grant (else ErrForbidden), not suspended
+	// by a timeout (else a *TimeoutError). Scopes: those
+	// its service roles give (see RBACService.ServiceAccountClientScopes),
+	// narrowed to the requested ones; a requested scope it does not hold:
+	// ErrScopeNotGranted. Audited as token.issued.
+	IssueServiceAccountToken(ctx context.Context, clientRef string, requestedScopes []string) (*domain.Token, error)
 	// InspectRefreshToken returns the record of a raw refresh token without
 	// consuming it. Unknown, expired, revoked or not a refresh token:
 	// ErrTokenInvalid. Already exchanged: it is a replay, the whole family

@@ -190,6 +190,21 @@ func (_c *RoleCreate) AddClientApps(v ...*ClientApp) *RoleCreate {
 	return _c.AddClientAppIDs(ids...)
 }
 
+// AddServiceAccountIDs adds the "service_accounts" edge to the ClientApp entity by IDs.
+func (_c *RoleCreate) AddServiceAccountIDs(ids ...string) *RoleCreate {
+	_c.mutation.AddServiceAccountIDs(ids...)
+	return _c
+}
+
+// AddServiceAccounts adds the "service_accounts" edges to the ClientApp entity.
+func (_c *RoleCreate) AddServiceAccounts(v ...*ClientApp) *RoleCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddServiceAccountIDs(ids...)
+}
+
 // SetMfaPolicyID sets the "mfa_policy" edge to the MfaPolicy entity by ID.
 func (_c *RoleCreate) SetMfaPolicyID(id string) *RoleCreate {
 	_c.mutation.SetMfaPolicyID(id)
@@ -485,6 +500,22 @@ func (_c *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 		edge.Target.Fields = specE.Fields
 		if specE.ID.Value != nil {
 			edge.Target.Fields = append(edge.Target.Fields, specE.ID)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ServiceAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   role.ServiceAccountsTable,
+			Columns: role.ServiceAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(clientapp.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}

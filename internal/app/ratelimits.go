@@ -23,6 +23,8 @@ import (
 //	                                               per address
 //	RATE_LIMIT_LOGIN_FAILURES_PER_IP=20/15m        failed sign-ins (password or passkey) from
 //	                                               one address
+//	RATE_LIMIT_CLIENT_CREDENTIALS=60/1m            client_credentials tokens issued to one
+//	                                               client
 //
 // An unset variable keeps the default of the code
 // (httpserver.DefaultProtocolLimits); an invalid one stops the server.
@@ -36,6 +38,7 @@ func ProtocolRateLimits() httpserver.ProtocolLimits {
 		{"RATE_LIMIT_OIDC_CLIENT_FAILURES_PER_IP", &l.ClientFailuresPerIP},
 		{"RATE_LIMIT_SAML_PER_IP", &l.SAMLPerIP},
 		{"RATE_LIMIT_LOGIN_FAILURES_PER_IP", &l.LoginFailuresPerIP},
+		{"RATE_LIMIT_CLIENT_CREDENTIALS", &l.ClientCredentialsPerClient},
 	} {
 		raw := os.Getenv(v.name)
 		if raw == "" {
@@ -48,7 +51,8 @@ func ProtocolRateLimits() httpserver.ProtocolLimits {
 		*v.rule = rule
 	}
 	slog.Info("rate limits per address", "oidc", l.OIDCPerIP.String(), "client_failures", l.ClientFailuresPerIP.String(),
-		"saml", l.SAMLPerIP.String(), "failed_sign_ins", l.LoginFailuresPerIP.String())
+		"saml", l.SAMLPerIP.String(), "failed_sign_ins", l.LoginFailuresPerIP.String(),
+		"client_credentials_per_client", l.ClientCredentialsPerClient.String())
 	return l
 }
 

@@ -30,7 +30,8 @@ func (Token) Fields() []ent.Field {
 			Unique().
 			Immutable().
 			DefaultFunc(uuid.NewString),
-		field.String("session_id").NotEmpty().Immutable(),
+		// Empty for a client_credentials token: a service account has no session.
+		field.String("session_id").Optional().Immutable(),
 		field.String("client_ref_id").NotEmpty().Immutable(),
 		field.String("type").GoType(TokenType("")).Immutable(),
 		field.String("jti").NotEmpty().Unique().Immutable(),
@@ -59,8 +60,7 @@ func (Token) Edges() []ent.Edge {
 			Ref("tokens").
 			Field("session_id").
 			Immutable().
-			Unique().
-			Required(),
+			Unique(),
 		edge.From("client_app", ClientApp.Type).
 			Ref("tokens").
 			Field("client_ref_id").

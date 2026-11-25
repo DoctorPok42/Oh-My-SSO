@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -62,6 +63,12 @@ type ProtocolLimits struct {
 	// address. A sign-in that succeeds gives its hit back, so the users behind
 	// one address (an office, a VPN) do not use up each other's budget.
 	LoginFailuresPerIP RateRule
+	// ClientCredentialsPerClient: client_credentials requests of one client
+	// (its service account's tokens). Counted before the request runs like
+	// the others, but a request whose client does not prove its secret gives
+	// its hit back when it ends: the public client_id alone cannot use up
+	// the service's budget.
+	ClientCredentialsPerClient RateRule
 }
 
 // DefaultProtocolLimits apply without configuration (cmd/idp reads the
@@ -71,6 +78,8 @@ var DefaultProtocolLimits = ProtocolLimits{
 	ClientFailuresPerIP: RateRule{Max: 10, Window: 15 * time.Minute},
 	SAMLPerIP:           RateRule{Max: 300, Window: time.Minute},
 	LoginFailuresPerIP:  RateRule{Max: 20, Window: 15 * time.Minute},
+	// A service keeps its token until it expires (5 minutes by default).
+	ClientCredentialsPerClient: RateRule{Max: 60, Window: time.Minute},
 }
 
 // WithProtocolLimits replaces DefaultProtocolLimits.
@@ -104,8 +113,13 @@ func (s *Server) limitOIDCClient(next http.Handler) http.Handler {
 		}
 
 		rules := []ratelimit.Rule{l.OIDCPerIP.on(ratelimit.Key(routeOIDCClient, realm.ID, "ip", ip))}
+		ccKey := ""
 		if withSecret && clientID != "" {
 			rules = append(rules, l.ClientFailuresPerIP.on(clientFailureKey(realm.ID, clientID, ip)))
+			if strings.HasSuffix(r.URL.Path, "/oidc/token") && r.Form.Get("grant_type") == "client_credentials" {
+				ccKey = ratelimit.Key(routeOIDCClient, realm.ID, "client_credentials", boundedClientID(clientID))
+				rules = append(rules, l.ClientCredentialsPerClient.on(ccKey))
+			}
 		}
 		res, err := s.rateLimiter.Reserve(r.Context(), rules...)
 		if err != nil {
@@ -118,18 +132,36 @@ func (s *Server) limitOIDCClient(next http.Handler) http.Handler {
 			return
 		}
 
+		// The client_credentials hit is the one an authenticated client keeps.
+		var ccHits, otherHits []ratelimit.Hit
+		for _, h := range res.Hits {
+			if ccKey != "" && h.Key == ccKey {
+				ccHits = append(ccHits, h)
+			} else {
+				otherHits = append(otherHits, h)
+			}
+		}
+		// The answer does not depend on it: hits that cannot be given back
+		// are logged, not turned into an error.
+		release := func(hits []ratelimit.Hit) {
+			ctx := context.WithoutCancel(r.Context())
+			if err := s.rateLimiter.Release(ctx, hits...); err != nil {
+				slog.ErrorContext(ctx, "oidc: rate limit: give back hits", "error", err)
+			}
+		}
+
 		var once sync.Once
+		authenticated := false // set and read on this goroutine: the library calls back synchronously
 		ctx := oidcadapter.WithClientAuthenticated(r.Context(), func(string) {
 			once.Do(func() {
-				// The answer does not depend on it: hits that cannot be given
-				// back are logged, not turned into an error.
-				ctx := context.WithoutCancel(r.Context())
-				if err := s.rateLimiter.Release(ctx, res.Hits...); err != nil {
-					slog.ErrorContext(ctx, "oidc: rate limit: give back the hits of an authenticated client", "error", err)
-				}
+				authenticated = true
+				release(otherHits)
 			})
 		})
 		next.ServeHTTP(w, r.WithContext(ctx))
+		if !authenticated && len(ccHits) > 0 {
+			release(ccHits)
+		}
 	})
 }
 
@@ -138,26 +170,31 @@ func (s *Server) limitOIDCClient(next http.Handler) http.Handler {
 // 6749 2.3.1, else client_id and client_secret in the form). It parses the
 // form: the library reuses it.
 func requestClient(r *http.Request) (clientID string, withSecret bool, err error) {
+	if err := r.ParseForm(); err != nil { // grant_type is read from it too
+		return "", false, err
+	}
 	if user, _, ok := r.BasicAuth(); ok {
 		if id, err := url.QueryUnescape(user); err == nil {
 			return id, true, nil
 		}
 		return user, true, nil
 	}
-	if err := r.ParseForm(); err != nil {
-		return "", false, err
-	}
 	return r.Form.Get("client_id"), r.Form.Get("client_secret") != "", nil
 }
 
-// clientFailureKey: per client_id and address. The client_id comes from the
-// request: a long one is hashed, so a key stays small whatever is sent.
+// clientFailureKey: per client_id and address.
 func clientFailureKey(realmID, clientID, ip string) string {
+	return ratelimit.Key(routeOIDCClient, realmID, "client_failures_ip", boundedClientID(clientID)+"|"+ip)
+}
+
+// boundedClientID: the client_id comes from the request; a long one is
+// hashed, so a key stays small whatever is sent.
+func boundedClientID(clientID string) string {
 	if len(clientID) > 128 {
 		sum := sha256.Sum256([]byte(clientID))
-		clientID = "sha256:" + hex.EncodeToString(sum[:])
+		return "sha256:" + hex.EncodeToString(sum[:])
 	}
-	return ratelimit.Key(routeOIDCClient, realmID, "client_failures_ip", clientID+"|"+ip)
+	return clientID
 }
 
 type oauthError struct {

@@ -52,6 +52,8 @@ type RoleEdges struct {
 	ClientScopes []*ClientScope `json:"client_scopes,omitempty"`
 	// ClientApps holds the value of the client_apps edge.
 	ClientApps []*ClientApp `json:"client_apps,omitempty"`
+	// ServiceAccounts holds the value of the service_accounts edge.
+	ServiceAccounts []*ClientApp `json:"service_accounts,omitempty"`
 	// MfaPolicy holds the value of the mfa_policy edge.
 	MfaPolicy *MfaPolicy `json:"mfa_policy,omitempty"`
 	// RoleClientScopes holds the value of the role_client_scopes edge.
@@ -60,7 +62,7 @@ type RoleEdges struct {
 	ClientRoles []*ClientRole `json:"client_roles,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [8]bool
+	loadedTypes [9]bool
 }
 
 // RealmOrErr returns the Realm value or an error if the edge
@@ -110,12 +112,21 @@ func (e RoleEdges) ClientAppsOrErr() ([]*ClientApp, error) {
 	return nil, &NotLoadedError{edge: "client_apps"}
 }
 
+// ServiceAccountsOrErr returns the ServiceAccounts value or an error if the edge
+// was not loaded in eager-loading.
+func (e RoleEdges) ServiceAccountsOrErr() ([]*ClientApp, error) {
+	if e.loadedTypes[5] {
+		return e.ServiceAccounts, nil
+	}
+	return nil, &NotLoadedError{edge: "service_accounts"}
+}
+
 // MfaPolicyOrErr returns the MfaPolicy value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
 func (e RoleEdges) MfaPolicyOrErr() (*MfaPolicy, error) {
 	if e.MfaPolicy != nil {
 		return e.MfaPolicy, nil
-	} else if e.loadedTypes[5] {
+	} else if e.loadedTypes[6] {
 		return nil, &NotFoundError{label: mfapolicy.Label}
 	}
 	return nil, &NotLoadedError{edge: "mfa_policy"}
@@ -124,7 +135,7 @@ func (e RoleEdges) MfaPolicyOrErr() (*MfaPolicy, error) {
 // RoleClientScopesOrErr returns the RoleClientScopes value or an error if the edge
 // was not loaded in eager-loading.
 func (e RoleEdges) RoleClientScopesOrErr() ([]*RoleClientScope, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.RoleClientScopes, nil
 	}
 	return nil, &NotLoadedError{edge: "role_client_scopes"}
@@ -133,7 +144,7 @@ func (e RoleEdges) RoleClientScopesOrErr() ([]*RoleClientScope, error) {
 // ClientRolesOrErr returns the ClientRoles value or an error if the edge
 // was not loaded in eager-loading.
 func (e RoleEdges) ClientRolesOrErr() ([]*ClientRole, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[8] {
 		return e.ClientRoles, nil
 	}
 	return nil, &NotLoadedError{edge: "client_roles"}
@@ -247,6 +258,11 @@ func (_m *Role) QueryClientScopes() *ClientScopeQuery {
 // QueryClientApps queries the "client_apps" edge of the Role entity.
 func (_m *Role) QueryClientApps() *ClientAppQuery {
 	return NewRoleClient(_m.config).QueryClientApps(_m)
+}
+
+// QueryServiceAccounts queries the "service_accounts" edge of the Role entity.
+func (_m *Role) QueryServiceAccounts() *ClientAppQuery {
+	return NewRoleClient(_m.config).QueryServiceAccounts(_m)
 }
 
 // QueryMfaPolicy queries the "mfa_policy" edge of the Role entity.

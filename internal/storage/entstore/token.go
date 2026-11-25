@@ -24,11 +24,13 @@ func NewTokenRepository(client *ent.Client) repository.TokenRepository {
 func (r *entTokenRepository) Create(ctx context.Context, p repository.CreateTokenParams) (*domain.Token, error) {
 	builder := r.client.Token.
 		Create().
-		SetSessionID(p.SessionID).
 		SetClientRefID(p.ClientRefID).
 		SetType(entschema.TokenType(p.Type)).
 		SetJti(p.JTI).
 		SetExpiresAt(p.ExpiresAt)
+	if p.SessionID != "" { // none for a service account token
+		builder = builder.SetSessionID(p.SessionID)
+	}
 	if p.Scopes != nil {
 		builder = builder.SetScopes(p.Scopes)
 	}

@@ -2328,6 +2328,29 @@ func HasClientScopesWith(preds ...predicate.ClientScope) predicate.ClientApp {
 	})
 }
 
+// HasServiceRoles applies the HasEdge predicate on the "service_roles" edge.
+func HasServiceRoles() predicate.ClientApp {
+	return predicate.ClientApp(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, ServiceRolesTable, ServiceRolesPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasServiceRolesWith applies the HasEdge predicate on the "service_roles" edge with a given conditions (other predicates).
+func HasServiceRolesWith(preds ...predicate.Role) predicate.ClientApp {
+	return predicate.ClientApp(func(s *sql.Selector) {
+		step := newServiceRolesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasTokens applies the HasEdge predicate on the "tokens" edge.
 func HasTokens() predicate.ClientApp {
 	return predicate.ClientApp(func(s *sql.Selector) {

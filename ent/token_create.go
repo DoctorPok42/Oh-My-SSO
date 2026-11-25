@@ -29,6 +29,14 @@ func (_c *TokenCreate) SetSessionID(v string) *TokenCreate {
 	return _c
 }
 
+// SetNillableSessionID sets the "session_id" field if the given value is not nil.
+func (_c *TokenCreate) SetNillableSessionID(v *string) *TokenCreate {
+	if v != nil {
+		_c.SetSessionID(*v)
+	}
+	return _c
+}
+
 // SetClientRefID sets the "client_ref_id" field.
 func (_c *TokenCreate) SetClientRefID(v string) *TokenCreate {
 	_c.mutation.SetClientRefID(v)
@@ -238,14 +246,6 @@ func (_c *TokenCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *TokenCreate) check() error {
-	if _, ok := _c.mutation.SessionID(); !ok {
-		return &ValidationError{Name: "session_id", err: errors.New(`ent: missing required field "Token.session_id"`)}
-	}
-	if v, ok := _c.mutation.SessionID(); ok {
-		if err := token.SessionIDValidator(v); err != nil {
-			return &ValidationError{Name: "session_id", err: fmt.Errorf(`ent: validator failed for field "Token.session_id": %w`, err)}
-		}
-	}
 	if _, ok := _c.mutation.ClientRefID(); !ok {
 		return &ValidationError{Name: "client_ref_id", err: errors.New(`ent: missing required field "Token.client_ref_id"`)}
 	}
@@ -278,9 +278,6 @@ func (_c *TokenCreate) check() error {
 		if err := token.IDValidator(v); err != nil {
 			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "Token.id": %w`, err)}
 		}
-	}
-	if len(_c.mutation.SessionIDs()) == 0 {
-		return &ValidationError{Name: "session", err: errors.New(`ent: missing required edge "Token.session"`)}
 	}
 	if len(_c.mutation.ClientAppIDs()) == 0 {
 		return &ValidationError{Name: "client_app", err: errors.New(`ent: missing required edge "Token.client_app"`)}

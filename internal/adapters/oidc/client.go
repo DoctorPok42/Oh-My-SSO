@@ -77,8 +77,8 @@ func (c *client) GrantTypes() []oidc.GrantType {
 	if len(allowed) == 0 {
 		return []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken}
 	}
-	out := make([]oidc.GrantType, 0, 2)
-	for _, g := range []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken} {
+	out := make([]oidc.GrantType, 0, 3)
+	for _, g := range []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken, oidc.GrantTypeClientCredentials} {
 		if slices.Contains(allowed, string(g)) {
 			out = append(out, g)
 		}

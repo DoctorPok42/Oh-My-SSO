@@ -19,6 +19,7 @@ const (
 	AuthTrustedDeviceChallenged = "auth.trusted_device_challenged" // a trusted device had to give the second factor anyway
 	AuthAccessDenied            = "auth.access_denied"             // signed in, but no right to the application
 	TokenReuseDetected          = "token.reuse_detected"           // a refresh token was replayed: its family is revoked
+	TokenIssued                 = "token.issued"                   // a client got a token for its own service account (client_credentials)
 
 	// Users.
 	UserInvited                = "user.invited"
@@ -164,6 +165,7 @@ var Catalog = []ActionInfo{
 	{AuthTrustedDeviceChallenged, "Authentication", "Trusted device asked for the second factor"},
 	{AuthAccessDenied, "Authentication", "Access to an application denied"},
 	{TokenReuseDetected, "Authentication", "Refresh token reuse detected"},
+	{TokenIssued, "Authentication", "Service account token issued"},
 
 	{UserInvited, "Users", "User invited"},
 	{UserActivationLinkSent, "Users", "Activation link sent"},

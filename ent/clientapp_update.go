@@ -732,6 +732,21 @@ func (_u *ClientAppUpdate) AddClientScopes(v ...*ClientScope) *ClientAppUpdate {
 	return _u.AddClientScopeIDs(ids...)
 }
 
+// AddServiceRoleIDs adds the "service_roles" edge to the Role entity by IDs.
+func (_u *ClientAppUpdate) AddServiceRoleIDs(ids ...string) *ClientAppUpdate {
+	_u.mutation.AddServiceRoleIDs(ids...)
+	return _u
+}
+
+// AddServiceRoles adds the "service_roles" edges to the Role entity.
+func (_u *ClientAppUpdate) AddServiceRoles(v ...*Role) *ClientAppUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddServiceRoleIDs(ids...)
+}
+
 // AddTokenIDs adds the "tokens" edge to the Token entity by IDs.
 func (_u *ClientAppUpdate) AddTokenIDs(ids ...string) *ClientAppUpdate {
 	_u.mutation.AddTokenIDs(ids...)
@@ -873,6 +888,27 @@ func (_u *ClientAppUpdate) RemoveClientScopes(v ...*ClientScope) *ClientAppUpdat
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveClientScopeIDs(ids...)
+}
+
+// ClearServiceRoles clears all "service_roles" edges to the Role entity.
+func (_u *ClientAppUpdate) ClearServiceRoles() *ClientAppUpdate {
+	_u.mutation.ClearServiceRoles()
+	return _u
+}
+
+// RemoveServiceRoleIDs removes the "service_roles" edge to Role entities by IDs.
+func (_u *ClientAppUpdate) RemoveServiceRoleIDs(ids ...string) *ClientAppUpdate {
+	_u.mutation.RemoveServiceRoleIDs(ids...)
+	return _u
+}
+
+// RemoveServiceRoles removes "service_roles" edges to Role entities.
+func (_u *ClientAppUpdate) RemoveServiceRoles(v ...*Role) *ClientAppUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveServiceRoleIDs(ids...)
 }
 
 // ClearTokens clears all "tokens" edges to the Token entity.
@@ -1468,6 +1504,51 @@ func (_u *ClientAppUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		edge.Target.Fields = specE.Fields
 		if specE.ID.Value != nil {
 			edge.Target.Fields = append(edge.Target.Fields, specE.ID)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ServiceRolesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   clientapp.ServiceRolesTable,
+			Columns: clientapp.ServiceRolesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedServiceRolesIDs(); len(nodes) > 0 && !_u.mutation.ServiceRolesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   clientapp.ServiceRolesTable,
+			Columns: clientapp.ServiceRolesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ServiceRolesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   clientapp.ServiceRolesTable,
+			Columns: clientapp.ServiceRolesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
@@ -2410,6 +2491,21 @@ func (_u *ClientAppUpdateOne) AddClientScopes(v ...*ClientScope) *ClientAppUpdat
 	return _u.AddClientScopeIDs(ids...)
 }
 
+// AddServiceRoleIDs adds the "service_roles" edge to the Role entity by IDs.
+func (_u *ClientAppUpdateOne) AddServiceRoleIDs(ids ...string) *ClientAppUpdateOne {
+	_u.mutation.AddServiceRoleIDs(ids...)
+	return _u
+}
+
+// AddServiceRoles adds the "service_roles" edges to the Role entity.
+func (_u *ClientAppUpdateOne) AddServiceRoles(v ...*Role) *ClientAppUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddServiceRoleIDs(ids...)
+}
+
 // AddTokenIDs adds the "tokens" edge to the Token entity by IDs.
 func (_u *ClientAppUpdateOne) AddTokenIDs(ids ...string) *ClientAppUpdateOne {
 	_u.mutation.AddTokenIDs(ids...)
@@ -2551,6 +2647,27 @@ func (_u *ClientAppUpdateOne) RemoveClientScopes(v ...*ClientScope) *ClientAppUp
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveClientScopeIDs(ids...)
+}
+
+// ClearServiceRoles clears all "service_roles" edges to the Role entity.
+func (_u *ClientAppUpdateOne) ClearServiceRoles() *ClientAppUpdateOne {
+	_u.mutation.ClearServiceRoles()
+	return _u
+}
+
+// RemoveServiceRoleIDs removes the "service_roles" edge to Role entities by IDs.
+func (_u *ClientAppUpdateOne) RemoveServiceRoleIDs(ids ...string) *ClientAppUpdateOne {
+	_u.mutation.RemoveServiceRoleIDs(ids...)
+	return _u
+}
+
+// RemoveServiceRoles removes "service_roles" edges to Role entities.
+func (_u *ClientAppUpdateOne) RemoveServiceRoles(v ...*Role) *ClientAppUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveServiceRoleIDs(ids...)
 }
 
 // ClearTokens clears all "tokens" edges to the Token entity.
@@ -3176,6 +3293,51 @@ func (_u *ClientAppUpdateOne) sqlSave(ctx context.Context) (_node *ClientApp, er
 		edge.Target.Fields = specE.Fields
 		if specE.ID.Value != nil {
 			edge.Target.Fields = append(edge.Target.Fields, specE.ID)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ServiceRolesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   clientapp.ServiceRolesTable,
+			Columns: clientapp.ServiceRolesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedServiceRolesIDs(); len(nodes) > 0 && !_u.mutation.ServiceRolesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   clientapp.ServiceRolesTable,
+			Columns: clientapp.ServiceRolesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ServiceRolesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   clientapp.ServiceRolesTable,
+			Columns: clientapp.ServiceRolesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}

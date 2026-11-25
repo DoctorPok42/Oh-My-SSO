@@ -22,6 +22,9 @@ type ClientRepository interface {
 	// client (ClientRole / ClientGroup). Granting twice is not an error.
 	GrantRole(ctx context.Context, clientRef, roleID, grantedBy string) error
 	GrantGroup(ctx context.Context, clientRef, groupID, grantedBy string) error
+	// AddServiceRole gives a role to the client's own service account
+	// (client_credentials grant). Adding twice is not an error.
+	AddServiceRole(ctx context.Context, clientRef, roleID string) error
 	// MapScope lets the client ask for a ClientScope (ClientScopeMapping).
 	// Mapping twice is not an error.
 	MapScope(ctx context.Context, clientRef, clientScopeID string) error

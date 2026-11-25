@@ -30,6 +30,7 @@ var (
 	_ op.CanSetUserinfoFromRequest      = (*storage)(nil)
 	_ op.CanGetPrivateClaimsFromRequest = (*storage)(nil)
 	_ op.CanTerminateSessionFromRequest = (*storage)(nil)
+	_ op.ClientCredentialsStorage       = (*storage)(nil)
 )
 
 func (s *storage) realm(ctx context.Context) (Realm, error) {
@@ -71,6 +72,30 @@ func (s *storage) AuthorizeClientIDSecret(ctx context.Context, clientID, clientS
 	}
 	ReportClientAuthenticated(ctx, clientID)
 	return nil
+}
+
+// ClientCredentials authenticates the client of a client_credentials grant:
+// the library does not call AuthorizeClientIDSecret for this grant, and the
+// rate limit must still hear that the client proved its secret.
+func (s *storage) ClientCredentials(ctx context.Context, clientID, clientSecret string) (op.Client, error) {
+	if err := s.AuthorizeClientIDSecret(ctx, clientID, clientSecret); err != nil {
+		return nil, err
+	}
+	return s.GetClientByClientID(ctx, clientID)
+}
+
+// ClientCredentialsTokenRequest runs once the client is authenticated and
+// allowed the grant: it records the token of the client's service account.
+func (s *storage) ClientCredentialsTokenRequest(ctx context.Context, clientID string, scopes []string) (op.TokenRequest, error) {
+	pc, err := s.lookupClient(ctx, clientID)
+	if err != nil {
+		return nil, oidc.ErrInvalidClient()
+	}
+	tok, err := s.a.core.IssueServiceAccountToken(ctx, pc.App.ID, scopes)
+	if err != nil {
+		return nil, toTokenError(err)
+	}
+	return &serviceAccountRequest{token: tok}, nil
 }
 
 // CreateAuthRequest runs after the library validated the client, the
@@ -223,6 +248,9 @@ func (s *storage) DeleteAuthRequest(ctx context.Context, id string) error {
 }
 
 func (s *storage) CreateAccessToken(ctx context.Context, request op.TokenRequest) (string, time.Time, error) {
+	if sa, ok := request.(*serviceAccountRequest); ok {
+		return sa.token.JTI, sa.token.ExpiresAt, nil
+	}
 	ar, ok := request.(*authRequest)
 	if !ok {
 		return "", time.Time{}, oidc.ErrUnsupportedGrantType()
@@ -396,6 +424,11 @@ func (s *storage) SetUserinfoFromRequest(ctx context.Context, info *oidc.UserInf
 
 // GetPrivateClaimsFromRequest fills the access token (JWT) claims.
 func (s *storage) GetPrivateClaimsFromRequest(ctx context.Context, request op.TokenRequest, scopes []string) (map[string]any, error) {
+	if _, ok := request.(*serviceAccountRequest); ok {
+		// No user, so no user claim: the granted scopes only (RFC 9068,
+		// section 2.2.3); the library adds client_id.
+		return map[string]any{"scope": strings.Join(request.GetScopes(), " ")}, nil
+	}
 	as, pc, err := s.requestAssertion(ctx, request)
 	if err != nil {
 		return nil, err
@@ -445,11 +478,14 @@ func (s *storage) SetUserinfoFromToken(ctx context.Context, info *oidc.UserInfo,
 // SetIntrospectionFromToken answers /introspect (RFC 7662) for access
 // tokens. The caller is an authenticated confidential client of the realm.
 func (s *storage) SetIntrospectionFromToken(ctx context.Context, resp *oidc.IntrospectionResponse, tokenID, subject, _ string) error {
+	realm, _ := realmFrom(ctx)
+	if tok, err := s.liveAccessToken(ctx, tokenID); err == nil && tok.SessionID == "" {
+		return s.introspectServiceAccountToken(ctx, resp, tok, subject, s.a.issuer(realm.Name))
+	}
 	tok, as, _, err := s.activeAccessToken(ctx, tokenID, subject)
 	if err != nil {
 		return err
 	}
-	realm, _ := realmFrom(ctx)
 	resp.Scope = tok.Scopes
 	resp.ClientID = as.Audience
 	resp.TokenType = oidc.BearerToken
@@ -464,13 +500,45 @@ func (s *storage) SetIntrospectionFromToken(ctx context.Context, resp *oidc.Intr
 	return nil
 }
 
-func (s *storage) activeAccessToken(ctx context.Context, jti, subject string) (*domain.Token, *core.IdentityAssertion, *core.ProtocolClient, error) {
+func errTokenNotActive() *oidc.Error {
+	return oidc.ErrAccessDenied().WithDescription("token is not active")
+}
+
+// liveAccessToken: an access token we issued, neither revoked nor expired.
+func (s *storage) liveAccessToken(ctx context.Context, jti string) (*domain.Token, error) {
 	tok, err := s.a.core.LookupToken(ctx, jti)
-	if err != nil {
-		return nil, nil, nil, oidc.ErrAccessDenied().WithDescription("token is not active")
+	if err != nil || tok.Type != domain.TokenAccessToken || tok.Revoked || !s.a.now().Before(tok.ExpiresAt) {
+		return nil, errTokenNotActive()
 	}
-	if tok.Type != domain.TokenAccessToken || tok.Revoked || !s.a.now().Before(tok.ExpiresAt) {
-		return nil, nil, nil, oidc.ErrAccessDenied().WithDescription("token is not active")
+	return tok, nil
+}
+
+// introspectServiceAccountToken: a client_credentials token stays active
+// while its client is active in this realm and keeps the grant.
+func (s *storage) introspectServiceAccountToken(ctx context.Context, resp *oidc.IntrospectionResponse, tok *domain.Token, subject, issuer string) error {
+	pc, err := s.lookupClient(ctx, tok.Subject)
+	if err != nil || pc.App.ID != tok.ClientRefID || tok.Subject != subject || !hasGrant(pc, oidc.GrantTypeClientCredentials) {
+		return errTokenNotActive()
+	}
+	resp.Scope = tok.Scopes
+	resp.ClientID = pc.App.ClientID
+	resp.TokenType = oidc.BearerToken
+	resp.Expiration = oidc.FromTime(tok.ExpiresAt)
+	resp.IssuedAt = oidc.FromTime(tok.IssuedAt)
+	resp.Subject = tok.Subject
+	resp.Audience = oidc.Audience{pc.App.ClientID}
+	resp.Issuer = issuer
+	resp.JWTID = tok.JTI
+	return nil
+}
+
+// activeAccessToken: a live access token of a user whose session and rights
+// still hold. A service account token has no user: never active here (no
+// /userinfo for it).
+func (s *storage) activeAccessToken(ctx context.Context, jti, subject string) (*domain.Token, *core.IdentityAssertion, *core.ProtocolClient, error) {
+	tok, err := s.liveAccessToken(ctx, jti)
+	if err != nil || tok.SessionID == "" {
+		return nil, nil, nil, errTokenNotActive()
 	}
 	as, err := s.a.core.IssueIdentityAssertion(ctx, tok.SessionID, tok.ClientRefID, tok.Scopes)
 	if err != nil || as.Subject != subject {
@@ -583,6 +651,8 @@ func toTokenError(err error) error {
 		errors.Is(err, core.ErrClientNotFound),
 		errors.Is(err, core.ErrMFARequired):
 		return oidc.ErrInvalidGrant().WithParent(err)
+	case errors.Is(err, core.ErrScopeNotGranted):
+		return oidc.ErrInvalidScope().WithParent(err)
 	}
 	return oidc.ErrServerError().WithParent(err)
 }

@@ -240,7 +240,7 @@ func (a *Adapter) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 
 	d.ResponseTypesSupported = []string{string(oidc.ResponseTypeCode)}
 	d.ResponseModesSupported = []string{string(oidc.ResponseModeQuery), string(oidc.ResponseModeFormPost)}
-	d.GrantTypesSupported = []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken}
+	d.GrantTypesSupported = []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken, oidc.GrantTypeClientCredentials}
 	d.SubjectTypesSupported = []string{"public", "pairwise"}
 	d.CodeChallengeMethodsSupported = []oidc.CodeChallengeMethod{oidc.CodeChallengeMethodS256}
 	d.TokenEndpointAuthMethodsSupported = []oidc.AuthMethod{oidc.AuthMethodBasic, oidc.AuthMethodPost, oidc.AuthMethodNone}

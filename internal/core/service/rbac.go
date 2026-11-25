@@ -134,12 +134,43 @@ func (s *RBACService) GetEffectiveClientScopes(ctx context.Context, userID, clie
 	if res.denyReason != "" {
 		return []*domain.ClientScope{}, nil
 	}
+	return scopesFrom(res.sources, res.policy), nil
+}
 
-	realmID := res.policy.RealmID
+// ServiceAccountClientScopes: the scopes the client's own service account
+// holds through its roles (client_credentials grant), among the client's
+// scopes, and the IDs of the client's required scopes. The same rule as
+// GetEffectiveClientScopes for a user.
+func (s *RBACService) ServiceAccountClientScopes(ctx context.Context, clientRef string) (scopes []*domain.ClientScope, requiredIDs []string, err error) {
+	policy, err := s.access.GetClientAccessPolicy(ctx, clientRef)
+	if errors.Is(err, repository.ErrNotFound) {
+		return []*domain.ClientScope{}, nil, nil
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("rbac: load client policy: %w", err)
+	}
+	if policy.Status != domain.ClientAppActive {
+		return []*domain.ClientScope{}, nil, nil
+	}
+	roles, err := s.access.GetServiceRoles(ctx, clientRef)
+	if err != nil {
+		return nil, nil, fmt.Errorf("rbac: load service roles: %w", err)
+	}
+	var sources []domain.AccessSource
+	for _, ro := range roles {
+		if ro.Active && ro.RealmID == policy.RealmID {
+			sources = append(sources, ro)
+		}
+	}
+	return scopesFrom(sources, policy), policy.RequiredScopeIDs, nil
+}
+
+// scopesFrom: the client scopes the sources grant, among the client's own.
+func scopesFrom(sources []domain.AccessSource, policy *domain.ClientAccessPolicy) []*domain.ClientScope {
 	union := make(map[string]*domain.ClientScope)
-	for _, src := range res.sources {
+	for _, src := range sources {
 		for _, cs := range src.ClientScopes {
-			if cs.RealmID != realmID || !slices.Contains(res.policy.ScopeIDs, cs.ID) {
+			if cs.RealmID != policy.RealmID || !slices.Contains(policy.ScopeIDs, cs.ID) {
 				continue
 			}
 			union[cs.ID] = cs // only ever add: no "deny"
@@ -151,7 +182,7 @@ func (s *RBACService) GetEffectiveClientScopes(ctx context.Context, userID, clie
 		out = append(out, cs)
 	}
 	slices.SortFunc(out, func(a, b *domain.ClientScope) int { return strings.Compare(a.Name, b.Name) })
-	return out, nil
+	return out
 }
 
 func (s *RBACService) RequiredClientScopeIDs(ctx context.Context, clientRef string) ([]string, error) {

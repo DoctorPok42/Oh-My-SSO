@@ -31,6 +31,10 @@ func (f *fakeAccessRepo) GetUserAccess(_ context.Context, userID string) (*domai
 	return u, nil
 }
 
+func (f *fakeAccessRepo) GetServiceRoles(context.Context, string) ([]domain.AccessSource, error) {
+	return nil, f.err
+}
+
 func (f *fakeAccessRepo) GetClientAccessPolicy(_ context.Context, clientRef string) (*domain.ClientAccessPolicy, error) {
 	if f.err != nil {
 		return nil, f.err

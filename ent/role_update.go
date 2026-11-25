@@ -164,6 +164,21 @@ func (_u *RoleUpdate) AddClientApps(v ...*ClientApp) *RoleUpdate {
 	return _u.AddClientAppIDs(ids...)
 }
 
+// AddServiceAccountIDs adds the "service_accounts" edge to the ClientApp entity by IDs.
+func (_u *RoleUpdate) AddServiceAccountIDs(ids ...string) *RoleUpdate {
+	_u.mutation.AddServiceAccountIDs(ids...)
+	return _u
+}
+
+// AddServiceAccounts adds the "service_accounts" edges to the ClientApp entity.
+func (_u *RoleUpdate) AddServiceAccounts(v ...*ClientApp) *RoleUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddServiceAccountIDs(ids...)
+}
+
 // SetMfaPolicyID sets the "mfa_policy" edge to the MfaPolicy entity by ID.
 func (_u *RoleUpdate) SetMfaPolicyID(id string) *RoleUpdate {
 	_u.mutation.SetMfaPolicyID(id)
@@ -300,6 +315,27 @@ func (_u *RoleUpdate) RemoveClientApps(v ...*ClientApp) *RoleUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveClientAppIDs(ids...)
+}
+
+// ClearServiceAccounts clears all "service_accounts" edges to the ClientApp entity.
+func (_u *RoleUpdate) ClearServiceAccounts() *RoleUpdate {
+	_u.mutation.ClearServiceAccounts()
+	return _u
+}
+
+// RemoveServiceAccountIDs removes the "service_accounts" edge to ClientApp entities by IDs.
+func (_u *RoleUpdate) RemoveServiceAccountIDs(ids ...string) *RoleUpdate {
+	_u.mutation.RemoveServiceAccountIDs(ids...)
+	return _u
+}
+
+// RemoveServiceAccounts removes "service_accounts" edges to ClientApp entities.
+func (_u *RoleUpdate) RemoveServiceAccounts(v ...*ClientApp) *RoleUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveServiceAccountIDs(ids...)
 }
 
 // ClearMfaPolicy clears the "mfa_policy" edge to the MfaPolicy entity.
@@ -651,6 +687,51 @@ func (_u *RoleUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ServiceAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   role.ServiceAccountsTable,
+			Columns: role.ServiceAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(clientapp.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedServiceAccountsIDs(); len(nodes) > 0 && !_u.mutation.ServiceAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   role.ServiceAccountsTable,
+			Columns: role.ServiceAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(clientapp.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ServiceAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   role.ServiceAccountsTable,
+			Columns: role.ServiceAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(clientapp.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.MfaPolicyCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2O,
@@ -918,6 +999,21 @@ func (_u *RoleUpdateOne) AddClientApps(v ...*ClientApp) *RoleUpdateOne {
 	return _u.AddClientAppIDs(ids...)
 }
 
+// AddServiceAccountIDs adds the "service_accounts" edge to the ClientApp entity by IDs.
+func (_u *RoleUpdateOne) AddServiceAccountIDs(ids ...string) *RoleUpdateOne {
+	_u.mutation.AddServiceAccountIDs(ids...)
+	return _u
+}
+
+// AddServiceAccounts adds the "service_accounts" edges to the ClientApp entity.
+func (_u *RoleUpdateOne) AddServiceAccounts(v ...*ClientApp) *RoleUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddServiceAccountIDs(ids...)
+}
+
 // SetMfaPolicyID sets the "mfa_policy" edge to the MfaPolicy entity by ID.
 func (_u *RoleUpdateOne) SetMfaPolicyID(id string) *RoleUpdateOne {
 	_u.mutation.SetMfaPolicyID(id)
@@ -1054,6 +1150,27 @@ func (_u *RoleUpdateOne) RemoveClientApps(v ...*ClientApp) *RoleUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveClientAppIDs(ids...)
+}
+
+// ClearServiceAccounts clears all "service_accounts" edges to the ClientApp entity.
+func (_u *RoleUpdateOne) ClearServiceAccounts() *RoleUpdateOne {
+	_u.mutation.ClearServiceAccounts()
+	return _u
+}
+
+// RemoveServiceAccountIDs removes the "service_accounts" edge to ClientApp entities by IDs.
+func (_u *RoleUpdateOne) RemoveServiceAccountIDs(ids ...string) *RoleUpdateOne {
+	_u.mutation.RemoveServiceAccountIDs(ids...)
+	return _u
+}
+
+// RemoveServiceAccounts removes "service_accounts" edges to ClientApp entities.
+func (_u *RoleUpdateOne) RemoveServiceAccounts(v ...*ClientApp) *RoleUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveServiceAccountIDs(ids...)
 }
 
 // ClearMfaPolicy clears the "mfa_policy" edge to the MfaPolicy entity.
@@ -1432,6 +1549,51 @@ func (_u *RoleUpdateOne) sqlSave(ctx context.Context) (_node *Role, err error) {
 		edge.Target.Fields = specE.Fields
 		if specE.ID.Value != nil {
 			edge.Target.Fields = append(edge.Target.Fields, specE.ID)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ServiceAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   role.ServiceAccountsTable,
+			Columns: role.ServiceAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(clientapp.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedServiceAccountsIDs(); len(nodes) > 0 && !_u.mutation.ServiceAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   role.ServiceAccountsTable,
+			Columns: role.ServiceAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(clientapp.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ServiceAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   role.ServiceAccountsTable,
+			Columns: role.ServiceAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(clientapp.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
