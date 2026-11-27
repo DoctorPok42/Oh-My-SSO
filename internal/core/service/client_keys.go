@@ -58,21 +58,8 @@ func parseClientJWKS(raw string) (*jose.JSONWebKeySet, error) {
 	}
 	kids := map[string]bool{}
 	for i, k := range set.Keys {
-		if !k.IsPublic() {
-			return nil, fmt.Errorf("key %d is a private key: give the public key only", i+1)
-		}
-		pub, ok := k.Key.(*rsa.PublicKey)
-		if !ok {
-			return nil, fmt.Errorf("key %d: only RSA keys are supported (RS256)", i+1)
-		}
-		if pub.N.BitLen() < 2048 {
-			return nil, fmt.Errorf("key %d: an RSA key needs at least 2048 bits", i+1)
-		}
-		if k.Use != "" && k.Use != "sig" {
-			return nil, fmt.Errorf("key %d: \"use\" must be \"sig\"", i+1)
-		}
-		if k.Algorithm != "" && k.Algorithm != string(jose.RS256) {
-			return nil, fmt.Errorf("key %d: \"alg\" must be RS256", i+1)
+		if err := checkClientKey(k); err != nil {
+			return nil, fmt.Errorf("key %d: %w", i+1, err)
 		}
 		if len(set.Keys) > 1 && (k.KeyID == "" || kids[k.KeyID]) {
 			return nil, errors.New("with several keys, each needs its own \"kid\"")
@@ -80,4 +67,24 @@ func parseClientJWKS(raw string) (*jose.JSONWebKeySet, error) {
 		kids[k.KeyID] = true
 	}
 	return &set, nil
+}
+
+// checkClientKey: one key of a client's JWKS must be a public RSA key of 2048
+// bits or more, for signatures with RS256.
+func checkClientKey(k jose.JSONWebKey) error {
+	if !k.IsPublic() {
+		return errors.New("it is a private key: give the public key only")
+	}
+	pub, ok := k.Key.(*rsa.PublicKey)
+	switch {
+	case !ok:
+		return errors.New("only RSA keys are supported (RS256)")
+	case pub.N.BitLen() < 2048:
+		return errors.New("an RSA key needs at least 2048 bits")
+	case k.Use != "" && k.Use != "sig":
+		return errors.New("\"use\" must be \"sig\"")
+	case k.Algorithm != "" && k.Algorithm != string(jose.RS256):
+		return errors.New("\"alg\" must be RS256")
+	}
+	return nil
 }

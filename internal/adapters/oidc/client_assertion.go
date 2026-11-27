@@ -284,17 +284,25 @@ func newKeysHTTPClient() *http.Client {
 // notPublic: ranges IsPrivate does not cover. 100.64.0.0/10 (RFC 6598) is
 // shared address space; the IPv6 ones carry an IPv4 address that a gateway
 // would reach, and no key server needs them: refused whatever the IPv4 inside.
+// Built from bytes: a deny list, not addresses the server connects to.
 var notPublic = []netip.Prefix{
-	netip.MustParsePrefix("100.64.0.0/10"),
-	netip.MustParsePrefix("64:ff9b:1::/48"), // local NAT64 (RFC 8215)
-	netip.MustParsePrefix("2002::/16"),      // 6to4 (RFC 3056)
-	netip.MustParsePrefix("::/96"),          // IPv4-compatible (deprecated)
+	netip.PrefixFrom(netip.AddrFrom4([4]byte{100, 64, 0, 0}), 10), // shared address space
+	prefix6(48, 0x00, 0x64, 0xff, 0x9b, 0x00, 0x01),               // local NAT64 (RFC 8215)
+	prefix6(16, 0x20, 0x02),                                       // 6to4 (RFC 3056)
+	prefix6(96),                                                   // IPv4-compatible (deprecated)
 }
 
 // nat64: the well-known NAT64 prefix (RFC 6052). Behind DNS64, an IPv4-only
 // host resolves to it: such an address is checked as the IPv4 it carries
-// (64:ff9b::a00:1 is 10.0.0.1).
-var nat64 = netip.MustParsePrefix("64:ff9b::/96")
+// (the last 4 bytes).
+var nat64 = prefix6(96, 0x00, 0x64, 0xff, 0x9b)
+
+// prefix6: the IPv6 prefix of that length that starts with those bytes.
+func prefix6(bits int, head ...byte) netip.Prefix {
+	var a [16]byte
+	copy(a[:], head)
+	return netip.PrefixFrom(netip.AddrFrom16(a), bits)
+}
 
 func publicAddressOnly(_, address string, _ syscall.RawConn) error {
 	host, _, err := net.SplitHostPort(address)

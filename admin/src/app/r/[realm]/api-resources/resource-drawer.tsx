@@ -38,11 +38,11 @@ export function ApiResourceRowActions({
   realm,
   resource,
   writable,
-}: {
+}: Readonly<{
   realm: string;
   resource: ApiResource;
   writable: boolean;
-}) {
+}>) {
   const { openEdit } = useDrawerUrl();
   const { t } = useT();
   return (
@@ -73,14 +73,14 @@ export function ApiResourceDrawer({
   resource,
   scopes,
   writable,
-}: {
+}: Readonly<{
   realm: string;
   mode: "create" | "edit" | null;
   resource: ApiResource | null;
   /** The OIDC client scopes of the realm. */
   scopes: ClientScope[];
   writable: boolean;
-}) {
+}>) {
   const { close } = useDrawerUrl();
   const { run, pending } = useAction();
   const { t } = useT();
@@ -93,12 +93,16 @@ export function ApiResourceDrawer({
     setDraft(toDraft(resource));
     setError(null);
   }
-  const { locked, banner } = useEditLock({
-    canWrite: writable,
-    intent: mode === "create" ? "new=1" : resource ? `edit=${resource.id}` : undefined,
-  });
+  let intent: string | undefined;
+  if (mode === "create") intent = "new=1";
+  else if (resource) intent = `edit=${resource.id}`;
+  const { locked, banner } = useEditLock({ canWrite: writable, intent });
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }));
   const err = (field: string) => (error?.field === field ? error.message : undefined);
+
+  let submitLabel = t("common.save", "Save");
+  if (pending) submitLabel = t("common.saving", "Saving…");
+  else if (mode === "create") submitLabel = t("api_resources.create", "Create API resource");
 
   async function save() {
     setError(null);
@@ -134,11 +138,7 @@ export function ApiResourceDrawer({
       footer={
         <>
           <Button onClick={save} loading={pending} disabled={locked || pending}>
-            {pending
-              ? t("common.saving", "Saving…")
-              : mode === "create"
-                ? t("api_resources.create", "Create API resource")
-                : t("common.save", "Save")}
+            {submitLabel}
           </Button>
           <Button variant="secondary" onClick={close}>
             {t("common.cancel", "Cancel")}

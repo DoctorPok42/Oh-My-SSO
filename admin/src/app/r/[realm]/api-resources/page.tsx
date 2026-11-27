@@ -26,10 +26,10 @@ const loadResources = cache((realm: string) =>
 export default async function ApiResourcesPage({
   params,
   searchParams,
-}: {
+}: Readonly<{
   params: Promise<{ realm: string }>;
   searchParams: Promise<{ new?: string; edit?: string }>;
-}) {
+}>) {
   const { realm } = await params;
   const sp = await searchParams;
   const me = await getMe();
@@ -46,7 +46,7 @@ export default async function ApiResourcesPage({
   );
 }
 
-async function ResourcesTable({ realm, writable }: { realm: string; writable: boolean }) {
+async function ResourcesTable({ realm, writable }: Readonly<{ realm: string; writable: boolean }>) {
   const list = await loadResources(realm);
   if (!list.ok) return <ErrorState error={list} />;
   const items = list.data.items;
@@ -99,11 +99,11 @@ async function DrawerSlot({
   realm,
   sp,
   writable,
-}: {
+}: Readonly<{
   realm: string;
   sp: { new?: string; edit?: string };
   writable: boolean;
-}) {
+}>) {
   const open = Boolean(sp.new || sp.edit);
   const [list, scopes] = await Promise.all([
     sp.edit ? loadResources(realm) : null,
@@ -112,13 +112,10 @@ async function DrawerSlot({
   const editing = sp.edit && list?.ok ? list.data.items.find((r) => r.id === sp.edit) : undefined;
   // Only OIDC scopes go into access tokens.
   const options = scopes?.ok ? scopes.data.items.filter((s) => s.protocol !== "saml2") : [];
+  let mode: "create" | "edit" | null = null;
+  if (sp.new) mode = "create";
+  else if (editing) mode = "edit";
   return (
-    <ApiResourceDrawer
-      realm={realm}
-      mode={sp.new ? "create" : editing ? "edit" : null}
-      resource={editing ?? null}
-      scopes={options}
-      writable={writable}
-    />
+    <ApiResourceDrawer realm={realm} mode={mode} resource={editing ?? null} scopes={options} writable={writable} />
   );
 }
