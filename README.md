@@ -15,3 +15,10 @@ Oh My SSO - OMSO (Pronouncing "Home So") is a simple, self-hosted, and customiza
 ## Licence
 
 [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for third-party components.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.png">
+    <img src="docs/assets/banner-light.png" alt="Oh My SSO: single sign-on for your apps, on your own servers" width="100%">
+  </picture>
+</p>
