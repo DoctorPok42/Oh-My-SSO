@@ -595,6 +595,7 @@ function OidcFields({
             <NativeSelect id="c-auth" value={draft.authMethod} onChange={(e) => set("authMethod", e.target.value)}>
               <option value="client_secret_basic">client_secret_basic</option>
               <option value="client_secret_post">client_secret_post</option>
+              <option value="private_key_jwt">private_key_jwt</option>
             </NativeSelect>
           </Field>
           <div className="flex items-end pb-2.5">
@@ -606,6 +607,44 @@ function OidcFields({
             />
           </div>
         </div>
+      )}
+
+      {!draft.isPublic && draft.authMethod === "private_key_jwt" && (
+        <>
+          <Field
+            label={t("clients.field.jwks", "Public keys (JWKS)")}
+            htmlFor="c-jwks"
+            hint={t(
+              "clients.field.jwks_hint",
+              "The client signs a short JWT with its private key instead of sending a secret. Paste its public RSA keys (RS256) as a JWK set, or give the URL below.",
+            )}
+          >
+            <Textarea
+              id="c-jwks"
+              rows={4}
+              className="font-mono text-[12px]"
+              value={draft.jwks}
+              onChange={(e) => set("jwks", e.target.value)}
+              placeholder='{"keys": [{"kty": "RSA", "kid": "…", "n": "…", "e": "AQAB"}]}'
+            />
+          </Field>
+          <Field
+            label={t("clients.field.jwks_uri", "Or the URL of its keys (jwks_uri)")}
+            htmlFor="c-jwks-uri"
+            hint={t(
+              "clients.field.jwks_uri_hint",
+              "A public https URL: the client can rotate its keys without you. Read again every 5 minutes.",
+            )}
+          >
+            <Input
+              id="c-jwks-uri"
+              className="font-mono"
+              value={draft.jwksUri}
+              onChange={(e) => set("jwksUri", e.target.value)}
+              placeholder="https://app.example.com/.well-known/jwks.json"
+            />
+          </Field>
+        </>
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -819,7 +858,7 @@ function EditOnlySections({
 
   return (
     <div className="space-y-5 border-t border-border pt-5">
-      {client.oidc?.client_type === "confidential" && (
+      {client.oidc?.client_type === "confidential" && client.oidc.token_endpoint_auth_method !== "private_key_jwt" && (
         <Field
           label={t("clients.field.secret", "Client secret")}
           hint={t(

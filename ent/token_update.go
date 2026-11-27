@@ -147,6 +147,9 @@ func (_u *TokenUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.ScopesCleared() {
 		_spec.ClearField(token.FieldScopes, field.TypeJSON)
 	}
+	if _u.mutation.AudienceCleared() {
+		_spec.ClearField(token.FieldAudience, field.TypeJSON)
+	}
 	if _u.mutation.TokenHashCleared() {
 		_spec.ClearField(token.FieldTokenHash, field.TypeString)
 	}
@@ -332,6 +335,9 @@ func (_u *TokenUpdateOne) sqlSave(ctx context.Context) (_node *Token, err error)
 	}
 	if _u.mutation.ScopesCleared() {
 		_spec.ClearField(token.FieldScopes, field.TypeJSON)
+	}
+	if _u.mutation.AudienceCleared() {
+		_spec.ClearField(token.FieldAudience, field.TypeJSON)
 	}
 	if _u.mutation.TokenHashCleared() {
 		_spec.ClearField(token.FieldTokenHash, field.TypeString)

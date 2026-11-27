@@ -35,7 +35,8 @@ func cliAdmin(notifier service.Notifier) (*service.AdminService, *ent.Client) {
 	return service.NewAdminService(service.AdminDeps{
 		Tx:     tx,
 		Realms: entstore.NewRealmRepository(client), Users: users, Clients: clients, Scopes: scopes,
-		Roles: roles, Groups: groups, Permissions: entstore.NewPermissionRepository(client),
+		Resources: entstore.NewApiResourceRepository(client),
+		Roles:     roles, Groups: groups, Permissions: entstore.NewPermissionRepository(client),
 		Settings: settings, Audit: audit, Admin: entstore.NewAdminRepository(client),
 		KeyRotation: service.NewKeyRotationService(signingKeys, entstore.NewKeyRotationLogRepository(client), settings, km, backend,
 			service.WithKeyRotationAudit(entstore.NewAuditLogRepository(client))),
@@ -139,7 +140,6 @@ func envOr(name, def string) string {
 	}
 	return def
 }
-
 
 const recoverUsage = `usage:
   idp-admin recover admin --email <address>     create a NEW administrator account

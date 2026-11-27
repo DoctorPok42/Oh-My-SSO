@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"sso.internal/sso/ent/apiresource"
 	"sso.internal/sso/ent/auditlog"
 	"sso.internal/sso/ent/bulkjob"
 	"sso.internal/sso/ent/clientapp"
@@ -215,6 +216,21 @@ func (_c *RealmCreate) AddClientScopes(v ...*ClientScope) *RealmCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddClientScopeIDs(ids...)
+}
+
+// AddAPIResourceIDs adds the "api_resources" edge to the ApiResource entity by IDs.
+func (_c *RealmCreate) AddAPIResourceIDs(ids ...string) *RealmCreate {
+	_c.mutation.AddAPIResourceIDs(ids...)
+	return _c
+}
+
+// AddAPIResources adds the "api_resources" edges to the ApiResource entity.
+func (_c *RealmCreate) AddAPIResources(v ...*ApiResource) *RealmCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddAPIResourceIDs(ids...)
 }
 
 // AddClientAppIDs adds the "client_apps" edge to the ClientApp entity by IDs.
@@ -621,6 +637,22 @@ func (_c *RealmCreate) createSpec() (*Realm, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(clientscope.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.APIResourcesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.APIResourcesTable,
+			Columns: []string{realm.APIResourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

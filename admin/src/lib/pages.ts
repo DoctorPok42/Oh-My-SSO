@@ -21,6 +21,13 @@ export const PAGES = {
       "Reusable claim sets granted to clients: which user attributes go into which token",
     ),
   },
+  apiResources: {
+    title: m("pages.api_resources.title", "API Resources"),
+    description: m(
+      "pages.api_resources.description",
+      'APIs that accept this realm\'s access tokens: a token asked for one carries it in "aud"',
+    ),
+  },
   sessions: {
     title: m("pages.sessions.title", "Sessions"),
     description: m("pages.sessions.description", "Active sessions across all users and applications"),
@@ -118,6 +125,7 @@ export const COLUMNS = {
     m("columns.used_by", "Used by"),
     "",
   ],
+  apiResources: [col.name, m("columns.identifier", "Identifier (aud)"), col.clientScopes, ""],
   sessions: [
     m("columns.user", "User"),
     m("columns.ip_address", "IP address"),

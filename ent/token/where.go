@@ -516,6 +516,16 @@ func ScopesNotNil() predicate.Token {
 	return predicate.Token(sql.FieldNotNull(FieldScopes))
 }
 
+// AudienceIsNil applies the IsNil predicate on the "audience" field.
+func AudienceIsNil() predicate.Token {
+	return predicate.Token(sql.FieldIsNull(FieldAudience))
+}
+
+// AudienceNotNil applies the NotNil predicate on the "audience" field.
+func AudienceNotNil() predicate.Token {
+	return predicate.Token(sql.FieldNotNull(FieldAudience))
+}
+
 // TokenHashEQ applies the EQ predicate on the "token_hash" field.
 func TokenHashEQ(v string) predicate.Token {
 	return predicate.Token(sql.FieldEQ(FieldTokenHash, v))

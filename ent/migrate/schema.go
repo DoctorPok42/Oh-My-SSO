@@ -9,6 +9,37 @@ import (
 )
 
 var (
+	// APIResourcesColumns holds the columns for the "api_resources" table.
+	APIResourcesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "identifier", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "realm_id", Type: field.TypeString},
+	}
+	// APIResourcesTable holds the schema information for the "api_resources" table.
+	APIResourcesTable = &schema.Table{
+		Name:       "api_resources",
+		Columns:    APIResourcesColumns,
+		PrimaryKey: []*schema.Column{APIResourcesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "api_resources_realms_api_resources",
+				Columns:    []*schema.Column{APIResourcesColumns[6]},
+				RefColumns: []*schema.Column{RealmsColumns[0]},
+				OnDelete:   schema.Restrict,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "apiresource_realm_id_identifier",
+				Unique:  true,
+				Columns: []*schema.Column{APIResourcesColumns[6], APIResourcesColumns[1]},
+			},
+		},
+	}
 	// AuditLogsColumns holds the columns for the "audit_logs" table.
 	AuditLogsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
@@ -136,6 +167,8 @@ var (
 		{Name: "allowed_grant_types", Type: field.TypeJSON, Nullable: true},
 		{Name: "allowed_scopes", Type: field.TypeJSON, Nullable: true},
 		{Name: "token_endpoint_auth_method", Type: field.TypeString, Nullable: true},
+		{Name: "jwks", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "jwks_uri", Type: field.TypeString, Nullable: true},
 		{Name: "id_token_signed_alg", Type: field.TypeString, Nullable: true},
 		{Name: "access_token_ttl", Type: field.TypeInt, Default: 300},
 		{Name: "refresh_token_ttl", Type: field.TypeInt, Default: 2592000},
@@ -168,7 +201,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "client_apps_realms_client_apps",
-				Columns:    []*schema.Column{ClientAppsColumns[39]},
+				Columns:    []*schema.Column{ClientAppsColumns[41]},
 				RefColumns: []*schema.Column{RealmsColumns[0]},
 				OnDelete:   schema.Restrict,
 			},
@@ -177,12 +210,12 @@ var (
 			{
 				Name:    "clientapp_realm_id_client_id",
 				Unique:  true,
-				Columns: []*schema.Column{ClientAppsColumns[39], ClientAppsColumns[9]},
+				Columns: []*schema.Column{ClientAppsColumns[41], ClientAppsColumns[9]},
 			},
 			{
 				Name:    "clientapp_realm_id_entity_id",
 				Unique:  true,
-				Columns: []*schema.Column{ClientAppsColumns[39], ClientAppsColumns[22]},
+				Columns: []*schema.Column{ClientAppsColumns[41], ClientAppsColumns[24]},
 			},
 		},
 	}
@@ -1202,6 +1235,7 @@ var (
 		{Name: "expires_at", Type: field.TypeTime},
 		{Name: "revoked", Type: field.TypeBool, Default: false},
 		{Name: "scopes", Type: field.TypeJSON, Nullable: true},
+		{Name: "audience", Type: field.TypeJSON, Nullable: true},
 		{Name: "token_hash", Type: field.TypeString, Unique: true, Nullable: true},
 		{Name: "family_id", Type: field.TypeString, Nullable: true},
 		{Name: "used_at", Type: field.TypeTime, Nullable: true},
@@ -1218,13 +1252,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "tokens_client_apps_tokens",
-				Columns:    []*schema.Column{TokensColumns[12]},
+				Columns:    []*schema.Column{TokensColumns[13]},
 				RefColumns: []*schema.Column{ClientAppsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 			{
 				Symbol:     "tokens_sessions_tokens",
-				Columns:    []*schema.Column{TokensColumns[13]},
+				Columns:    []*schema.Column{TokensColumns[14]},
 				RefColumns: []*schema.Column{SessionsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -1233,12 +1267,12 @@ var (
 			{
 				Name:    "token_session_id_revoked",
 				Unique:  false,
-				Columns: []*schema.Column{TokensColumns[13], TokensColumns[5]},
+				Columns: []*schema.Column{TokensColumns[14], TokensColumns[5]},
 			},
 			{
 				Name:    "token_family_id",
 				Unique:  false,
-				Columns: []*schema.Column{TokensColumns[8]},
+				Columns: []*schema.Column{TokensColumns[9]},
 			},
 		},
 	}
@@ -1397,6 +1431,31 @@ var (
 			},
 		},
 	}
+	// APIResourceScopesColumns holds the columns for the "api_resource_scopes" table.
+	APIResourceScopesColumns = []*schema.Column{
+		{Name: "api_resource_id", Type: field.TypeString},
+		{Name: "client_scope_id", Type: field.TypeString},
+	}
+	// APIResourceScopesTable holds the schema information for the "api_resource_scopes" table.
+	APIResourceScopesTable = &schema.Table{
+		Name:       "api_resource_scopes",
+		Columns:    APIResourceScopesColumns,
+		PrimaryKey: []*schema.Column{APIResourceScopesColumns[0], APIResourceScopesColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "api_resource_scopes_api_resource_id",
+				Columns:    []*schema.Column{APIResourceScopesColumns[0]},
+				RefColumns: []*schema.Column{APIResourcesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "api_resource_scopes_client_scope_id",
+				Columns:    []*schema.Column{APIResourceScopesColumns[1]},
+				RefColumns: []*schema.Column{ClientScopesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// ClientAppServiceRolesColumns holds the columns for the "client_app_service_roles" table.
 	ClientAppServiceRolesColumns = []*schema.Column{
 		{Name: "client_app_id", Type: field.TypeString},
@@ -1524,6 +1583,7 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		APIResourcesTable,
 		AuditLogsTable,
 		BulkJobsTable,
 		ClientAppsTable,
@@ -1558,6 +1618,7 @@ var (
 		TrustedDevicesTable,
 		UsersTable,
 		UserImportJobsTable,
+		APIResourceScopesTable,
 		ClientAppServiceRolesTable,
 		GroupPermissionsTable,
 		RolePermissionsTable,
@@ -1567,6 +1628,7 @@ var (
 )
 
 func init() {
+	APIResourcesTable.ForeignKeys[0].RefTable = RealmsTable
 	AuditLogsTable.ForeignKeys[0].RefTable = RealmsTable
 	BulkJobsTable.ForeignKeys[0].RefTable = RealmsTable
 	ClientAppsTable.ForeignKeys[0].RefTable = RealmsTable
@@ -1614,6 +1676,8 @@ func init() {
 	TrustedDevicesTable.ForeignKeys[1].RefTable = UsersTable
 	UsersTable.ForeignKeys[0].RefTable = RealmsTable
 	UserImportJobsTable.ForeignKeys[0].RefTable = RealmsTable
+	APIResourceScopesTable.ForeignKeys[0].RefTable = APIResourcesTable
+	APIResourceScopesTable.ForeignKeys[1].RefTable = ClientScopesTable
 	ClientAppServiceRolesTable.ForeignKeys[0].RefTable = ClientAppsTable
 	ClientAppServiceRolesTable.ForeignKeys[1].RefTable = RolesTable
 	GroupPermissionsTable.ForeignKeys[0].RefTable = GroupsTable

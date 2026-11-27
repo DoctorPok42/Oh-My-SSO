@@ -51,6 +51,13 @@ function body(slug: string, tab: string | null) {
           <TableSkeleton columns={COLUMNS.clientScopes} />
         </>
       );
+    case "api-resources":
+      return (
+        <>
+          <PageHeader {...PAGES.apiResources} actions={<ActionSkeleton />} />
+          <TableSkeleton columns={COLUMNS.apiResources} />
+        </>
+      );
     case "sessions":
       return (
         <>

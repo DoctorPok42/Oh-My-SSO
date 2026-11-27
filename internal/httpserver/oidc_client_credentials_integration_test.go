@@ -24,8 +24,9 @@ const machineClientID = "reporting"
 
 // newMachineClient (once per env) creates a client_credentials-only client whose service
 // account holds the "reporter" role, which gives the "reports.read" scope.
-// "reports.write" is a scope of the client that no role gives.
-func (e *oidcTestEnv) newMachineClient(t *testing.T, clientID string) (*domain.ClientApp, string) {
+// "reports.write" is a scope of the client that no role gives. mods change
+// the client's input (private_key_jwt...).
+func (e *oidcTestEnv) newMachineClient(t *testing.T, clientID string, mods ...func(*service.OIDCClientInput)) (*domain.ClientApp, string) {
 	t.Helper()
 	ctx := e.ctx()
 	scopes := entstore.NewClientScopeRepository(e.ent)
@@ -37,11 +38,15 @@ func (e *oidcTestEnv) newMachineClient(t *testing.T, clientID string) (*domain.C
 	reporter, err := roles.Create(ctx, repository.CreateRoleParams{RealmID: e.realm.ID, Name: "reporter"})
 	require.NoError(t, err)
 	require.NoError(t, e.ent.Role.UpdateOneID(reporter.ID).AddClientScopeIDs(read.ID).Exec(ctx))
-	app, secret, err := service.NewOIDCClientService(entstore.NewClientRepository(e.ent), scopes, roles,
-		entstore.NewGroupRepository(e.ent)).Create(ctx, service.OIDCClientInput{
+	in := service.OIDCClientInput{
 		RealmID: e.realm.ID, ClientID: clientID, GrantTypes: []string{"client_credentials"},
 		Scopes: []string{"reports.read", "reports.write"}, ServiceRoles: []string{"reporter"},
-	})
+	}
+	for _, mod := range mods {
+		mod(&in)
+	}
+	app, secret, err := service.NewOIDCClientService(entstore.NewClientRepository(e.ent), scopes, roles,
+		entstore.NewGroupRepository(e.ent)).Create(ctx, in)
 	require.NoError(t, err)
 	return app, secret
 }

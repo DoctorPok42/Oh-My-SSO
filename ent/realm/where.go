@@ -606,6 +606,29 @@ func HasClientScopesWith(preds ...predicate.ClientScope) predicate.Realm {
 	})
 }
 
+// HasAPIResources applies the HasEdge predicate on the "api_resources" edge.
+func HasAPIResources() predicate.Realm {
+	return predicate.Realm(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, APIResourcesTable, APIResourcesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasAPIResourcesWith applies the HasEdge predicate on the "api_resources" edge with a given conditions (other predicates).
+func HasAPIResourcesWith(preds ...predicate.ApiResource) predicate.Realm {
+	return predicate.Realm(func(s *sql.Selector) {
+		step := newAPIResourcesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasClientApps applies the HasEdge predicate on the "client_apps" edge.
 func HasClientApps() predicate.Realm {
 	return predicate.Realm(func(s *sql.Selector) {

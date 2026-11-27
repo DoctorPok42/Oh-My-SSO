@@ -178,6 +178,13 @@ func New(cfg Config, d Deps) *Server {
 			r.With(write("client_scope", "write")...).Patch("/client-scopes/{id}", s.handleUpdateScope)
 			r.With(write("client_scope", "write")...).Delete("/client-scopes/{id}", s.handleDeleteScope)
 
+			// API resources (RFC 8707) group client scopes: the same rights.
+			r.With(read("client_scope")).Get("/api-resources", s.handleListAPIResources)
+			r.With(write("client_scope", "write")...).Post("/api-resources", s.handleCreateAPIResource)
+			r.With(read("client_scope")).Get("/api-resources/{id}", s.handleGetAPIResource)
+			r.With(write("client_scope", "write")...).Patch("/api-resources/{id}", s.handleUpdateAPIResource)
+			r.With(write("client_scope", "write")...).Delete("/api-resources/{id}", s.handleDeleteAPIResource)
+
 			r.With(read("session")).Get("/sessions", s.handleListSessions)
 			r.With(write("session", "revoke")...).Post("/sessions/bulk", s.bulk(s.d.Admin.BulkSessions))
 			r.With(write("session", "revoke")...).Delete("/sessions/{id}", s.handleRevokeSession)

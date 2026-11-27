@@ -130,6 +130,9 @@ export type Client = ClientSummary & {
     standard_scopes: string[];
     grant_types: string[];
     token_endpoint_auth_method: string;
+    /** private_key_jwt: the client's public keys (JWK set), or the URL it publishes them at. */
+    jwks: string;
+    jwks_uri: string;
     require_pkce: boolean;
     access_token_ttl: number;
     refresh_token_ttl: number;
@@ -161,6 +164,8 @@ export type ClientBody = {
   post_logout_redirect_uris?: string[];
   standard_scopes?: string[];
   token_endpoint_auth_method?: string;
+  jwks?: string;
+  jwks_uri?: string;
   require_pkce?: boolean;
   grant_types?: string[];
   service_role_ids?: string[];
@@ -193,6 +198,17 @@ export type ClientScope = {
   is_default: boolean;
   claim_mappers: ClaimMapper[];
   clients: number;
+  created_at: string;
+};
+
+/** An API that accepts the realm's access tokens (RFC 8707 "resource"). */
+export type ApiResource = {
+  id: string;
+  /** The tokens' "aud": an absolute URI, never changes. */
+  identifier: string;
+  name: string;
+  description: string;
+  scopes: NameRef[];
   created_at: string;
 };
 

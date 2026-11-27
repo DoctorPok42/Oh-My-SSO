@@ -278,6 +278,46 @@ func (_u *ClientAppUpdate) ClearTokenEndpointAuthMethod() *ClientAppUpdate {
 	return _u
 }
 
+// SetJwks sets the "jwks" field.
+func (_u *ClientAppUpdate) SetJwks(v string) *ClientAppUpdate {
+	_u.mutation.SetJwks(v)
+	return _u
+}
+
+// SetNillableJwks sets the "jwks" field if the given value is not nil.
+func (_u *ClientAppUpdate) SetNillableJwks(v *string) *ClientAppUpdate {
+	if v != nil {
+		_u.SetJwks(*v)
+	}
+	return _u
+}
+
+// ClearJwks clears the value of the "jwks" field.
+func (_u *ClientAppUpdate) ClearJwks() *ClientAppUpdate {
+	_u.mutation.ClearJwks()
+	return _u
+}
+
+// SetJwksURI sets the "jwks_uri" field.
+func (_u *ClientAppUpdate) SetJwksURI(v string) *ClientAppUpdate {
+	_u.mutation.SetJwksURI(v)
+	return _u
+}
+
+// SetNillableJwksURI sets the "jwks_uri" field if the given value is not nil.
+func (_u *ClientAppUpdate) SetNillableJwksURI(v *string) *ClientAppUpdate {
+	if v != nil {
+		_u.SetJwksURI(*v)
+	}
+	return _u
+}
+
+// ClearJwksURI clears the value of the "jwks_uri" field.
+func (_u *ClientAppUpdate) ClearJwksURI() *ClientAppUpdate {
+	_u.mutation.ClearJwksURI()
+	return _u
+}
+
 // SetIDTokenSignedAlg sets the "id_token_signed_alg" field.
 func (_u *ClientAppUpdate) SetIDTokenSignedAlg(v string) *ClientAppUpdate {
 	_u.mutation.SetIDTokenSignedAlg(v)
@@ -1179,6 +1219,18 @@ func (_u *ClientAppUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.TokenEndpointAuthMethodCleared() {
 		_spec.ClearField(clientapp.FieldTokenEndpointAuthMethod, field.TypeString)
 	}
+	if value, ok := _u.mutation.Jwks(); ok {
+		_spec.SetField(clientapp.FieldJwks, field.TypeString, value)
+	}
+	if _u.mutation.JwksCleared() {
+		_spec.ClearField(clientapp.FieldJwks, field.TypeString)
+	}
+	if value, ok := _u.mutation.JwksURI(); ok {
+		_spec.SetField(clientapp.FieldJwksURI, field.TypeString, value)
+	}
+	if _u.mutation.JwksURICleared() {
+		_spec.ClearField(clientapp.FieldJwksURI, field.TypeString)
+	}
 	if value, ok := _u.mutation.IDTokenSignedAlg(); ok {
 		_spec.SetField(clientapp.FieldIDTokenSignedAlg, field.TypeString, value)
 	}
@@ -2034,6 +2086,46 @@ func (_u *ClientAppUpdateOne) SetNillableTokenEndpointAuthMethod(v *string) *Cli
 // ClearTokenEndpointAuthMethod clears the value of the "token_endpoint_auth_method" field.
 func (_u *ClientAppUpdateOne) ClearTokenEndpointAuthMethod() *ClientAppUpdateOne {
 	_u.mutation.ClearTokenEndpointAuthMethod()
+	return _u
+}
+
+// SetJwks sets the "jwks" field.
+func (_u *ClientAppUpdateOne) SetJwks(v string) *ClientAppUpdateOne {
+	_u.mutation.SetJwks(v)
+	return _u
+}
+
+// SetNillableJwks sets the "jwks" field if the given value is not nil.
+func (_u *ClientAppUpdateOne) SetNillableJwks(v *string) *ClientAppUpdateOne {
+	if v != nil {
+		_u.SetJwks(*v)
+	}
+	return _u
+}
+
+// ClearJwks clears the value of the "jwks" field.
+func (_u *ClientAppUpdateOne) ClearJwks() *ClientAppUpdateOne {
+	_u.mutation.ClearJwks()
+	return _u
+}
+
+// SetJwksURI sets the "jwks_uri" field.
+func (_u *ClientAppUpdateOne) SetJwksURI(v string) *ClientAppUpdateOne {
+	_u.mutation.SetJwksURI(v)
+	return _u
+}
+
+// SetNillableJwksURI sets the "jwks_uri" field if the given value is not nil.
+func (_u *ClientAppUpdateOne) SetNillableJwksURI(v *string) *ClientAppUpdateOne {
+	if v != nil {
+		_u.SetJwksURI(*v)
+	}
+	return _u
+}
+
+// ClearJwksURI clears the value of the "jwks_uri" field.
+func (_u *ClientAppUpdateOne) ClearJwksURI() *ClientAppUpdateOne {
+	_u.mutation.ClearJwksURI()
 	return _u
 }
 
@@ -2967,6 +3059,18 @@ func (_u *ClientAppUpdateOne) sqlSave(ctx context.Context) (_node *ClientApp, er
 	}
 	if _u.mutation.TokenEndpointAuthMethodCleared() {
 		_spec.ClearField(clientapp.FieldTokenEndpointAuthMethod, field.TypeString)
+	}
+	if value, ok := _u.mutation.Jwks(); ok {
+		_spec.SetField(clientapp.FieldJwks, field.TypeString, value)
+	}
+	if _u.mutation.JwksCleared() {
+		_spec.ClearField(clientapp.FieldJwks, field.TypeString)
+	}
+	if value, ok := _u.mutation.JwksURI(); ok {
+		_spec.SetField(clientapp.FieldJwksURI, field.TypeString, value)
+	}
+	if _u.mutation.JwksURICleared() {
+		_spec.ClearField(clientapp.FieldJwksURI, field.TypeString)
 	}
 	if value, ok := _u.mutation.IDTokenSignedAlg(); ok {
 		_spec.SetField(clientapp.FieldIDTokenSignedAlg, field.TypeString, value)

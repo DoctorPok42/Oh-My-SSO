@@ -18,12 +18,13 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-
 const oidcUsage = `usage:
   idp oidc clients list          --realm <name>
   idp oidc clients create        --realm <name> --client-id <id> --redirect-uri <uri> [--redirect-uri <uri>...]
                                  [--name <text>] [--public] [--scope <a,b>] [--post-logout-uri <uri>]
-                                 [--grant authorization_code,refresh_token,client_credentials] [--auth-method client_secret_basic|client_secret_post]
+                                 [--grant authorization_code,refresh_token,client_credentials]
+                                 [--auth-method client_secret_basic|client_secret_post|private_key_jwt]
+                                 [--jwks-file <path> | --jwks-uri <https url>] (private_key_jwt: the client's public keys)
                                  [--no-pkce] [--allow-role <name>] [--allow-group <name>] [--require-consent]
                                  [--service-role <name>]
                                  (--grant client_credentials alone: a machine client, no --redirect-uri)
@@ -152,7 +153,9 @@ func oidcClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 	clientID := fs.String("client-id", "", "public client_id (required)")
 	name := fs.String("name", "", "display name shown on the login page (default: the client_id)")
 	public := fs.Bool("public", false, "public client (SPA, mobile, CLI): no secret, PKCE mandatory")
-	authMethod := fs.String("auth-method", "", "client_secret_basic (default) or client_secret_post")
+	authMethod := fs.String("auth-method", "", "client_secret_basic (default), client_secret_post or private_key_jwt")
+	jwksFile := fs.String("jwks-file", "", "private_key_jwt: file holding the client's public keys (a JWK set)")
+	jwksURI := fs.String("jwks-uri", "", "private_key_jwt: https URL where the client publishes its public keys")
 	noPKCE := fs.Bool("no-pkce", false, "do not require PKCE (confidential clients only, not recommended)")
 	requireConsent := fs.Bool("require-consent", false, "users approve the client on a consent screen first")
 	var redirects, postLogout, scopes, grants, roles, groups, serviceRoles listFlag
@@ -171,6 +174,13 @@ func oidcClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 	if *clientID == "" {
 		return usageError{"--client-id is required"}
 	}
+	var jwks []byte
+	if *jwksFile != "" {
+		var err error
+		if jwks, err = os.ReadFile(*jwksFile); err != nil {
+			return fmt.Errorf("--jwks-file: %w", err)
+		}
+	}
 	env, err := openOIDCEnv(ctx, *realmName)
 	if err != nil {
 		return err
@@ -187,6 +197,8 @@ func oidcClientsCreate(ctx context.Context, args []string, out io.Writer) error 
 		Scopes:                  scopes,
 		GrantTypes:              grants,
 		TokenEndpointAuthMethod: *authMethod,
+		JWKS:                    string(jwks),
+		JWKSURI:                 *jwksURI,
 		DisablePKCE:             *noPKCE,
 		AllowRoles:              roles,
 		AllowGroups:             groups,

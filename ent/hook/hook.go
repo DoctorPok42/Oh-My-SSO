@@ -9,6 +9,18 @@ import (
 	"sso.internal/sso/ent"
 )
 
+// The ApiResourceFunc type is an adapter to allow the use of ordinary
+// function as ApiResource mutator.
+type ApiResourceFunc func(context.Context, *ent.ApiResourceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ApiResourceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ApiResourceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ApiResourceMutation", m)
+}
+
 // The AuditLogFunc type is an adapter to allow the use of ordinary
 // function as AuditLog mutator.
 type AuditLogFunc func(context.Context, *ent.AuditLogMutation) (ent.Value, error)

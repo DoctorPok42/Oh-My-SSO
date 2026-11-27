@@ -51,6 +51,8 @@ type RealmEdges struct {
 	Permissions []*Permission `json:"permissions,omitempty"`
 	// ClientScopes holds the value of the client_scopes edge.
 	ClientScopes []*ClientScope `json:"client_scopes,omitempty"`
+	// APIResources holds the value of the api_resources edge.
+	APIResources []*ApiResource `json:"api_resources,omitempty"`
 	// ClientApps holds the value of the client_apps edge.
 	ClientApps []*ClientApp `json:"client_apps,omitempty"`
 	// Sessions holds the value of the sessions edge.
@@ -77,7 +79,7 @@ type RealmEdges struct {
 	BulkJobs []*BulkJob `json:"bulk_jobs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [17]bool
+	loadedTypes [18]bool
 }
 
 // UsersOrErr returns the Users value or an error if the edge
@@ -125,10 +127,19 @@ func (e RealmEdges) ClientScopesOrErr() ([]*ClientScope, error) {
 	return nil, &NotLoadedError{edge: "client_scopes"}
 }
 
+// APIResourcesOrErr returns the APIResources value or an error if the edge
+// was not loaded in eager-loading.
+func (e RealmEdges) APIResourcesOrErr() ([]*ApiResource, error) {
+	if e.loadedTypes[5] {
+		return e.APIResources, nil
+	}
+	return nil, &NotLoadedError{edge: "api_resources"}
+}
+
 // ClientAppsOrErr returns the ClientApps value or an error if the edge
 // was not loaded in eager-loading.
 func (e RealmEdges) ClientAppsOrErr() ([]*ClientApp, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.ClientApps, nil
 	}
 	return nil, &NotLoadedError{edge: "client_apps"}
@@ -137,7 +148,7 @@ func (e RealmEdges) ClientAppsOrErr() ([]*ClientApp, error) {
 // SessionsOrErr returns the Sessions value or an error if the edge
 // was not loaded in eager-loading.
 func (e RealmEdges) SessionsOrErr() ([]*Session, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.Sessions, nil
 	}
 	return nil, &NotLoadedError{edge: "sessions"}
@@ -146,7 +157,7 @@ func (e RealmEdges) SessionsOrErr() ([]*Session, error) {
 // SigningKeysOrErr returns the SigningKeys value or an error if the edge
 // was not loaded in eager-loading.
 func (e RealmEdges) SigningKeysOrErr() ([]*SigningKey, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[8] {
 		return e.SigningKeys, nil
 	}
 	return nil, &NotLoadedError{edge: "signing_keys"}
@@ -155,7 +166,7 @@ func (e RealmEdges) SigningKeysOrErr() ([]*SigningKey, error) {
 // AuditLogsOrErr returns the AuditLogs value or an error if the edge
 // was not loaded in eager-loading.
 func (e RealmEdges) AuditLogsOrErr() ([]*AuditLog, error) {
-	if e.loadedTypes[8] {
+	if e.loadedTypes[9] {
 		return e.AuditLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "audit_logs"}
@@ -164,7 +175,7 @@ func (e RealmEdges) AuditLogsOrErr() ([]*AuditLog, error) {
 // IdentityProvidersOrErr returns the IdentityProviders value or an error if the edge
 // was not loaded in eager-loading.
 func (e RealmEdges) IdentityProvidersOrErr() ([]*IdentityProvider, error) {
-	if e.loadedTypes[9] {
+	if e.loadedTypes[10] {
 		return e.IdentityProviders, nil
 	}
 	return nil, &NotLoadedError{edge: "identity_providers"}
@@ -175,7 +186,7 @@ func (e RealmEdges) IdentityProvidersOrErr() ([]*IdentityProvider, error) {
 func (e RealmEdges) InstanceSettingsOrErr() (*InstanceSettings, error) {
 	if e.InstanceSettings != nil {
 		return e.InstanceSettings, nil
-	} else if e.loadedTypes[10] {
+	} else if e.loadedTypes[11] {
 		return nil, &NotFoundError{label: instancesettings.Label}
 	}
 	return nil, &NotLoadedError{edge: "instance_settings"}
@@ -184,7 +195,7 @@ func (e RealmEdges) InstanceSettingsOrErr() (*InstanceSettings, error) {
 // TimeoutsOrErr returns the Timeouts value or an error if the edge
 // was not loaded in eager-loading.
 func (e RealmEdges) TimeoutsOrErr() ([]*Timeout, error) {
-	if e.loadedTypes[11] {
+	if e.loadedTypes[12] {
 		return e.Timeouts, nil
 	}
 	return nil, &NotLoadedError{edge: "timeouts"}
@@ -193,7 +204,7 @@ func (e RealmEdges) TimeoutsOrErr() ([]*Timeout, error) {
 // MfaPoliciesOrErr returns the MfaPolicies value or an error if the edge
 // was not loaded in eager-loading.
 func (e RealmEdges) MfaPoliciesOrErr() ([]*MfaPolicy, error) {
-	if e.loadedTypes[12] {
+	if e.loadedTypes[13] {
 		return e.MfaPolicies, nil
 	}
 	return nil, &NotLoadedError{edge: "mfa_policies"}
@@ -202,7 +213,7 @@ func (e RealmEdges) MfaPoliciesOrErr() ([]*MfaPolicy, error) {
 // KnownAccountsOrErr returns the KnownAccounts value or an error if the edge
 // was not loaded in eager-loading.
 func (e RealmEdges) KnownAccountsOrErr() ([]*KnownAccount, error) {
-	if e.loadedTypes[13] {
+	if e.loadedTypes[14] {
 		return e.KnownAccounts, nil
 	}
 	return nil, &NotLoadedError{edge: "known_accounts"}
@@ -211,7 +222,7 @@ func (e RealmEdges) KnownAccountsOrErr() ([]*KnownAccount, error) {
 // TrustedDevicesOrErr returns the TrustedDevices value or an error if the edge
 // was not loaded in eager-loading.
 func (e RealmEdges) TrustedDevicesOrErr() ([]*TrustedDevice, error) {
-	if e.loadedTypes[14] {
+	if e.loadedTypes[15] {
 		return e.TrustedDevices, nil
 	}
 	return nil, &NotLoadedError{edge: "trusted_devices"}
@@ -220,7 +231,7 @@ func (e RealmEdges) TrustedDevicesOrErr() ([]*TrustedDevice, error) {
 // UserImportJobsOrErr returns the UserImportJobs value or an error if the edge
 // was not loaded in eager-loading.
 func (e RealmEdges) UserImportJobsOrErr() ([]*UserImportJob, error) {
-	if e.loadedTypes[15] {
+	if e.loadedTypes[16] {
 		return e.UserImportJobs, nil
 	}
 	return nil, &NotLoadedError{edge: "user_import_jobs"}
@@ -229,7 +240,7 @@ func (e RealmEdges) UserImportJobsOrErr() ([]*UserImportJob, error) {
 // BulkJobsOrErr returns the BulkJobs value or an error if the edge
 // was not loaded in eager-loading.
 func (e RealmEdges) BulkJobsOrErr() ([]*BulkJob, error) {
-	if e.loadedTypes[16] {
+	if e.loadedTypes[17] {
 		return e.BulkJobs, nil
 	}
 	return nil, &NotLoadedError{edge: "bulk_jobs"}
@@ -345,6 +356,11 @@ func (_m *Realm) QueryPermissions() *PermissionQuery {
 // QueryClientScopes queries the "client_scopes" edge of the Realm entity.
 func (_m *Realm) QueryClientScopes() *ClientScopeQuery {
 	return NewRealmClient(_m.config).QueryClientScopes(_m)
+}
+
+// QueryAPIResources queries the "api_resources" edge of the Realm entity.
+func (_m *Realm) QueryAPIResources() *ApiResourceQuery {
+	return NewRealmClient(_m.config).QueryAPIResources(_m)
 }
 
 // QueryClientApps queries the "client_apps" edge of the Realm entity.

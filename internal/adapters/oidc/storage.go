@@ -76,8 +76,15 @@ func (s *storage) AuthorizeClientIDSecret(ctx context.Context, clientID, clientS
 
 // ClientCredentials authenticates the client of a client_credentials grant:
 // the library does not call AuthorizeClientIDSecret for this grant, and the
-// rate limit must still hear that the client proved its secret.
+// rate limit must still hear that the client proved its secret. Nor does it
+// read a client_assertion here: clientAssertion verified it already.
 func (s *storage) ClientCredentials(ctx context.Context, clientID, clientSecret string) (op.Client, error) {
+	if asserted, ok := assertedClientFrom(ctx); ok {
+		if clientID != "" && clientID != asserted {
+			return nil, oidc.ErrInvalidClient()
+		}
+		return s.GetClientByClientID(ctx, asserted)
+	}
 	if err := s.AuthorizeClientIDSecret(ctx, clientID, clientSecret); err != nil {
 		return nil, err
 	}
@@ -87,11 +94,14 @@ func (s *storage) ClientCredentials(ctx context.Context, clientID, clientSecret 
 // ClientCredentialsTokenRequest runs once the client is authenticated and
 // allowed the grant: it records the token of the client's service account.
 func (s *storage) ClientCredentialsTokenRequest(ctx context.Context, clientID string, scopes []string) (op.TokenRequest, error) {
+	if asserted, ok := assertedClientFrom(ctx); ok {
+		clientID = asserted // a client_assertion may come without client_id
+	}
 	pc, err := s.lookupClient(ctx, clientID)
 	if err != nil {
 		return nil, oidc.ErrInvalidClient()
 	}
-	tok, err := s.a.core.IssueServiceAccountToken(ctx, pc.App.ID, scopes)
+	tok, err := s.a.core.IssueServiceAccountToken(ctx, pc.App.ID, scopes, resourcesFrom(ctx))
 	if err != nil {
 		return nil, toTokenError(err)
 	}
@@ -117,6 +127,13 @@ func (s *storage) CreateAuthRequest(ctx context.Context, req *oidc.AuthRequest, 
 	if err := checkAuthorizePolicy(pc, req); err != nil {
 		return nil, err
 	}
+	resources, err := s.a.core.CheckResources(ctx, pc.App.RealmID, pc.Scopes, resourcesFrom(ctx))
+	if errors.Is(err, core.ErrInvalidTarget) {
+		return nil, errInvalidTarget()
+	}
+	if err != nil {
+		return nil, err
+	}
 
 	ar := &authRequest{
 		ID:                  rand.Text(),
@@ -127,6 +144,7 @@ func (s *storage) CreateAuthRequest(ctx context.Context, req *oidc.AuthRequest, 
 		State:               req.State,
 		Nonce:               req.Nonce,
 		Scopes:              grantedScopes(pc, req.Scopes),
+		Resources:           resources,
 		ResponseType:        string(req.ResponseType),
 		ResponseMode:        string(req.ResponseMode),
 		CodeChallenge:       req.CodeChallenge,
@@ -271,10 +289,11 @@ func (s *storage) CreateAccessAndRefreshTokens(ctx context.Context, request op.T
 		}
 		return issued.Access.JTI, issued.RefreshToken, issued.Access.ExpiresAt, nil
 	case *refreshRequest:
-		issued, err := s.a.core.RotateRefreshToken(ctx, currentRefreshToken, req.clientRef, req.scopes)
+		issued, err := s.a.core.RotateRefreshToken(ctx, currentRefreshToken, req.clientRef, req.scopes, resourcesFrom(ctx))
 		if err != nil {
 			return "", "", time.Time{}, toTokenError(err)
 		}
+		req.issued.token = issued.Access
 		return issued.Access.JTI, issued.RefreshToken, issued.Access.ExpiresAt, nil
 	default:
 		return "", "", time.Time{}, oidc.ErrUnsupportedGrantType()
@@ -291,11 +310,14 @@ func (s *storage) issueForCode(ctx context.Context, ar *authRequest, withRefresh
 		SessionID:        ar.SessionID,
 		ClientRef:        ar.ClientRef,
 		Scopes:           ar.Scopes,
+		Resources:        ar.Resources,
+		Audience:         resourcesFrom(ctx), // RFC 8707, section 2.2: some of them
 		WithRefreshToken: withRefresh,
 	})
 	if err != nil {
 		return nil, toTokenError(err)
 	}
+	ar.issued.token = issued.Access
 	// Remember which tokens this code gave, for the code replay check.
 	if ar.CodeHash != "" {
 		if err := s.a.store.Put(ctx, usedCodeKey(ar.CodeHash), []byte(issued.FamilyID), authRequestTTL); err != nil {
@@ -423,7 +445,7 @@ func (s *storage) SetUserinfoFromRequest(ctx context.Context, info *oidc.UserInf
 }
 
 // GetPrivateClaimsFromRequest fills the access token (JWT) claims.
-func (s *storage) GetPrivateClaimsFromRequest(ctx context.Context, request op.TokenRequest, scopes []string) (map[string]any, error) {
+func (s *storage) GetPrivateClaimsFromRequest(ctx context.Context, request op.TokenRequest, _ []string) (map[string]any, error) {
 	if _, ok := request.(*serviceAccountRequest); ok {
 		// No user, so no user claim: the granted scopes only (RFC 9068,
 		// section 2.2.3); the library adds client_id.
@@ -433,9 +455,18 @@ func (s *storage) GetPrivateClaimsFromRequest(ctx context.Context, request op.To
 	if err != nil {
 		return nil, err
 	}
-	claims := buildClaims(ctx, as, pc, request.GetScopes(), locAccessToken, s.a.logger)
+	// The access token's own scopes: an API resource narrows the grant's.
+	// shortcut: the token response's "scope" still lists the grant's (the
+	// library reads it from the request); the JWT and /introspect are exact.
+	// Fix if a client relies on that field for a token meant for an API.
+	scopes := request.GetScopes()
+	if issued := issuedFor(request); issued != nil && issued.token != nil {
+		scopes = issued.token.Scopes
+		issued.built = true // the ID token built next gets the client_id as audience
+	}
+	claims := buildClaims(ctx, as, pc, scopes, locAccessToken, s.a.logger)
 	// RFC 9068, section 2.2.3: the granted scopes, space separated.
-	claims["scope"] = strings.Join(request.GetScopes(), " ")
+	claims["scope"] = strings.Join(scopes, " ")
 	claims["sid"] = as.SessionID
 	// RFC 9068, section 2.2.3.1: what the user may do. Only the admin
 	// console's tokens carry it (see core.IdentityAssertion.Entitlements);
@@ -458,6 +489,25 @@ func (s *storage) requestAssertion(ctx context.Context, request any) (*core.Iden
 		return r.assertion, r.client, nil
 	}
 	return nil, nil, fmt.Errorf("oidc: unexpected request type %T", request)
+}
+
+// issuedFor: the access token recorded for a user's token request.
+func issuedFor(request any) *issuedAccess {
+	switch r := request.(type) {
+	case *authRequest:
+		return &r.issued
+	case *refreshRequest:
+		return &r.issued
+	}
+	return nil
+}
+
+// tokenAudience: what "aud" of an access token says, for /introspect.
+func tokenAudience(tok *domain.Token, clientID string) oidc.Audience {
+	if len(tok.Audience) > 0 {
+		return oidc.Audience(tok.Audience)
+	}
+	return oidc.Audience{clientID}
 }
 
 // SetUserinfoFromToken answers /userinfo. The library verified the JWT
@@ -493,7 +543,7 @@ func (s *storage) SetIntrospectionFromToken(ctx context.Context, resp *oidc.Intr
 	resp.IssuedAt = oidc.FromTime(tok.IssuedAt)
 	resp.AuthTime = oidc.FromTime(as.AuthTime)
 	resp.Subject = as.Subject
-	resp.Audience = oidc.Audience{as.Audience}
+	resp.Audience = tokenAudience(tok, as.Audience)
 	resp.Issuer = s.a.issuer(realm.Name)
 	resp.JWTID = tok.JTI
 	resp.AuthenticationMethodsReferences = as.AuthMethods
@@ -526,7 +576,7 @@ func (s *storage) introspectServiceAccountToken(ctx context.Context, resp *oidc.
 	resp.Expiration = oidc.FromTime(tok.ExpiresAt)
 	resp.IssuedAt = oidc.FromTime(tok.IssuedAt)
 	resp.Subject = tok.Subject
-	resp.Audience = oidc.Audience{pc.App.ClientID}
+	resp.Audience = tokenAudience(tok, pc.App.ClientID)
 	resp.Issuer = issuer
 	resp.JWTID = tok.JTI
 	return nil
@@ -551,8 +601,15 @@ func (s *storage) activeAccessToken(ctx context.Context, jti, subject string) (*
 	return tok, as, pc, nil
 }
 
-func (s *storage) GetKeyByIDAndClientID(context.Context, string, string) (*jose.JSONWebKey, error) {
-	return nil, errors.New("oidc: private_key_jwt and the JWT bearer grant are not supported")
+// GetKeyByIDAndClientID: the public key a private_key_jwt client signed its
+// client_assertion with (header "kid"). The JWT bearer grant stays refused
+// by ValidateJWTProfileScopes.
+func (s *storage) GetKeyByIDAndClientID(ctx context.Context, keyID, clientID string) (*jose.JSONWebKey, error) {
+	pc, err := s.lookupClient(ctx, clientID)
+	if err != nil || isPublic(pc.App) || pc.App.TokenEndpointAuthMethod != string(oidc.AuthMethodPrivateKeyJWT) {
+		return nil, oidc.ErrInvalidClient()
+	}
+	return s.a.clientKeys.key(ctx, pc.App, keyID)
 }
 
 func (s *storage) ValidateJWTProfileScopes(context.Context, string, []string) ([]string, error) {
@@ -653,8 +710,15 @@ func toTokenError(err error) error {
 		return oidc.ErrInvalidGrant().WithParent(err)
 	case errors.Is(err, core.ErrScopeNotGranted):
 		return oidc.ErrInvalidScope().WithParent(err)
+	case errors.Is(err, core.ErrInvalidTarget):
+		return errInvalidTarget().WithParent(err)
 	}
 	return oidc.ErrServerError().WithParent(err)
+}
+
+// errInvalidTarget: RFC 8707, section 2.
+func errInvalidTarget() *oidc.Error {
+	return oidc.ErrInvalidTarget().WithDescription("unknown resource, one this client may not ask for, or one outside the grant")
 }
 
 // uiLocales: the ui_locales of the request as tags, best first. The sign-in

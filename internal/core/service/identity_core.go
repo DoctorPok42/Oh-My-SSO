@@ -46,8 +46,11 @@ type IdentityCoreService struct {
 	// accounts: nil means no remembered account, only the current one.
 	accounts *KnownAccountService
 	audit    repository.AuditLogRepository // nil: refresh token replays are only logged
-	logger   *slog.Logger
-	now      func() time.Time
+	// resources: the API resources (RFC 8707). nil: none, every resource
+	// indicator is refused.
+	resources repository.ApiResourceRepository
+	logger    *slog.Logger
+	now       func() time.Time
 
 	// Pairwise salts never change once written, so they are cached forever.
 	saltMu sync.Mutex
@@ -75,6 +78,9 @@ type IdentityCoreDeps struct {
 
 	// Accounts: "Pick an account". nil shows the current account only.
 	Accounts *KnownAccountService
+	// Resources: the API resources (RFC 8707). nil: every resource
+	// indicator is refused (invalid_target).
+	Resources repository.ApiResourceRepository
 }
 
 type IdentityCoreOption func(*IdentityCoreService)
@@ -91,23 +97,24 @@ func WithIdentityCoreLogger(l *slog.Logger) IdentityCoreOption {
 
 func NewIdentityCore(d IdentityCoreDeps, opts ...IdentityCoreOption) *IdentityCoreService {
 	s := &IdentityCoreService{
-		auth:     d.Auth,
-		sessions: d.Sessions,
-		rbac:     d.RBAC,
-		users:    d.Users,
-		clients:  d.Clients,
-		realms:   d.Realms,
-		tokens:   d.Tokens,
-		keys:     d.SigningKeys,
-		km:       d.KeyManager,
-		timeouts: d.Timeouts,
-		mfa:      d.MFA,
-		consent:  d.Consent,
-		accounts: d.Accounts,
-		audit:    d.Audit,
-		logger:   slog.Default(),
-		now:      time.Now,
-		salts:    make(map[string]string),
+		auth:      d.Auth,
+		sessions:  d.Sessions,
+		rbac:      d.RBAC,
+		users:     d.Users,
+		clients:   d.Clients,
+		realms:    d.Realms,
+		tokens:    d.Tokens,
+		keys:      d.SigningKeys,
+		km:        d.KeyManager,
+		timeouts:  d.Timeouts,
+		mfa:       d.MFA,
+		consent:   d.Consent,
+		accounts:  d.Accounts,
+		audit:     d.Audit,
+		resources: d.Resources,
+		logger:    slog.Default(),
+		now:       time.Now,
+		salts:     make(map[string]string),
 	}
 	if s.timeouts == nil {
 		s.timeouts = NoActiveTimeouts{}

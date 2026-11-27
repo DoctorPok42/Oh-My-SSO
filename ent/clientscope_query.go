@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"sso.internal/sso/ent/apiresource"
 	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/clientscopemapping"
@@ -34,6 +35,7 @@ type ClientScopeQuery struct {
 	withRoles               *RoleQuery
 	withGroups              *GroupQuery
 	withClientApps          *ClientAppQuery
+	withAPIResources        *ApiResourceQuery
 	withRoleClientScopes    *RoleClientScopeQuery
 	withGroupClientScopes   *GroupClientScopeQuery
 	withClientScopeMappings *ClientScopeMappingQuery
@@ -154,6 +156,28 @@ func (_q *ClientScopeQuery) QueryClientApps() *ClientAppQuery {
 			sqlgraph.From(clientscope.Table, clientscope.FieldID, selector),
 			sqlgraph.To(clientapp.Table, clientapp.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, true, clientscope.ClientAppsTable, clientscope.ClientAppsPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryAPIResources chains the current query on the "api_resources" edge.
+func (_q *ClientScopeQuery) QueryAPIResources() *ApiResourceQuery {
+	query := (&ApiResourceClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(clientscope.Table, clientscope.FieldID, selector),
+			sqlgraph.To(apiresource.Table, apiresource.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, clientscope.APIResourcesTable, clientscope.APIResourcesPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -423,6 +447,7 @@ func (_q *ClientScopeQuery) Clone() *ClientScopeQuery {
 		withRoles:               _q.withRoles.Clone(),
 		withGroups:              _q.withGroups.Clone(),
 		withClientApps:          _q.withClientApps.Clone(),
+		withAPIResources:        _q.withAPIResources.Clone(),
 		withRoleClientScopes:    _q.withRoleClientScopes.Clone(),
 		withGroupClientScopes:   _q.withGroupClientScopes.Clone(),
 		withClientScopeMappings: _q.withClientScopeMappings.Clone(),
@@ -473,6 +498,17 @@ func (_q *ClientScopeQuery) WithClientApps(opts ...func(*ClientAppQuery)) *Clien
 		opt(query)
 	}
 	_q.withClientApps = query
+	return _q
+}
+
+// WithAPIResources tells the query-builder to eager-load the nodes that are connected to
+// the "api_resources" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ClientScopeQuery) WithAPIResources(opts ...func(*ApiResourceQuery)) *ClientScopeQuery {
+	query := (&ApiResourceClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withAPIResources = query
 	return _q
 }
 
@@ -587,11 +623,12 @@ func (_q *ClientScopeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 	var (
 		nodes       = []*ClientScope{}
 		_spec       = _q.querySpec()
-		loadedTypes = [7]bool{
+		loadedTypes = [8]bool{
 			_q.withRealm != nil,
 			_q.withRoles != nil,
 			_q.withGroups != nil,
 			_q.withClientApps != nil,
+			_q.withAPIResources != nil,
 			_q.withRoleClientScopes != nil,
 			_q.withGroupClientScopes != nil,
 			_q.withClientScopeMappings != nil,
@@ -639,6 +676,13 @@ func (_q *ClientScopeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 		if err := _q.loadClientApps(ctx, query, nodes,
 			func(n *ClientScope) { n.Edges.ClientApps = []*ClientApp{} },
 			func(n *ClientScope, e *ClientApp) { n.Edges.ClientApps = append(n.Edges.ClientApps, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withAPIResources; query != nil {
+		if err := _q.loadAPIResources(ctx, query, nodes,
+			func(n *ClientScope) { n.Edges.APIResources = []*ApiResource{} },
+			func(n *ClientScope, e *ApiResource) { n.Edges.APIResources = append(n.Edges.APIResources, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -877,6 +921,67 @@ func (_q *ClientScopeQuery) loadClientApps(ctx context.Context, query *ClientApp
 		nodes, ok := nids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected "client_apps" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
+func (_q *ClientScopeQuery) loadAPIResources(ctx context.Context, query *ApiResourceQuery, nodes []*ClientScope, init func(*ClientScope), assign func(*ClientScope, *ApiResource)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[string]*ClientScope)
+	nids := make(map[string]map[*ClientScope]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(clientscope.APIResourcesTable)
+		s.Join(joinT).On(s.C(apiresource.FieldID), joinT.C(clientscope.APIResourcesPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(clientscope.APIResourcesPrimaryKey[1]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(clientscope.APIResourcesPrimaryKey[1]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(sql.NullString)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := values[0].(*sql.NullString).String
+				inValue := values[1].(*sql.NullString).String
+				if nids[inValue] == nil {
+					nids[inValue] = map[*ClientScope]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*ApiResource](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "api_resources" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)

@@ -37,6 +37,8 @@ type Token struct {
 	Revoked bool `json:"revoked,omitempty"`
 	// Scopes holds the value of the "scopes" field.
 	Scopes []string `json:"scopes,omitempty"`
+	// Audience holds the value of the "audience" field.
+	Audience []string `json:"audience,omitempty"`
 	// TokenHash holds the value of the "token_hash" field.
 	TokenHash string `json:"-"`
 	// FamilyID holds the value of the "family_id" field.
@@ -91,7 +93,7 @@ func (*Token) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case token.FieldScopes:
+		case token.FieldScopes, token.FieldAudience:
 			values[i] = new([]byte)
 		case token.FieldRevoked:
 			values[i] = new(sql.NullBool)
@@ -168,6 +170,14 @@ func (_m *Token) assignValues(columns []string, values []any) error {
 			} else if value != nil && len(*value) > 0 {
 				if err := json.Unmarshal(*value, &_m.Scopes); err != nil {
 					return fmt.Errorf("unmarshal field scopes: %w", err)
+				}
+			}
+		case token.FieldAudience:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field audience", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.Audience); err != nil {
+					return fmt.Errorf("unmarshal field audience: %w", err)
 				}
 			}
 		case token.FieldTokenHash:
@@ -270,6 +280,9 @@ func (_m *Token) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("scopes=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Scopes))
+	builder.WriteString(", ")
+	builder.WriteString("audience=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Audience))
 	builder.WriteString(", ")
 	builder.WriteString("token_hash=<sensitive>")
 	builder.WriteString(", ")

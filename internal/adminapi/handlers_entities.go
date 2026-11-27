@@ -49,6 +49,8 @@ type clientJSON struct {
 	PostLogoutRedirectURIs  *[]string `json:"post_logout_redirect_uris"`
 	StandardScopes          *[]string `json:"standard_scopes"`
 	TokenEndpointAuthMethod *string   `json:"token_endpoint_auth_method"`
+	JWKS                    *string   `json:"jwks"`     // private_key_jwt: a JWK set (JSON text), or
+	JWKSURI                 *string   `json:"jwks_uri"` // the https URL the client publishes it at
 	RequirePKCE             *bool     `json:"require_pkce"`
 	GrantTypes              *[]string `json:"grant_types"`
 	ServiceRoleIDs          *[]string `json:"service_role_ids"` // replaces the list
@@ -78,6 +80,7 @@ func (c clientJSON) input() service.ClientInput {
 		Protocol: domain.ClientAppProtocol(c.Protocol), Name: c.Name, Active: c.Active,
 		ClientID: c.ClientID, Public: c.Public, RedirectURIs: c.RedirectURIs, PostLogoutRedirectURIs: c.PostLogoutRedirectURIs,
 		StandardScopes: c.StandardScopes, TokenEndpointAuthMethod: c.TokenEndpointAuthMethod, RequirePKCE: c.RequirePKCE,
+		JWKS: c.JWKS, JWKSURI: c.JWKSURI,
 		GrantTypes: c.GrantTypes, ServiceRoleIDs: c.ServiceRoleIDs,
 		AccessTokenTTL: c.AccessTokenTTL, RefreshTokenTTL: c.RefreshTokenTTL, IDTokenTTL: c.IDTokenTTL,
 		EntityID: c.EntityID, ACSURL: c.ACSURL, SLOURL: c.SLOURL, NameIDFormat: c.NameIDFormat,
@@ -262,6 +265,70 @@ func (s *Server) handleUpdateScope(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDeleteScope(w http.ResponseWriter, r *http.Request) {
 	if err := s.d.Admin.DeleteClientScope(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id")); err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// apiResourceJSON: an API resource (RFC 8707). identifier: POST only.
+type apiResourceJSON struct {
+	Identifier  *string   `json:"identifier"`
+	Name        *string   `json:"name"`
+	Description *string   `json:"description"`
+	ScopeIDs    *[]string `json:"scope_ids"` // replaces the list
+}
+
+func (j apiResourceJSON) input() service.APIResourceInput {
+	return service.APIResourceInput{Identifier: j.Identifier, Name: j.Name, Description: j.Description, ScopeIDs: j.ScopeIDs}
+}
+
+func (s *Server) handleListAPIResources(w http.ResponseWriter, r *http.Request) {
+	v, err := s.d.Admin.ListAPIResources(r.Context(), realmFrom(r))
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, list[service.APIResourceView]{Items: items(v), Total: len(v), Limit: len(v)})
+}
+
+func (s *Server) handleCreateAPIResource(w http.ResponseWriter, r *http.Request) {
+	var in apiResourceJSON
+	if !decode(w, r, &in) {
+		return
+	}
+	v, err := s.d.Admin.CreateAPIResource(r.Context(), adminFrom(r).actor, realmFrom(r), in.input())
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, v)
+}
+
+func (s *Server) handleGetAPIResource(w http.ResponseWriter, r *http.Request) {
+	v, err := s.d.Admin.GetAPIResource(r.Context(), realmFrom(r), chi.URLParam(r, "id"))
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
+
+func (s *Server) handleUpdateAPIResource(w http.ResponseWriter, r *http.Request) {
+	var in apiResourceJSON
+	if !decode(w, r, &in) {
+		return
+	}
+	v, err := s.d.Admin.UpdateAPIResource(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id"), in.input())
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
+
+func (s *Server) handleDeleteAPIResource(w http.ResponseWriter, r *http.Request) {
+	if err := s.d.Admin.DeleteAPIResource(r.Context(), adminFrom(r).actor, realmFrom(r), chi.URLParam(r, "id")); err != nil {
 		writeServiceError(w, r, err)
 		return
 	}

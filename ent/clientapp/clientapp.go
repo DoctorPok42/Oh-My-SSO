@@ -49,6 +49,10 @@ const (
 	FieldAllowedScopes = "allowed_scopes"
 	// FieldTokenEndpointAuthMethod holds the string denoting the token_endpoint_auth_method field in the database.
 	FieldTokenEndpointAuthMethod = "token_endpoint_auth_method"
+	// FieldJwks holds the string denoting the jwks field in the database.
+	FieldJwks = "jwks"
+	// FieldJwksURI holds the string denoting the jwks_uri field in the database.
+	FieldJwksURI = "jwks_uri"
 	// FieldIDTokenSignedAlg holds the string denoting the id_token_signed_alg field in the database.
 	FieldIDTokenSignedAlg = "id_token_signed_alg"
 	// FieldAccessTokenTTL holds the string denoting the access_token_ttl field in the database.
@@ -199,6 +203,8 @@ var Columns = []string{
 	FieldAllowedGrantTypes,
 	FieldAllowedScopes,
 	FieldTokenEndpointAuthMethod,
+	FieldJwks,
+	FieldJwksURI,
 	FieldIDTokenSignedAlg,
 	FieldAccessTokenTTL,
 	FieldRefreshTokenTTL,
@@ -364,6 +370,16 @@ func ByClientType(opts ...sql.OrderTermOption) OrderOption {
 // ByTokenEndpointAuthMethod orders the results by the token_endpoint_auth_method field.
 func ByTokenEndpointAuthMethod(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTokenEndpointAuthMethod, opts...).ToFunc()
+}
+
+// ByJwks orders the results by the jwks field.
+func ByJwks(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldJwks, opts...).ToFunc()
+}
+
+// ByJwksURI orders the results by the jwks_uri field.
+func ByJwksURI(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldJwksURI, opts...).ToFunc()
 }
 
 // ByIDTokenSignedAlg orders the results by the id_token_signed_alg field.

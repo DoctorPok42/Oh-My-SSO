@@ -3,7 +3,9 @@ package httpserver
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -192,8 +194,10 @@ func (s *Server) releaseHits(r *http.Request, hits []ratelimit.Hit) {
 
 // requestClient: the client_id the request claims and whether it sends a
 // secret, as the OIDC library reads them (HTTP Basic, form-encoded per RFC
-// 6749 2.3.1, else client_id and client_secret in the form). It parses the
-// form: the library reuses it.
+// 6749 2.3.1, else client_id and client_secret in the form). A
+// client_assertion (private_key_jwt) counts as a secret, under its client_id
+// or else its unverified "iss": only to count, the adapter verifies it. It
+// parses the form: the library reuses it.
 func requestClient(r *http.Request) (clientID string, withSecret bool, err error) {
 	if err := r.ParseForm(); err != nil { // grant_type is read from it too
 		return "", false, err
@@ -204,7 +208,32 @@ func requestClient(r *http.Request) (clientID string, withSecret bool, err error
 		}
 		return user, true, nil
 	}
+	if assertion := r.Form.Get("client_assertion"); assertion != "" {
+		if id := r.Form.Get("client_id"); id != "" {
+			return id, true, nil
+		}
+		return assertionIssuer(assertion), true, nil
+	}
 	return r.Form.Get("client_id"), r.Form.Get("client_secret") != "", nil
+}
+
+// assertionIssuer: the "iss" of a JWT, NOT verified. "" when unreadable.
+func assertionIssuer(jwt string) string {
+	parts := strings.Split(jwt, ".")
+	if len(parts) != 3 {
+		return ""
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return ""
+	}
+	var claims struct {
+		Issuer string `json:"iss"`
+	}
+	if json.Unmarshal(payload, &claims) != nil {
+		return ""
+	}
+	return claims.Issuer
 }
 
 // clientFailureKey: per client_id and address.

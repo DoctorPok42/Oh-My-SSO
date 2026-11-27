@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"sso.internal/sso/ent/apiresource"
 	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/clientscopemapping"
@@ -178,6 +179,21 @@ func (_c *ClientScopeCreate) AddClientApps(v ...*ClientApp) *ClientScopeCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddClientAppIDs(ids...)
+}
+
+// AddAPIResourceIDs adds the "api_resources" edge to the ApiResource entity by IDs.
+func (_c *ClientScopeCreate) AddAPIResourceIDs(ids ...string) *ClientScopeCreate {
+	_c.mutation.AddAPIResourceIDs(ids...)
+	return _c
+}
+
+// AddAPIResources adds the "api_resources" edges to the ApiResource entity.
+func (_c *ClientScopeCreate) AddAPIResources(v ...*ApiResource) *ClientScopeCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddAPIResourceIDs(ids...)
 }
 
 // AddRoleClientScopeIDs adds the "role_client_scopes" edge to the RoleClientScope entity by IDs.
@@ -471,6 +487,22 @@ func (_c *ClientScopeCreate) createSpec() (*ClientScope, *sqlgraph.CreateSpec) {
 		edge.Target.Fields = specE.Fields
 		if specE.ID.Value != nil {
 			edge.Target.Fields = append(edge.Target.Fields, specE.ID)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.APIResourcesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   clientscope.APIResourcesTable,
+			Columns: clientscope.APIResourcesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}

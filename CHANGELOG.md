@@ -5,7 +5,16 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
 
 ## [Unreleased]
 
-Applications can get tokens for themselves (service to service), without a user. No manual step is required.
+## [1.1.0-rc.1] - 2026-11-27
+
+Applications can get tokens for themselves (service to service), without a user and without a shared secret, and
+tokens meant for one API only.
+
+### Manual steps
+- The database gains two columns on `client_apps` (`jwks`, `jwks_uri`), one on `tokens` (`audience`) and the
+  `api_resources` tables: the `migrate` image applies them (`scripts/deploy.sh` does it and backs up first).
+- Only if a client uses `jwks_uri`: `idp` needs outbound HTTPS to that address (see docs/PRODUCTION.md). Pasting the
+  keys instead needs nothing.
 
 ### Added
 - OAuth 2.0 `client_credentials` grant: each confidential client has a service account whose roles give the scopes of
@@ -13,6 +22,10 @@ Applications can get tokens for themselves (service to service), without a user.
   `token.issued` and limited per client (`RATE_LIMIT_CLIENT_CREDENTIALS`, 60/min).
 - Admin console and API: a client's grant types and its service account roles (`grant_types`, `service_role_ids` on
   `/clients`); the audit log labels tokens issued to a client with the `Client` actor.
+- Client authentication by key (`private_key_jwt`, RFC 7523): a client signs a one-time JWT with its own RSA key
+  (RS256), registered as a JWK set or a `jwks_uri`, instead of sending a secret. Details in docs/PRODUCTION.md.
+- API resources (RFC 8707): an API declared per realm with its scopes (console: API Resources; API: `/api-resources`);
+  a token asked for it with `resource` has it as `aud` and only its scopes. Without `resource`, nothing changes.
 
 ## [1.0.0] - 2026-11-23
 

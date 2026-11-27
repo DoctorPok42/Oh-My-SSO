@@ -212,6 +212,34 @@ func (_c *ClientAppCreate) SetNillableTokenEndpointAuthMethod(v *string) *Client
 	return _c
 }
 
+// SetJwks sets the "jwks" field.
+func (_c *ClientAppCreate) SetJwks(v string) *ClientAppCreate {
+	_c.mutation.SetJwks(v)
+	return _c
+}
+
+// SetNillableJwks sets the "jwks" field if the given value is not nil.
+func (_c *ClientAppCreate) SetNillableJwks(v *string) *ClientAppCreate {
+	if v != nil {
+		_c.SetJwks(*v)
+	}
+	return _c
+}
+
+// SetJwksURI sets the "jwks_uri" field.
+func (_c *ClientAppCreate) SetJwksURI(v string) *ClientAppCreate {
+	_c.mutation.SetJwksURI(v)
+	return _c
+}
+
+// SetNillableJwksURI sets the "jwks_uri" field if the given value is not nil.
+func (_c *ClientAppCreate) SetNillableJwksURI(v *string) *ClientAppCreate {
+	if v != nil {
+		_c.SetJwksURI(*v)
+	}
+	return _c
+}
+
 // SetIDTokenSignedAlg sets the "id_token_signed_alg" field.
 func (_c *ClientAppCreate) SetIDTokenSignedAlg(v string) *ClientAppCreate {
 	_c.mutation.SetIDTokenSignedAlg(v)
@@ -924,6 +952,14 @@ func (_c *ClientAppCreate) createSpec() (*ClientApp, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.TokenEndpointAuthMethod(); ok {
 		_spec.SetField(clientapp.FieldTokenEndpointAuthMethod, field.TypeString, value)
 		_node.TokenEndpointAuthMethod = value
+	}
+	if value, ok := _c.mutation.Jwks(); ok {
+		_spec.SetField(clientapp.FieldJwks, field.TypeString, value)
+		_node.Jwks = value
+	}
+	if value, ok := _c.mutation.JwksURI(); ok {
+		_spec.SetField(clientapp.FieldJwksURI, field.TypeString, value)
+		_node.JwksURI = value
 	}
 	if value, ok := _c.mutation.IDTokenSignedAlg(); ok {
 		_spec.SetField(clientapp.FieldIDTokenSignedAlg, field.TypeString, value)

@@ -24,8 +24,6 @@ import (
 	"sso.internal/sso/internal/sessioncache"
 )
 
-
-
 type fakeUserRepo struct {
 	repository.UserRepository
 	byID map[string]*domain.User
@@ -215,8 +213,8 @@ func (f *fakeClientAppRepo) GetByID(_ context.Context, id string) (*domain.Clien
 
 type fakeTokenRepo struct {
 	repository.TokenRepository
-	mu    sync.Mutex
-	byJTI map[string]*domain.Token
+	mu          sync.Mutex
+	byJTI       map[string]*domain.Token
 	sessionUser func(sessionID string) string
 	// failRevokeByClient: the next RevokeByClient fails (timeout_test.go).
 	failRevokeByClient bool
@@ -303,7 +301,6 @@ func (f *fakeTimeouts) ActiveTimeout(_ context.Context, userID, clientRef string
 	return &domain.Timeout{ID: "t-user", TargetType: domain.TimeoutTargetUser, TargetID: userID}, nil
 }
 
-
 const (
 	alicePassword = "correct horse battery staple"
 	aliceID       = "user-alice"
@@ -355,11 +352,13 @@ type coreFixture struct {
 	keys       *fakeSigningKeyRepo
 	km         *localdev.KeyManager
 	timeouts   *fakeTimeouts
-	consents *fakeConsentRepo
-	notifier *recordingNotifier
-	consent  *service.ConsentService
-	access *fakeAccessRepo
-	users  *fakeUserRepo
+	consents   *fakeConsentRepo
+	notifier   *recordingNotifier
+	consent    *service.ConsentService
+	access     *fakeAccessRepo
+	users      *fakeUserRepo
+	// resources: the realm's API resources (RFC 8707), none by default.
+	resources *fakeAPIResources
 }
 
 // advance moves the shared fake clock forward.
@@ -467,7 +466,9 @@ func newCoreFixture(t *testing.T) *coreFixture {
 		Audit:    f.audit,
 		Notifier: f.notifier,
 	}, service.WithConsentClock(clock))
+	f.resources = &fakeAPIResources{}
 	f.core = service.NewIdentityCore(service.IdentityCoreDeps{
+		Resources:   f.resources,
 		Auth:        service.NewAuthService(users, f.attempts, service.WithTimeoutChecker(f.timeouts)),
 		Sessions:    f.sessionSvc,
 		RBAC:        rbac,
@@ -531,7 +532,6 @@ func parsePublicKey(t *testing.T, pemStr string) any {
 	require.NoError(t, err)
 	return pub
 }
-
 
 func TestIdentityCore_AuthenticateLocal(t *testing.T) {
 	ctx := context.Background()

@@ -15,6 +15,7 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"sso.internal/sso/ent/apiresource"
 	"sso.internal/sso/ent/auditlog"
 	"sso.internal/sso/ent/bulkjob"
 	"sso.internal/sso/ent/clientapp"
@@ -56,6 +57,8 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// ApiResource is the client for interacting with the ApiResource builders.
+	ApiResource *ApiResourceClient
 	// AuditLog is the client for interacting with the AuditLog builders.
 	AuditLog *AuditLogClient
 	// BulkJob is the client for interacting with the BulkJob builders.
@@ -135,6 +138,7 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.ApiResource = NewApiResourceClient(c.config)
 	c.AuditLog = NewAuditLogClient(c.config)
 	c.BulkJob = NewBulkJobClient(c.config)
 	c.ClientApp = NewClientAppClient(c.config)
@@ -261,6 +265,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	return &Tx{
 		ctx:                    ctx,
 		config:                 cfg,
+		ApiResource:            NewApiResourceClient(cfg),
 		AuditLog:               NewAuditLogClient(cfg),
 		BulkJob:                NewBulkJobClient(cfg),
 		ClientApp:              NewClientAppClient(cfg),
@@ -314,6 +319,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{
 		ctx:                    ctx,
 		config:                 cfg,
+		ApiResource:            NewApiResourceClient(cfg),
 		AuditLog:               NewAuditLogClient(cfg),
 		BulkJob:                NewBulkJobClient(cfg),
 		ClientApp:              NewClientAppClient(cfg),
@@ -354,7 +360,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		AuditLog.
+//		ApiResource.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -377,8 +383,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.AuditLog, c.BulkJob, c.ClientApp, c.ClientGroup, c.ClientRole, c.ClientScope,
-		c.ClientScopeMapping, c.Consent, c.DataExport, c.EmailOutbox,
+		c.ApiResource, c.AuditLog, c.BulkJob, c.ClientApp, c.ClientGroup, c.ClientRole,
+		c.ClientScope, c.ClientScopeMapping, c.Consent, c.DataExport, c.EmailOutbox,
 		c.EmailVerificationToken, c.FederatedIdentity, c.Group, c.GroupClientScope,
 		c.IdentityProvider, c.InstanceSettings, c.KeyRotationLog, c.KnownAccount,
 		c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.MfaPolicy,
@@ -394,8 +400,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.AuditLog, c.BulkJob, c.ClientApp, c.ClientGroup, c.ClientRole, c.ClientScope,
-		c.ClientScopeMapping, c.Consent, c.DataExport, c.EmailOutbox,
+		c.ApiResource, c.AuditLog, c.BulkJob, c.ClientApp, c.ClientGroup, c.ClientRole,
+		c.ClientScope, c.ClientScopeMapping, c.Consent, c.DataExport, c.EmailOutbox,
 		c.EmailVerificationToken, c.FederatedIdentity, c.Group, c.GroupClientScope,
 		c.IdentityProvider, c.InstanceSettings, c.KeyRotationLog, c.KnownAccount,
 		c.LoginAttempt, c.MfaBackupCode, c.MfaMethod, c.MfaPolicy,
@@ -410,6 +416,8 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *ApiResourceMutation:
+		return c.ApiResource.mutate(ctx, m)
 	case *AuditLogMutation:
 		return c.AuditLog.mutate(ctx, m)
 	case *BulkJobMutation:
@@ -480,6 +488,171 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.UserImportJob.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// ApiResourceClient is a client for the ApiResource schema.
+type ApiResourceClient struct {
+	config
+}
+
+// NewApiResourceClient returns a client for the ApiResource from the given config.
+func NewApiResourceClient(c config) *ApiResourceClient {
+	return &ApiResourceClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `apiresource.Hooks(f(g(h())))`.
+func (c *ApiResourceClient) Use(hooks ...Hook) {
+	c.hooks.ApiResource = append(c.hooks.ApiResource, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `apiresource.Intercept(f(g(h())))`.
+func (c *ApiResourceClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ApiResource = append(c.inters.ApiResource, interceptors...)
+}
+
+// Create returns a builder for creating a ApiResource entity.
+func (c *ApiResourceClient) Create() *ApiResourceCreate {
+	mutation := newApiResourceMutation(c.config, OpCreate)
+	return &ApiResourceCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ApiResource entities.
+func (c *ApiResourceClient) CreateBulk(builders ...*ApiResourceCreate) *ApiResourceCreateBulk {
+	return &ApiResourceCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ApiResourceClient) MapCreateBulk(slice any, setFunc func(*ApiResourceCreate, int)) *ApiResourceCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ApiResourceCreateBulk{err: fmt.Errorf("calling to ApiResourceClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ApiResourceCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ApiResourceCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ApiResource.
+func (c *ApiResourceClient) Update() *ApiResourceUpdate {
+	mutation := newApiResourceMutation(c.config, OpUpdate)
+	return &ApiResourceUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ApiResourceClient) UpdateOne(_m *ApiResource) *ApiResourceUpdateOne {
+	mutation := newApiResourceMutation(c.config, OpUpdateOne, withApiResource(_m))
+	return &ApiResourceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ApiResourceClient) UpdateOneID(id string) *ApiResourceUpdateOne {
+	mutation := newApiResourceMutation(c.config, OpUpdateOne, withApiResourceID(id))
+	return &ApiResourceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ApiResource.
+func (c *ApiResourceClient) Delete() *ApiResourceDelete {
+	mutation := newApiResourceMutation(c.config, OpDelete)
+	return &ApiResourceDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ApiResourceClient) DeleteOne(_m *ApiResource) *ApiResourceDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ApiResourceClient) DeleteOneID(id string) *ApiResourceDeleteOne {
+	builder := c.Delete().Where(apiresource.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ApiResourceDeleteOne{builder}
+}
+
+// Query returns a query builder for ApiResource.
+func (c *ApiResourceClient) Query() *ApiResourceQuery {
+	return &ApiResourceQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeApiResource},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ApiResource entity by its id.
+func (c *ApiResourceClient) Get(ctx context.Context, id string) (*ApiResource, error) {
+	return c.Query().Where(apiresource.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ApiResourceClient) GetX(ctx context.Context, id string) *ApiResource {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryRealm queries the realm edge of a ApiResource.
+func (c *ApiResourceClient) QueryRealm(_m *ApiResource) *RealmQuery {
+	query := (&RealmClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(apiresource.Table, apiresource.FieldID, id),
+			sqlgraph.To(realm.Table, realm.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, apiresource.RealmTable, apiresource.RealmColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryScopes queries the scopes edge of a ApiResource.
+func (c *ApiResourceClient) QueryScopes(_m *ApiResource) *ClientScopeQuery {
+	query := (&ClientScopeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(apiresource.Table, apiresource.FieldID, id),
+			sqlgraph.To(clientscope.Table, clientscope.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, apiresource.ScopesTable, apiresource.ScopesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ApiResourceClient) Hooks() []Hook {
+	return c.hooks.ApiResource
+}
+
+// Interceptors returns the client interceptors.
+func (c *ApiResourceClient) Interceptors() []Interceptor {
+	return c.inters.ApiResource
+}
+
+func (c *ApiResourceClient) mutate(ctx context.Context, m *ApiResourceMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ApiResourceCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ApiResourceUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ApiResourceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ApiResourceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ApiResource mutation op: %q", m.Op())
 	}
 }
 
@@ -1569,6 +1742,22 @@ func (c *ClientScopeClient) QueryClientApps(_m *ClientScope) *ClientAppQuery {
 			sqlgraph.From(clientscope.Table, clientscope.FieldID, id),
 			sqlgraph.To(clientapp.Table, clientapp.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, true, clientscope.ClientAppsTable, clientscope.ClientAppsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryAPIResources queries the api_resources edge of a ClientScope.
+func (c *ClientScopeClient) QueryAPIResources(_m *ClientScope) *ApiResourceQuery {
+	query := (&ApiResourceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(clientscope.Table, clientscope.FieldID, id),
+			sqlgraph.To(apiresource.Table, apiresource.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, clientscope.APIResourcesTable, clientscope.APIResourcesPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -4743,6 +4932,22 @@ func (c *RealmClient) QueryClientScopes(_m *Realm) *ClientScopeQuery {
 	return query
 }
 
+// QueryAPIResources queries the api_resources edge of a Realm.
+func (c *RealmClient) QueryAPIResources(_m *Realm) *ApiResourceQuery {
+	query := (&ApiResourceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(realm.Table, realm.FieldID, id),
+			sqlgraph.To(apiresource.Table, apiresource.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, realm.APIResourcesTable, realm.APIResourcesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryClientApps queries the client_apps edge of a Realm.
 func (c *RealmClient) QueryClientApps(_m *Realm) *ClientAppQuery {
 	query := (&ClientAppClient{config: c.config}).Query()
@@ -6736,7 +6941,7 @@ func (c *UserImportJobClient) mutate(ctx context.Context, m *UserImportJobMutati
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		AuditLog, BulkJob, ClientApp, ClientGroup, ClientRole, ClientScope,
+		ApiResource, AuditLog, BulkJob, ClientApp, ClientGroup, ClientRole, ClientScope,
 		ClientScopeMapping, Consent, DataExport, EmailOutbox, EmailVerificationToken,
 		FederatedIdentity, Group, GroupClientScope, IdentityProvider, InstanceSettings,
 		KeyRotationLog, KnownAccount, LoginAttempt, MfaBackupCode, MfaMethod,
@@ -6745,7 +6950,7 @@ type (
 		UserImportJob []ent.Hook
 	}
 	inters struct {
-		AuditLog, BulkJob, ClientApp, ClientGroup, ClientRole, ClientScope,
+		ApiResource, AuditLog, BulkJob, ClientApp, ClientGroup, ClientRole, ClientScope,
 		ClientScopeMapping, Consent, DataExport, EmailOutbox, EmailVerificationToken,
 		FederatedIdentity, Group, GroupClientScope, IdentityProvider, InstanceSettings,
 		KeyRotationLog, KnownAccount, LoginAttempt, MfaBackupCode, MfaMethod,

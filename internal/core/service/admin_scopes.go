@@ -1,12 +1,12 @@
 package service
 
 import (
-	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"fmt"
 	"regexp"
 	"slices"
+	"sso.internal/sso/internal/i18n"
 	"strings"
 	"time"
 
@@ -14,7 +14,6 @@ import (
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
-
 
 var scopeNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$`)
 
@@ -230,8 +229,9 @@ func (s *AdminService) UpdateClientScope(ctx context.Context, actor AdminActor, 
 	return s.GetClientScope(ctx, realm, cs.ID)
 }
 
-// DeleteClientScope refuses a scope still mapped to clients: removing it
-// would silently change what those applications receive.
+// DeleteClientScope refuses a scope still mapped to clients or defined by an
+// API resource: removing it would silently change what those applications
+// receive (an API left without scope can no longer be asked for).
 func (s *AdminService) DeleteClientScope(ctx context.Context, actor AdminActor, realm *domain.Realm, id string) error {
 	cs, err := s.scopeInRealm(ctx, realm.ID, id)
 	if err != nil {
@@ -243,6 +243,11 @@ func (s *AdminService) DeleteClientScope(ctx context.Context, actor AdminActor, 
 	}
 	if n := usage[cs.ID]; n > 0 {
 		return adminConflict("in_use", i18n.M("admin.error.scope_in_use", "{count} client(s) use this scope: remove it from them first", "count", n))
+	}
+	if n, err := s.apiResourcesUsing(ctx, realm.ID, cs.ID); err != nil {
+		return err
+	} else if n > 0 {
+		return adminConflict("in_use", i18n.M("admin.error.scope_in_use_api", "{count} API resource(s) use this scope: remove it from them first", "count", n))
 	}
 	if err := s.d.Scopes.Delete(ctx, cs.ID); err != nil {
 		return fmt.Errorf("delete client scope: %w", err)

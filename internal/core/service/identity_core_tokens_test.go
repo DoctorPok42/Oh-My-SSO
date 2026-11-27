@@ -17,8 +17,6 @@ import (
 	"sso.internal/sso/internal/core/service"
 )
 
-
-
 func (f *fakeTokenRepo) Create(_ context.Context, p repository.CreateTokenParams) (*domain.Token, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -27,7 +25,7 @@ func (f *fakeTokenRepo) Create(_ context.Context, p repository.CreateTokenParams
 	}
 	t := &domain.Token{
 		ID: "tok-" + p.JTI, SessionID: p.SessionID, ClientRefID: p.ClientRefID, Type: p.Type,
-		JTI: p.JTI, ExpiresAt: p.ExpiresAt, Scopes: p.Scopes, TokenHash: p.TokenHash, FamilyID: p.FamilyID,
+		JTI: p.JTI, ExpiresAt: p.ExpiresAt, Scopes: p.Scopes, Audience: p.Audience, TokenHash: p.TokenHash, FamilyID: p.FamilyID,
 		Subject: p.Subject, SubjectFormat: p.SubjectFormat,
 		IssuedAt: time.Now(),
 	}
@@ -118,7 +116,6 @@ func (f *fakeAuditRepo) actions() []string {
 	return out
 }
 
-
 func issue(t *testing.T, f *coreFixture, sessionID string, withRefresh bool) *core.IssuedTokens {
 	t.Helper()
 	out, err := f.core.IssueTokens(context.Background(), core.TokenRequest{
@@ -191,7 +188,7 @@ func TestIdentityCore_RefreshTokenRotation(t *testing.T) {
 		sess := f.aliceSession(t)
 		first := issue(t, f, sess.Session.ID, true)
 
-		next, err := f.core.RotateRefreshToken(ctx, first.RefreshToken, clientOIDC, nil)
+		next, err := f.core.RotateRefreshToken(ctx, first.RefreshToken, clientOIDC, nil, nil)
 		require.NoError(t, err)
 		require.NotEqual(t, first.RefreshToken, next.RefreshToken)
 		require.Equal(t, first.FamilyID, next.FamilyID)
@@ -199,11 +196,11 @@ func TestIdentityCore_RefreshTokenRotation(t *testing.T) {
 		require.True(t, f.tokens.get(first.Refresh.JTI).IsUsed())
 		require.False(t, f.tokens.get(next.Refresh.JTI).IsUsed())
 
-		narrower, err := f.core.RotateRefreshToken(ctx, next.RefreshToken, clientOIDC, []string{"openid"})
+		narrower, err := f.core.RotateRefreshToken(ctx, next.RefreshToken, clientOIDC, []string{"openid"}, nil)
 		require.NoError(t, err)
 		require.Equal(t, []string{"openid"}, narrower.Access.Scopes, "a refresh can narrow the scopes")
 
-		_, err = f.core.RotateRefreshToken(ctx, narrower.RefreshToken, clientOIDC, []string{"openid", "email"})
+		_, err = f.core.RotateRefreshToken(ctx, narrower.RefreshToken, clientOIDC, []string{"openid", "email"}, nil)
 		require.ErrorIs(t, err, core.ErrTokenInvalid, "...but never widen them")
 	})
 
@@ -211,16 +208,16 @@ func TestIdentityCore_RefreshTokenRotation(t *testing.T) {
 		f := newCoreFixture(t)
 		sess := f.aliceSession(t)
 		first := issue(t, f, sess.Session.ID, true)
-		next, err := f.core.RotateRefreshToken(ctx, first.RefreshToken, clientOIDC, nil)
+		next, err := f.core.RotateRefreshToken(ctx, first.RefreshToken, clientOIDC, nil, nil)
 		require.NoError(t, err)
 
-		_, err = f.core.RotateRefreshToken(ctx, first.RefreshToken, clientOIDC, nil)
+		_, err = f.core.RotateRefreshToken(ctx, first.RefreshToken, clientOIDC, nil, nil)
 		require.ErrorIs(t, err, core.ErrTokenReused)
 
 		for _, jti := range []string{first.Access.JTI, first.Refresh.JTI, next.Access.JTI, next.Refresh.JTI} {
 			require.True(t, f.tokens.get(jti).Revoked, "token %s must be revoked", jti)
 		}
-		_, err = f.core.RotateRefreshToken(ctx, next.RefreshToken, clientOIDC, nil)
+		_, err = f.core.RotateRefreshToken(ctx, next.RefreshToken, clientOIDC, nil, nil)
 		require.ErrorIs(t, err, core.ErrTokenInvalid, "the thief's (or the app's) newer token is dead too")
 		require.Contains(t, f.audit.actions(), "token.reuse_detected")
 
@@ -233,9 +230,9 @@ func TestIdentityCore_RefreshTokenRotation(t *testing.T) {
 		f := newCoreFixture(t)
 		sess := f.aliceSession(t)
 		first := issue(t, f, sess.Session.ID, true)
-		_, err := f.core.RotateRefreshToken(ctx, first.RefreshToken, clientLongTTL, nil)
+		_, err := f.core.RotateRefreshToken(ctx, first.RefreshToken, clientLongTTL, nil, nil)
 		require.ErrorIs(t, err, core.ErrTokenInvalid)
-		_, err = f.core.RotateRefreshToken(ctx, first.RefreshToken, clientOIDC, nil)
+		_, err = f.core.RotateRefreshToken(ctx, first.RefreshToken, clientOIDC, nil, nil)
 		require.NoError(t, err, "the rightful client can still use it")
 	})
 
@@ -260,13 +257,13 @@ func TestIdentityCore_RefreshTokenRotation(t *testing.T) {
 		// the session alive for 27 minutes.
 		for i := 0; i < 3; i++ {
 			f.advance(9 * time.Minute)
-			next, err := f.core.RotateRefreshToken(ctx, tok.RefreshToken, clientOIDC, nil)
+			next, err := f.core.RotateRefreshToken(ctx, tok.RefreshToken, clientOIDC, nil, nil)
 			require.NoError(t, err, "refresh #%d", i+1)
 			tok = next
 		}
 		// Then the app stops refreshing: the session idles out, and so do its refresh tokens.
 		f.advance(11 * time.Minute)
-		_, err := f.core.RotateRefreshToken(ctx, tok.RefreshToken, clientOIDC, nil)
+		_, err := f.core.RotateRefreshToken(ctx, tok.RefreshToken, clientOIDC, nil, nil)
 		require.ErrorIs(t, err, core.ErrSessionInvalid)
 	})
 
@@ -275,7 +272,7 @@ func TestIdentityCore_RefreshTokenRotation(t *testing.T) {
 		sess := f.aliceSession(t)
 		tok := issue(t, f, sess.Session.ID, true)
 		require.NoError(t, f.core.RevokeSession(ctx, sess.Session.ID, domain.SessionRevokedUserLogout))
-		_, err := f.core.RotateRefreshToken(ctx, tok.RefreshToken, clientOIDC, nil)
+		_, err := f.core.RotateRefreshToken(ctx, tok.RefreshToken, clientOIDC, nil, nil)
 		require.ErrorIs(t, err, core.ErrTokenInvalid)
 	})
 
@@ -290,7 +287,7 @@ func TestIdentityCore_RefreshTokenRotation(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, err := f.core.RotateRefreshToken(ctx, tok.RefreshToken, clientOIDC, nil)
+				_, err := f.core.RotateRefreshToken(ctx, tok.RefreshToken, clientOIDC, nil, nil)
 				switch {
 				case err == nil:
 					wins.Add(1)

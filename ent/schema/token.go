@@ -20,7 +20,7 @@ const (
 	TokenAccessToken  TokenType = "access_token"
 	TokenRefreshToken TokenType = "refresh_token"
 	TokenIDToken      TokenType = "id_token"
-	TokenSAMLSession TokenType = "saml_session"
+	TokenSAMLSession  TokenType = "saml_session"
 )
 
 func (Token) Fields() []ent.Field {
@@ -39,6 +39,10 @@ func (Token) Fields() []ent.Field {
 		field.Time("expires_at").Immutable(),
 		field.Bool("revoked").Default(false),
 		field.JSON("scopes", []string{}).Optional(),
+		// Audience: API resources (RFC 8707) by identifier. An access token's
+		// "aud"; for a refresh token, every resource of the grant. Empty: the
+		// token is for the client itself.
+		field.JSON("audience", []string{}).Optional().Immutable(),
 
 		field.String("token_hash").Optional().Unique().Immutable().Sensitive(),
 		// FamilyID groups every token born from one authorization: the code

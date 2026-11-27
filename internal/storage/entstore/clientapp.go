@@ -114,6 +114,8 @@ func (r *entClientAppRepository) Update(ctx context.Context, id string, p reposi
 		builder = builder.SetAllowedScopes(p.AllowedScopes)
 	}
 	builder = builder.SetNillableTokenEndpointAuthMethod(p.TokenEndpointAuthMethod)
+	builder = builder.SetNillableJwks(p.JWKS)
+	builder = builder.SetNillableJwksURI(p.JWKSURI)
 	builder = builder.SetNillableIDTokenSignedAlg(p.IDTokenSignedAlg)
 	builder = builder.SetNillableAccessTokenTTL(p.AccessTokenTTL)
 	builder = builder.SetNillableRefreshTokenTTL(p.RefreshTokenTTL)
@@ -252,6 +254,8 @@ func toDomainClientApp(e *ent.ClientApp) *domain.ClientApp {
 		AllowedGrantTypes:       e.AllowedGrantTypes,
 		AllowedScopes:           e.AllowedScopes,
 		TokenEndpointAuthMethod: e.TokenEndpointAuthMethod,
+		JWKS:                    e.Jwks,
+		JWKSURI:                 e.JwksURI,
 		IDTokenSignedAlg:        e.IDTokenSignedAlg,
 		AccessTokenTTL:          e.AccessTokenTTL,
 		RefreshTokenTTL:         e.RefreshTokenTTL,

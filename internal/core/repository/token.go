@@ -30,14 +30,15 @@ type TokenRepository interface {
 }
 
 type CreateTokenParams struct {
-	SessionID   string
-	ClientRefID string
-	Type        domain.TokenType
-	JTI         string
-	ExpiresAt   time.Time
-	Scopes      []string
-	TokenHash   string // opaque tokens only
-	FamilyID    string
+	SessionID     string
+	ClientRefID   string
+	Type          domain.TokenType
+	JTI           string
+	ExpiresAt     time.Time
+	Scopes        []string
+	Audience      []string // API resources (RFC 8707), see domain.Token
+	TokenHash     string   // opaque tokens only
+	FamilyID      string
 	Subject       string
 	SubjectFormat string
 }
