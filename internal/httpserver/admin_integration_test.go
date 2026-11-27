@@ -34,7 +34,6 @@ import (
 	"sso.internal/sso/internal/storage/entstore"
 )
 
-
 const (
 	adminConsoleURL = "https://admin.example.test"
 	adminPassword   = "admin-console-password-42"
@@ -163,6 +162,7 @@ func setupAdminTestEnv(t *testing.T, options ...func(*service.AdminDeps)) *admin
 	deps := service.AdminDeps{
 		Tx:     tx,
 		Realms: realms, Users: users, Clients: clients, Scopes: scopes, Roles: roles, Groups: groups,
+		Resources:   entstore.NewApiResourceRepository(client),
 		Permissions: entstore.NewPermissionRepository(client), Settings: settings, Audit: audit, Access: access,
 		MfaMethods: entstore.NewMfaMethodRepository(client), Admin: entstore.NewAdminRepository(client),
 		Sessions: sessions, KeyRotation: rotation, MFA: mfa, MFAPolicy: policy, PasswordReset: reset,

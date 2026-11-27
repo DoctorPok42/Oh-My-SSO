@@ -1,7 +1,7 @@
 # Oh-My-SSO — admin console
 
-Next.js (App Router) console to administer Oh-My-SSO: realms, OIDC and SAML clients, client scopes,
-sessions, audit log, users / roles / groups / permissions, signing keys, MFA policies, settings.
+Next.js (App Router) console to administer Oh-My-SSO: realms, OIDC and SAML clients, client scopes, API
+resources, sessions, audit log, users / roles / groups / permissions, signing keys, MFA policies, settings.
 
 It is a **BFF** (Backend For Frontend): the browser only talks to this server. This server signs the
 admin in with OpenID Connect (client `sso-admin` of the `master` realm), keeps the tokens in an

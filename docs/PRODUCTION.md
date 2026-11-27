@@ -10,7 +10,7 @@ internet ──443──▶ nginx on the host (TLS) ──▶ 127.0.0.1:8080  id
                                          └──▶ 127.0.0.1:3000  admin  https://admin.example.com  (VPN / IP allow-list)
 
 networks of compose.yml:
-  edge   172.30.20.0/24  idp, idp-admin, admin: egress (OVH KMS, SMTP, api.pwnedpasswords.com). Gateway 172.30.20.1 = TRUSTED_PROXIES
+  edge   172.30.20.0/24  idp, idp-admin, admin: egress (OVH KMS, SMTP, api.pwnedpasswords.com, clients' jwks_uri). Gateway 172.30.20.1 = TRUSTED_PROXIES
   admin  172.30.10.0/24  internal: admin 172.30.10.10 ──▶ idp-admin 172.30.10.20:8090 (ADMIN_API_ALLOWED_CIDRS)
   data   internal        idp, idp-admin ──▶ postgres, valkey
 ```
@@ -210,7 +210,8 @@ Then:
   address in another header.
 - **Rate limits** (per client address, so `TRUSTED_PROXIES` must be right): `/token`, `/introspect` and `/revoke`
   count the requests that authenticate no client (600/min per address) and the failed secrets of a client_id
-  (10/15 min per address); a client that proves its secret is never limited by them. A client's own service account
+  (10/15 min per address); a client that proves its secret is never limited by them. A `client_assertion`
+  (`private_key_jwt`) counts as a secret. A client's own service account
   gets 60 `client_credentials` tokens per minute, whatever the address (only requests with the right secret count).
   The SAML endpoints allow 300 requests per
   minute per address. The sign-in page allows 20 failed sign-ins per 15 minutes per address; a sign-in that succeeds is
@@ -418,6 +419,34 @@ The issuer must read `https://sso.example.com/r/<realm>` everywhere.
   `docker compose run --rm idp keys rotate --realm <realm> [--bits 3072]`, wait for tokens to expire, then
   `keys retire`. SAML: `keys rotate --purpose saml_signing`, share the new metadata with service providers, then
   `keys activate --purpose saml_signing`.
+- **Clients without a secret** (`private_key_jwt`, RFC 7523): a confidential client can prove itself with a short JWT
+  signed by its own key instead of a secret (console: client > Token endpoint auth method; CLI: `idp oidc clients
+  create --auth-method private_key_jwt --jwks-file keys.json` or `--jwks-uri https://...`). Give either its public
+  keys (a JWK set: 1 to 10 RSA keys of 2048 bits or more, distinct `kid`s when there are several) or the https URL
+  where it publishes them. The assertion goes in `client_assertion` on `/token`, `/introspect` and `/revoke`, with
+  `client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer`. Its `iss` and `sub` are the
+  client_id, its `aud` the realm's issuer (`PUBLIC_URL/r/<realm>`), and it needs a `jti` and an `exp` within the hour.
+  Each assertion works once: its `jti` is remembered until it expires. Only RS256 is accepted for now (PS256 and ES256
+  come with the FAPI profiles). Such a client has no secret: "Regenerate secret" is refused, and a secret left from
+  before the switch no longer works. A `jwks_uri` is read when needed and kept 5 minutes; an unknown `kid` reads it
+  again. It is read at most once a minute: when it cannot be read, the keys read before stay in use (a warning is
+  logged with its host) and it is tried again a minute later. It must be a public https address: private, loopback
+  and link-local addresses are refused when connecting, IPv4 ones inside IPv6 too (a NAT64 address, as DNS64 gives
+  for an IPv4-only host, is checked as the IPv4 it carries; 6to4 is refused), redirects are not followed, and the
+  document is limited to 64 KiB. `idp` needs outbound HTTPS to it. Without that access, paste
+  the keys instead.
+- **API resources** (RFC 8707, console: Applications > API Resources; API: `/api-resources`): declare each API that
+  accepts the realm's access tokens with its identifier (an absolute URI, usually its base URL, which cannot change)
+  and its scopes (OIDC client scopes, one at least). A client asks for a token meant for it with `resource=<identifier>`
+  on `/authorize` (code flow) or `/token` (`client_credentials`); the access token then has the identifier as `aud`
+  and only the API's scopes besides `openid`, `profile`, `email` and `offline_access`. The ID token keeps the client as
+  audience. A client may ask for an API only if it may have one of its scopes (for a service account, through its
+  roles); otherwise, or for an unknown identifier, the answer is `invalid_target`. The code exchange and a refresh may
+  name some of the resources of the authorization, not new ones; without `resource` they get all of them. Without
+  `resource` nothing changes: the token's `aud` is the client_id. An API checks `aud` (and `scope`) in each token,
+  or calls `/introspect`, whose `aud` is the same. A client scope of an API cannot be deleted while the API uses
+  it. Deleting an API leaves its access tokens valid until they expire, but every refresh of an authorization that
+  included it gets `invalid_target`: the users of those applications sign in again.
 - **Break-glass** (lost admin access or console secret):
   `docker compose exec idp-admin /usr/local/bin/idp-admin recover admin --email ...` or `recover client-secret` (then
   the new secret in `ADMIN_OIDC_CLIENT_SECRET` and `docker compose up -d admin`), `recover timeouts`, `recover

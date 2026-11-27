@@ -54,6 +54,10 @@ type ClientApp struct {
 	AllowedScopes []string `json:"allowed_scopes,omitempty"`
 	// TokenEndpointAuthMethod holds the value of the "token_endpoint_auth_method" field.
 	TokenEndpointAuthMethod string `json:"token_endpoint_auth_method,omitempty"`
+	// Jwks holds the value of the "jwks" field.
+	Jwks string `json:"jwks,omitempty"`
+	// JwksURI holds the value of the "jwks_uri" field.
+	JwksURI string `json:"jwks_uri,omitempty"`
 	// IDTokenSignedAlg holds the value of the "id_token_signed_alg" field.
 	IDTokenSignedAlg string `json:"id_token_signed_alg,omitempty"`
 	// AccessTokenTTL holds the value of the "access_token_ttl" field.
@@ -234,7 +238,7 @@ func (*ClientApp) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case clientapp.FieldAccessTokenTTL, clientapp.FieldRefreshTokenTTL, clientapp.FieldIDTokenTTL, clientapp.FieldSessionIdleMinutes, clientapp.FieldSessionMaxMinutes:
 			values[i] = new(sql.NullInt64)
-		case clientapp.FieldID, clientapp.FieldRealmID, clientapp.FieldManagedBy, clientapp.FieldName, clientapp.FieldProtocol, clientapp.FieldStatus, clientapp.FieldOwnerAdminID, clientapp.FieldClientID, clientapp.FieldClientSecretHash, clientapp.FieldClientType, clientapp.FieldTokenEndpointAuthMethod, clientapp.FieldIDTokenSignedAlg, clientapp.FieldEntityID, clientapp.FieldAcsURL, clientapp.FieldSloURL, clientapp.FieldNameIDFormat, clientapp.FieldDefaultRelayState, clientapp.FieldMetadataURL, clientapp.FieldSubjectType, clientapp.FieldSectorIdentifier, clientapp.FieldMfaPolicy:
+		case clientapp.FieldID, clientapp.FieldRealmID, clientapp.FieldManagedBy, clientapp.FieldName, clientapp.FieldProtocol, clientapp.FieldStatus, clientapp.FieldOwnerAdminID, clientapp.FieldClientID, clientapp.FieldClientSecretHash, clientapp.FieldClientType, clientapp.FieldTokenEndpointAuthMethod, clientapp.FieldJwks, clientapp.FieldJwksURI, clientapp.FieldIDTokenSignedAlg, clientapp.FieldEntityID, clientapp.FieldAcsURL, clientapp.FieldSloURL, clientapp.FieldNameIDFormat, clientapp.FieldDefaultRelayState, clientapp.FieldMetadataURL, clientapp.FieldSubjectType, clientapp.FieldSectorIdentifier, clientapp.FieldMfaPolicy:
 			values[i] = new(sql.NullString)
 		case clientapp.FieldCreatedAt, clientapp.FieldUpdatedAt, clientapp.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
@@ -368,6 +372,18 @@ func (_m *ClientApp) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field token_endpoint_auth_method", values[i])
 			} else if value.Valid {
 				_m.TokenEndpointAuthMethod = value.String
+			}
+		case clientapp.FieldJwks:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field jwks", values[i])
+			} else if value.Valid {
+				_m.Jwks = value.String
+			}
+		case clientapp.FieldJwksURI:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field jwks_uri", values[i])
+			} else if value.Valid {
+				_m.JwksURI = value.String
 			}
 		case clientapp.FieldIDTokenSignedAlg:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -645,6 +661,12 @@ func (_m *ClientApp) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("token_endpoint_auth_method=")
 	builder.WriteString(_m.TokenEndpointAuthMethod)
+	builder.WriteString(", ")
+	builder.WriteString("jwks=")
+	builder.WriteString(_m.Jwks)
+	builder.WriteString(", ")
+	builder.WriteString("jwks_uri=")
+	builder.WriteString(_m.JwksURI)
 	builder.WriteString(", ")
 	builder.WriteString("id_token_signed_alg=")
 	builder.WriteString(_m.IDTokenSignedAlg)

@@ -3,6 +3,7 @@
 import {
   AppWindow,
   Ban,
+  Braces,
   KeyRound,
   ListChecks,
   Lock,
@@ -30,6 +31,7 @@ import { cn } from "@/lib/utils";
 const ICONS: Record<NavIcon, LucideIcon> = {
   clients: AppWindow,
   scopes: ListChecks,
+  apis: Braces,
   sessions: Monitor,
   timeouts: Ban,
   users: User,

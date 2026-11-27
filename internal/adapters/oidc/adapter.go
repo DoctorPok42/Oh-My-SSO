@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	jose "github.com/go-jose/go-jose/v4"
 	"github.com/rs/cors"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
@@ -45,7 +46,7 @@ type Config struct {
 	// AccountConsole links to the Security page of the account console
 	// (/r/{realm}/account/security) when a user must enroll a factor first.
 	AccountConsole bool
-	PasswordReset bool
+	PasswordReset  bool
 	// I18n: the languages of the pages (nil: the embedded ones).
 	I18n *i18n.Bundle
 	// Now is the clock (tests). nil: time.Now.
@@ -66,8 +67,10 @@ type Adapter struct {
 	now      func() time.Time
 	storage  *storage
 	provider *op.Provider
-	handler  http.Handler
-	pages    *loginui.Pages
+	// clientKeys: the public keys of private_key_jwt clients.
+	clientKeys *clientKeys
+	handler    http.Handler
+	pages      *loginui.Pages
 	// secureCookies: PublicURL is https, the binding cookie is a __Host- one.
 	secureCookies bool
 }
@@ -107,6 +110,7 @@ func New(cfg Config, idp core.IdentityCore, store oidcstore.Store) (*Adapter, er
 		return nil, err
 	}
 	a.storage = &storage{a: a}
+	a.clientKeys = newClientKeys(a.now, a.logger)
 
 	opts := []op.Option{
 		// Codes are random values (see codeCrypto), not encrypted request
@@ -137,11 +141,12 @@ func New(cfg Config, idp core.IdentityCore, store oidcstore.Store) (*Adapter, er
 		opts = append(opts, op.WithAllowInsecure())
 	}
 	a.provider, err = op.NewProvider(&op.Config{
-		CodeMethodS256:        true,
-		AuthMethodPost:        true,
-		GrantTypeRefreshToken: true,
-		SupportedScopes:       supportedScopes,
-		SupportedClaims:       supportedClaims,
+		CodeMethodS256:          true,
+		AuthMethodPost:          true,
+		AuthMethodPrivateKeyJWT: true,
+		GrantTypeRefreshToken:   true,
+		SupportedScopes:         supportedScopes,
+		SupportedClaims:         supportedClaims,
 	}, a.storage, a.issuerFromRequest, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("oidc: provider: %w", err)
@@ -169,7 +174,10 @@ func (a *Adapter) routes() http.Handler {
 	r.Get("/oidc/logout/confirm", a.handleLogoutConfirmPage)
 	r.Post("/oidc/logout/confirm", a.handleLogoutConfirm)
 	r.Get("/oidc/assets/{file}", handleAsset)
-	r.With(a.bindBrowser).Handle("/oidc/authorize", a.provider)
+	r.With(a.bindBrowser, readResources).Handle("/oidc/authorize", a.provider)
+	r.With(a.clientAssertion, readResources).Handle("/oidc/token", a.provider)
+	r.With(a.clientAssertion).Handle("/oidc/introspect", a.provider)
+	r.With(a.clientAssertion).Handle("/oidc/revoke", a.provider)
 	// RP-initiated logout: the library validates the request, then calls
 	// storage.TerminateSessionFromRequest, which needs the browser (its
 	// session cookie, a binding for the confirmation page).
@@ -243,12 +251,14 @@ func (a *Adapter) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 	d.GrantTypesSupported = []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken, oidc.GrantTypeClientCredentials}
 	d.SubjectTypesSupported = []string{"public", "pairwise"}
 	d.CodeChallengeMethodsSupported = []oidc.CodeChallengeMethod{oidc.CodeChallengeMethodS256}
-	d.TokenEndpointAuthMethodsSupported = []oidc.AuthMethod{oidc.AuthMethodBasic, oidc.AuthMethodPost, oidc.AuthMethodNone}
-	d.RevocationEndpointAuthMethodsSupported = []oidc.AuthMethod{oidc.AuthMethodBasic, oidc.AuthMethodPost, oidc.AuthMethodNone}
-	d.IntrospectionEndpointAuthMethodsSupported = []oidc.AuthMethod{oidc.AuthMethodBasic}
-	d.TokenEndpointAuthSigningAlgValuesSupported = nil
-	d.RevocationEndpointAuthSigningAlgValuesSupported = nil
-	d.IntrospectionEndpointAuthSigningAlgValuesSupported = nil
+	d.TokenEndpointAuthMethodsSupported = []oidc.AuthMethod{oidc.AuthMethodBasic, oidc.AuthMethodPost, oidc.AuthMethodPrivateKeyJWT, oidc.AuthMethodNone}
+	d.RevocationEndpointAuthMethodsSupported = []oidc.AuthMethod{oidc.AuthMethodBasic, oidc.AuthMethodPost, oidc.AuthMethodPrivateKeyJWT, oidc.AuthMethodNone}
+	d.IntrospectionEndpointAuthMethodsSupported = []oidc.AuthMethod{oidc.AuthMethodBasic, oidc.AuthMethodPrivateKeyJWT}
+	// private_key_jwt: RS256 only, see clientAssertion.
+	rs256 := []string{string(jose.RS256)}
+	d.TokenEndpointAuthSigningAlgValuesSupported = rs256
+	d.RevocationEndpointAuthSigningAlgValuesSupported = rs256
+	d.IntrospectionEndpointAuthSigningAlgValuesSupported = rs256
 	d.RequestObjectSigningAlgValuesSupported = nil
 	d.RequestParameterSupported = false
 	d.DeviceAuthorizationEndpoint = ""

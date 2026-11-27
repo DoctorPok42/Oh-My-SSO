@@ -1,7 +1,6 @@
 package service
 
 import (
-	"sso.internal/sso/internal/i18n"
 	"context"
 	"errors"
 	"fmt"
@@ -9,12 +8,12 @@ import (
 	"net/url"
 	"regexp"
 	"slices"
+	"sso.internal/sso/internal/i18n"
 	"strings"
 
 	"sso.internal/sso/internal/core/domain"
 	"sso.internal/sso/internal/core/repository"
 )
-
 
 var ErrInvalidClientConfig = errors.New("service: invalid client configuration")
 
@@ -28,8 +27,15 @@ const (
 const (
 	AuthMethodClientSecretBasic = "client_secret_basic"
 	AuthMethodClientSecretPost  = "client_secret_post"
-	AuthMethodNone              = "none"
+	// AuthMethodPrivateKeyJWT: a JWT signed with the client's own key (RFC
+	// 7523, OIDC Core section 9). No secret is shared.
+	AuthMethodPrivateKeyJWT = "private_key_jwt"
+	AuthMethodNone          = "none"
 )
+
+// maxClientKeys: keys in the JWKS of a private_key_jwt client (two during a
+// rotation is the usual case).
+const maxClientKeys = 10
 
 // StandardOIDCScopes are handled natively by the OIDC adapter (no
 // ClientScope row needed). offline_access asks for a refresh token.
@@ -53,8 +59,12 @@ type OIDCClientInput struct {
 	// GrantTypes: empty means authorization_code + refresh_token.
 	GrantTypes []string
 	// TokenEndpointAuthMethod for confidential clients: client_secret_basic
-	// (default) or client_secret_post.
+	// (default), client_secret_post or private_key_jwt.
 	TokenEndpointAuthMethod string
+	// JWKS / JWKSURI: the public keys of a private_key_jwt client, one of
+	// the two (RFC 7591 "jwks" and "jwks_uri"). Ignored for other methods.
+	JWKS    string
+	JWKSURI string
 	// DisablePKCE turns PKCE off for a confidential client. Refused for a
 	// public client.
 	DisablePKCE bool
@@ -64,8 +74,8 @@ type OIDCClientInput struct {
 	// (client_credentials grant); its tokens get the scopes of these roles.
 	ServiceRoles []string
 	// Secret supplied from outside (config-as-code). Empty: generated.
-	Secret    string
-	GrantedBy string // written on ClientRole/ClientGroup rows ("cli:alice")
+	Secret         string
+	GrantedBy      string // written on ClientRole/ClientGroup rows ("cli:alice")
 	RequireConsent bool
 }
 
@@ -116,7 +126,7 @@ func (s *OIDCClientService) Create(ctx context.Context, in OIDCClientInput) (*do
 	}
 
 	secret, hash := "", ""
-	if !in.Public {
+	if !in.Public && cfg.AuthMethod != AuthMethodPrivateKeyJWT {
 		if in.Secret != "" {
 			secret, hash = in.Secret, HashClientSecret(in.Secret)
 		} else {
@@ -145,6 +155,8 @@ func (s *OIDCClientService) Create(ctx context.Context, in OIDCClientInput) (*do
 		AllowedGrantTypes:       cfg.GrantTypes,
 		AllowedScopes:           cfg.AllowedScopes,
 		TokenEndpointAuthMethod: &cfg.AuthMethod,
+		JWKS:                    &cfg.JWKS,
+		JWKSURI:                 &cfg.JWKSURI,
 		RequirePKCE:             &requirePKCE,
 		RequireConsent:          &in.RequireConsent,
 	}
@@ -191,6 +203,9 @@ func (s *OIDCClientService) RotateSecret(ctx context.Context, realmID, clientID 
 	if app.ClientType == domain.ClientAppTypePublic {
 		return "", fmt.Errorf("%w: %q is a public client, it has no secret", ErrInvalidClientConfig, clientID)
 	}
+	if app.TokenEndpointAuthMethod == AuthMethodPrivateKeyJWT {
+		return "", fmt.Errorf("%w: %q signs with its own key (private_key_jwt), it has no secret", ErrInvalidClientConfig, clientID)
+	}
 	secret, hash := NewClientSecret()
 	if _, err := s.clients.Update(ctx, app.ID, repository.UpdateClientAppParams{ClientSecretHash: &hash}); err != nil {
 		return "", err
@@ -223,6 +238,10 @@ type NormalizedOIDCClient struct {
 	AllowedScopes          []string // every allowed scope name, standard + custom
 	CustomScopes           []string // the ones that need a ClientScope row
 	AuthMethod             string
+	// JWKS (re-encoded) or JWKSURI of a private_key_jwt client; both empty
+	// for another method.
+	JWKS    string
+	JWKSURI string
 }
 
 // NormalizeOIDCClient checks an input without touching the database.
@@ -313,6 +332,15 @@ func NormalizeOIDCClient(in OIDCClientInput) (*NormalizedOIDCClient, error) {
 			out.AuthMethod = AuthMethodClientSecretBasic
 		case AuthMethodClientSecretPost:
 			out.AuthMethod = AuthMethodClientSecretPost
+		case AuthMethodPrivateKeyJWT:
+			out.AuthMethod = AuthMethodPrivateKeyJWT
+			if in.Secret != "" {
+				return nil, bad(i18n.M("admin.error.private_key_jwt_secret", "a private_key_jwt client has no secret"))
+			}
+			var err error
+			if out.JWKS, out.JWKSURI, err = normalizeClientKeys(in.JWKS, in.JWKSURI); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, bad(i18n.M("admin.error.auth_method_unsupported", "token endpoint auth method \"{method}\" is not supported", "method", in.TokenEndpointAuthMethod))
 		}

@@ -362,7 +362,8 @@ func (f *rbacFixture) adminService(tx repository.Transactor, admin repository.Ad
 	settings := entstore.NewInstanceSettingsRepository(f.client)
 	return service.NewAdminService(service.AdminDeps{
 		Tx: tx, Users: users, Groups: entstore.NewGroupRepository(f.client), Roles: entstore.NewRoleRepository(f.client),
-		Admin: admin, Sessions: sessions, Settings: settings, Access: entstore.NewAccessRepository(f.client),
+		Resources: entstore.NewApiResourceRepository(f.client),
+		Admin:     admin, Sessions: sessions, Settings: settings, Access: entstore.NewAccessRepository(f.client),
 		MFA: service.NewMFAService(service.MFADeps{
 			Methods: entstore.NewMfaMethodRepository(f.client), BackupCodes: entstore.NewMfaBackupCodeRepository(f.client),
 		}),

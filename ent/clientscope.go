@@ -52,6 +52,8 @@ type ClientScopeEdges struct {
 	Groups []*Group `json:"groups,omitempty"`
 	// ClientApps holds the value of the client_apps edge.
 	ClientApps []*ClientApp `json:"client_apps,omitempty"`
+	// APIResources holds the value of the api_resources edge.
+	APIResources []*ApiResource `json:"api_resources,omitempty"`
 	// RoleClientScopes holds the value of the role_client_scopes edge.
 	RoleClientScopes []*RoleClientScope `json:"role_client_scopes,omitempty"`
 	// GroupClientScopes holds the value of the group_client_scopes edge.
@@ -60,7 +62,7 @@ type ClientScopeEdges struct {
 	ClientScopeMappings []*ClientScopeMapping `json:"client_scope_mappings,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [7]bool
+	loadedTypes [8]bool
 }
 
 // RealmOrErr returns the Realm value or an error if the edge
@@ -101,10 +103,19 @@ func (e ClientScopeEdges) ClientAppsOrErr() ([]*ClientApp, error) {
 	return nil, &NotLoadedError{edge: "client_apps"}
 }
 
+// APIResourcesOrErr returns the APIResources value or an error if the edge
+// was not loaded in eager-loading.
+func (e ClientScopeEdges) APIResourcesOrErr() ([]*ApiResource, error) {
+	if e.loadedTypes[4] {
+		return e.APIResources, nil
+	}
+	return nil, &NotLoadedError{edge: "api_resources"}
+}
+
 // RoleClientScopesOrErr returns the RoleClientScopes value or an error if the edge
 // was not loaded in eager-loading.
 func (e ClientScopeEdges) RoleClientScopesOrErr() ([]*RoleClientScope, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.RoleClientScopes, nil
 	}
 	return nil, &NotLoadedError{edge: "role_client_scopes"}
@@ -113,7 +124,7 @@ func (e ClientScopeEdges) RoleClientScopesOrErr() ([]*RoleClientScope, error) {
 // GroupClientScopesOrErr returns the GroupClientScopes value or an error if the edge
 // was not loaded in eager-loading.
 func (e ClientScopeEdges) GroupClientScopesOrErr() ([]*GroupClientScope, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.GroupClientScopes, nil
 	}
 	return nil, &NotLoadedError{edge: "group_client_scopes"}
@@ -122,7 +133,7 @@ func (e ClientScopeEdges) GroupClientScopesOrErr() ([]*GroupClientScope, error) 
 // ClientScopeMappingsOrErr returns the ClientScopeMappings value or an error if the edge
 // was not loaded in eager-loading.
 func (e ClientScopeEdges) ClientScopeMappingsOrErr() ([]*ClientScopeMapping, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.ClientScopeMappings, nil
 	}
 	return nil, &NotLoadedError{edge: "client_scope_mappings"}
@@ -243,6 +254,11 @@ func (_m *ClientScope) QueryGroups() *GroupQuery {
 // QueryClientApps queries the "client_apps" edge of the ClientScope entity.
 func (_m *ClientScope) QueryClientApps() *ClientAppQuery {
 	return NewClientScopeClient(_m.config).QueryClientApps(_m)
+}
+
+// QueryAPIResources queries the "api_resources" edge of the ClientScope entity.
+func (_m *ClientScope) QueryAPIResources() *ApiResourceQuery {
+	return NewClientScopeClient(_m.config).QueryAPIResources(_m)
 }
 
 // QueryRoleClientScopes queries the "role_client_scopes" edge of the ClientScope entity.

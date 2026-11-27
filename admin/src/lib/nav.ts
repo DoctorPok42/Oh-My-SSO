@@ -11,6 +11,7 @@ import type { Me } from "@/lib/types";
 export type NavIcon =
   | "clients"
   | "scopes"
+  | "apis"
   | "sessions"
   | "timeouts"
   | "users"
@@ -47,6 +48,7 @@ export const NAV: readonly NavSection[] = [
     pages: [
       { slug: "clients", label: PAGES.clients.title, resource: "client", icon: "clients" },
       { slug: "client-scopes", label: PAGES.clientScopes.title, resource: "client_scope", icon: "scopes" },
+      { slug: "api-resources", label: PAGES.apiResources.title, resource: "client_scope", icon: "apis" },
     ],
   },
   {

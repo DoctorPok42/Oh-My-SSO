@@ -39,6 +39,8 @@ const (
 	EdgePermissions = "permissions"
 	// EdgeClientScopes holds the string denoting the client_scopes edge name in mutations.
 	EdgeClientScopes = "client_scopes"
+	// EdgeAPIResources holds the string denoting the api_resources edge name in mutations.
+	EdgeAPIResources = "api_resources"
 	// EdgeClientApps holds the string denoting the client_apps edge name in mutations.
 	EdgeClientApps = "client_apps"
 	// EdgeSessions holds the string denoting the sessions edge name in mutations.
@@ -100,6 +102,13 @@ const (
 	ClientScopesInverseTable = "client_scopes"
 	// ClientScopesColumn is the table column denoting the client_scopes relation/edge.
 	ClientScopesColumn = "realm_id"
+	// APIResourcesTable is the table that holds the api_resources relation/edge.
+	APIResourcesTable = "api_resources"
+	// APIResourcesInverseTable is the table name for the ApiResource entity.
+	// It exists in this package in order to avoid circular dependency with the "apiresource" package.
+	APIResourcesInverseTable = "api_resources"
+	// APIResourcesColumn is the table column denoting the api_resources relation/edge.
+	APIResourcesColumn = "realm_id"
 	// ClientAppsTable is the table that holds the client_apps relation/edge.
 	ClientAppsTable = "client_apps"
 	// ClientAppsInverseTable is the table name for the ClientApp entity.
@@ -340,6 +349,20 @@ func ByClientScopes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByAPIResourcesCount orders the results by api_resources count.
+func ByAPIResourcesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newAPIResourcesStep(), opts...)
+	}
+}
+
+// ByAPIResources orders the results by api_resources terms.
+func ByAPIResources(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAPIResourcesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByClientAppsCount orders the results by client_apps count.
 func ByClientAppsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -533,6 +556,13 @@ func newClientScopesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ClientScopesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ClientScopesTable, ClientScopesColumn),
+	)
+}
+func newAPIResourcesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(APIResourcesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, APIResourcesTable, APIResourcesColumn),
 	)
 }
 func newClientAppsStep() *sqlgraph.Step {

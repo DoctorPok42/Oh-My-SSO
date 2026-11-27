@@ -71,11 +71,15 @@ type ClientApp struct {
 	AllowedGrantTypes       []string
 	AllowedScopes           []string
 	TokenEndpointAuthMethod string
-	IDTokenSignedAlg        string
-	AccessTokenTTL          int
-	RefreshTokenTTL         int
-	IDTokenTTL              int
-	RequirePKCE             bool
+	// JWKS / JWKSURI: the public keys of a private_key_jwt client (RFC
+	// 7523), as a JWKS document or the https URL it publishes them at.
+	JWKS             string
+	JWKSURI          string
+	IDTokenSignedAlg string
+	AccessTokenTTL   int
+	RefreshTokenTTL  int
+	IDTokenTTL       int
+	RequirePKCE      bool
 
 	EntityID            string
 	ACSURL              string

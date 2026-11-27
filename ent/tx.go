@@ -12,6 +12,8 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
+	// ApiResource is the client for interacting with the ApiResource builders.
+	ApiResource *ApiResourceClient
 	// AuditLog is the client for interacting with the AuditLog builders.
 	AuditLog *AuditLogClient
 	// BulkJob is the client for interacting with the BulkJob builders.
@@ -211,6 +213,7 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
+	tx.ApiResource = NewApiResourceClient(tx.config)
 	tx.AuditLog = NewAuditLogClient(tx.config)
 	tx.BulkJob = NewBulkJobClient(tx.config)
 	tx.ClientApp = NewClientAppClient(tx.config)
@@ -254,7 +257,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: AuditLog.QueryXXX(), the query will be executed
+// applies a query, for example: ApiResource.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

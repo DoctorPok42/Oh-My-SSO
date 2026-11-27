@@ -30,6 +30,8 @@ const (
 	FieldRevoked = "revoked"
 	// FieldScopes holds the string denoting the scopes field in the database.
 	FieldScopes = "scopes"
+	// FieldAudience holds the string denoting the audience field in the database.
+	FieldAudience = "audience"
 	// FieldTokenHash holds the string denoting the token_hash field in the database.
 	FieldTokenHash = "token_hash"
 	// FieldFamilyID holds the string denoting the family_id field in the database.
@@ -73,6 +75,7 @@ var Columns = []string{
 	FieldExpiresAt,
 	FieldRevoked,
 	FieldScopes,
+	FieldAudience,
 	FieldTokenHash,
 	FieldFamilyID,
 	FieldUsedAt,

@@ -53,6 +53,7 @@ type Core struct {
 	Roles       repository.RoleRepository
 	Groups      repository.GroupRepository
 	Scopes      repository.ClientScopeRepository
+	Resources   repository.ApiResourceRepository
 	Permissions repository.PermissionRepository
 	Admin       repository.AdminRepository
 
@@ -116,6 +117,7 @@ func BuildCore() *Core {
 	c.Roles = entstore.NewRoleRepository(client)
 	c.Groups = entstore.NewGroupRepository(client)
 	c.Scopes = entstore.NewClientScopeRepository(client)
+	c.Resources = entstore.NewApiResourceRepository(client)
 	c.Permissions = entstore.NewPermissionRepository(client)
 	c.Admin = entstore.NewAdminRepository(client)
 	sessionRepo := entstore.NewSessionRepository(client)
@@ -329,6 +331,7 @@ func BuildCore() *Core {
 		Consent:     c.Consent,
 		Audit:       c.Audit,
 		Accounts:    c.KnownAccounts,
+		Resources:   c.Resources,
 	})
 
 	c.OIDCClients = service.NewOIDCClientService(c.Clients, c.Scopes, c.Roles, c.Groups)
@@ -449,7 +452,7 @@ func (n SyncNotifier) Notify(ctx context.Context, e domain.NotificationEvent) {
 func (c *Core) AdminService(rights service.RightsRecorder) *service.AdminService {
 	return service.NewAdminService(service.AdminDeps{
 		Tx:     c.Tx,
-		Realms: c.Realms, Users: c.Users, Clients: c.Clients, Scopes: c.Scopes, Roles: c.Roles, Groups: c.Groups,
+		Realms: c.Realms, Users: c.Users, Clients: c.Clients, Scopes: c.Scopes, Resources: c.Resources, Roles: c.Roles, Groups: c.Groups,
 		Permissions: c.Permissions, Settings: c.Settings, Audit: c.Audit,
 		Access: entstore.NewAccessRepository(c.Ent), MfaMethods: entstore.NewMfaMethodRepository(c.Ent), Admin: c.Admin,
 		Sessions: c.Sessions, KeyRotation: c.KeyRotation, MFA: c.MFA, MFAPolicy: c.MFAPolicy,

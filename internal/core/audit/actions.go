@@ -98,6 +98,9 @@ const (
 	ClientScopeCreated       = "client_scope.created"
 	ClientScopeUpdated       = "client_scope.updated"
 	ClientScopeDeleted       = "client_scope.deleted"
+	APIResourceCreated       = "api_resource.created"
+	APIResourceUpdated       = "api_resource.updated"
+	APIResourceDeleted       = "api_resource.deleted"
 
 	// Access control.
 	RoleCreated       = "role.created"
@@ -223,6 +226,9 @@ var Catalog = []ActionInfo{
 	{ClientScopeCreated, "Applications", "Client scope created"},
 	{ClientScopeUpdated, "Applications", "Client scope updated"},
 	{ClientScopeDeleted, "Applications", "Client scope deleted"},
+	{APIResourceCreated, "Applications", "API resource created"},
+	{APIResourceUpdated, "Applications", "API resource updated"},
+	{APIResourceDeleted, "Applications", "API resource deleted"},
 
 	{RoleCreated, "Access control", "Role created"},
 	{RoleUpdated, "Access control", "Role updated"},

@@ -71,6 +71,8 @@ type ClientOIDCView struct {
 	StandardScopes          []string `json:"standard_scopes"` // openid, profile, email, offline_access
 	GrantTypes              []string `json:"grant_types"`
 	TokenEndpointAuthMethod string   `json:"token_endpoint_auth_method"`
+	JWKS                    string   `json:"jwks"`     // private_key_jwt: public keys, or
+	JWKSURI                 string   `json:"jwks_uri"` // the URL the client publishes them at
 	RequirePKCE             bool     `json:"require_pkce"`
 	AccessTokenTTL          int      `json:"access_token_ttl"` // seconds, 0 = default
 	RefreshTokenTTL         int      `json:"refresh_token_ttl"`
@@ -107,6 +109,8 @@ type ClientInput struct {
 	PostLogoutRedirectURIs  *[]string
 	StandardScopes          *[]string
 	TokenEndpointAuthMethod *string
+	JWKS                    *string // private_key_jwt only, one of the two
+	JWKSURI                 *string
 	RequirePKCE             *bool
 	GrantTypes              *[]string
 	ServiceRoleIDs          *[]string
@@ -211,7 +215,7 @@ func (s *AdminService) clientView(ctx context.Context, c *domain.ClientApp) (Cli
 			ClientType: string(c.ClientType), HasSecret: c.ClientSecretHash != "",
 			RedirectURIs: orEmpty(c.RedirectURIs), PostLogoutRedirectURIs: orEmpty(c.PostLogoutRedirectURIs),
 			StandardScopes: std, GrantTypes: orEmpty(c.AllowedGrantTypes),
-			TokenEndpointAuthMethod: c.TokenEndpointAuthMethod, RequirePKCE: c.RequirePKCE,
+			TokenEndpointAuthMethod: c.TokenEndpointAuthMethod, JWKS: c.JWKS, JWKSURI: c.JWKSURI, RequirePKCE: c.RequirePKCE,
 			AccessTokenTTL: c.AccessTokenTTL, RefreshTokenTTL: c.RefreshTokenTTL, IDTokenTTL: c.IDTokenTTL,
 		}
 	case domain.ClientAppProtocolSAML2:
@@ -455,6 +459,8 @@ func (s *AdminService) CreateClient(ctx context.Context, actor AdminActor, realm
 			GrantTypes:              listOr(in.GrantTypes, nil),
 			Scopes:                  append(slices.Clone(listOr(in.StandardScopes, nil)), chk.scopeNames...),
 			TokenEndpointAuthMethod: strOr(in.TokenEndpointAuthMethod, ""),
+			JWKS:                    strOr(in.JWKS, ""),
+			JWKSURI:                 strOr(in.JWKSURI, ""),
 			DisablePKCE:             !boolOr(in.RequirePKCE, true),
 			RequireConsent:          boolOr(in.RequireConsent, false),
 			GrantedBy:               actor.By(),
@@ -581,6 +587,14 @@ func (s *AdminService) UpdateClient(ctx context.Context, actor AdminActor, realm
 			}
 		}
 		requirePKCE := boolOr(in.RequirePKCE, app.RequirePKCE)
+		// The keys are a JWKS or a jwks_uri: one given alone replaces the other.
+		jwks, jwksURI := strOr(in.JWKS, app.JWKS), strOr(in.JWKSURI, app.JWKSURI)
+		if in.JWKS != nil && in.JWKSURI == nil {
+			jwksURI = ""
+		}
+		if in.JWKSURI != nil && in.JWKS == nil {
+			jwks = ""
+		}
 		norm, err := NormalizeOIDCClient(OIDCClientInput{
 			Name: strOr(upd.Name, app.Name), ClientID: app.ClientID, Public: app.ClientType == domain.ClientAppTypePublic,
 			RedirectURIs:            listOr(in.RedirectURIs, app.RedirectURIs),
@@ -588,6 +602,8 @@ func (s *AdminService) UpdateClient(ctx context.Context, actor AdminActor, realm
 			Scopes:                  append(slices.Clone(listOr(in.StandardScopes, std)), scopeNames...),
 			GrantTypes:              listOr(in.GrantTypes, app.AllowedGrantTypes),
 			TokenEndpointAuthMethod: strOr(in.TokenEndpointAuthMethod, app.TokenEndpointAuthMethod),
+			JWKS:                    jwks,
+			JWKSURI:                 jwksURI,
 			DisablePKCE:             !requirePKCE,
 		})
 		if err != nil {
@@ -598,10 +614,11 @@ func (s *AdminService) UpdateClient(ctx context.Context, actor AdminActor, realm
 		upd.AllowedScopes = norm.AllowedScopes
 		upd.AllowedGrantTypes = norm.GrantTypes
 		upd.TokenEndpointAuthMethod = &norm.AuthMethod
+		upd.JWKS, upd.JWKSURI = &norm.JWKS, &norm.JWKSURI
 		upd.RequirePKCE = &requirePKCE
 		for f, set := range map[string]bool{"redirect_uris": in.RedirectURIs != nil, "post_logout_redirect_uris": in.PostLogoutRedirectURIs != nil,
 			"standard_scopes": in.StandardScopes != nil, "token_endpoint_auth_method": in.TokenEndpointAuthMethod != nil, "require_pkce": in.RequirePKCE != nil,
-			"grant_types": in.GrantTypes != nil} {
+			"grant_types": in.GrantTypes != nil, "jwks": in.JWKS != nil, "jwks_uri": in.JWKSURI != nil} {
 			if set {
 				changed = append(changed, f)
 			}

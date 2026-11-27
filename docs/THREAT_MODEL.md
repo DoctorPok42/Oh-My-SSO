@@ -40,4 +40,13 @@ What Oh-My-SSO protects, against whom, and what it leaves to you. It is short on
 ## Where outside data is parsed
 
 SAML messages and signatures, the CSV of an import, and OIDC requests are the parts that read bytes an attacker
-controls. The first two have fuzz targets, run weekly in CI.
+controls. The first two have fuzz targets, run weekly in CI. OIDC requests include the `client_assertion` JWTs of
+`private_key_jwt` clients, sent by anyone to `/token`, `/introspect` and `/revoke` and checked by the OIDC library,
+and the JWK sets read from a client's `jwks_uri` (64 KiB at most).
+
+## Outbound requests
+
+A realm administrator chooses the `jwks_uri` of a `private_key_jwt` client: `idp` then calls that URL, so it could
+be aimed at the server's own network. Only https to a public address is called (checked when connecting, IPv4 inside
+IPv6 included), without redirect, for 5 seconds at most and once a minute at most per URL; the answer is never shown
+to the caller. Details in [PRODUCTION.md](PRODUCTION.md) ("Clients without a secret").

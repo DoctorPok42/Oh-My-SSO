@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -421,6 +422,18 @@ func TestRequestClient(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "spa", id)
 	require.False(t, withSecret)
+
+	// private_key_jwt: an assertion counts as a secret, under its "iss" when
+	// the client_id is not sent.
+	payload := base64.RawURLEncoding.EncodeToString([]byte(`{"iss":"batch","sub":"batch"}`))
+	assertion := "eyJhbGciOiJSUzI1NiJ9." + payload + ".c2ln"
+	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader("grant_type=client_credentials&client_assertion="+assertion))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	id, withSecret, err = requestClient(req)
+	require.NoError(t, err)
+	require.Equal(t, "batch", id)
+	require.True(t, withSecret)
+	require.Empty(t, assertionIssuer("not-a-jwt"))
 }
 
 func TestClientFailureKeyStaysSmall(t *testing.T) {

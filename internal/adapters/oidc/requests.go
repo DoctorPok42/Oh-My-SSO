@@ -43,14 +43,17 @@ func sha256Hex(s string) string {
 // exchange. It is stored as JSON in oidcstore and implements op.AuthRequest
 // (what the library reads) and op.TokenRequest / op.IDTokenRequest.
 type authRequest struct {
-	ID                  string    `json:"id"`
-	RealmID             string    `json:"rid"`
-	ClientID            string    `json:"cid"`  // public OIDC client_id
-	ClientRef           string    `json:"cref"` // ClientApp.ID
-	RedirectURI         string    `json:"ruri"`
-	State               string    `json:"st,omitempty"`
-	Nonce               string    `json:"n,omitempty"`
-	Scopes              []string  `json:"sc"`
+	ID          string   `json:"id"`
+	RealmID     string   `json:"rid"`
+	ClientID    string   `json:"cid"`  // public OIDC client_id
+	ClientRef   string   `json:"cref"` // ClientApp.ID
+	RedirectURI string   `json:"ruri"`
+	State       string   `json:"st,omitempty"`
+	Nonce       string   `json:"n,omitempty"`
+	Scopes      []string `json:"sc"`
+	// Resources: the API resources (RFC 8707) asked for, as CheckResources
+	// returned them.
+	Resources           []string  `json:"res,omitempty"`
 	ResponseType        string    `json:"rt"`
 	ResponseMode        string    `json:"rm,omitempty"`
 	CodeChallenge       string    `json:"cc,omitempty"`
@@ -59,7 +62,7 @@ type authRequest struct {
 	MaxAge              *uint     `json:"ma,omitempty"`
 	LoginHint           string    `json:"lh,omitempty"`
 	UILocales           []string  `json:"uil,omitempty"` // ui_locales, best first
-	BrowserHash         string    `json:"bh"` // SHA-256 of the browser binding cookie
+	BrowserHash         string    `json:"bh"`            // SHA-256 of the browser binding cookie
 	CreatedAt           time.Time `json:"cat"`
 
 	// Set by the login page once the user is authenticated and allowed.
@@ -85,6 +88,24 @@ type authRequest struct {
 	// Not stored: computed once per token request (see assertionFor).
 	assertion *core.IdentityAssertion
 	client    *core.ProtocolClient
+	issued    issuedAccess
+}
+
+// issuedAccess is the access token just recorded for a request. The library
+// builds the access token JWT, then the ID token, from the same request,
+// both with GetAudience: the first must get the token's API resources (RFC
+// 8707), the second the client_id. GetPrivateClaimsFromRequest, which the
+// library calls in between, marks the access token as built.
+type issuedAccess struct {
+	token *domain.Token
+	built bool
+}
+
+func (i *issuedAccess) audience(clientID string) []string {
+	if i.token != nil && !i.built && len(i.token.Audience) > 0 {
+		return i.token.Audience
+	}
+	return []string{clientID}
 }
 
 var (
@@ -95,7 +116,7 @@ var (
 func (a *authRequest) GetID() string         { return a.ID }
 func (a *authRequest) GetACR() string        { return "" }
 func (a *authRequest) GetAMR() []string      { return a.AMR }
-func (a *authRequest) GetAudience() []string { return []string{a.ClientID} }
+func (a *authRequest) GetAudience() []string { return a.issued.audience(a.ClientID) }
 func (a *authRequest) GetAuthTime() time.Time {
 	return a.AuthTime
 }
@@ -123,12 +144,13 @@ type refreshRequest struct {
 	scopes    []string
 	assertion *core.IdentityAssertion
 	client    *core.ProtocolClient
+	issued    issuedAccess
 }
 
 var _ op.RefreshTokenRequest = (*refreshRequest)(nil)
 
 func (r *refreshRequest) GetAMR() []string            { return r.assertion.AuthMethods }
-func (r *refreshRequest) GetAudience() []string       { return []string{r.assertion.Audience} }
+func (r *refreshRequest) GetAudience() []string       { return r.issued.audience(r.assertion.Audience) }
 func (r *refreshRequest) GetAuthTime() time.Time      { return r.assertion.AuthTime }
 func (r *refreshRequest) GetClientID() string         { return r.assertion.Audience }
 func (r *refreshRequest) GetScopes() []string         { return r.scopes }
@@ -136,18 +158,23 @@ func (r *refreshRequest) GetSubject() string          { return r.assertion.Subje
 func (r *refreshRequest) SetCurrentScopes(s []string) { r.scopes = s }
 
 // serviceAccountRequest is a client_credentials grant. Its token is already
-// recorded (IssueServiceAccountToken): the library only signs it. Subject
-// and audience are the client_id: there is no user.
+// recorded (IssueServiceAccountToken): the library only signs it. Subject is
+// the client_id: there is no user. Audience: the API resources asked for,
+// else the client_id. No ID token, so no audience to keep apart.
 type serviceAccountRequest struct {
 	token *domain.Token
 }
 
 var _ op.TokenRequest = (*serviceAccountRequest)(nil)
 
-func (r *serviceAccountRequest) GetSubject() string    { return r.token.Subject }
-func (r *serviceAccountRequest) GetAudience() []string { return []string{r.token.Subject} }
-func (r *serviceAccountRequest) GetScopes() []string   { return r.token.Scopes }
-
+func (r *serviceAccountRequest) GetSubject() string { return r.token.Subject }
+func (r *serviceAccountRequest) GetAudience() []string {
+	if len(r.token.Audience) > 0 {
+		return r.token.Audience
+	}
+	return []string{r.token.Subject}
+}
+func (r *serviceAccountRequest) GetScopes() []string { return r.token.Scopes }
 
 var errAuthRequestNotFound = errors.New("oidc: authorization request not found or expired")
 

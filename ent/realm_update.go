@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"sso.internal/sso/ent/apiresource"
 	"sso.internal/sso/ent/auditlog"
 	"sso.internal/sso/ent/bulkjob"
 	"sso.internal/sso/ent/clientapp"
@@ -193,6 +194,21 @@ func (_u *RealmUpdate) AddClientScopes(v ...*ClientScope) *RealmUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.AddClientScopeIDs(ids...)
+}
+
+// AddAPIResourceIDs adds the "api_resources" edge to the ApiResource entity by IDs.
+func (_u *RealmUpdate) AddAPIResourceIDs(ids ...string) *RealmUpdate {
+	_u.mutation.AddAPIResourceIDs(ids...)
+	return _u
+}
+
+// AddAPIResources adds the "api_resources" edges to the ApiResource entity.
+func (_u *RealmUpdate) AddAPIResources(v ...*ApiResource) *RealmUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddAPIResourceIDs(ids...)
 }
 
 // AddClientAppIDs adds the "client_apps" edge to the ClientApp entity by IDs.
@@ -487,6 +503,27 @@ func (_u *RealmUpdate) RemoveClientScopes(v ...*ClientScope) *RealmUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveClientScopeIDs(ids...)
+}
+
+// ClearAPIResources clears all "api_resources" edges to the ApiResource entity.
+func (_u *RealmUpdate) ClearAPIResources() *RealmUpdate {
+	_u.mutation.ClearAPIResources()
+	return _u
+}
+
+// RemoveAPIResourceIDs removes the "api_resources" edge to ApiResource entities by IDs.
+func (_u *RealmUpdate) RemoveAPIResourceIDs(ids ...string) *RealmUpdate {
+	_u.mutation.RemoveAPIResourceIDs(ids...)
+	return _u
+}
+
+// RemoveAPIResources removes "api_resources" edges to ApiResource entities.
+func (_u *RealmUpdate) RemoveAPIResources(v ...*ApiResource) *RealmUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveAPIResourceIDs(ids...)
 }
 
 // ClearClientApps clears all "client_apps" edges to the ClientApp entity.
@@ -1023,6 +1060,51 @@ func (_u *RealmUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(clientscope.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.APIResourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.APIResourcesTable,
+			Columns: []string{realm.APIResourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedAPIResourcesIDs(); len(nodes) > 0 && !_u.mutation.APIResourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.APIResourcesTable,
+			Columns: []string{realm.APIResourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.APIResourcesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.APIResourcesTable,
+			Columns: []string{realm.APIResourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
@@ -1723,6 +1805,21 @@ func (_u *RealmUpdateOne) AddClientScopes(v ...*ClientScope) *RealmUpdateOne {
 	return _u.AddClientScopeIDs(ids...)
 }
 
+// AddAPIResourceIDs adds the "api_resources" edge to the ApiResource entity by IDs.
+func (_u *RealmUpdateOne) AddAPIResourceIDs(ids ...string) *RealmUpdateOne {
+	_u.mutation.AddAPIResourceIDs(ids...)
+	return _u
+}
+
+// AddAPIResources adds the "api_resources" edges to the ApiResource entity.
+func (_u *RealmUpdateOne) AddAPIResources(v ...*ApiResource) *RealmUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddAPIResourceIDs(ids...)
+}
+
 // AddClientAppIDs adds the "client_apps" edge to the ClientApp entity by IDs.
 func (_u *RealmUpdateOne) AddClientAppIDs(ids ...string) *RealmUpdateOne {
 	_u.mutation.AddClientAppIDs(ids...)
@@ -2015,6 +2112,27 @@ func (_u *RealmUpdateOne) RemoveClientScopes(v ...*ClientScope) *RealmUpdateOne 
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveClientScopeIDs(ids...)
+}
+
+// ClearAPIResources clears all "api_resources" edges to the ApiResource entity.
+func (_u *RealmUpdateOne) ClearAPIResources() *RealmUpdateOne {
+	_u.mutation.ClearAPIResources()
+	return _u
+}
+
+// RemoveAPIResourceIDs removes the "api_resources" edge to ApiResource entities by IDs.
+func (_u *RealmUpdateOne) RemoveAPIResourceIDs(ids ...string) *RealmUpdateOne {
+	_u.mutation.RemoveAPIResourceIDs(ids...)
+	return _u
+}
+
+// RemoveAPIResources removes "api_resources" edges to ApiResource entities.
+func (_u *RealmUpdateOne) RemoveAPIResources(v ...*ApiResource) *RealmUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveAPIResourceIDs(ids...)
 }
 
 // ClearClientApps clears all "client_apps" edges to the ClientApp entity.
@@ -2581,6 +2699,51 @@ func (_u *RealmUpdateOne) sqlSave(ctx context.Context) (_node *Realm, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(clientscope.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.APIResourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.APIResourcesTable,
+			Columns: []string{realm.APIResourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedAPIResourcesIDs(); len(nodes) > 0 && !_u.mutation.APIResourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.APIResourcesTable,
+			Columns: []string{realm.APIResourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.APIResourcesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   realm.APIResourcesTable,
+			Columns: []string{realm.APIResourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

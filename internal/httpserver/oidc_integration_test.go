@@ -65,6 +65,8 @@ type discoveryDoc struct {
 	ResponseTypes         []string `json:"response_types_supported"`
 	CodeChallengeMethods  []string `json:"code_challenge_methods_supported"`
 	IDTokenAlgs           []string `json:"id_token_signing_alg_values_supported"`
+	TokenAuthMethods      []string `json:"token_endpoint_auth_methods_supported"`
+	TokenAuthAlgs         []string `json:"token_endpoint_auth_signing_alg_values_supported"`
 }
 
 type oidcTestEnv struct {
@@ -157,7 +159,7 @@ func setupOIDCTestEnv(t *testing.T, opts ...httpserver.Option) *oidcTestEnv {
 	idp := service.NewIdentityCore(service.IdentityCoreDeps{
 		Auth: auth, Sessions: sessions, RBAC: rbac, Users: users, Clients: clients, Realms: realms,
 		Tokens: tokens, SigningKeys: signingKeys, KeyManager: km, MFA: mfa, Consent: consent, Audit: audit,
-		Accounts: known, Timeouts: timeouts,
+		Accounts: known, Timeouts: timeouts, Resources: entstore.NewApiResourceRepository(client),
 	}, service.WithIdentityCoreClock(clock.Now))
 
 	// The issuer must be the server's own URL, known once it listens.

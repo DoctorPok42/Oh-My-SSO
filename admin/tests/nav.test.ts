@@ -43,7 +43,9 @@ describe("console menus", () => {
   });
 
   it("keeps a section for one readable page, with that page only", () => {
-    expect(pagesOf(["client_scope:read"], "applications")).toEqual(["client-scopes"]);
+    // API resources group client scopes: the same right shows both.
+    expect(pagesOf(["client_scope:read"], "applications")).toEqual(["client-scopes", "api-resources"]);
+    expect(pagesOf(["client:read"], "applications")).toEqual(["clients"]);
     expect(pagesOf(["timeout:read"], "access")).toEqual(["timeouts"]);
     expect(ids(["client_scope:read"])).toEqual(["applications"]);
   });
@@ -63,7 +65,7 @@ describe("console menus", () => {
 
   it("does not change the catalogue when filtering", () => {
     readableNav({ permissions: ["client:read"] });
-    expect(NAV.find((s) => s.id === "applications")?.pages).toHaveLength(2);
+    expect(NAV.find((s) => s.id === "applications")?.pages).toHaveLength(3);
   });
 });
 

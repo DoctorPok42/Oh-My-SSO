@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
+	"sso.internal/sso/ent/apiresource"
 	"sso.internal/sso/ent/clientapp"
 	"sso.internal/sso/ent/clientscope"
 	"sso.internal/sso/ent/clientscopemapping"
@@ -167,6 +168,21 @@ func (_u *ClientScopeUpdate) AddClientApps(v ...*ClientApp) *ClientScopeUpdate {
 	return _u.AddClientAppIDs(ids...)
 }
 
+// AddAPIResourceIDs adds the "api_resources" edge to the ApiResource entity by IDs.
+func (_u *ClientScopeUpdate) AddAPIResourceIDs(ids ...string) *ClientScopeUpdate {
+	_u.mutation.AddAPIResourceIDs(ids...)
+	return _u
+}
+
+// AddAPIResources adds the "api_resources" edges to the ApiResource entity.
+func (_u *ClientScopeUpdate) AddAPIResources(v ...*ApiResource) *ClientScopeUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddAPIResourceIDs(ids...)
+}
+
 // AddRoleClientScopeIDs adds the "role_client_scopes" edge to the RoleClientScope entity by IDs.
 func (_u *ClientScopeUpdate) AddRoleClientScopeIDs(ids ...string) *ClientScopeUpdate {
 	_u.mutation.AddRoleClientScopeIDs(ids...)
@@ -278,6 +294,27 @@ func (_u *ClientScopeUpdate) RemoveClientApps(v ...*ClientApp) *ClientScopeUpdat
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveClientAppIDs(ids...)
+}
+
+// ClearAPIResources clears all "api_resources" edges to the ApiResource entity.
+func (_u *ClientScopeUpdate) ClearAPIResources() *ClientScopeUpdate {
+	_u.mutation.ClearAPIResources()
+	return _u
+}
+
+// RemoveAPIResourceIDs removes the "api_resources" edge to ApiResource entities by IDs.
+func (_u *ClientScopeUpdate) RemoveAPIResourceIDs(ids ...string) *ClientScopeUpdate {
+	_u.mutation.RemoveAPIResourceIDs(ids...)
+	return _u
+}
+
+// RemoveAPIResources removes "api_resources" edges to ApiResource entities.
+func (_u *ClientScopeUpdate) RemoveAPIResources(v ...*ApiResource) *ClientScopeUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveAPIResourceIDs(ids...)
 }
 
 // ClearRoleClientScopes clears all "role_client_scopes" edges to the RoleClientScope entity.
@@ -636,6 +673,51 @@ func (_u *ClientScopeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.APIResourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   clientscope.APIResourcesTable,
+			Columns: clientscope.APIResourcesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedAPIResourcesIDs(); len(nodes) > 0 && !_u.mutation.APIResourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   clientscope.APIResourcesTable,
+			Columns: clientscope.APIResourcesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.APIResourcesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   clientscope.APIResourcesTable,
+			Columns: clientscope.APIResourcesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.RoleClientScopesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -922,6 +1004,21 @@ func (_u *ClientScopeUpdateOne) AddClientApps(v ...*ClientApp) *ClientScopeUpdat
 	return _u.AddClientAppIDs(ids...)
 }
 
+// AddAPIResourceIDs adds the "api_resources" edge to the ApiResource entity by IDs.
+func (_u *ClientScopeUpdateOne) AddAPIResourceIDs(ids ...string) *ClientScopeUpdateOne {
+	_u.mutation.AddAPIResourceIDs(ids...)
+	return _u
+}
+
+// AddAPIResources adds the "api_resources" edges to the ApiResource entity.
+func (_u *ClientScopeUpdateOne) AddAPIResources(v ...*ApiResource) *ClientScopeUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddAPIResourceIDs(ids...)
+}
+
 // AddRoleClientScopeIDs adds the "role_client_scopes" edge to the RoleClientScope entity by IDs.
 func (_u *ClientScopeUpdateOne) AddRoleClientScopeIDs(ids ...string) *ClientScopeUpdateOne {
 	_u.mutation.AddRoleClientScopeIDs(ids...)
@@ -1033,6 +1130,27 @@ func (_u *ClientScopeUpdateOne) RemoveClientApps(v ...*ClientApp) *ClientScopeUp
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveClientAppIDs(ids...)
+}
+
+// ClearAPIResources clears all "api_resources" edges to the ApiResource entity.
+func (_u *ClientScopeUpdateOne) ClearAPIResources() *ClientScopeUpdateOne {
+	_u.mutation.ClearAPIResources()
+	return _u
+}
+
+// RemoveAPIResourceIDs removes the "api_resources" edge to ApiResource entities by IDs.
+func (_u *ClientScopeUpdateOne) RemoveAPIResourceIDs(ids ...string) *ClientScopeUpdateOne {
+	_u.mutation.RemoveAPIResourceIDs(ids...)
+	return _u
+}
+
+// RemoveAPIResources removes "api_resources" edges to ApiResource entities.
+func (_u *ClientScopeUpdateOne) RemoveAPIResources(v ...*ApiResource) *ClientScopeUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveAPIResourceIDs(ids...)
 }
 
 // ClearRoleClientScopes clears all "role_client_scopes" edges to the RoleClientScope entity.
@@ -1418,6 +1536,51 @@ func (_u *ClientScopeUpdateOne) sqlSave(ctx context.Context) (_node *ClientScope
 		edge.Target.Fields = specE.Fields
 		if specE.ID.Value != nil {
 			edge.Target.Fields = append(edge.Target.Fields, specE.ID)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.APIResourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   clientscope.APIResourcesTable,
+			Columns: clientscope.APIResourcesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedAPIResourcesIDs(); len(nodes) > 0 && !_u.mutation.APIResourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   clientscope.APIResourcesTable,
+			Columns: clientscope.APIResourcesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.APIResourcesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   clientscope.APIResourcesTable,
+			Columns: clientscope.APIResourcesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apiresource.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}

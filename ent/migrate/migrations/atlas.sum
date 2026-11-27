@@ -1,4 +1,4 @@
-h1:x1s37Z1pqsePg9vfwP4vTeFc7HAiBT0KSAoxkp5SMeQ=
+h1:PIDVUr/fDtiE1Tzj/OukpadDMn7uFmlJhlqbzyFu1tk=
 20260911235655_unnamed_migration.sql h1:T9jMdh02PzNWOEBxR23qkTvS3ASuXIdCln0XXX+ZPrI=
 20260924144340_sessions.sql h1:BaRgGUAxm3O7Z1hNUDew1IQ4fl0JLAzo0miODlR7tAw=
 20261005191224_pairwise_subject_and_amr.sql h1:qt5P4RmPSXWuYPWctJV5/qMKs1D+nXuIf577rG8Iucc=
@@ -39,3 +39,4 @@ h1:x1s37Z1pqsePg9vfwP4vTeFc7HAiBT0KSAoxkp5SMeQ=
 20261120225941_account_deletion.sql h1:Gh7U1vYv5scwY47ZilP21EezwyczEiYAGZAHScI58P0=
 20261121100000_email_change.sql h1:suQ9mGJ3y0pRjC82QLbNHPJTRzm/gk+m+Bu3VFErZng=
 20261124152335_service_accounts.sql h1:BaFABpqHuwcjTEAJpzD92szJ0svCbvKygcl6jzVJ4q0=
+20261127105041_client_keys_api_resources.sql h1:equVYl4F78pabj9gitxjT0/2rwwY/BOS0z8p3xq3KlM=

@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"sso.internal/sso/ent/apiresource"
 	"sso.internal/sso/ent/auditlog"
 	"sso.internal/sso/ent/bulkjob"
 	"sso.internal/sso/ent/clientapp"
@@ -45,6 +46,7 @@ type RealmQuery struct {
 	withGroups            *GroupQuery
 	withPermissions       *PermissionQuery
 	withClientScopes      *ClientScopeQuery
+	withAPIResources      *ApiResourceQuery
 	withClientApps        *ClientAppQuery
 	withSessions          *SessionQuery
 	withSigningKeys       *SigningKeyQuery
@@ -196,6 +198,28 @@ func (_q *RealmQuery) QueryClientScopes() *ClientScopeQuery {
 			sqlgraph.From(realm.Table, realm.FieldID, selector),
 			sqlgraph.To(clientscope.Table, clientscope.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, realm.ClientScopesTable, realm.ClientScopesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryAPIResources chains the current query on the "api_resources" edge.
+func (_q *RealmQuery) QueryAPIResources() *ApiResourceQuery {
+	query := (&ApiResourceClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(realm.Table, realm.FieldID, selector),
+			sqlgraph.To(apiresource.Table, apiresource.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, realm.APIResourcesTable, realm.APIResourcesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -664,6 +688,7 @@ func (_q *RealmQuery) Clone() *RealmQuery {
 		withGroups:            _q.withGroups.Clone(),
 		withPermissions:       _q.withPermissions.Clone(),
 		withClientScopes:      _q.withClientScopes.Clone(),
+		withAPIResources:      _q.withAPIResources.Clone(),
 		withClientApps:        _q.withClientApps.Clone(),
 		withSessions:          _q.withSessions.Clone(),
 		withSigningKeys:       _q.withSigningKeys.Clone(),
@@ -734,6 +759,17 @@ func (_q *RealmQuery) WithClientScopes(opts ...func(*ClientScopeQuery)) *RealmQu
 		opt(query)
 	}
 	_q.withClientScopes = query
+	return _q
+}
+
+// WithAPIResources tells the query-builder to eager-load the nodes that are connected to
+// the "api_resources" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *RealmQuery) WithAPIResources(opts ...func(*ApiResourceQuery)) *RealmQuery {
+	query := (&ApiResourceClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withAPIResources = query
 	return _q
 }
 
@@ -947,12 +983,13 @@ func (_q *RealmQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Realm,
 	var (
 		nodes       = []*Realm{}
 		_spec       = _q.querySpec()
-		loadedTypes = [17]bool{
+		loadedTypes = [18]bool{
 			_q.withUsers != nil,
 			_q.withRoles != nil,
 			_q.withGroups != nil,
 			_q.withPermissions != nil,
 			_q.withClientScopes != nil,
+			_q.withAPIResources != nil,
 			_q.withClientApps != nil,
 			_q.withSessions != nil,
 			_q.withSigningKeys != nil,
@@ -1017,6 +1054,13 @@ func (_q *RealmQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Realm,
 		if err := _q.loadClientScopes(ctx, query, nodes,
 			func(n *Realm) { n.Edges.ClientScopes = []*ClientScope{} },
 			func(n *Realm, e *ClientScope) { n.Edges.ClientScopes = append(n.Edges.ClientScopes, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withAPIResources; query != nil {
+		if err := _q.loadAPIResources(ctx, query, nodes,
+			func(n *Realm) { n.Edges.APIResources = []*ApiResource{} },
+			func(n *Realm, e *ApiResource) { n.Edges.APIResources = append(n.Edges.APIResources, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1241,6 +1285,36 @@ func (_q *RealmQuery) loadClientScopes(ctx context.Context, query *ClientScopeQu
 	}
 	query.Where(predicate.ClientScope(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(realm.ClientScopesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.RealmID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "realm_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *RealmQuery) loadAPIResources(ctx context.Context, query *ApiResourceQuery, nodes []*Realm, init func(*Realm), assign func(*Realm, *ApiResource)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*Realm)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(apiresource.FieldRealmID)
+	}
+	query.Where(predicate.ApiResource(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(realm.APIResourcesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

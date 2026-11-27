@@ -583,6 +583,29 @@ func HasClientAppsWith(preds ...predicate.ClientApp) predicate.ClientScope {
 	})
 }
 
+// HasAPIResources applies the HasEdge predicate on the "api_resources" edge.
+func HasAPIResources() predicate.ClientScope {
+	return predicate.ClientScope(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, APIResourcesTable, APIResourcesPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasAPIResourcesWith applies the HasEdge predicate on the "api_resources" edge with a given conditions (other predicates).
+func HasAPIResourcesWith(preds ...predicate.ApiResource) predicate.ClientScope {
+	return predicate.ClientScope(func(s *sql.Selector) {
+		step := newAPIResourcesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasRoleClientScopes applies the HasEdge predicate on the "role_client_scopes" edge.
 func HasRoleClientScopes() predicate.ClientScope {
 	return predicate.ClientScope(func(s *sql.Selector) {

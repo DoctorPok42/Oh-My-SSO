@@ -34,6 +34,9 @@ func (r *entTokenRepository) Create(ctx context.Context, p repository.CreateToke
 	if p.Scopes != nil {
 		builder = builder.SetScopes(p.Scopes)
 	}
+	if len(p.Audience) > 0 {
+		builder = builder.SetAudience(p.Audience)
+	}
 	if p.TokenHash != "" {
 		builder = builder.SetTokenHash(p.TokenHash)
 	}
@@ -177,6 +180,7 @@ func toDomainToken(e *ent.Token) *domain.Token {
 		ExpiresAt:   e.ExpiresAt,
 		Revoked:     e.Revoked,
 		Scopes:      e.Scopes,
+		Audience:    e.Audience,
 		TokenHash:   e.TokenHash,
 		FamilyID:    e.FamilyID,
 

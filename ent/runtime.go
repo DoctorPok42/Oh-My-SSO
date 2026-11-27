@@ -5,6 +5,7 @@ package ent
 import (
 	"time"
 
+	"sso.internal/sso/ent/apiresource"
 	"sso.internal/sso/ent/auditlog"
 	"sso.internal/sso/ent/bulkjob"
 	"sso.internal/sso/ent/clientapp"
@@ -46,6 +47,36 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	apiresourceFields := schema.ApiResource{}.Fields()
+	_ = apiresourceFields
+	// apiresourceDescRealmID is the schema descriptor for realm_id field.
+	apiresourceDescRealmID := apiresourceFields[1].Descriptor()
+	// apiresource.RealmIDValidator is a validator for the "realm_id" field. It is called by the builders before save.
+	apiresource.RealmIDValidator = apiresourceDescRealmID.Validators[0].(func(string) error)
+	// apiresourceDescIdentifier is the schema descriptor for identifier field.
+	apiresourceDescIdentifier := apiresourceFields[2].Descriptor()
+	// apiresource.IdentifierValidator is a validator for the "identifier" field. It is called by the builders before save.
+	apiresource.IdentifierValidator = apiresourceDescIdentifier.Validators[0].(func(string) error)
+	// apiresourceDescName is the schema descriptor for name field.
+	apiresourceDescName := apiresourceFields[3].Descriptor()
+	// apiresource.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	apiresource.NameValidator = apiresourceDescName.Validators[0].(func(string) error)
+	// apiresourceDescCreatedAt is the schema descriptor for created_at field.
+	apiresourceDescCreatedAt := apiresourceFields[5].Descriptor()
+	// apiresource.DefaultCreatedAt holds the default value on creation for the created_at field.
+	apiresource.DefaultCreatedAt = apiresourceDescCreatedAt.Default.(func() time.Time)
+	// apiresourceDescUpdatedAt is the schema descriptor for updated_at field.
+	apiresourceDescUpdatedAt := apiresourceFields[6].Descriptor()
+	// apiresource.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	apiresource.DefaultUpdatedAt = apiresourceDescUpdatedAt.Default.(func() time.Time)
+	// apiresource.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	apiresource.UpdateDefaultUpdatedAt = apiresourceDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// apiresourceDescID is the schema descriptor for id field.
+	apiresourceDescID := apiresourceFields[0].Descriptor()
+	// apiresource.DefaultID holds the default value on creation for the id field.
+	apiresource.DefaultID = apiresourceDescID.Default.(func() string)
+	// apiresource.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	apiresource.IDValidator = apiresourceDescID.Validators[0].(func(string) error)
 	auditlogFields := schema.AuditLog{}.Fields()
 	_ = auditlogFields
 	// auditlogDescRealmID is the schema descriptor for realm_id field.
@@ -177,47 +208,47 @@ func init() {
 	// clientapp.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	clientapp.UpdateDefaultUpdatedAt = clientappDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// clientappDescAccessTokenTTL is the schema descriptor for access_token_ttl field.
-	clientappDescAccessTokenTTL := clientappFields[19].Descriptor()
+	clientappDescAccessTokenTTL := clientappFields[21].Descriptor()
 	// clientapp.DefaultAccessTokenTTL holds the default value on creation for the access_token_ttl field.
 	clientapp.DefaultAccessTokenTTL = clientappDescAccessTokenTTL.Default.(int)
 	// clientappDescRefreshTokenTTL is the schema descriptor for refresh_token_ttl field.
-	clientappDescRefreshTokenTTL := clientappFields[20].Descriptor()
+	clientappDescRefreshTokenTTL := clientappFields[22].Descriptor()
 	// clientapp.DefaultRefreshTokenTTL holds the default value on creation for the refresh_token_ttl field.
 	clientapp.DefaultRefreshTokenTTL = clientappDescRefreshTokenTTL.Default.(int)
 	// clientappDescIDTokenTTL is the schema descriptor for id_token_ttl field.
-	clientappDescIDTokenTTL := clientappFields[21].Descriptor()
+	clientappDescIDTokenTTL := clientappFields[23].Descriptor()
 	// clientapp.DefaultIDTokenTTL holds the default value on creation for the id_token_ttl field.
 	clientapp.DefaultIDTokenTTL = clientappDescIDTokenTTL.Default.(int)
 	// clientappDescRequirePkce is the schema descriptor for require_pkce field.
-	clientappDescRequirePkce := clientappFields[22].Descriptor()
+	clientappDescRequirePkce := clientappFields[24].Descriptor()
 	// clientapp.DefaultRequirePkce holds the default value on creation for the require_pkce field.
 	clientapp.DefaultRequirePkce = clientappDescRequirePkce.Default.(bool)
 	// clientappDescWantAssertionSigned is the schema descriptor for want_assertion_signed field.
-	clientappDescWantAssertionSigned := clientappFields[28].Descriptor()
+	clientappDescWantAssertionSigned := clientappFields[30].Descriptor()
 	// clientapp.DefaultWantAssertionSigned holds the default value on creation for the want_assertion_signed field.
 	clientapp.DefaultWantAssertionSigned = clientappDescWantAssertionSigned.Default.(bool)
 	// clientappDescWantResponseSigned is the schema descriptor for want_response_signed field.
-	clientappDescWantResponseSigned := clientappFields[29].Descriptor()
+	clientappDescWantResponseSigned := clientappFields[31].Descriptor()
 	// clientapp.DefaultWantResponseSigned holds the default value on creation for the want_response_signed field.
 	clientapp.DefaultWantResponseSigned = clientappDescWantResponseSigned.Default.(bool)
 	// clientappDescRequireConsent is the schema descriptor for require_consent field.
-	clientappDescRequireConsent := clientappFields[32].Descriptor()
+	clientappDescRequireConsent := clientappFields[34].Descriptor()
 	// clientapp.DefaultRequireConsent holds the default value on creation for the require_consent field.
 	clientapp.DefaultRequireConsent = clientappDescRequireConsent.Default.(bool)
 	// clientappDescSubjectType is the schema descriptor for subject_type field.
-	clientappDescSubjectType := clientappFields[34].Descriptor()
+	clientappDescSubjectType := clientappFields[36].Descriptor()
 	// clientapp.DefaultSubjectType holds the default value on creation for the subject_type field.
 	clientapp.DefaultSubjectType = schema.ClientAppSubjectType(clientappDescSubjectType.Default.(string))
 	// clientappDescSessionIdleMinutes is the schema descriptor for session_idle_minutes field.
-	clientappDescSessionIdleMinutes := clientappFields[36].Descriptor()
+	clientappDescSessionIdleMinutes := clientappFields[38].Descriptor()
 	// clientapp.SessionIdleMinutesValidator is a validator for the "session_idle_minutes" field. It is called by the builders before save.
 	clientapp.SessionIdleMinutesValidator = clientappDescSessionIdleMinutes.Validators[0].(func(int) error)
 	// clientappDescSessionMaxMinutes is the schema descriptor for session_max_minutes field.
-	clientappDescSessionMaxMinutes := clientappFields[37].Descriptor()
+	clientappDescSessionMaxMinutes := clientappFields[39].Descriptor()
 	// clientapp.SessionMaxMinutesValidator is a validator for the "session_max_minutes" field. It is called by the builders before save.
 	clientapp.SessionMaxMinutesValidator = clientappDescSessionMaxMinutes.Validators[0].(func(int) error)
 	// clientappDescMfaPolicy is the schema descriptor for mfa_policy field.
-	clientappDescMfaPolicy := clientappFields[38].Descriptor()
+	clientappDescMfaPolicy := clientappFields[40].Descriptor()
 	// clientapp.DefaultMfaPolicy holds the default value on creation for the mfa_policy field.
 	clientapp.DefaultMfaPolicy = schema.ClientAppMFAPolicy(clientappDescMfaPolicy.Default.(string))
 	// clientappDescID is the schema descriptor for id field.

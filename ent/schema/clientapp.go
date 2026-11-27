@@ -92,6 +92,10 @@ func (ClientApp) Fields() []ent.Field {
 		field.JSON("allowed_grant_types", []string{}).Optional(),
 		field.JSON("allowed_scopes", []string{}).Optional(),
 		field.String("token_endpoint_auth_method").Optional(),
+		// private_key_jwt (RFC 7523): the client's public keys as a JWKS
+		// document, or the https URL it publishes them at. One of the two.
+		field.Text("jwks").Optional(),
+		field.String("jwks_uri").Optional(),
 		field.String("id_token_signed_alg").Optional(),
 		field.Int("access_token_ttl").Default(300),
 		field.Int("refresh_token_ttl").Default(2592000),

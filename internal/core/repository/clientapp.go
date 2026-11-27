@@ -51,6 +51,8 @@ type UpdateClientAppParams struct {
 	AllowedGrantTypes       []string
 	AllowedScopes           []string
 	TokenEndpointAuthMethod *string
+	JWKS                    *string // "": cleared
+	JWKSURI                 *string // "": cleared
 	IDTokenSignedAlg        *string
 	AccessTokenTTL          *int
 	RefreshTokenTTL         *int

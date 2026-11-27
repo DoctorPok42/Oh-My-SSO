@@ -63,6 +63,8 @@ func (c *client) AuthMethod() oidc.AuthMethod {
 		return oidc.AuthMethodNone
 	case c.pc.App.TokenEndpointAuthMethod == "client_secret_post":
 		return oidc.AuthMethodPost
+	case c.pc.App.TokenEndpointAuthMethod == string(oidc.AuthMethodPrivateKeyJWT):
+		return oidc.AuthMethodPrivateKeyJWT
 	default:
 		return oidc.AuthMethodBasic
 	}

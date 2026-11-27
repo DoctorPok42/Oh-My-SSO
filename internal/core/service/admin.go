@@ -131,11 +131,13 @@ func asAdminError(err error) error {
 type AdminDeps struct {
 	// Tx makes the creation and the change of an account one transaction
 	// each. Required: repository.NoTransaction{} for in-memory stores.
-	Tx          repository.Transactor
-	Realms      repository.RealmRepository
-	Users       repository.UserRepository
-	Clients     repository.ClientRepository
-	Scopes      repository.ClientScopeRepository
+	Tx      repository.Transactor
+	Realms  repository.RealmRepository
+	Users   repository.UserRepository
+	Clients repository.ClientRepository
+	Scopes  repository.ClientScopeRepository
+	// Resources: the API resources (RFC 8707). Required by the admin service.
+	Resources   repository.ApiResourceRepository
 	Roles       repository.RoleRepository
 	Groups      repository.GroupRepository
 	Permissions repository.PermissionRepository

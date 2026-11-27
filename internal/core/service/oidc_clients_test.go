@@ -95,7 +95,7 @@ func TestNormalizeOIDCClient(t *testing.T) {
 		"public without PKCE":   func(in *service.OIDCClientInput) { in.Public = true; in.DisablePKCE = true },
 		"public with a secret":  func(in *service.OIDCClientInput) { in.Public = true; in.Secret = strings.Repeat("x", 40) },
 		"short supplied secret": func(in *service.OIDCClientInput) { in.Secret = "too-short" },
-		"unknown auth method":   func(in *service.OIDCClientInput) { in.TokenEndpointAuthMethod = "private_key_jwt" },
+		"unknown auth method":   func(in *service.OIDCClientInput) { in.TokenEndpointAuthMethod = "tls_client_auth" },
 		"bad post-logout URI":   func(in *service.OIDCClientInput) { in.PostLogoutRedirectURIs = []string{"http://evil.example/"} },
 	}
 	for name, mod := range refused {

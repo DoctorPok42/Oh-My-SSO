@@ -16,12 +16,11 @@ import (
 	"sso.internal/sso/internal/core/repository"
 )
 
-
 const (
 	// Used when the client row has no usable value.
 	defaultAccessTokenTTL  = 5 * time.Minute
-	defaultRefreshTokenTTL = 30 * 24 * time.Hour)
-
+	defaultRefreshTokenTTL = 30 * 24 * time.Hour
+)
 
 func (s *IdentityCoreService) LookupClient(ctx context.Context, realmID string, protocol domain.ClientAppProtocol, protocolID string) (*core.ProtocolClient, error) {
 	if realmID == "" || protocolID == "" {
@@ -84,23 +83,28 @@ func (s *IdentityCoreService) AuthenticateClient(ctx context.Context, clientRef,
 	if err != nil {
 		return fmt.Errorf("authenticate client: %w", err)
 	}
-	if app.IsDeleted() || app.Status != domain.ClientAppActive ||
-		app.ClientType == domain.ClientAppTypePublic || !verifyClientSecret(secret, app.ClientSecretHash) {
+	// A private_key_jwt client proves itself with a signed assertion: an old
+	// secret left from before the switch must not work any more.
+	if app.IsDeleted() || app.Status != domain.ClientAppActive || app.ClientType == domain.ClientAppTypePublic ||
+		app.TokenEndpointAuthMethod == AuthMethodPrivateKeyJWT || !verifyClientSecret(secret, app.ClientSecretHash) {
 		return core.ErrInvalidClientSecret
 	}
 	return nil
 }
-
 
 func (s *IdentityCoreService) IssueTokens(ctx context.Context, req core.TokenRequest) (*core.IssuedTokens, error) {
 	sess, client, err := s.tokenContext(ctx, req.SessionID, req.ClientRef)
 	if err != nil {
 		return nil, err
 	}
-	return s.issueTokens(ctx, sess, client, req.Scopes, uuid.NewString(), req.WithRefreshToken)
+	g, err := s.newTokenGrant(ctx, client.RealmID, req.Scopes, req.Resources, req.Audience)
+	if err != nil {
+		return nil, err
+	}
+	return s.issueTokens(ctx, sess, client, g, uuid.NewString(), req.WithRefreshToken)
 }
 
-func (s *IdentityCoreService) IssueServiceAccountToken(ctx context.Context, clientRef string, requested []string) (*domain.Token, error) {
+func (s *IdentityCoreService) IssueServiceAccountToken(ctx context.Context, clientRef string, requested, resources []string) (*domain.Token, error) {
 	client, err := s.clients.GetByID(ctx, clientRef)
 	if errors.Is(err, repository.ErrNotFound) {
 		return nil, core.ErrClientNotFound
@@ -132,6 +136,17 @@ func (s *IdentityCoreService) IssueServiceAccountToken(ctx context.Context, clie
 	for _, cs := range filterRequestedScopes(held, requested, required) {
 		scopes = append(scopes, cs.Name)
 	}
+	var audience []string
+	if len(resources) > 0 {
+		if audience, err = s.allowedResources(ctx, client.RealmID, resources, held); err != nil {
+			return nil, err
+		}
+		g, err := s.newTokenGrant(ctx, client.RealmID, scopes, audience, nil)
+		if err != nil {
+			return nil, err
+		}
+		scopes = g.accessScopes
+	}
 
 	tok, err := s.tokens.Create(ctx, repository.CreateTokenParams{
 		ClientRefID: client.ID,
@@ -139,6 +154,7 @@ func (s *IdentityCoreService) IssueServiceAccountToken(ctx context.Context, clie
 		JTI:         uuid.NewString(),
 		ExpiresAt:   s.now().Add(seconds(client.AccessTokenTTL, defaultAccessTokenTTL)),
 		Scopes:      scopes,
+		Audience:    audience,
 		Subject:     client.ClientID,
 	})
 	if err != nil {
@@ -158,6 +174,7 @@ func (s *IdentityCoreService) IssueServiceAccountToken(ctx context.Context, clie
 				"client_ref": client.ID,
 				"client_id":  client.ClientID,
 				"scopes":     scopes,
+				"audience":   audience,
 				"expires_at": tok.ExpiresAt,
 			},
 		}); err != nil {
@@ -194,7 +211,7 @@ func (s *IdentityCoreService) InspectRefreshToken(ctx context.Context, rawToken 
 	return tok, nil
 }
 
-func (s *IdentityCoreService) RotateRefreshToken(ctx context.Context, rawToken, clientRef string, scopes []string) (*core.IssuedTokens, error) {
+func (s *IdentityCoreService) RotateRefreshToken(ctx context.Context, rawToken, clientRef string, scopes, audience []string) (*core.IssuedTokens, error) {
 	old, err := s.InspectRefreshToken(ctx, rawToken)
 	if err != nil {
 		return nil, err
@@ -212,6 +229,11 @@ func (s *IdentityCoreService) RotateRefreshToken(ctx context.Context, rawToken, 
 	if err != nil {
 		return nil, err
 	}
+	// Before the claim: a wrong "resource" must not consume the token.
+	g, err := s.newTokenGrant(ctx, client.RealmID, scopes, old.Audience, audience)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.claimRefreshToken(ctx, old); err != nil {
 		return nil, err
 	}
@@ -222,7 +244,7 @@ func (s *IdentityCoreService) RotateRefreshToken(ctx context.Context, rawToken, 
 	if sess, err = s.sessions.TouchActive(ctx, sess.ID); err != nil {
 		return nil, err
 	}
-	issued, err := s.issueTokens(ctx, sess, client, scopes, old.FamilyID, true)
+	issued, err := s.issueTokens(ctx, sess, client, g, old.FamilyID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -335,11 +357,8 @@ func (s *IdentityCoreService) tokenContext(ctx context.Context, sessionID, clien
 }
 
 func (s *IdentityCoreService) issueTokens(ctx context.Context, sess *domain.Session, client *domain.ClientApp,
-	scopes []string, familyID string, withRefresh bool) (*core.IssuedTokens, error) {
+	g tokenGrant, familyID string, withRefresh bool) (*core.IssuedTokens, error) {
 	now := s.now()
-	if scopes == nil {
-		scopes = []string{}
-	}
 
 	access, err := s.tokens.Create(ctx, repository.CreateTokenParams{
 		SessionID:   sess.ID,
@@ -347,7 +366,8 @@ func (s *IdentityCoreService) issueTokens(ctx context.Context, sess *domain.Sess
 		Type:        domain.TokenAccessToken,
 		JTI:         uuid.NewString(),
 		ExpiresAt:   capToSession(now.Add(seconds(client.AccessTokenTTL, defaultAccessTokenTTL)), sess),
-		Scopes:      scopes,
+		Scopes:      g.accessScopes,
+		Audience:    g.audience,
 		FamilyID:    familyID,
 	})
 	if err != nil {
@@ -366,7 +386,8 @@ func (s *IdentityCoreService) issueTokens(ctx context.Context, sess *domain.Sess
 		Type:        domain.TokenRefreshToken,
 		JTI:         uuid.NewString(),
 		ExpiresAt:   capToSession(now.Add(seconds(client.RefreshTokenTTL, defaultRefreshTokenTTL)), sess),
-		Scopes:      scopes,
+		Scopes:      g.scopes,
+		Audience:    g.resources,
 		TokenHash:   HashSessionToken(raw),
 		FamilyID:    familyID,
 	})

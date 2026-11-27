@@ -58,6 +58,8 @@ func (ClientScope) Edges() []ent.Edge {
 		edge.From("client_apps", ClientApp.Type).
 			Ref("client_scopes").
 			Through("client_scope_mappings", ClientScopeMapping.Type),
+		edge.From("api_resources", ApiResource.Type).
+			Ref("scopes"),
 	}
 }
 

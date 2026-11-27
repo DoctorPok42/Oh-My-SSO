@@ -11,6 +11,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"sso.internal/sso/ent/apiresource"
 	"sso.internal/sso/ent/auditlog"
 	"sso.internal/sso/ent/bulkjob"
 	"sso.internal/sso/ent/clientapp"
@@ -58,6 +59,7 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
+	TypeApiResource            = "ApiResource"
 	TypeAuditLog               = "AuditLog"
 	TypeBulkJob                = "BulkJob"
 	TypeClientApp              = "ClientApp"
@@ -93,6 +95,769 @@ const (
 	TypeUser                   = "User"
 	TypeUserImportJob          = "UserImportJob"
 )
+
+// ApiResourceMutation represents an operation that mutates the ApiResource nodes in the graph.
+type ApiResourceMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *string
+	identifier    *string
+	name          *string
+	description   *string
+	created_at    *time.Time
+	updated_at    *time.Time
+	clearedFields map[string]struct{}
+	realm         *string
+	clearedrealm  bool
+	scopes        map[string]struct{}
+	removedscopes map[string]struct{}
+	clearedscopes bool
+	done          bool
+	oldValue      func(context.Context) (*ApiResource, error)
+	predicates    []predicate.ApiResource
+}
+
+var _ ent.Mutation = (*ApiResourceMutation)(nil)
+
+// apiresourceOption allows management of the mutation configuration using functional options.
+type apiresourceOption func(*ApiResourceMutation)
+
+// newApiResourceMutation creates new mutation for the ApiResource entity.
+func newApiResourceMutation(c config, op Op, opts ...apiresourceOption) *ApiResourceMutation {
+	m := &ApiResourceMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeApiResource,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withApiResourceID sets the ID field of the mutation.
+func withApiResourceID(id string) apiresourceOption {
+	return func(m *ApiResourceMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ApiResource
+		)
+		m.oldValue = func(ctx context.Context) (*ApiResource, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ApiResource.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withApiResource sets the old ApiResource of the mutation.
+func withApiResource(node *ApiResource) apiresourceOption {
+	return func(m *ApiResourceMutation) {
+		m.oldValue = func(context.Context) (*ApiResource, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ApiResourceMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ApiResourceMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of ApiResource entities.
+func (m *ApiResourceMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ApiResourceMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ApiResourceMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ApiResource.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetRealmID sets the "realm_id" field.
+func (m *ApiResourceMutation) SetRealmID(s string) {
+	m.realm = &s
+}
+
+// RealmID returns the value of the "realm_id" field in the mutation.
+func (m *ApiResourceMutation) RealmID() (r string, exists bool) {
+	v := m.realm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRealmID returns the old "realm_id" field's value of the ApiResource entity.
+// If the ApiResource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ApiResourceMutation) OldRealmID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRealmID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRealmID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRealmID: %w", err)
+	}
+	return oldValue.RealmID, nil
+}
+
+// ResetRealmID resets all changes to the "realm_id" field.
+func (m *ApiResourceMutation) ResetRealmID() {
+	m.realm = nil
+}
+
+// SetIdentifier sets the "identifier" field.
+func (m *ApiResourceMutation) SetIdentifier(s string) {
+	m.identifier = &s
+}
+
+// Identifier returns the value of the "identifier" field in the mutation.
+func (m *ApiResourceMutation) Identifier() (r string, exists bool) {
+	v := m.identifier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIdentifier returns the old "identifier" field's value of the ApiResource entity.
+// If the ApiResource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ApiResourceMutation) OldIdentifier(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIdentifier is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIdentifier requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIdentifier: %w", err)
+	}
+	return oldValue.Identifier, nil
+}
+
+// ResetIdentifier resets all changes to the "identifier" field.
+func (m *ApiResourceMutation) ResetIdentifier() {
+	m.identifier = nil
+}
+
+// SetName sets the "name" field.
+func (m *ApiResourceMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *ApiResourceMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the ApiResource entity.
+// If the ApiResource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ApiResourceMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *ApiResourceMutation) ResetName() {
+	m.name = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *ApiResourceMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *ApiResourceMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the ApiResource entity.
+// If the ApiResource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ApiResourceMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ClearDescription clears the value of the "description" field.
+func (m *ApiResourceMutation) ClearDescription() {
+	m.description = nil
+	m.clearedFields[apiresource.FieldDescription] = struct{}{}
+}
+
+// DescriptionCleared returns if the "description" field was cleared in this mutation.
+func (m *ApiResourceMutation) DescriptionCleared() bool {
+	_, ok := m.clearedFields[apiresource.FieldDescription]
+	return ok
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *ApiResourceMutation) ResetDescription() {
+	m.description = nil
+	delete(m.clearedFields, apiresource.FieldDescription)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ApiResourceMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ApiResourceMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the ApiResource entity.
+// If the ApiResource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ApiResourceMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ApiResourceMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ApiResourceMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ApiResourceMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the ApiResource entity.
+// If the ApiResource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ApiResourceMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ApiResourceMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearRealm clears the "realm" edge to the Realm entity.
+func (m *ApiResourceMutation) ClearRealm() {
+	m.clearedrealm = true
+	m.clearedFields[apiresource.FieldRealmID] = struct{}{}
+}
+
+// RealmCleared reports if the "realm" edge to the Realm entity was cleared.
+func (m *ApiResourceMutation) RealmCleared() bool {
+	return m.clearedrealm
+}
+
+// RealmIDs returns the "realm" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// RealmID instead. It exists only for internal usage by the builders.
+func (m *ApiResourceMutation) RealmIDs() (ids []string) {
+	if id := m.realm; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRealm resets all changes to the "realm" edge.
+func (m *ApiResourceMutation) ResetRealm() {
+	m.realm = nil
+	m.clearedrealm = false
+}
+
+// AddScopeIDs adds the "scopes" edge to the ClientScope entity by ids.
+func (m *ApiResourceMutation) AddScopeIDs(ids ...string) {
+	if m.scopes == nil {
+		m.scopes = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.scopes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearScopes clears the "scopes" edge to the ClientScope entity.
+func (m *ApiResourceMutation) ClearScopes() {
+	m.clearedscopes = true
+}
+
+// ScopesCleared reports if the "scopes" edge to the ClientScope entity was cleared.
+func (m *ApiResourceMutation) ScopesCleared() bool {
+	return m.clearedscopes
+}
+
+// RemoveScopeIDs removes the "scopes" edge to the ClientScope entity by IDs.
+func (m *ApiResourceMutation) RemoveScopeIDs(ids ...string) {
+	if m.removedscopes == nil {
+		m.removedscopes = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.scopes, ids[i])
+		m.removedscopes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedScopes returns the removed IDs of the "scopes" edge to the ClientScope entity.
+func (m *ApiResourceMutation) RemovedScopesIDs() (ids []string) {
+	for id := range m.removedscopes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ScopesIDs returns the "scopes" edge IDs in the mutation.
+func (m *ApiResourceMutation) ScopesIDs() (ids []string) {
+	for id := range m.scopes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetScopes resets all changes to the "scopes" edge.
+func (m *ApiResourceMutation) ResetScopes() {
+	m.scopes = nil
+	m.clearedscopes = false
+	m.removedscopes = nil
+}
+
+// Where appends a list predicates to the ApiResourceMutation builder.
+func (m *ApiResourceMutation) Where(ps ...predicate.ApiResource) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ApiResourceMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ApiResourceMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ApiResource, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ApiResourceMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ApiResourceMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ApiResource).
+func (m *ApiResourceMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ApiResourceMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.realm != nil {
+		fields = append(fields, apiresource.FieldRealmID)
+	}
+	if m.identifier != nil {
+		fields = append(fields, apiresource.FieldIdentifier)
+	}
+	if m.name != nil {
+		fields = append(fields, apiresource.FieldName)
+	}
+	if m.description != nil {
+		fields = append(fields, apiresource.FieldDescription)
+	}
+	if m.created_at != nil {
+		fields = append(fields, apiresource.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, apiresource.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ApiResourceMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case apiresource.FieldRealmID:
+		return m.RealmID()
+	case apiresource.FieldIdentifier:
+		return m.Identifier()
+	case apiresource.FieldName:
+		return m.Name()
+	case apiresource.FieldDescription:
+		return m.Description()
+	case apiresource.FieldCreatedAt:
+		return m.CreatedAt()
+	case apiresource.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ApiResourceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case apiresource.FieldRealmID:
+		return m.OldRealmID(ctx)
+	case apiresource.FieldIdentifier:
+		return m.OldIdentifier(ctx)
+	case apiresource.FieldName:
+		return m.OldName(ctx)
+	case apiresource.FieldDescription:
+		return m.OldDescription(ctx)
+	case apiresource.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case apiresource.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ApiResource field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ApiResourceMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case apiresource.FieldRealmID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRealmID(v)
+		return nil
+	case apiresource.FieldIdentifier:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIdentifier(v)
+		return nil
+	case apiresource.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case apiresource.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case apiresource.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case apiresource.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ApiResource field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ApiResourceMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ApiResourceMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ApiResourceMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ApiResource numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ApiResourceMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(apiresource.FieldDescription) {
+		fields = append(fields, apiresource.FieldDescription)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ApiResourceMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ApiResourceMutation) ClearField(name string) error {
+	switch name {
+	case apiresource.FieldDescription:
+		m.ClearDescription()
+		return nil
+	}
+	return fmt.Errorf("unknown ApiResource nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ApiResourceMutation) ResetField(name string) error {
+	switch name {
+	case apiresource.FieldRealmID:
+		m.ResetRealmID()
+		return nil
+	case apiresource.FieldIdentifier:
+		m.ResetIdentifier()
+		return nil
+	case apiresource.FieldName:
+		m.ResetName()
+		return nil
+	case apiresource.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case apiresource.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case apiresource.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ApiResource field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ApiResourceMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.realm != nil {
+		edges = append(edges, apiresource.EdgeRealm)
+	}
+	if m.scopes != nil {
+		edges = append(edges, apiresource.EdgeScopes)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ApiResourceMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case apiresource.EdgeRealm:
+		if id := m.realm; id != nil {
+			return []ent.Value{*id}
+		}
+	case apiresource.EdgeScopes:
+		ids := make([]ent.Value, 0, len(m.scopes))
+		for id := range m.scopes {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ApiResourceMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.removedscopes != nil {
+		edges = append(edges, apiresource.EdgeScopes)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ApiResourceMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case apiresource.EdgeScopes:
+		ids := make([]ent.Value, 0, len(m.removedscopes))
+		for id := range m.removedscopes {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ApiResourceMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedrealm {
+		edges = append(edges, apiresource.EdgeRealm)
+	}
+	if m.clearedscopes {
+		edges = append(edges, apiresource.EdgeScopes)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ApiResourceMutation) EdgeCleared(name string) bool {
+	switch name {
+	case apiresource.EdgeRealm:
+		return m.clearedrealm
+	case apiresource.EdgeScopes:
+		return m.clearedscopes
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ApiResourceMutation) ClearEdge(name string) error {
+	switch name {
+	case apiresource.EdgeRealm:
+		m.ClearRealm()
+		return nil
+	}
+	return fmt.Errorf("unknown ApiResource unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ApiResourceMutation) ResetEdge(name string) error {
+	switch name {
+	case apiresource.EdgeRealm:
+		m.ResetRealm()
+		return nil
+	case apiresource.EdgeScopes:
+		m.ResetScopes()
+		return nil
+	}
+	return fmt.Errorf("unknown ApiResource edge %s", name)
+}
 
 // AuditLogMutation represents an operation that mutates the AuditLog nodes in the graph.
 type AuditLogMutation struct {
@@ -2782,6 +3547,8 @@ type ClientAppMutation struct {
 	allowed_scopes                  *[]string
 	appendallowed_scopes            []string
 	token_endpoint_auth_method      *string
+	jwks                            *string
+	jwks_uri                        *string
 	id_token_signed_alg             *string
 	access_token_ttl                *int
 	addaccess_token_ttl             *int
@@ -3754,6 +4521,104 @@ func (m *ClientAppMutation) TokenEndpointAuthMethodCleared() bool {
 func (m *ClientAppMutation) ResetTokenEndpointAuthMethod() {
 	m.token_endpoint_auth_method = nil
 	delete(m.clearedFields, clientapp.FieldTokenEndpointAuthMethod)
+}
+
+// SetJwks sets the "jwks" field.
+func (m *ClientAppMutation) SetJwks(s string) {
+	m.jwks = &s
+}
+
+// Jwks returns the value of the "jwks" field in the mutation.
+func (m *ClientAppMutation) Jwks() (r string, exists bool) {
+	v := m.jwks
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldJwks returns the old "jwks" field's value of the ClientApp entity.
+// If the ClientApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ClientAppMutation) OldJwks(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldJwks is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldJwks requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldJwks: %w", err)
+	}
+	return oldValue.Jwks, nil
+}
+
+// ClearJwks clears the value of the "jwks" field.
+func (m *ClientAppMutation) ClearJwks() {
+	m.jwks = nil
+	m.clearedFields[clientapp.FieldJwks] = struct{}{}
+}
+
+// JwksCleared returns if the "jwks" field was cleared in this mutation.
+func (m *ClientAppMutation) JwksCleared() bool {
+	_, ok := m.clearedFields[clientapp.FieldJwks]
+	return ok
+}
+
+// ResetJwks resets all changes to the "jwks" field.
+func (m *ClientAppMutation) ResetJwks() {
+	m.jwks = nil
+	delete(m.clearedFields, clientapp.FieldJwks)
+}
+
+// SetJwksURI sets the "jwks_uri" field.
+func (m *ClientAppMutation) SetJwksURI(s string) {
+	m.jwks_uri = &s
+}
+
+// JwksURI returns the value of the "jwks_uri" field in the mutation.
+func (m *ClientAppMutation) JwksURI() (r string, exists bool) {
+	v := m.jwks_uri
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldJwksURI returns the old "jwks_uri" field's value of the ClientApp entity.
+// If the ClientApp object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ClientAppMutation) OldJwksURI(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldJwksURI is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldJwksURI requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldJwksURI: %w", err)
+	}
+	return oldValue.JwksURI, nil
+}
+
+// ClearJwksURI clears the value of the "jwks_uri" field.
+func (m *ClientAppMutation) ClearJwksURI() {
+	m.jwks_uri = nil
+	m.clearedFields[clientapp.FieldJwksURI] = struct{}{}
+}
+
+// JwksURICleared returns if the "jwks_uri" field was cleared in this mutation.
+func (m *ClientAppMutation) JwksURICleared() bool {
+	_, ok := m.clearedFields[clientapp.FieldJwksURI]
+	return ok
+}
+
+// ResetJwksURI resets all changes to the "jwks_uri" field.
+func (m *ClientAppMutation) ResetJwksURI() {
+	m.jwks_uri = nil
+	delete(m.clearedFields, clientapp.FieldJwksURI)
 }
 
 // SetIDTokenSignedAlg sets the "id_token_signed_alg" field.
@@ -5398,7 +6263,7 @@ func (m *ClientAppMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ClientAppMutation) Fields() []string {
-	fields := make([]string, 0, 39)
+	fields := make([]string, 0, 41)
 	if m.realm != nil {
 		fields = append(fields, clientapp.FieldRealmID)
 	}
@@ -5449,6 +6314,12 @@ func (m *ClientAppMutation) Fields() []string {
 	}
 	if m.token_endpoint_auth_method != nil {
 		fields = append(fields, clientapp.FieldTokenEndpointAuthMethod)
+	}
+	if m.jwks != nil {
+		fields = append(fields, clientapp.FieldJwks)
+	}
+	if m.jwks_uri != nil {
+		fields = append(fields, clientapp.FieldJwksURI)
 	}
 	if m.id_token_signed_alg != nil {
 		fields = append(fields, clientapp.FieldIDTokenSignedAlg)
@@ -5558,6 +6429,10 @@ func (m *ClientAppMutation) Field(name string) (ent.Value, bool) {
 		return m.AllowedScopes()
 	case clientapp.FieldTokenEndpointAuthMethod:
 		return m.TokenEndpointAuthMethod()
+	case clientapp.FieldJwks:
+		return m.Jwks()
+	case clientapp.FieldJwksURI:
+		return m.JwksURI()
 	case clientapp.FieldIDTokenSignedAlg:
 		return m.IDTokenSignedAlg()
 	case clientapp.FieldAccessTokenTTL:
@@ -5645,6 +6520,10 @@ func (m *ClientAppMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldAllowedScopes(ctx)
 	case clientapp.FieldTokenEndpointAuthMethod:
 		return m.OldTokenEndpointAuthMethod(ctx)
+	case clientapp.FieldJwks:
+		return m.OldJwks(ctx)
+	case clientapp.FieldJwksURI:
+		return m.OldJwksURI(ctx)
 	case clientapp.FieldIDTokenSignedAlg:
 		return m.OldIDTokenSignedAlg(ctx)
 	case clientapp.FieldAccessTokenTTL:
@@ -5816,6 +6695,20 @@ func (m *ClientAppMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetTokenEndpointAuthMethod(v)
+		return nil
+	case clientapp.FieldJwks:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetJwks(v)
+		return nil
+	case clientapp.FieldJwksURI:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetJwksURI(v)
 		return nil
 	case clientapp.FieldIDTokenSignedAlg:
 		v, ok := value.(string)
@@ -6094,6 +6987,12 @@ func (m *ClientAppMutation) ClearedFields() []string {
 	if m.FieldCleared(clientapp.FieldTokenEndpointAuthMethod) {
 		fields = append(fields, clientapp.FieldTokenEndpointAuthMethod)
 	}
+	if m.FieldCleared(clientapp.FieldJwks) {
+		fields = append(fields, clientapp.FieldJwks)
+	}
+	if m.FieldCleared(clientapp.FieldJwksURI) {
+		fields = append(fields, clientapp.FieldJwksURI)
+	}
 	if m.FieldCleared(clientapp.FieldIDTokenSignedAlg) {
 		fields = append(fields, clientapp.FieldIDTokenSignedAlg)
 	}
@@ -6176,6 +7075,12 @@ func (m *ClientAppMutation) ClearField(name string) error {
 		return nil
 	case clientapp.FieldTokenEndpointAuthMethod:
 		m.ClearTokenEndpointAuthMethod()
+		return nil
+	case clientapp.FieldJwks:
+		m.ClearJwks()
+		return nil
+	case clientapp.FieldJwksURI:
+		m.ClearJwksURI()
 		return nil
 	case clientapp.FieldIDTokenSignedAlg:
 		m.ClearIDTokenSignedAlg()
@@ -6274,6 +7179,12 @@ func (m *ClientAppMutation) ResetField(name string) error {
 		return nil
 	case clientapp.FieldTokenEndpointAuthMethod:
 		m.ResetTokenEndpointAuthMethod()
+		return nil
+	case clientapp.FieldJwks:
+		m.ResetJwks()
+		return nil
+	case clientapp.FieldJwksURI:
+		m.ResetJwksURI()
 		return nil
 	case clientapp.FieldIDTokenSignedAlg:
 		m.ResetIDTokenSignedAlg()
@@ -7913,6 +8824,9 @@ type ClientScopeMutation struct {
 	client_apps                  map[string]struct{}
 	removedclient_apps           map[string]struct{}
 	clearedclient_apps           bool
+	api_resources                map[string]struct{}
+	removedapi_resources         map[string]struct{}
+	clearedapi_resources         bool
 	role_client_scopes           map[string]struct{}
 	removedrole_client_scopes    map[string]struct{}
 	clearedrole_client_scopes    bool
@@ -8550,6 +9464,60 @@ func (m *ClientScopeMutation) ResetClientApps() {
 	m.removedclient_apps = nil
 }
 
+// AddAPIResourceIDs adds the "api_resources" edge to the ApiResource entity by ids.
+func (m *ClientScopeMutation) AddAPIResourceIDs(ids ...string) {
+	if m.api_resources == nil {
+		m.api_resources = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.api_resources[ids[i]] = struct{}{}
+	}
+}
+
+// ClearAPIResources clears the "api_resources" edge to the ApiResource entity.
+func (m *ClientScopeMutation) ClearAPIResources() {
+	m.clearedapi_resources = true
+}
+
+// APIResourcesCleared reports if the "api_resources" edge to the ApiResource entity was cleared.
+func (m *ClientScopeMutation) APIResourcesCleared() bool {
+	return m.clearedapi_resources
+}
+
+// RemoveAPIResourceIDs removes the "api_resources" edge to the ApiResource entity by IDs.
+func (m *ClientScopeMutation) RemoveAPIResourceIDs(ids ...string) {
+	if m.removedapi_resources == nil {
+		m.removedapi_resources = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.api_resources, ids[i])
+		m.removedapi_resources[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedAPIResources returns the removed IDs of the "api_resources" edge to the ApiResource entity.
+func (m *ClientScopeMutation) RemovedAPIResourcesIDs() (ids []string) {
+	for id := range m.removedapi_resources {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// APIResourcesIDs returns the "api_resources" edge IDs in the mutation.
+func (m *ClientScopeMutation) APIResourcesIDs() (ids []string) {
+	for id := range m.api_resources {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetAPIResources resets all changes to the "api_resources" edge.
+func (m *ClientScopeMutation) ResetAPIResources() {
+	m.api_resources = nil
+	m.clearedapi_resources = false
+	m.removedapi_resources = nil
+}
+
 // AddRoleClientScopeIDs adds the "role_client_scopes" edge to the RoleClientScope entity by ids.
 func (m *ClientScopeMutation) AddRoleClientScopeIDs(ids ...string) {
 	if m.role_client_scopes == nil {
@@ -8979,7 +9947,7 @@ func (m *ClientScopeMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ClientScopeMutation) AddedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
 	if m.realm != nil {
 		edges = append(edges, clientscope.EdgeRealm)
 	}
@@ -8991,6 +9959,9 @@ func (m *ClientScopeMutation) AddedEdges() []string {
 	}
 	if m.client_apps != nil {
 		edges = append(edges, clientscope.EdgeClientApps)
+	}
+	if m.api_resources != nil {
+		edges = append(edges, clientscope.EdgeAPIResources)
 	}
 	if m.role_client_scopes != nil {
 		edges = append(edges, clientscope.EdgeRoleClientScopes)
@@ -9030,6 +10001,12 @@ func (m *ClientScopeMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case clientscope.EdgeAPIResources:
+		ids := make([]ent.Value, 0, len(m.api_resources))
+		for id := range m.api_resources {
+			ids = append(ids, id)
+		}
+		return ids
 	case clientscope.EdgeRoleClientScopes:
 		ids := make([]ent.Value, 0, len(m.role_client_scopes))
 		for id := range m.role_client_scopes {
@@ -9054,7 +10031,7 @@ func (m *ClientScopeMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ClientScopeMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
 	if m.removedroles != nil {
 		edges = append(edges, clientscope.EdgeRoles)
 	}
@@ -9063,6 +10040,9 @@ func (m *ClientScopeMutation) RemovedEdges() []string {
 	}
 	if m.removedclient_apps != nil {
 		edges = append(edges, clientscope.EdgeClientApps)
+	}
+	if m.removedapi_resources != nil {
+		edges = append(edges, clientscope.EdgeAPIResources)
 	}
 	if m.removedrole_client_scopes != nil {
 		edges = append(edges, clientscope.EdgeRoleClientScopes)
@@ -9098,6 +10078,12 @@ func (m *ClientScopeMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case clientscope.EdgeAPIResources:
+		ids := make([]ent.Value, 0, len(m.removedapi_resources))
+		for id := range m.removedapi_resources {
+			ids = append(ids, id)
+		}
+		return ids
 	case clientscope.EdgeRoleClientScopes:
 		ids := make([]ent.Value, 0, len(m.removedrole_client_scopes))
 		for id := range m.removedrole_client_scopes {
@@ -9122,7 +10108,7 @@ func (m *ClientScopeMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ClientScopeMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
 	if m.clearedrealm {
 		edges = append(edges, clientscope.EdgeRealm)
 	}
@@ -9134,6 +10120,9 @@ func (m *ClientScopeMutation) ClearedEdges() []string {
 	}
 	if m.clearedclient_apps {
 		edges = append(edges, clientscope.EdgeClientApps)
+	}
+	if m.clearedapi_resources {
+		edges = append(edges, clientscope.EdgeAPIResources)
 	}
 	if m.clearedrole_client_scopes {
 		edges = append(edges, clientscope.EdgeRoleClientScopes)
@@ -9159,6 +10148,8 @@ func (m *ClientScopeMutation) EdgeCleared(name string) bool {
 		return m.clearedgroups
 	case clientscope.EdgeClientApps:
 		return m.clearedclient_apps
+	case clientscope.EdgeAPIResources:
+		return m.clearedapi_resources
 	case clientscope.EdgeRoleClientScopes:
 		return m.clearedrole_client_scopes
 	case clientscope.EdgeGroupClientScopes:
@@ -9195,6 +10186,9 @@ func (m *ClientScopeMutation) ResetEdge(name string) error {
 		return nil
 	case clientscope.EdgeClientApps:
 		m.ResetClientApps()
+		return nil
+	case clientscope.EdgeAPIResources:
+		m.ResetAPIResources()
 		return nil
 	case clientscope.EdgeRoleClientScopes:
 		m.ResetRoleClientScopes()
@@ -28001,6 +28995,9 @@ type RealmMutation struct {
 	client_scopes             map[string]struct{}
 	removedclient_scopes      map[string]struct{}
 	clearedclient_scopes      bool
+	api_resources             map[string]struct{}
+	removedapi_resources      map[string]struct{}
+	clearedapi_resources      bool
 	client_apps               map[string]struct{}
 	removedclient_apps        map[string]struct{}
 	clearedclient_apps        bool
@@ -28691,6 +29688,60 @@ func (m *RealmMutation) ResetClientScopes() {
 	m.client_scopes = nil
 	m.clearedclient_scopes = false
 	m.removedclient_scopes = nil
+}
+
+// AddAPIResourceIDs adds the "api_resources" edge to the ApiResource entity by ids.
+func (m *RealmMutation) AddAPIResourceIDs(ids ...string) {
+	if m.api_resources == nil {
+		m.api_resources = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.api_resources[ids[i]] = struct{}{}
+	}
+}
+
+// ClearAPIResources clears the "api_resources" edge to the ApiResource entity.
+func (m *RealmMutation) ClearAPIResources() {
+	m.clearedapi_resources = true
+}
+
+// APIResourcesCleared reports if the "api_resources" edge to the ApiResource entity was cleared.
+func (m *RealmMutation) APIResourcesCleared() bool {
+	return m.clearedapi_resources
+}
+
+// RemoveAPIResourceIDs removes the "api_resources" edge to the ApiResource entity by IDs.
+func (m *RealmMutation) RemoveAPIResourceIDs(ids ...string) {
+	if m.removedapi_resources == nil {
+		m.removedapi_resources = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.api_resources, ids[i])
+		m.removedapi_resources[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedAPIResources returns the removed IDs of the "api_resources" edge to the ApiResource entity.
+func (m *RealmMutation) RemovedAPIResourcesIDs() (ids []string) {
+	for id := range m.removedapi_resources {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// APIResourcesIDs returns the "api_resources" edge IDs in the mutation.
+func (m *RealmMutation) APIResourcesIDs() (ids []string) {
+	for id := range m.api_resources {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetAPIResources resets all changes to the "api_resources" edge.
+func (m *RealmMutation) ResetAPIResources() {
+	m.api_resources = nil
+	m.clearedapi_resources = false
+	m.removedapi_resources = nil
 }
 
 // AddClientAppIDs adds the "client_apps" edge to the ClientApp entity by ids.
@@ -29576,7 +30627,7 @@ func (m *RealmMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RealmMutation) AddedEdges() []string {
-	edges := make([]string, 0, 17)
+	edges := make([]string, 0, 18)
 	if m.users != nil {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -29591,6 +30642,9 @@ func (m *RealmMutation) AddedEdges() []string {
 	}
 	if m.client_scopes != nil {
 		edges = append(edges, realm.EdgeClientScopes)
+	}
+	if m.api_resources != nil {
+		edges = append(edges, realm.EdgeAPIResources)
 	}
 	if m.client_apps != nil {
 		edges = append(edges, realm.EdgeClientApps)
@@ -29662,6 +30716,12 @@ func (m *RealmMutation) AddedIDs(name string) []ent.Value {
 	case realm.EdgeClientScopes:
 		ids := make([]ent.Value, 0, len(m.client_scopes))
 		for id := range m.client_scopes {
+			ids = append(ids, id)
+		}
+		return ids
+	case realm.EdgeAPIResources:
+		ids := make([]ent.Value, 0, len(m.api_resources))
+		for id := range m.api_resources {
 			ids = append(ids, id)
 		}
 		return ids
@@ -29741,7 +30801,7 @@ func (m *RealmMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RealmMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 17)
+	edges := make([]string, 0, 18)
 	if m.removedusers != nil {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -29756,6 +30816,9 @@ func (m *RealmMutation) RemovedEdges() []string {
 	}
 	if m.removedclient_scopes != nil {
 		edges = append(edges, realm.EdgeClientScopes)
+	}
+	if m.removedapi_resources != nil {
+		edges = append(edges, realm.EdgeAPIResources)
 	}
 	if m.removedclient_apps != nil {
 		edges = append(edges, realm.EdgeClientApps)
@@ -29824,6 +30887,12 @@ func (m *RealmMutation) RemovedIDs(name string) []ent.Value {
 	case realm.EdgeClientScopes:
 		ids := make([]ent.Value, 0, len(m.removedclient_scopes))
 		for id := range m.removedclient_scopes {
+			ids = append(ids, id)
+		}
+		return ids
+	case realm.EdgeAPIResources:
+		ids := make([]ent.Value, 0, len(m.removedapi_resources))
+		for id := range m.removedapi_resources {
 			ids = append(ids, id)
 		}
 		return ids
@@ -29899,7 +30968,7 @@ func (m *RealmMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RealmMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 17)
+	edges := make([]string, 0, 18)
 	if m.clearedusers {
 		edges = append(edges, realm.EdgeUsers)
 	}
@@ -29914,6 +30983,9 @@ func (m *RealmMutation) ClearedEdges() []string {
 	}
 	if m.clearedclient_scopes {
 		edges = append(edges, realm.EdgeClientScopes)
+	}
+	if m.clearedapi_resources {
+		edges = append(edges, realm.EdgeAPIResources)
 	}
 	if m.clearedclient_apps {
 		edges = append(edges, realm.EdgeClientApps)
@@ -29968,6 +31040,8 @@ func (m *RealmMutation) EdgeCleared(name string) bool {
 		return m.clearedpermissions
 	case realm.EdgeClientScopes:
 		return m.clearedclient_scopes
+	case realm.EdgeAPIResources:
+		return m.clearedapi_resources
 	case realm.EdgeClientApps:
 		return m.clearedclient_apps
 	case realm.EdgeSessions:
@@ -30025,6 +31099,9 @@ func (m *RealmMutation) ResetEdge(name string) error {
 		return nil
 	case realm.EdgeClientScopes:
 		m.ResetClientScopes()
+		return nil
+	case realm.EdgeAPIResources:
+		m.ResetAPIResources()
 		return nil
 	case realm.EdgeClientApps:
 		m.ResetClientApps()
@@ -35707,6 +36784,8 @@ type TokenMutation struct {
 	revoked           *bool
 	scopes            *[]string
 	appendscopes      []string
+	audience          *[]string
+	appendaudience    []string
 	token_hash        *string
 	family_id         *string
 	used_at           *time.Time
@@ -36156,6 +37235,71 @@ func (m *TokenMutation) ResetScopes() {
 	delete(m.clearedFields, token.FieldScopes)
 }
 
+// SetAudience sets the "audience" field.
+func (m *TokenMutation) SetAudience(s []string) {
+	m.audience = &s
+	m.appendaudience = nil
+}
+
+// Audience returns the value of the "audience" field in the mutation.
+func (m *TokenMutation) Audience() (r []string, exists bool) {
+	v := m.audience
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAudience returns the old "audience" field's value of the Token entity.
+// If the Token object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TokenMutation) OldAudience(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAudience is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAudience requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAudience: %w", err)
+	}
+	return oldValue.Audience, nil
+}
+
+// AppendAudience adds s to the "audience" field.
+func (m *TokenMutation) AppendAudience(s []string) {
+	m.appendaudience = append(m.appendaudience, s...)
+}
+
+// AppendedAudience returns the list of values that were appended to the "audience" field in this mutation.
+func (m *TokenMutation) AppendedAudience() ([]string, bool) {
+	if len(m.appendaudience) == 0 {
+		return nil, false
+	}
+	return m.appendaudience, true
+}
+
+// ClearAudience clears the value of the "audience" field.
+func (m *TokenMutation) ClearAudience() {
+	m.audience = nil
+	m.appendaudience = nil
+	m.clearedFields[token.FieldAudience] = struct{}{}
+}
+
+// AudienceCleared returns if the "audience" field was cleared in this mutation.
+func (m *TokenMutation) AudienceCleared() bool {
+	_, ok := m.clearedFields[token.FieldAudience]
+	return ok
+}
+
+// ResetAudience resets all changes to the "audience" field.
+func (m *TokenMutation) ResetAudience() {
+	m.audience = nil
+	m.appendaudience = nil
+	delete(m.clearedFields, token.FieldAudience)
+}
+
 // SetTokenHash sets the "token_hash" field.
 func (m *TokenMutation) SetTokenHash(s string) {
 	m.token_hash = &s
@@ -36502,7 +37646,7 @@ func (m *TokenMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TokenMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 14)
 	if m.session != nil {
 		fields = append(fields, token.FieldSessionID)
 	}
@@ -36526,6 +37670,9 @@ func (m *TokenMutation) Fields() []string {
 	}
 	if m.scopes != nil {
 		fields = append(fields, token.FieldScopes)
+	}
+	if m.audience != nil {
+		fields = append(fields, token.FieldAudience)
 	}
 	if m.token_hash != nil {
 		fields = append(fields, token.FieldTokenHash)
@@ -36566,6 +37713,8 @@ func (m *TokenMutation) Field(name string) (ent.Value, bool) {
 		return m.Revoked()
 	case token.FieldScopes:
 		return m.Scopes()
+	case token.FieldAudience:
+		return m.Audience()
 	case token.FieldTokenHash:
 		return m.TokenHash()
 	case token.FieldFamilyID:
@@ -36601,6 +37750,8 @@ func (m *TokenMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldRevoked(ctx)
 	case token.FieldScopes:
 		return m.OldScopes(ctx)
+	case token.FieldAudience:
+		return m.OldAudience(ctx)
 	case token.FieldTokenHash:
 		return m.OldTokenHash(ctx)
 	case token.FieldFamilyID:
@@ -36676,6 +37827,13 @@ func (m *TokenMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetScopes(v)
 		return nil
+	case token.FieldAudience:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAudience(v)
+		return nil
 	case token.FieldTokenHash:
 		v, ok := value.(string)
 		if !ok {
@@ -36747,6 +37905,9 @@ func (m *TokenMutation) ClearedFields() []string {
 	if m.FieldCleared(token.FieldScopes) {
 		fields = append(fields, token.FieldScopes)
 	}
+	if m.FieldCleared(token.FieldAudience) {
+		fields = append(fields, token.FieldAudience)
+	}
 	if m.FieldCleared(token.FieldTokenHash) {
 		fields = append(fields, token.FieldTokenHash)
 	}
@@ -36781,6 +37942,9 @@ func (m *TokenMutation) ClearField(name string) error {
 		return nil
 	case token.FieldScopes:
 		m.ClearScopes()
+		return nil
+	case token.FieldAudience:
+		m.ClearAudience()
 		return nil
 	case token.FieldTokenHash:
 		m.ClearTokenHash()
@@ -36828,6 +37992,9 @@ func (m *TokenMutation) ResetField(name string) error {
 		return nil
 	case token.FieldScopes:
 		m.ResetScopes()
+		return nil
+	case token.FieldAudience:
+		m.ResetAudience()
 		return nil
 	case token.FieldTokenHash:
 		m.ResetTokenHash()

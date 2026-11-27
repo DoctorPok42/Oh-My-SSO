@@ -5,7 +5,8 @@ by hand when updating to it. How a version is published: [docs/RELEASE.md](docs/
 
 ## [Unreleased]
 
-Applications can get tokens for themselves (service to service), without a user. No manual step is required.
+Applications can get tokens for themselves (service to service), without a user and without a shared secret, and
+tokens meant for one API only. No manual step is required.
 
 ### Added
 - OAuth 2.0 `client_credentials` grant: each confidential client has a service account whose roles give the scopes of
@@ -13,6 +14,10 @@ Applications can get tokens for themselves (service to service), without a user.
   `token.issued` and limited per client (`RATE_LIMIT_CLIENT_CREDENTIALS`, 60/min).
 - Admin console and API: a client's grant types and its service account roles (`grant_types`, `service_role_ids` on
   `/clients`); the audit log labels tokens issued to a client with the `Client` actor.
+- Client authentication by key (`private_key_jwt`, RFC 7523): a client signs a one-time JWT with its own RSA key,
+  registered as a JWK set or a `jwks_uri`, instead of sending a secret. Details in docs/PRODUCTION.md.
+- API resources (RFC 8707): an API declared per realm with its scopes; a token asked for it with `resource` has it
+  as `aud` and only its scopes. Details in docs/PRODUCTION.md.
 
 ## [1.0.0] - 2026-11-23
 

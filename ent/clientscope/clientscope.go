@@ -39,6 +39,8 @@ const (
 	EdgeGroups = "groups"
 	// EdgeClientApps holds the string denoting the client_apps edge name in mutations.
 	EdgeClientApps = "client_apps"
+	// EdgeAPIResources holds the string denoting the api_resources edge name in mutations.
+	EdgeAPIResources = "api_resources"
 	// EdgeRoleClientScopes holds the string denoting the role_client_scopes edge name in mutations.
 	EdgeRoleClientScopes = "role_client_scopes"
 	// EdgeGroupClientScopes holds the string denoting the group_client_scopes edge name in mutations.
@@ -69,6 +71,11 @@ const (
 	// ClientAppsInverseTable is the table name for the ClientApp entity.
 	// It exists in this package in order to avoid circular dependency with the "clientapp" package.
 	ClientAppsInverseTable = "client_apps"
+	// APIResourcesTable is the table that holds the api_resources relation/edge. The primary key declared below.
+	APIResourcesTable = "api_resource_scopes"
+	// APIResourcesInverseTable is the table name for the ApiResource entity.
+	// It exists in this package in order to avoid circular dependency with the "apiresource" package.
+	APIResourcesInverseTable = "api_resources"
 	// RoleClientScopesTable is the table that holds the role_client_scopes relation/edge.
 	RoleClientScopesTable = "role_client_scopes"
 	// RoleClientScopesInverseTable is the table name for the RoleClientScope entity.
@@ -115,6 +122,9 @@ var (
 	// ClientAppsPrimaryKey and ClientAppsColumn2 are the table columns denoting the
 	// primary key for the client_apps relation (M2M).
 	ClientAppsPrimaryKey = []string{"client_app_id", "client_scope_id"}
+	// APIResourcesPrimaryKey and APIResourcesColumn2 are the table columns denoting the
+	// primary key for the api_resources relation (M2M).
+	APIResourcesPrimaryKey = []string{"api_resource_id", "client_scope_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -242,6 +252,20 @@ func ByClientApps(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByAPIResourcesCount orders the results by api_resources count.
+func ByAPIResourcesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newAPIResourcesStep(), opts...)
+	}
+}
+
+// ByAPIResources orders the results by api_resources terms.
+func ByAPIResources(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAPIResourcesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByRoleClientScopesCount orders the results by role_client_scopes count.
 func ByRoleClientScopesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -309,6 +333,13 @@ func newClientAppsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ClientAppsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, true, ClientAppsTable, ClientAppsPrimaryKey...),
+	)
+}
+func newAPIResourcesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(APIResourcesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, APIResourcesTable, APIResourcesPrimaryKey...),
 	)
 }
 func newRoleClientScopesStep() *sqlgraph.Step {

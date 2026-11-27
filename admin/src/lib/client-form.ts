@@ -15,6 +15,9 @@ export type ClientDraft = {
   postLogoutUris: string;
   standardScopes: string[];
   authMethod: string;
+  /** private_key_jwt: the client's public keys (a JWK set), or the URL it publishes them at. */
+  jwks: string;
+  jwksUri: string;
   requirePkce: boolean;
   grantTypes: string[];
   serviceRoleIds: string[];
@@ -50,6 +53,8 @@ export function emptyDraft(protocol: Protocol = "oidc"): ClientDraft {
     postLogoutUris: "",
     standardScopes: ["openid", "profile", "email"],
     authMethod: "client_secret_basic",
+    jwks: "",
+    jwksUri: "",
     requirePkce: true,
     grantTypes: ["authorization_code", "refresh_token"],
     serviceRoleIds: [],
@@ -85,6 +90,8 @@ export function draftFromClient(c: Client): ClientDraft {
     postLogoutUris: (c.oidc?.post_logout_redirect_uris ?? []).join("\n"),
     standardScopes: c.oidc?.standard_scopes ?? d.standardScopes,
     authMethod: c.oidc?.token_endpoint_auth_method || d.authMethod,
+    jwks: c.oidc?.jwks ?? "",
+    jwksUri: c.oidc?.jwks_uri ?? "",
     requirePkce: c.oidc?.require_pkce ?? true,
     grantTypes: c.oidc?.grant_types.length ? c.oidc.grant_types : d.grantTypes,
     serviceRoleIds: c.service_roles.map((r) => r.id),
@@ -126,6 +133,7 @@ export function clientBody(d: ClientDraft, mode: "create" | "update"): ClientBod
   if (d.protocol === "oidc") {
     // A public client cannot keep a secret, so it has no service account.
     const grants = d.isPublic ? d.grantTypes.filter((g) => g !== "client_credentials") : d.grantTypes;
+    const keyed = !d.isPublic && d.authMethod === "private_key_jwt";
     Object.assign(body, {
       grant_types: grants,
       service_role_ids: grants.includes("client_credentials") ? d.serviceRoleIds : [],
@@ -133,6 +141,9 @@ export function clientBody(d: ClientDraft, mode: "create" | "update"): ClientBod
       post_logout_redirect_uris: lines(d.postLogoutUris),
       standard_scopes: d.standardScopes,
       token_endpoint_auth_method: d.isPublic ? "none" : d.authMethod,
+      // Keys only with private_key_jwt; "" clears them for another method.
+      jwks: keyed ? d.jwks.trim() : "",
+      jwks_uri: keyed ? d.jwksUri.trim() : "",
       require_pkce: d.isPublic ? true : d.requirePkce,
       access_token_ttl: toSeconds("minutes", d.accessTtlMinutes),
       refresh_token_ttl: toSeconds("days", d.refreshTtlDays),

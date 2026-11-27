@@ -20,6 +20,17 @@ describe("client form <-> Admin API body", () => {
     expect(body).not.toHaveProperty("pairwise");
   });
 
+  it("sends the keys of a private_key_jwt client only, and clears them otherwise", () => {
+    const keyed = { ...emptyDraft("oidc"), authMethod: "private_key_jwt", jwks: ' {"keys":[]} ', jwksUri: "" };
+    expect(clientBody(keyed, "update")).toMatchObject({
+      token_endpoint_auth_method: "private_key_jwt",
+      jwks: '{"keys":[]}',
+      jwks_uri: "",
+    });
+    const secret = { ...keyed, authMethod: "client_secret_basic", jwksUri: "https://k" };
+    expect(clientBody(secret, "update")).toMatchObject({ jwks: "", jwks_uri: "" });
+  });
+
   it("forces 'none' and PKCE for a public client", () => {
     const body = clientBody({ ...emptyDraft("oidc"), isPublic: true, requirePkce: false }, "create");
     expect(body).toMatchObject({ public: true, token_endpoint_auth_method: "none", require_pkce: true });
@@ -75,6 +86,8 @@ describe("client form <-> Admin API body", () => {
         standard_scopes: ["openid"],
         grant_types: ["client_credentials"],
         token_endpoint_auth_method: "none",
+        jwks: "",
+        jwks_uri: "",
         require_pkce: true,
         access_token_ttl: 600,
         refresh_token_ttl: 86400,

@@ -95,6 +95,12 @@ func (_c *TokenCreate) SetScopes(v []string) *TokenCreate {
 	return _c
 }
 
+// SetAudience sets the "audience" field.
+func (_c *TokenCreate) SetAudience(v []string) *TokenCreate {
+	_c.mutation.SetAudience(v)
+	return _c
+}
+
 // SetTokenHash sets the "token_hash" field.
 func (_c *TokenCreate) SetTokenHash(v string) *TokenCreate {
 	_c.mutation.SetTokenHash(v)
@@ -340,6 +346,10 @@ func (_c *TokenCreate) createSpec() (*Token, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Scopes(); ok {
 		_spec.SetField(token.FieldScopes, field.TypeJSON, value)
 		_node.Scopes = value
+	}
+	if value, ok := _c.mutation.Audience(); ok {
+		_spec.SetField(token.FieldAudience, field.TypeJSON, value)
+		_node.Audience = value
 	}
 	if value, ok := _c.mutation.TokenHash(); ok {
 		_spec.SetField(token.FieldTokenHash, field.TypeString, value)

@@ -48,6 +48,7 @@ func (Realm) Edges() []ent.Edge {
 		edge.To("groups", Group.Type).Annotations(entsql.OnDelete(entsql.Restrict)),
 		edge.To("permissions", Permission.Type).Annotations(entsql.OnDelete(entsql.Restrict)),
 		edge.To("client_scopes", ClientScope.Type).Annotations(entsql.OnDelete(entsql.Restrict)),
+		edge.To("api_resources", ApiResource.Type).Annotations(entsql.OnDelete(entsql.Restrict)),
 		edge.To("client_apps", ClientApp.Type).Annotations(entsql.OnDelete(entsql.Restrict)),
 		edge.To("sessions", Session.Type).Annotations(entsql.OnDelete(entsql.Restrict)),
 		edge.To("signing_keys", SigningKey.Type).Annotations(entsql.OnDelete(entsql.Restrict)),

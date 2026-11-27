@@ -45,6 +45,10 @@ var (
 	// ErrScopeNotGranted: a service account asked for a scope its roles do
 	// not give (client_credentials grant).
 	ErrScopeNotGranted = errors.New("core: scope not granted to the service account")
+	// ErrInvalidTarget: a resource indicator (RFC 8707) names no API
+	// resource of the realm, one the client may not ask for, or one outside
+	// the grant (OAuth error "invalid_target").
+	ErrInvalidTarget = errors.New("core: invalid resource indicator")
 
 	ErrConsentNotConfigured = errors.New("core: user consent required but not configured")
 
@@ -275,6 +279,14 @@ type TokenRequest struct {
 	SessionID string
 	ClientRef string // ClientApp.ID
 	Scopes    []string
+	// Resources: identifiers of the API resources (RFC 8707) of the grant,
+	// as CheckResources returned them. The refresh token keeps them all.
+	Resources []string
+	// Audience: the resources the access token is for, each one of
+	// Resources (else ErrInvalidTarget); empty: all of them. An access
+	// token with resources keeps only their scopes and the standard OIDC
+	// ones.
+	Audience []string
 	// WithRefreshToken also issues a refresh token, the first of a new
 	// token family.
 	WithRefreshToken bool
@@ -451,8 +463,11 @@ type IdentityCore interface {
 	// by a timeout (else a *TimeoutError). Scopes: those
 	// its service roles give (see RBACService.ServiceAccountClientScopes),
 	// narrowed to the requested ones; a requested scope it does not hold:
-	// ErrScopeNotGranted. Audited as token.issued.
-	IssueServiceAccountToken(ctx context.Context, clientRef string, requestedScopes []string) (*domain.Token, error)
+	// ErrScopeNotGranted. With resources (RFC 8707), each must share a
+	// scope with the service account (else ErrInvalidTarget): they are the
+	// token's audience and its scopes are narrowed to theirs. Audited as
+	// token.issued.
+	IssueServiceAccountToken(ctx context.Context, clientRef string, requestedScopes, resources []string) (*domain.Token, error)
 	// InspectRefreshToken returns the record of a raw refresh token without
 	// consuming it. Unknown, expired, revoked or not a refresh token:
 	// ErrTokenInvalid. Already exchanged: it is a replay, the whole family
@@ -462,7 +477,9 @@ type IdentityCore interface {
 	// concurrent calls: one wins, the other gets ErrTokenReused). It counts
 	// as activity on the session, then issues a new access + refresh token
 	// pair in the same family. nil scopes: the same scopes as before.
-	RotateRefreshToken(ctx context.Context, rawToken, clientRef string, scopes []string) (*IssuedTokens, error)
+	// audience: as TokenRequest.Audience, among the resources of the grant;
+	// one outside it is ErrInvalidTarget and does not consume the token.
+	RotateRefreshToken(ctx context.Context, rawToken, clientRef string, scopes, audience []string) (*IssuedTokens, error)
 	// LookupToken returns a token record by its jti. Unknown jti:
 	// ErrTokenInvalid. It does NOT check revocation or expiry: callers do.
 	LookupToken(ctx context.Context, jti string) (*domain.Token, error)
@@ -478,9 +495,14 @@ type IdentityCore interface {
 	LookupClient(ctx context.Context, realmID string, protocol domain.ClientAppProtocol, protocolID string) (*ProtocolClient, error)
 	ClientByRef(ctx context.Context, clientRef string) (*ProtocolClient, error)
 	// AuthenticateClient checks the secret of a confidential client, in
-	// constant time. Wrong secret, or a client without a secret (public):
-	// ErrInvalidClientSecret.
+	// constant time. Wrong secret, or a client without a secret (public, or
+	// authenticating with private_key_jwt): ErrInvalidClientSecret.
 	AuthenticateClient(ctx context.Context, clientRef, secret string) error
+	// CheckResources validates the resource indicators (RFC 8707) of an
+	// authorization request: each must be an API resource of the realm
+	// sharing a scope with held, the client's scopes (else ErrInvalidTarget).
+	// It returns them without duplicates, in request order.
+	CheckResources(ctx context.Context, realmID string, held []*domain.ClientScope, resources []string) ([]string, error)
 
 	// Signer returns the newest active key of the realm for that purpose.
 	// For saml_signing it is also a DigestSigner.

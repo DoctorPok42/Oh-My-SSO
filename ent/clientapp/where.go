@@ -135,6 +135,16 @@ func TokenEndpointAuthMethod(v string) predicate.ClientApp {
 	return predicate.ClientApp(sql.FieldEQ(FieldTokenEndpointAuthMethod, v))
 }
 
+// Jwks applies equality check predicate on the "jwks" field. It's identical to JwksEQ.
+func Jwks(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEQ(FieldJwks, v))
+}
+
+// JwksURI applies equality check predicate on the "jwks_uri" field. It's identical to JwksURIEQ.
+func JwksURI(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEQ(FieldJwksURI, v))
+}
+
 // IDTokenSignedAlg applies equality check predicate on the "id_token_signed_alg" field. It's identical to IDTokenSignedAlgEQ.
 func IDTokenSignedAlg(v string) predicate.ClientApp {
 	return predicate.ClientApp(sql.FieldEQ(FieldIDTokenSignedAlg, v))
@@ -1176,6 +1186,156 @@ func TokenEndpointAuthMethodEqualFold(v string) predicate.ClientApp {
 // TokenEndpointAuthMethodContainsFold applies the ContainsFold predicate on the "token_endpoint_auth_method" field.
 func TokenEndpointAuthMethodContainsFold(v string) predicate.ClientApp {
 	return predicate.ClientApp(sql.FieldContainsFold(FieldTokenEndpointAuthMethod, v))
+}
+
+// JwksEQ applies the EQ predicate on the "jwks" field.
+func JwksEQ(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEQ(FieldJwks, v))
+}
+
+// JwksNEQ applies the NEQ predicate on the "jwks" field.
+func JwksNEQ(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNEQ(FieldJwks, v))
+}
+
+// JwksIn applies the In predicate on the "jwks" field.
+func JwksIn(vs ...string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldIn(FieldJwks, vs...))
+}
+
+// JwksNotIn applies the NotIn predicate on the "jwks" field.
+func JwksNotIn(vs ...string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNotIn(FieldJwks, vs...))
+}
+
+// JwksGT applies the GT predicate on the "jwks" field.
+func JwksGT(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldGT(FieldJwks, v))
+}
+
+// JwksGTE applies the GTE predicate on the "jwks" field.
+func JwksGTE(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldGTE(FieldJwks, v))
+}
+
+// JwksLT applies the LT predicate on the "jwks" field.
+func JwksLT(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldLT(FieldJwks, v))
+}
+
+// JwksLTE applies the LTE predicate on the "jwks" field.
+func JwksLTE(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldLTE(FieldJwks, v))
+}
+
+// JwksContains applies the Contains predicate on the "jwks" field.
+func JwksContains(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldContains(FieldJwks, v))
+}
+
+// JwksHasPrefix applies the HasPrefix predicate on the "jwks" field.
+func JwksHasPrefix(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldHasPrefix(FieldJwks, v))
+}
+
+// JwksHasSuffix applies the HasSuffix predicate on the "jwks" field.
+func JwksHasSuffix(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldHasSuffix(FieldJwks, v))
+}
+
+// JwksIsNil applies the IsNil predicate on the "jwks" field.
+func JwksIsNil() predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldIsNull(FieldJwks))
+}
+
+// JwksNotNil applies the NotNil predicate on the "jwks" field.
+func JwksNotNil() predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNotNull(FieldJwks))
+}
+
+// JwksEqualFold applies the EqualFold predicate on the "jwks" field.
+func JwksEqualFold(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEqualFold(FieldJwks, v))
+}
+
+// JwksContainsFold applies the ContainsFold predicate on the "jwks" field.
+func JwksContainsFold(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldContainsFold(FieldJwks, v))
+}
+
+// JwksURIEQ applies the EQ predicate on the "jwks_uri" field.
+func JwksURIEQ(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEQ(FieldJwksURI, v))
+}
+
+// JwksURINEQ applies the NEQ predicate on the "jwks_uri" field.
+func JwksURINEQ(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNEQ(FieldJwksURI, v))
+}
+
+// JwksURIIn applies the In predicate on the "jwks_uri" field.
+func JwksURIIn(vs ...string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldIn(FieldJwksURI, vs...))
+}
+
+// JwksURINotIn applies the NotIn predicate on the "jwks_uri" field.
+func JwksURINotIn(vs ...string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNotIn(FieldJwksURI, vs...))
+}
+
+// JwksURIGT applies the GT predicate on the "jwks_uri" field.
+func JwksURIGT(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldGT(FieldJwksURI, v))
+}
+
+// JwksURIGTE applies the GTE predicate on the "jwks_uri" field.
+func JwksURIGTE(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldGTE(FieldJwksURI, v))
+}
+
+// JwksURILT applies the LT predicate on the "jwks_uri" field.
+func JwksURILT(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldLT(FieldJwksURI, v))
+}
+
+// JwksURILTE applies the LTE predicate on the "jwks_uri" field.
+func JwksURILTE(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldLTE(FieldJwksURI, v))
+}
+
+// JwksURIContains applies the Contains predicate on the "jwks_uri" field.
+func JwksURIContains(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldContains(FieldJwksURI, v))
+}
+
+// JwksURIHasPrefix applies the HasPrefix predicate on the "jwks_uri" field.
+func JwksURIHasPrefix(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldHasPrefix(FieldJwksURI, v))
+}
+
+// JwksURIHasSuffix applies the HasSuffix predicate on the "jwks_uri" field.
+func JwksURIHasSuffix(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldHasSuffix(FieldJwksURI, v))
+}
+
+// JwksURIIsNil applies the IsNil predicate on the "jwks_uri" field.
+func JwksURIIsNil() predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldIsNull(FieldJwksURI))
+}
+
+// JwksURINotNil applies the NotNil predicate on the "jwks_uri" field.
+func JwksURINotNil() predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldNotNull(FieldJwksURI))
+}
+
+// JwksURIEqualFold applies the EqualFold predicate on the "jwks_uri" field.
+func JwksURIEqualFold(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldEqualFold(FieldJwksURI, v))
+}
+
+// JwksURIContainsFold applies the ContainsFold predicate on the "jwks_uri" field.
+func JwksURIContainsFold(v string) predicate.ClientApp {
+	return predicate.ClientApp(sql.FieldContainsFold(FieldJwksURI, v))
 }
 
 // IDTokenSignedAlgEQ applies the EQ predicate on the "id_token_signed_alg" field.

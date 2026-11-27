@@ -8,7 +8,7 @@ const (
 	TokenAccessToken  TokenType = "access_token"
 	TokenRefreshToken TokenType = "refresh_token"
 	TokenIDToken      TokenType = "id_token"
-	TokenSAMLSession TokenType = "saml_session"
+	TokenSAMLSession  TokenType = "saml_session"
 )
 
 type Token struct {
@@ -21,6 +21,10 @@ type Token struct {
 	ExpiresAt   time.Time
 	Revoked     bool
 	Scopes      []string
+	// Audience: API resources (RFC 8707) by identifier. An access token's
+	// "aud"; for a refresh token, every resource of the grant. Empty: the
+	// token is for the client itself.
+	Audience []string
 
 	// TokenHash is the SHA-256 of an opaque token (refresh tokens). Empty
 	// for JWT access tokens, which are identified by JTI.
